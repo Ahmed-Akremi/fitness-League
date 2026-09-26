@@ -1,0 +1,12 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+onlyBuiltDependencies:
+  - "@prisma/client"
+  - "@prisma/engines"
+  - "prisma"
+  - "argon2"
+  - "esbuild"
+  - "embedded-postgres"
+  - "@embedded-postgres/linux-x64"
+  - "@nestjs/core"

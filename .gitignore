@@ -1,0 +1,12 @@
+node_modules/
+dist/
+coverage/
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+.pgdata-test/
+# Flutter
+apps/mobile/.dart_tool/
+apps/mobile/build/

@@ -1,0 +1,65 @@
+# Local development stack: `pnpm dev` from the repo root.
+# Values below are local-only defaults (not secrets); override them in a root .env file.
+name: fitness-league
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-fl}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-fl}
+      POSTGRES_DB: ${POSTGRES_DB:-fitness_league}
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-fl}"]
+      interval: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports: ["6379:6379"]
+    volumes: [redisdata:/data]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:-fl-minio}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-fl-minio-secret}
+    ports: ["9000:9000", "9001:9001"]
+    volumes: [miniodata:/data]
+
+  mailpit:
+    image: axllent/mailpit:latest
+    ports: ["1025:1025", "8025:8025"]
+
+  api:
+    build: { context: .., dockerfile: apps/api/Dockerfile }
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    environment: &api-env
+      NODE_ENV: development
+      PORT: 3000
+      LOG_LEVEL: info
+      DATABASE_URL: postgresql://${POSTGRES_USER:-fl}:${POSTGRES_PASSWORD:-fl}@db:5432/${POSTGRES_DB:-fitness_league}?schema=public
+      REDIS_URL: redis://redis:6379
+      CURSOR_HMAC_SECRET: ${CURSOR_HMAC_SECRET:-local-dev-cursor-secret-change-me-000}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
+      OPENAPI_ENABLED: "true"
+    # Apply migrations and the (idempotent) seed, then start.
+    command: ["sh", "-c", "npx prisma migrate deploy && node dist/database/seed.js && node dist/main.js"]
+    ports: ["3000:3000"]
+
+  # The worker joins the stack with the first background job (module 6+); today it has nothing to run.
+
+volumes:
+  pgdata:
+  redisdata:
+  miniodata:

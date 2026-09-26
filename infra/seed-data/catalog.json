@@ -1,0 +1,82 @@
+{
+  "metricTypes": [
+    { "code": "MAX_WEIGHT", "unit": "kg", "direction": "HIGHER_IS_BETTER", "name": { "fr": "Charge max", "en": "Max weight", "ar": "أقصى وزن" } },
+    { "code": "E1RM", "unit": "kg", "direction": "HIGHER_IS_BETTER", "name": { "fr": "1RM estimé", "en": "Estimated 1RM", "ar": "1RM تقديري" } },
+    { "code": "REPS_AT_WEIGHT", "unit": "count", "direction": "HIGHER_IS_BETTER", "name": { "fr": "Répétitions à charge", "en": "Reps at weight", "ar": "تكرارات بوزن" } },
+    { "code": "MAX_REPS", "unit": "count", "direction": "HIGHER_IS_BETTER", "name": { "fr": "Répétitions max", "en": "Max reps", "ar": "أقصى تكرارات" } },
+    { "code": "DISTANCE", "unit": "m", "direction": "HIGHER_IS_BETTER", "name": { "fr": "Distance", "en": "Distance", "ar": "المسافة" } },
+    { "code": "PACE", "unit": "s_per_km", "direction": "LOWER_IS_BETTER", "name": { "fr": "Allure", "en": "Pace", "ar": "الوتيرة" } },
+    { "code": "TIME_1K", "unit": "s", "direction": "LOWER_IS_BETTER", "name": { "fr": "Temps 1 km", "en": "1K time", "ar": "زمن 1 كم" } },
+    { "code": "TIME_5K", "unit": "s", "direction": "LOWER_IS_BETTER", "name": { "fr": "Temps 5 km", "en": "5K time", "ar": "زمن 5 كم" } },
+    { "code": "TIME_10K", "unit": "s", "direction": "LOWER_IS_BETTER", "name": { "fr": "Temps 10 km", "en": "10K time", "ar": "زمن 10 كم" } },
+    { "code": "TIME_21K", "unit": "s", "direction": "LOWER_IS_BETTER", "name": { "fr": "Temps semi-marathon", "en": "Half marathon time", "ar": "زمن نصف الماراثون" } },
+    { "code": "BODY_WEIGHT", "unit": "kg", "direction": "HIGHER_IS_BETTER", "name": { "fr": "Poids du corps", "en": "Body weight", "ar": "وزن الجسم" } },
+    { "code": "WORKOUTS_PER_WEEK", "unit": "count", "direction": "HIGHER_IS_BETTER", "name": { "fr": "Séances par semaine", "en": "Workouts per week", "ar": "حصص في الأسبوع" } }
+  ],
+  "sports": [
+    { "code": "BODYBUILDING", "category": "STRENGTH", "loggingMode": "SETS_REPS_WEIGHT", "icon": "dumbbell", "name": { "fr": "Musculation", "en": "Bodybuilding", "ar": "كمال الأجسام" } },
+    { "code": "POWERLIFTING", "category": "STRENGTH", "loggingMode": "SETS_REPS_WEIGHT", "icon": "barbell", "name": { "fr": "Force athlétique", "en": "Powerlifting", "ar": "رفع القوة" } },
+    { "code": "WEIGHT_TRAINING", "category": "STRENGTH", "loggingMode": "SETS_REPS_WEIGHT", "icon": "weight", "name": { "fr": "Renforcement", "en": "Weight training", "ar": "تدريب بالأثقال" } },
+    { "code": "CROSSFIT", "category": "FUNCTIONAL", "loggingMode": "MIXED", "icon": "kettlebell", "name": { "fr": "CrossFit", "en": "CrossFit", "ar": "كروسفيت" } },
+    { "code": "FUNCTIONAL", "category": "FUNCTIONAL", "loggingMode": "MIXED", "icon": "functional", "name": { "fr": "Entraînement fonctionnel", "en": "Functional training", "ar": "تدريب وظيفي" } },
+    { "code": "RUNNING", "category": "CARDIO", "loggingMode": "DISTANCE_TIME", "icon": "run", "name": { "fr": "Course à pied", "en": "Running", "ar": "الجري" } },
+    { "code": "CYCLING", "category": "CARDIO", "loggingMode": "DISTANCE_TIME", "icon": "bike", "name": { "fr": "Vélo", "en": "Cycling", "ar": "ركوب الدراجة" } },
+    { "code": "WALKING", "category": "CARDIO", "loggingMode": "DISTANCE_TIME", "icon": "walk", "name": { "fr": "Marche", "en": "Walking", "ar": "المشي" } },
+    { "code": "SWIMMING", "category": "CARDIO", "loggingMode": "DISTANCE_TIME", "icon": "swim", "name": { "fr": "Natation", "en": "Swimming", "ar": "السباحة" } }
+  ],
+  "exercises": [
+    { "code": "BACK_SQUAT", "sport": null, "equipment": "barbell", "bodyweight": false, "metrics": ["MAX_WEIGHT", "E1RM", "REPS_AT_WEIGHT"], "plausibility": {}, "name": { "fr": "Squat", "en": "Back squat", "ar": "سكوات" } },
+    { "code": "FRONT_SQUAT", "sport": null, "equipment": "barbell", "bodyweight": false, "metrics": ["MAX_WEIGHT", "E1RM", "REPS_AT_WEIGHT"], "plausibility": { "hold_kg": 260, "reject_kg": 430 }, "name": { "fr": "Squat avant", "en": "Front squat", "ar": "سكوات أمامي" } },
+    { "code": "BENCH_PRESS", "sport": null, "equipment": "barbell", "bodyweight": false, "metrics": ["MAX_WEIGHT", "E1RM", "REPS_AT_WEIGHT"], "plausibility": {}, "name": { "fr": "Développé couché", "en": "Bench press", "ar": "ضغط البنش" } },
+    { "code": "DEADLIFT", "sport": null, "equipment": "barbell", "bodyweight": false, "metrics": ["MAX_WEIGHT", "E1RM", "REPS_AT_WEIGHT"], "plausibility": {}, "name": { "fr": "Soulevé de terre", "en": "Deadlift", "ar": "الرفعة الميتة" } },
+    { "code": "OVERHEAD_PRESS", "sport": null, "equipment": "barbell", "bodyweight": false, "metrics": ["MAX_WEIGHT", "E1RM", "REPS_AT_WEIGHT"], "plausibility": { "hold_kg": 150, "reject_kg": 240 }, "name": { "fr": "Développé militaire", "en": "Overhead press", "ar": "الضغط العسكري" } },
+    { "code": "BARBELL_ROW", "sport": null, "equipment": "barbell", "bodyweight": false, "metrics": ["MAX_WEIGHT", "E1RM", "REPS_AT_WEIGHT"], "plausibility": { "hold_kg": 200, "reject_kg": 320 }, "name": { "fr": "Rowing barre", "en": "Barbell row", "ar": "تجديف بالبار" } },
+    { "code": "LEG_PRESS", "sport": null, "equipment": "machine", "bodyweight": false, "metrics": ["MAX_WEIGHT", "E1RM", "REPS_AT_WEIGHT"], "plausibility": { "hold_kg": 500, "reject_kg": 1000 }, "name": { "fr": "Presse à cuisses", "en": "Leg press", "ar": "مكبس الأرجل" } },
+    { "code": "LAT_PULLDOWN", "sport": null, "equipment": "machine", "bodyweight": false, "metrics": ["MAX_WEIGHT", "E1RM", "REPS_AT_WEIGHT"], "plausibility": { "hold_kg": 150, "reject_kg": 250 }, "name": { "fr": "Tirage vertical", "en": "Lat pulldown", "ar": "سحب علوي" } },
+    { "code": "BICEPS_CURL", "sport": null, "equipment": "dumbbell", "bodyweight": false, "metrics": ["MAX_WEIGHT", "E1RM", "REPS_AT_WEIGHT"], "plausibility": { "hold_kg": 80, "reject_kg": 130 }, "name": { "fr": "Curl biceps", "en": "Biceps curl", "ar": "ثني الذراعين" } },
+    { "code": "HIP_THRUST", "sport": null, "equipment": "barbell", "bodyweight": false, "metrics": ["MAX_WEIGHT", "E1RM", "REPS_AT_WEIGHT"], "plausibility": { "hold_kg": 350, "reject_kg": 600 }, "name": { "fr": "Hip thrust", "en": "Hip thrust", "ar": "دفع الورك" } },
+    { "code": "PULL_UP", "sport": null, "equipment": "bar", "bodyweight": true, "metrics": ["MAX_REPS"], "plausibility": {}, "name": { "fr": "Traction", "en": "Pull-up", "ar": "العقلة" } },
+    { "code": "PUSH_UP", "sport": null, "equipment": "none", "bodyweight": true, "metrics": ["MAX_REPS"], "plausibility": {}, "name": { "fr": "Pompe", "en": "Push-up", "ar": "الضغط" } },
+    { "code": "DIP", "sport": null, "equipment": "bars", "bodyweight": true, "metrics": ["MAX_REPS"], "plausibility": {}, "name": { "fr": "Dips", "en": "Dip", "ar": "الغطس" } },
+    { "code": "POWER_CLEAN", "sport": null, "equipment": "barbell", "bodyweight": false, "metrics": ["MAX_WEIGHT"], "plausibility": { "hold_kg": 180, "reject_kg": 280 }, "name": { "fr": "Épaulé en puissance", "en": "Power clean", "ar": "النتر القوي" } },
+    { "code": "SNATCH", "sport": null, "equipment": "barbell", "bodyweight": false, "metrics": ["MAX_WEIGHT"], "plausibility": { "hold_kg": 160, "reject_kg": 230 }, "name": { "fr": "Arraché", "en": "Snatch", "ar": "الخطف" } },
+    { "code": "CLEAN_AND_JERK", "sport": null, "equipment": "barbell", "bodyweight": false, "metrics": ["MAX_WEIGHT"], "plausibility": { "hold_kg": 200, "reject_kg": 280 }, "name": { "fr": "Épaulé-jeté", "en": "Clean and jerk", "ar": "النتر" } },
+    { "code": "THRUSTER", "sport": null, "equipment": "barbell", "bodyweight": false, "metrics": ["MAX_WEIGHT", "REPS_AT_WEIGHT"], "plausibility": { "hold_kg": 150, "reject_kg": 230 }, "name": { "fr": "Thruster", "en": "Thruster", "ar": "ثرستر" } },
+    { "code": "KETTLEBELL_SWING", "sport": null, "equipment": "kettlebell", "bodyweight": false, "metrics": ["REPS_AT_WEIGHT"], "plausibility": { "hold_kg": 64, "reject_kg": 100 }, "name": { "fr": "Swing kettlebell", "en": "Kettlebell swing", "ar": "أرجحة الكيتلبل" } },
+    { "code": "BURPEE", "sport": null, "equipment": "none", "bodyweight": true, "metrics": ["MAX_REPS"], "plausibility": {}, "name": { "fr": "Burpee", "en": "Burpee", "ar": "بيربي" } },
+    { "code": "BOX_JUMP", "sport": null, "equipment": "box", "bodyweight": true, "metrics": ["MAX_REPS"], "plausibility": {}, "name": { "fr": "Saut sur box", "en": "Box jump", "ar": "القفز على الصندوق" } },
+    { "code": "ROW_ERG", "sport": "CROSSFIT", "equipment": "rower", "bodyweight": false, "metrics": ["DISTANCE", "PACE"], "plausibility": {}, "name": { "fr": "Rameur", "en": "Rowing machine", "ar": "آلة التجديف" } },
+    { "code": "RUN", "sport": "RUNNING", "equipment": "none", "bodyweight": true, "metrics": ["DISTANCE", "PACE", "TIME_1K", "TIME_5K", "TIME_10K", "TIME_21K"], "plausibility": {}, "name": { "fr": "Course", "en": "Run", "ar": "جري" } },
+    { "code": "RIDE", "sport": "CYCLING", "equipment": "bike", "bodyweight": false, "metrics": ["DISTANCE", "PACE"], "plausibility": {}, "name": { "fr": "Sortie vélo", "en": "Ride", "ar": "جولة بالدراجة" } },
+    { "code": "WALK", "sport": "WALKING", "equipment": "none", "bodyweight": true, "metrics": ["DISTANCE"], "plausibility": {}, "name": { "fr": "Marche", "en": "Walk", "ar": "مشي" } },
+    { "code": "SWIM_FREESTYLE", "sport": "SWIMMING", "equipment": "pool", "bodyweight": true, "metrics": ["DISTANCE", "PACE"], "plausibility": {}, "name": { "fr": "Nage libre", "en": "Freestyle swim", "ar": "سباحة حرة" } }
+  ],
+  "divisions": [
+    { "code": "BRONZE", "order": 1, "name": { "fr": "Bronze", "en": "Bronze", "ar": "برونزي" } },
+    { "code": "SILVER", "order": 2, "name": { "fr": "Argent", "en": "Silver", "ar": "فضي" } },
+    { "code": "GOLD", "order": 3, "name": { "fr": "Or", "en": "Gold", "ar": "ذهبي" } },
+    { "code": "PLATINUM", "order": 4, "name": { "fr": "Platine", "en": "Platinum", "ar": "بلاتيني" } },
+    { "code": "DIAMOND", "order": 5, "name": { "fr": "Diamant", "en": "Diamond", "ar": "ماسي" } },
+    { "code": "ELITE", "order": 6, "name": { "fr": "Élite", "en": "Elite", "ar": "النخبة" } }
+  ],
+  "badges": [
+    {
+      "code": "FIRST_STEP",
+      "category": "PROGRESS",
+      "icon": "first-step",
+      "rarity": "COMMON",
+      "rule": { "type": "COUNT", "event": "WORKOUT_ACCEPTED", "gte": 1 },
+      "name": { "fr": "Premier pas", "en": "First Step", "ar": "الخطوة الأولى" },
+      "description": { "fr": "Terminer ta première séance.", "en": "Complete your first workout.", "ar": "أكمل حصتك الأولى." }
+    }
+  ],
+  "_gymsNote": "Fictional sample gyms for development only (no real brands).",
+  "gyms": [
+    { "slug": "carthage-strength-lab", "name": "Carthage Strength Lab", "governorate": "TN-11", "city": "Carthage", "status": "VERIFIED" },
+    { "slug": "ariana-fit-house", "name": "Ariana Fit House", "governorate": "TN-12", "city": "Ariana", "status": "VERIFIED" },
+    { "slug": "sahel-iron-club", "name": "Sahel Iron Club", "governorate": "TN-51", "city": "Sousse", "status": "VERIFIED" },
+    { "slug": "monastir-beach-athletics", "name": "Monastir Beach Athletics", "governorate": "TN-52", "city": "Monastir", "status": "VERIFIED" },
+    { "slug": "sfax-performance-center", "name": "Sfax Performance Center", "governorate": "TN-61", "city": "Sfax", "status": "VERIFIED" },
+    { "slug": "nabeul-cross-box", "name": "Nabeul Cross Box", "governorate": "TN-21", "city": "Nabeul", "status": "PENDING" }
+  ]
+}
