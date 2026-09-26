@@ -16,6 +16,8 @@ export default async function globalSetup(): Promise<void> {
     url = db.url;
   }
   process.env.DATABASE_URL = url;
+  // The migrated database is the template every test file clones (see test/helpers.ts).
+  process.env.TEMPLATE_DATABASE_URL = url;
   process.env.NODE_ENV = 'test';
   process.env.LOG_LEVEL = 'silent';
   process.env.CURSOR_HMAC_SECRET = 'integration-test-secret-integration-test';

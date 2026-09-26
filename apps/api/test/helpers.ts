@@ -7,7 +7,32 @@ import { seed } from '../src/database/seed';
 
 export const TODAY = new Date('2026-09-25T10:00:00Z');
 
+/**
+ * Every test file gets its own database, cloned from the migrated template built by global-setup
+ * (CREATE DATABASE … TEMPLATE is a fast file copy). Files can then move clocks, close seasons and run jobs
+ * without affecting each other.
+ */
+async function isolatedDatabaseUrl(): Promise<string> {
+  const templateUrl = new URL(process.env.TEMPLATE_DATABASE_URL!);
+  const template = templateUrl.pathname.slice(1);
+  const name = `t_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const adminUrl = new URL(templateUrl);
+  adminUrl.pathname = '/postgres';
+  const admin = new PrismaClient({ datasources: { db: { url: adminUrl.toString() } } });
+  try {
+    await admin.$executeRawUnsafe(`CREATE DATABASE "${name}" TEMPLATE "${template}"`);
+  } finally {
+    await admin.$disconnect();
+  }
+  const url = new URL(templateUrl);
+  url.pathname = `/${name}`;
+  return url.toString();
+}
+
 export async function setupTestApp(env: Record<string, string> = {}): Promise<{ app: INestApplication; prisma: PrismaClient; mail: InMemoryMailSender }> {
+  // One database per test file (several apps in the same file share it).
+  if (!process.env.FILE_DATABASE_URL) process.env.FILE_DATABASE_URL = await isolatedDatabaseUrl();
+  process.env.DATABASE_URL = process.env.FILE_DATABASE_URL;
   const previous = Object.fromEntries(Object.keys(env).map((k) => [k, process.env[k]]));
   Object.assign(process.env, env);
   const prisma = new PrismaClient();
