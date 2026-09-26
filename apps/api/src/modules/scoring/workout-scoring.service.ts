@@ -4,6 +4,7 @@ import { BusinessCalendar } from '../../common/clock/business-calendar';
 import { ClockService } from '../../common/clock/clock.service';
 import { uuidv7 } from '../../common/ids/uuid';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { GoalsService } from '../goals/goals.service';
 import { LedgerService } from '../ledger/ledger.service';
 import { PrOutcome, ProgressService } from '../progress/progress.service';
 import { PrivacyService } from '../users/privacy.service';
@@ -36,6 +37,7 @@ export class WorkoutScoringService {
     private readonly progress: ProgressService,
     private readonly ledger: LedgerService,
     private readonly privacy: PrivacyService,
+    private readonly goals: GoalsService,
     private readonly clock: ClockService,
     private readonly calendar: BusinessCalendar,
   ) {}
@@ -80,7 +82,7 @@ export class WorkoutScoringService {
       };
       const tracked = new Map(w.exercises.map((e) => [e.exerciseId, e.exercise.trackedMetrics]));
 
-      const prs = await this.progress.recordWorkout(tx, {
+      const { prs, observations } = await this.progress.recordWorkout(tx, {
         userId: w.userId,
         workoutId: w.id,
         input,
@@ -149,7 +151,18 @@ export class WorkoutScoringService {
         if (xpId) await tx.personalRecord.update({ where: { id: pr.prId }, data: { xpTransactionId: xpId } });
       }
 
-      // 3. First quest: "Complete your first workout" → +100 XP + First Step badge (docs §6).
+      // 3. Goal milestones reached by this workout (records held for review don't count).
+      await this.goals.onWorkoutScored(tx, {
+        userId: w.userId,
+        workoutId: w.id,
+        performedAt: w.performedAt,
+        observations,
+        skipExercises: new Set(prs.filter((p) => p.status === 'HELD').map((p) => p.exerciseId)),
+        ruleSetVersion,
+        config,
+      });
+
+      // 4. First quest: "Complete your first workout" → +100 XP + First Step badge (docs §6).
       const firstQuest = await tx.xpTransaction.findFirst({ where: { userId: w.userId, reason: 'QUEST', sourceId: 'FIRST_WORKOUT' } });
       if (!firstQuest) {
         await grant('QUEST', 'quest', 'FIRST_WORKOUT', config.first_workout_quest_xp, { formula: 'first_workout_quest_xp' });
@@ -175,6 +188,7 @@ export class WorkoutScoringService {
     await this.prisma.$transaction(async (tx) => {
       const w = await tx.workout.findUniqueOrThrow({ where: { id: workoutId } });
       const prs = await this.progress.revokeWorkout(tx, workoutId);
+      await this.goals.onWorkoutRevoked(tx, workoutId, ruleSetVersion, config);
       const entries = await tx.xpTransaction.findMany({
         where: {
           userId: w.userId,

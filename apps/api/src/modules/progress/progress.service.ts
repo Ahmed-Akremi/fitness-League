@@ -46,7 +46,7 @@ export class ProgressService {
     return this.metricCache;
   }
 
-  async recordWorkout(tx: Tx, ctx: RecordContext): Promise<PrOutcome[]> {
+  async recordWorkout(tx: Tx, ctx: RecordContext): Promise<{ prs: PrOutcome[]; observations: Observation[] }> {
     const metrics = await this.metricTypes(tx);
     const observations = extractObservations(ctx.input, ctx.tracked, ctx.config);
     const codeOf = new Map(ctx.input.exercises.map((e) => [e.exerciseId, e.exerciseCode]));
@@ -73,7 +73,7 @@ export class ProgressService {
       const pr = await this.detectPr(tx, ctx, o, metric, baseline, codeOf.get(o.exerciseId)!);
       if (pr) outcomes.push(pr);
     }
-    return outcomes;
+    return { prs: outcomes, observations };
   }
 
   private async updateBaseline(tx: Tx, ctx: RecordContext, o: Observation, metric: MetricType, exerciseCode: string): Promise<{ row: Baseline; establishing: boolean }> {

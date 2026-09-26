@@ -847,6 +847,8 @@ model Goal {
   status           GoalStatus    @default(ACTIVE)
   wasSuggested     Boolean       @default(false) @map("was_suggested")
   safetyAdjustment Json?         @map("safety_adjustment")
+  /// HABIT goals: consecutive weeks meeting the target (milestones at 2, 4, 8, 12 weeks).
+  habitWeeksMet    Int           @default(0) @map("habit_weeks_met")
   visibility       Visibility    @default(PRIVATE)
   createdAt        DateTime      @default(now()) @map("created_at") @db.Timestamptz
   updatedAt        DateTime      @updatedAt @map("updated_at") @db.Timestamptz

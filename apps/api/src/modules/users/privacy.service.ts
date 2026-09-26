@@ -5,6 +5,7 @@ import { ClockService } from '../../common/clock/clock.service';
 import { HealthDataCipher } from '../../common/crypto/health-data-cipher';
 import { AppException, ErrorCode } from '../../common/errors/app-exception';
 import { uuidv7 } from '../../common/ids/uuid';
+import { OutboxService } from '../../common/outbox/outbox.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { DeleteAccountDto } from '../auth/dto/auth.dto';
 import { PasswordService } from '../auth/password.service';
@@ -23,6 +24,7 @@ export class PrivacyService {
     private readonly passwords: PasswordService,
     private readonly audit: AuditService,
     private readonly clock: ClockService,
+    private readonly outbox: OutboxService,
   ) {}
 
   // ─────────── Consents ───────────
@@ -55,7 +57,8 @@ export class PrivacyService {
     if (measuredAt.getTime() > this.clock.now().getTime() + 10 * 60_000) {
       throw AppException.validation([{ field: 'measuredAt', code: 'IN_FUTURE' }]);
     }
-    const row = await this.prisma.bodyMeasurement.create({
+    const row = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.bodyMeasurement.create({
       data: {
         id: uuidv7(),
         userId,
@@ -65,6 +68,10 @@ export class PrivacyService {
         keyId: this.cipher.activeKeyId,
         source: dto.source ?? 'MANUAL',
       },
+      });
+      // Weight goals react to new measurements (only the safe-rate part of a change counts).
+      await this.outbox.enqueue(tx, 'BodyMeasurementAdded', { userId });
+      return created;
     });
     return this.toMeasurement(row);
   }
