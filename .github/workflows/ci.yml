@@ -40,6 +40,23 @@ jobs:
       - run: pnpm test:integration
       - run: pnpm build
 
+  mobile:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: dart run build_runner build --delete-conflicting-outputs
+      - run: flutter gen-l10n
+      - run: flutter analyze
+      - run: flutter test
+
   secrets-scan:
     runs-on: ubuntu-latest
     steps:

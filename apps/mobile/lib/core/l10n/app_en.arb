@@ -1,0 +1,253 @@
+{
+  "@@locale": "en",
+  "appTagline": "Compete with yourself. Challenge your friends. Represent your gym. Climb the League.",
+  "navHome": "Home",
+  "navTrain": "Train",
+  "navLeague": "League",
+  "navChallenges": "Goals",
+  "navProfile": "Profile",
+  "login": "Sign in",
+  "register": "Create account",
+  "logout": "Sign out",
+  "email": "Email",
+  "password": "Password",
+  "username": "Username",
+  "fullName": "Full name",
+  "dateOfBirth": "Date of birth",
+  "dateOfBirthHint": "Never shown publicly",
+  "governorate": "Governorate",
+  "city": "City",
+  "acceptTerms": "I accept the terms of use",
+  "acceptPrivacy": "I accept the privacy policy",
+  "acceptHealth": "Allow processing of my health data (body weight). Optional.",
+  "noAccount": "No account yet? Create one",
+  "haveAccount": "Already registered? Sign in",
+  "forgotPassword": "Forgot password?",
+  "required": "Required",
+  "passwordTooShort": "At least 10 characters",
+  "invalidEmail": "Invalid email",
+  "usernameRule": "3–20 characters: a-z, 0-9, _ and .",
+  "continueLabel": "Continue",
+  "save": "Save",
+  "cancel": "Cancel",
+  "retry": "Retry",
+  "delete": "Delete",
+  "onboardingSportsTitle": "What do you train?",
+  "onboardingSportsSubtitle": "Pick your sports. Tap twice to make one your main sport.",
+  "onboardingBaselineTitle": "Where are you today?",
+  "onboardingBaselineSubtitle": "A rough estimate is enough. Your first 14 days of training set your real starting point.",
+  "onboardingPlanTitle": "How many days a week do you plan to train?",
+  "onboardingPlanSubtitle": "Consistency is scored against your own plan. Rest days are part of it.",
+  "onboardingDone": "Start my journey",
+  "skip": "Skip",
+  "greetingMorning": "Good morning, {name}",
+  "greetingEvening": "Good evening, {name}",
+  "level": "Level {level}",
+  "xpProgress": "{current} / {total} XP",
+  "weekStreak": "{count, plural, =0{No streak yet} =1{1-week streak} other{{count}-week streak}}",
+  "dayStreak": "{count}-day streak",
+  "yourGoal": "Your goal",
+  "yourRank": "Your rank",
+  "thisWeek": "This week",
+  "divisionLp": "{division} Division · {lp} LP",
+  "rankNational": "#{rank} Tunisia",
+  "rankRegion": "#{rank} {region}",
+  "rankGym": "#{rank} My gym",
+  "calibrating": "Calibration: your baseline is being set until {date}. Train normally!",
+  "logWorkout": "Log workout",
+  "emptyWorkouts": "Your journey starts today.",
+  "emptyFriends": "Invite your training partners.",
+  "emptyGoals": "Set a goal to see your progress.",
+  "emptyLeague": "Rankings appear after your calibration period.",
+  "sport": "Sport",
+  "exercise": "Exercise",
+  "addExercise": "Add exercise",
+  "addSet": "Add set",
+  "reps": "Reps",
+  "weightKg": "kg",
+  "distanceKm": "km",
+  "durationMin": "Duration (min)",
+  "timeMin": "min",
+  "warmup": "Warm-up",
+  "notes": "Notes",
+  "performedAt": "When",
+  "workoutSaved": "Workout saved",
+  "workoutQueued": "Saved offline. It will sync automatically.",
+  "pendingSync": "Pending sync",
+  "statusAccepted": "Accepted",
+  "statusHeld": "Under review",
+  "statusRejected": "Rejected",
+  "workoutHeldInfo": "This performance is exceptional, so a moderator will check it. Points are pending until then.",
+  "whyThesePoints": "Why these points?",
+  "totalXp": "{xp} XP",
+  "myProgress": "My progress",
+  "records": "Personal records",
+  "before": "Before",
+  "now": "Now",
+  "period7d": "7 days",
+  "period30d": "30 days",
+  "period3m": "3 months",
+  "period6m": "6 months",
+  "period1y": "1 year",
+  "leagueGlobal": "Tunisia",
+  "leagueRegion": "Region",
+  "leagueGym": "Gym",
+  "leagueFriends": "Friends",
+  "jumpToMe": "Jump to my rank",
+  "noGym": "Join a gym to see its ranking.",
+  "movementNew": "NEW",
+  "goals": "Goals",
+  "newGoal": "New goal",
+  "goalTarget": "Target",
+  "goalMilestones": "{reached} / {total} milestones",
+  "goalSuggestions": "Suggestions",
+  "goalEta": "in about {min}–{max} weeks",
+  "goalsDisclaimer": "Suggestions are estimates, not medical or coaching advice.",
+  "challengesComingSoon": "Challenges arrive with the next update.",
+  "settings": "Settings",
+  "language": "Language",
+  "theme": "Theme",
+  "themeDark": "Dark",
+  "themeLight": "Light",
+  "themeSystem": "System",
+  "trainingDaysPerWeek": "Training days per week",
+  "privacy": "Privacy",
+  "exportData": "Export my data",
+  "deleteAccount": "Delete my account",
+  "deleteAccountWarning": "Your account will be deleted in 30 days. Signing in again cancels it.",
+  "emailNotVerified": "Verify your email to appear in rankings.",
+  "resendEmail": "Resend email",
+  "errorNetwork": "No connection. Check your network and try again.",
+  "errorTimeout": "The server is taking too long. Try again.",
+  "errorServer": "Something went wrong on our side. Try again later.",
+  "errorSession": "Your session has expired. Please sign in again.",
+  "errorInvalidCredentials": "Wrong email or password.",
+  "errorAccountLocked": "Too many attempts. Try again later.",
+  "errorUnderAge": "You must be at least {age} to join.",
+  "errorEmailTaken": "This email is already registered.",
+  "errorUsernameTaken": "This username is taken.",
+  "errorRateLimited": "Slow down a little and try again in a moment.",
+  "errorWorkoutRejected": "This workout exceeds physiological limits or duplicates another one.",
+  "errorValidation": "Please check the highlighted fields.",
+  "errorGeneric": "Something went wrong.",
+  "@greetingMorning": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "@greetingEvening": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "@level": {
+    "placeholders": {
+      "level": {
+        "type": "int"
+      }
+    }
+  },
+  "@xpProgress": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "@weekStreak": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@dayStreak": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@divisionLp": {
+    "placeholders": {
+      "division": {
+        "type": "String"
+      },
+      "lp": {
+        "type": "int"
+      }
+    }
+  },
+  "@rankNational": {
+    "placeholders": {
+      "rank": {
+        "type": "int"
+      }
+    }
+  },
+  "@rankRegion": {
+    "placeholders": {
+      "rank": {
+        "type": "int"
+      },
+      "region": {
+        "type": "String"
+      }
+    }
+  },
+  "@rankGym": {
+    "placeholders": {
+      "rank": {
+        "type": "int"
+      }
+    }
+  },
+  "@calibrating": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "@totalXp": {
+    "placeholders": {
+      "xp": {
+        "type": "int"
+      }
+    }
+  },
+  "@goalMilestones": {
+    "placeholders": {
+      "reached": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "@goalEta": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "@errorUnderAge": {
+    "placeholders": {
+      "age": {
+        "type": "int"
+      }
+    }
+  }
+}
