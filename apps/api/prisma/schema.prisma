@@ -1254,6 +1254,8 @@ model GymVerificationRequest {
   gymId         String       @map("gym_id") @db.Uuid
   submittedById String       @map("submitted_by") @db.Uuid
   proofMediaIds String[]     @map("proof_media_ids") @db.Uuid
+  /// Written proof (registration number, website…). Uploaded documents arrive with the media module.
+  proofText     String?      @map("proof_text")
   status        ReviewStatus @default(PENDING)
   reviewedById  String?      @map("reviewed_by") @db.Uuid
   reviewNote    String?      @map("review_note")

@@ -52,13 +52,14 @@ export class ProblemDetailsFilter implements ExceptionFilter {
       const { detail, errors, extra, headers } = exception.options;
       return {
         body: {
+          // Extras first: they can never overwrite the reserved problem+json fields (e.g. `status`).
+          ...extra,
           type: TYPE_BASE + exception.code.toLowerCase().replace(/_/g, '-'),
           title: exception.title,
           status: exception.status,
           code: exception.code,
           ...(detail && { detail }),
           ...(errors && { errors }),
-          ...extra,
         },
         headers: headers ?? {},
       };
