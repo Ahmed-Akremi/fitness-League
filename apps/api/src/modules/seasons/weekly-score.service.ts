@@ -47,7 +47,22 @@ export class WeeklyScoreService {
   ) {}
 
   async compute(userId: string, weekStart: Date, config: RuleSetConfig, ruleSetVersion: number, db: Prisma.TransactionClient = this.prisma): Promise<WeeklyScore> {
-    const weekEnd = new Date(weekStart.getTime() + 7 * DAY);
+    return this.computeWindow(userId, weekStart, new Date(weekStart.getTime() + 7 * DAY), config, ruleSetVersion, db);
+  }
+
+  /**
+   * Same scoring on any window (battles run on their own dates, docs §5.7). The plan is scaled to the window
+   * length, so a 3-day battle expects 3/7 of the weekly training days.
+   */
+  async computeWindow(
+    userId: string,
+    weekStart: Date,
+    weekEnd: Date,
+    config: RuleSetConfig,
+    ruleSetVersion: number,
+    db: Prisma.TransactionClient = this.prisma,
+    weights: RuleSetConfig['lp_weights'] = config.lp_weights,
+  ): Promise<WeeklyScore> {
     const windowStart = new Date(weekEnd.getTime() - config.progress_window_days * DAY);
     const lookup = await this.expected.lookup(ruleSetVersion);
 
@@ -70,7 +85,8 @@ export class WeeklyScoreService {
     // Consistency: distinct local days with an on-time accepted workout, vs the athlete's own plan.
     const onTime = workouts.filter((w) => !((w.evaluation?.ruleHits ?? []) as { rule: string }[]).some((h) => h.rule === 'LATE_LOG'));
     const trainingDays = new Set(onTime.map((w) => this.calendar.localDate(w.performedAt))).size;
-    const plannedDays = profile.plannedTrainingDaysPerWeek;
+    const windowDays = (weekEnd.getTime() - weekStart.getTime()) / DAY;
+    const plannedDays = Math.max(1, Math.round((profile.plannedTrainingDaysPerWeek * windowDays) / 7));
     const consistency = consistencyComponent(trainingDays, plannedDays);
 
     const progressScores: number[] = [];
@@ -134,7 +150,7 @@ export class WeeklyScoreService {
       // No challenges before Phase 2: weights are renormalised (ASSUMPTION Q-1).
       challenge: null,
     };
-    const total = round(weightedTotal(components, config.lp_weights), 2);
+    const total = round(weightedTotal(components, weights), 2);
     const eligible = !!profile.calibrationEndsAt && profile.calibrationEndsAt <= weekStart;
     return {
       weekStart,
@@ -146,7 +162,7 @@ export class WeeklyScoreService {
       eligible,
       breakdown: {
         formula: 'weekly_score',
-        weights: config.lp_weights,
+        weights,
         trainingDays,
         plannedDays,
         metrics: metricsBreakdown,

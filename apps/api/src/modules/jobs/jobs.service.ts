@@ -4,6 +4,7 @@ import { BusinessCalendar } from '../../common/clock/business-calendar';
 import { ClockService } from '../../common/clock/clock.service';
 import { uuidv7 } from '../../common/ids/uuid';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { BattlesService } from '../battles/battles.service';
 import { LeaderboardsService } from '../leaderboards/leaderboards.service';
 import { divisionFor, levelRulesOf } from '../ledger/ledger.service';
 import { levelFromXp } from '../scoring/level';
@@ -27,6 +28,7 @@ export class JobsService {
     private readonly seasons: SeasonsService,
     private readonly leaderboards: LeaderboardsService,
     private readonly privacy: PrivacyService,
+    private readonly battles: BattlesService,
     private readonly ruleSets: RuleSetService,
     private readonly clock: ClockService,
     private readonly calendar: BusinessCalendar,
@@ -45,6 +47,8 @@ export class JobsService {
     }
     const week = this.seasons.lastClosableWeek(now, config.week_grace_hours);
     out.weeklyClose = await this.once('weekly-close', this.calendar.localDate(week), () => this.seasons.closeWeek(week));
+    // Battles close continuously (every tick), not once a day.
+    out.battles = await this.battles.closeDue();
     out.calibration = await this.once('calibration-finalize', today, () => this.finalizeCalibrations());
     out.snapshot = await this.once('leaderboard-snapshot', today, () => this.leaderboards.snapshot(now));
     out.reconcile = await this.once('balance-reconcile', today, () => this.reconcileBalances());
