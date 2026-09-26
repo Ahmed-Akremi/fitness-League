@@ -20,6 +20,12 @@ export class BusinessCalendar {
     return this.fromLocalParts(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate() - daysSinceMonday);
   }
 
+  /** 00:00 local time of the day containing `d`, as a UTC instant. */
+  dayStart(d: Date): Date {
+    const local = this.toLocal(d);
+    return this.fromLocalParts(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate());
+  }
+
   /** Local calendar date (YYYY-MM-DD) of `d`. */
   localDate(d: Date): string {
     return this.toLocal(d).toISOString().slice(0, 10);

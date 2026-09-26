@@ -13,6 +13,11 @@ describe('BusinessCalendar (Africa/Tunis, UTC+1)', () => {
     expect(cal.weekStart(new Date('2026-09-27T23:30:00Z')).toISOString()).toBe('2026-09-27T23:00:00.000Z');
   });
 
+  it('computes the local day start', () => {
+    expect(cal.dayStart(new Date('2026-09-24T23:30:00Z')).toISOString()).toBe('2026-09-24T23:00:00.000Z');
+    expect(cal.dayStart(new Date('2026-09-24T22:30:00Z')).toISOString()).toBe('2026-09-23T23:00:00.000Z');
+  });
+
   it('computes the local date', () => {
     expect(cal.localDate(new Date('2026-12-31T23:30:00Z'))).toBe('2027-01-01');
   });

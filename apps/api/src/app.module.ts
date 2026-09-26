@@ -9,8 +9,11 @@ import { AuthModule } from './modules/auth/auth.module';
 import { ReferenceModule } from './modules/reference/reference.module';
 import { ScoringModule } from './modules/scoring/scoring.module';
 import { UsersModule } from './modules/users/users.module';
+import { WorkoutsModule } from './modules/workouts/workouts.module';
+import { SocialAccessModule } from './modules/social/social-access.module';
+import { OutboxModule } from './common/outbox/outbox.service';
 
 @Module({
-  imports: [ConfigModule, LoggerModule, PrismaModule, CommonModule, AuditModule, MailModule, ScoringModule, AuthModule, UsersModule, ReferenceModule],
+  imports: [ConfigModule, LoggerModule, PrismaModule, CommonModule, AuditModule, MailModule, OutboxModule, SocialAccessModule, ScoringModule, AuthModule, UsersModule, ReferenceModule, WorkoutsModule],
 })
 export class AppModule {}
