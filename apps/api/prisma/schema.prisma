@@ -386,6 +386,8 @@ model RefreshToken {
   id           String    @id @db.Uuid
   userId       String    @map("user_id") @db.Uuid
   familyId     String    @map("family_id") @db.Uuid
+  /// 'app' or 'admin': refreshing never turns one kind of session into the other.
+  audience     String    @default("app")
   tokenHash    Bytes     @unique @map("token_hash")
   deviceId     String?   @map("device_id") @db.Uuid
   expiresAt    DateTime  @map("expires_at") @db.Timestamptz

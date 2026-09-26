@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import request from 'supertest';
 import { createApp } from '../src/bootstrap';
 import { InMemoryMailSender, MailSender } from '../src/common/mail/mail-sender';
+import { TokenService } from '../src/modules/auth/token.service';
 import { seed } from '../src/database/seed';
 
 export const TODAY = new Date('2026-09-25T10:00:00Z');
@@ -44,6 +45,13 @@ export async function setupTestApp(env: Record<string, string> = {}): Promise<{ 
     else process.env[k] = v;
   }
   return { app, prisma, mail: app.get(MailSender) as InMemoryMailSender };
+}
+
+/** Admin-panel access token for an existing user (the real flow adds password + TOTP, tested in admin.int-spec). */
+export async function adminBearer(app: INestApplication, prisma: PrismaClient, userId: string) {
+  const u = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
+  const { token } = await app.get(TokenService).signAccess({ sub: u.id, role: u.role, sv: u.sessionVersion }, 'admin');
+  return { authorization: `Bearer ${token}` };
 }
 
 let counter = 0;

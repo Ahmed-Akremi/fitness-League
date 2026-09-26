@@ -15,7 +15,7 @@ import { ageInYears, lockDurationMinutes } from './auth-policy';
 import { ConsentsDto, ForgotPasswordDto, LoginDto, OAuthSignInDto, RegisterDto, ResetPasswordDto, SessionDto } from './dto/auth.dto';
 import { OAuthVerifier } from './oauth-verifier';
 import { PasswordService } from './password.service';
-import { TokenService } from './token.service';
+import { TokenAudience, TokenService } from './token.service';
 
 const EMAIL_VERIFY_TTL_MS = 24 * 3600_000;
 const PASSWORD_RESET_TTL_MS = 3600_000;
@@ -238,29 +238,47 @@ export class AuthService {
   // ───────────────────────────── Login ─────────────────────────────
 
   async login(dto: LoginDto, ctx: RequestContext): Promise<SessionDto> {
+    const user = await this.verifyCredentials(dto.email, dto.password, ctx);
+    return this.startSession(user, 'app');
+  }
+
+  /**
+   * Password check with lockout (docs §9.1), shared by the app and admin logins.
+   * Account state is only revealed to someone who knows the password.
+   */
+  async verifyCredentials(email: string, password: string, ctx: RequestContext): Promise<User> {
     const now = this.clock.now();
-    const user = await this.prisma.user.findUnique({ where: { email: dto.email.trim().toLowerCase() }, include: { settings: true } });
+    const user = await this.prisma.user.findUnique({ where: { email: email.trim().toLowerCase() }, include: { settings: true } });
 
     if (!user || user.status === 'DELETED') {
-      await this.passwords.verify(null, dto.password); // equalise timing
+      await this.passwords.verify(null, password); // equalise timing
       throw this.invalidCredentials();
     }
     if (user.lockedUntil && user.lockedUntil > now) throw this.lockedError(user.lockedUntil, now);
 
-    if (!(await this.passwords.verify(user.passwordHash, dto.password))) {
+    if (!(await this.passwords.verify(user.passwordHash, password))) {
       await this.recordFailedLogin(user, user.settings?.locale, ctx);
       throw this.invalidCredentials();
     }
 
-    // Account state is only revealed to someone who knows the password.
     this.assertCanSignIn(user, now);
+    return user;
+  }
+
+  /** Records a failed second factor like a failed password (same lockout). */
+  async recordFailedSecondFactor(user: User, ctx: RequestContext): Promise<void> {
+    await this.recordFailedLogin(user, undefined, ctx);
+  }
+
+  async startSession(user: User, audience: TokenAudience): Promise<SessionDto> {
+    const now = this.clock.now();
     return this.prisma.$transaction(async (tx) => {
       await this.cancelPendingDeletion(user.id, tx);
       const updated = await tx.user.update({
         where: { id: user.id },
         data: { failedLoginCount: 0, lockedUntil: null, lastLoginAt: now },
       });
-      return this.issueSession(updated, tx);
+      return this.issueSession(updated, tx, uuidv7(), audience);
     });
   }
 
@@ -302,18 +320,19 @@ export class AuthService {
 
   // ───────────────────────────── Sessions ─────────────────────────────
 
-  private async issueSession(user: User, tx: Tx, familyId: string = uuidv7()): Promise<SessionDto> {
+  private async issueSession(user: User, tx: Tx, familyId: string = uuidv7(), audience: TokenAudience = 'app'): Promise<SessionDto> {
     const refresh = this.tokens.newOpaqueToken();
     await tx.refreshToken.create({
       data: {
         id: uuidv7(),
         userId: user.id,
         familyId,
+        audience,
         tokenHash: refresh.hash,
         expiresAt: new Date(this.clock.now().getTime() + this.env.REFRESH_TOKEN_TTL_DAYS * 86_400_000),
       },
     });
-    const access = await this.tokens.signAccess({ sub: user.id, role: user.role, sv: user.sessionVersion });
+    const access = await this.tokens.signAccess({ sub: user.id, role: user.role, sv: user.sessionVersion }, audience);
     return { accessToken: access.token, expiresIn: access.expiresIn, refreshToken: refresh.token, userId: user.id };
   }
 
@@ -321,10 +340,11 @@ export class AuthService {
    * Rotation with reuse detection: a refresh token works once. Presenting an already-rotated token means it
    * was copied, so the whole family (every token descended from that login) is revoked (docs §9.1).
    */
-  async refresh(refreshToken: string, ctx: RequestContext): Promise<SessionDto> {
+  async refresh(refreshToken: string, ctx: RequestContext, audience: TokenAudience = 'app'): Promise<SessionDto> {
     const now = this.clock.now();
     const row = await this.prisma.refreshToken.findUnique({ where: { tokenHash: TokenService.hash(refreshToken) }, include: { user: true } });
-    if (!row) throw AppException.unauthenticated(ErrorCode.TOKEN_INVALID, 'Invalid refresh token');
+    // Each refresh endpoint only accepts its own kind of session.
+    if (!row || row.audience !== audience) throw AppException.unauthenticated(ErrorCode.TOKEN_INVALID, 'Invalid refresh token');
 
     if (row.revokedAt) {
       if (row.replacedById) await this.revokeFamilyForReuse(row.userId, row.familyId, ctx);
@@ -356,10 +376,11 @@ export class AuthService {
             familyId: row.familyId,
             tokenHash: refresh.hash,
             deviceId: row.deviceId,
+            audience: row.audience,
             expiresAt: new Date(now.getTime() + this.env.REFRESH_TOKEN_TTL_DAYS * 86_400_000),
           },
         });
-        const access = await this.tokens.signAccess({ sub: row.user.id, role: row.user.role, sv: row.user.sessionVersion });
+        const access = await this.tokens.signAccess({ sub: row.user.id, role: row.user.role, sv: row.user.sessionVersion }, audience);
         return { accessToken: access.token, expiresIn: access.expiresIn, refreshToken: refresh.token, userId: row.user.id };
       })
       .catch(async (err: unknown) => {

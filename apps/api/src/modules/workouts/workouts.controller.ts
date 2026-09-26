@@ -2,7 +2,7 @@ import { Body, Controller, Delete, Get, Headers, HttpCode, HttpStatus, Param, Pa
 import { ApiBearerAuth, ApiHeader, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 import type { AuthUser } from '../../common/auth/auth-user';
-import { CurrentUser, Roles } from '../../common/auth/decorators';
+import { AdminApi, CurrentUser, Roles } from '../../common/auth/decorators';
 import { AppException, ErrorCode } from '../../common/errors/app-exception';
 import { PageQueryDto } from '../../common/pagination/page';
 import { RateLimit } from '../../common/rate-limit/rate-limit';
@@ -96,6 +96,7 @@ export class WorkoutsController {
 /** Held-workout queue (docs §12.2 assumption: Phase 1 needs someone to resolve HELD_FOR_REVIEW). */
 @ApiTags('admin')
 @ApiBearerAuth()
+@AdminApi()
 @Roles('MODERATOR', 'ADMIN', 'SUPER_ADMIN')
 @Controller('admin/workouts')
 export class HeldWorkoutsController {

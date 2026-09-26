@@ -3,7 +3,7 @@ import { Reflector } from '@nestjs/core';
 import type { Role } from '@prisma/client';
 import type { Request } from 'express';
 import type { AuthUser } from '../../common/auth/auth-user';
-import { IS_PUBLIC, REQUIRED_ROLES, REQUIRES_VERIFIED_EMAIL } from '../../common/auth/decorators';
+import { ADMIN_API, IS_PUBLIC, REQUIRED_ROLES, REQUIRES_VERIFIED_EMAIL } from '../../common/auth/decorators';
 import { ClockService } from '../../common/clock/clock.service';
 import { AppException, ErrorCode } from '../../common/errors/app-exception';
 import { PrismaService } from '../../common/prisma/prisma.service';
@@ -34,7 +34,7 @@ export class AuthGuard implements CanActivate {
 
     let claims;
     try {
-      claims = await this.tokens.verifyAccess(header.slice(7));
+      claims = await this.tokens.verifyAccess(header.slice(7), this.reflector.getAllAndOverride<boolean>(ADMIN_API, targets) ? 'admin' : 'app');
     } catch (err) {
       const expired = err instanceof InvalidTokenError && err.expired;
       throw AppException.unauthenticated(expired ? ErrorCode.TOKEN_EXPIRED : ErrorCode.TOKEN_INVALID, 'Invalid access token');

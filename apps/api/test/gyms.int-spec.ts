@@ -1,7 +1,7 @@
 import { INestApplication } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import request from 'supertest';
-import { registerUser, setupTestApp } from './helpers';
+import { adminBearer, registerUser, setupTestApp } from './helpers';
 
 describe('Gyms: verification & memberships (integration)', () => {
   let app: INestApplication;
@@ -43,12 +43,12 @@ describe('Gyms: verification & memberships (integration)', () => {
 
     // Not public until verified; a normal user can't see the queue.
     await api().get(`/api/v1/gyms/${created.body.id}`).set(bearer(athlete.session.accessToken)).expect(404);
-    await api().get('/api/v1/admin/gyms/verification-requests').set(bearer(owner.session.accessToken)).expect(403);
-
-    const queue = await api().get('/api/v1/admin/gyms/verification-requests?limit=100').set(bearer(admin.session.accessToken)).expect(200);
+    await api().get('/api/v1/admin/gyms/verification-requests').set(bearer(owner.session.accessToken)).expect(401);
+    const adminAuth = await adminBearer(app, prisma, admin.session.userId);
+    const queue = await api().get('/api/v1/admin/gyms/verification-requests?limit=100').set(adminAuth).expect(200);
     const req = queue.body.data.find((r: { gym: { id: string } }) => r.gym.id === created.body.id);
     expect(req.proofText).toContain('RNE');
-    await api().post(`/api/v1/admin/gyms/verification-requests/${req.id}/review`).set(bearer(admin.session.accessToken)).send({ decision: 'APPROVE', note: 'RNE checked' }).expect(200);
+    await api().post(`/api/v1/admin/gyms/verification-requests/${req.id}/review`).set(adminAuth).send({ decision: 'APPROVE', note: 'RNE checked' }).expect(200);
 
     const ownerRow = await prisma.user.findUniqueOrThrow({ where: { id: owner.session.userId }, include: { profile: true } });
     expect(ownerRow.role).toBe('GYM_ADMIN');

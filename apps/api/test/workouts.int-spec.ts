@@ -2,7 +2,7 @@ import { INestApplication } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import request from 'supertest';
-import { registerUser, setupTestApp } from './helpers';
+import { adminBearer, registerUser, setupTestApp } from './helpers';
 
 describe('Workouts, anti-cheat & offline sync (integration)', () => {
   let app: INestApplication;
@@ -142,17 +142,19 @@ describe('Workouts, anti-cheat & offline sync (integration)', () => {
       const held = await post(session.accessToken, heavy).expect(201);
       expect(held.body).toMatchObject({ status: 'HELD_FOR_REVIEW', evaluation: { ruleHits: [expect.objectContaining({ rule: 'LIFT_ABSOLUTE_KG', severity: 'SOFT' })] } });
 
-      // A normal user cannot see the queue.
-      await api().get('/api/v1/admin/workouts/held').set(bearer(session.accessToken)).expect(403);
+      // An app token is never accepted on admin routes, and an admin token needs a staff role.
+      await api().get('/api/v1/admin/workouts/held').set(bearer(session.accessToken)).expect(401);
+      await api().get('/api/v1/admin/workouts/held').set(await adminBearer(app, prisma, session.userId)).expect(403);
 
       const mod = await registerUser(app, prisma);
       await prisma.user.update({ where: { id: mod.session.userId }, data: { role: 'MODERATOR' } });
-      const queue = await api().get('/api/v1/admin/workouts/held?limit=100').set(bearer(mod.session.accessToken)).expect(200);
+      const modAuth = await adminBearer(app, prisma, mod.session.userId);
+      const queue = await api().get('/api/v1/admin/workouts/held?limit=100').set(modAuth).expect(200);
       expect(queue.body.data.map((w: { id: string }) => w.id)).toContain(held.body.id);
 
-      const approved = await api().post(`/api/v1/admin/workouts/${held.body.id}/approve`).set(bearer(mod.session.accessToken)).send({ note: 'Competition video checked' }).expect(200);
+      const approved = await api().post(`/api/v1/admin/workouts/${held.body.id}/approve`).set(modAuth).send({ note: 'Competition video checked' }).expect(200);
       expect(approved.body.status).toBe('ACCEPTED');
-      await api().post(`/api/v1/admin/workouts/${held.body.id}/reject`).set(bearer(mod.session.accessToken)).send({ note: 'twice' }).expect(404);
+      await api().post(`/api/v1/admin/workouts/${held.body.id}/reject`).set(modAuth).send({ note: 'twice' }).expect(404);
       expect(await prisma.auditLog.count({ where: { entityId: held.body.id, action: 'WORKOUT_APPROVED', actorId: mod.session.userId } })).toBe(1);
     });
   });
