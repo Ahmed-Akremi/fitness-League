@@ -105,6 +105,8 @@ export class WorkoutScoringService {
         });
       }
 
+      await this.updateDailyStreak(tx, w.userId, w.performedAt);
+
       if (!countsForCompetition) return; // > 72 h late: history and progress only (docs §7.1)
       const levels = config;
       const grant = async (reason: 'WORKOUT' | 'PR' | 'CALIBRATION_PR' | 'QUEST', sourceType: string, id: string, amount: number, explanation: Prisma.InputJsonObject) => {
@@ -236,6 +238,28 @@ export class WorkoutScoringService {
       if (!recent) out.push(pr);
     }
     return out;
+  }
+
+  /**
+   * Daily streak with planned rest (docs §5 safety): gaps of up to `streakFreezeDaysPerWeek` rest days keep the
+   * streak alive and count as streak days, so the streak never pushes anyone to train every single day.
+   */
+  private async updateDailyStreak(tx: Tx, userId: string, performedAt: Date): Promise<void> {
+    const [streak, settings] = await Promise.all([tx.streak.findUnique({ where: { userId } }), tx.userSettings.findUnique({ where: { userId } })]);
+    const day = this.day(performedAt);
+    const last = streak?.lastTrainingDate ?? null;
+    let current = streak?.currentDays ?? 0;
+    if (!last) current = 1;
+    else {
+      const gap = Math.round((day.getTime() - last.getTime()) / 86_400_000);
+      if (gap <= 0) return; // same day, or a back-dated workout: the streak is about going forward
+      current = gap <= 1 + (settings?.streakFreezeDaysPerWeek ?? 2) ? current + gap : 1;
+    }
+    await tx.streak.upsert({
+      where: { userId },
+      update: { currentDays: current, longestDays: Math.max(current, streak?.longestDays ?? 0), lastTrainingDate: day },
+      create: { userId, currentDays: current, longestDays: current, lastTrainingDate: day },
+    });
   }
 
   private day(at: Date): Date {

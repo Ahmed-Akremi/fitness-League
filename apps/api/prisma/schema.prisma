@@ -1375,3 +1375,18 @@ model DomainEventOutbox {
 //  - CHECK: ledger amount sign by reason; friendships user_low_id < user_high_id; workout_sets ranges
 //  - triggers: xp_transactions, league_point_transactions, audit_logs are append-only
 //  - exclusion constraint: no overlapping ACTIVE seasons per country
+
+/// Idempotency ledger for scheduled jobs (docs §8): a (job, key) pair runs at most once to completion.
+model JobRun {
+  id         String    @id @db.Uuid
+  job        String
+  key        String
+  status     String
+  result     Json?
+  error      String?
+  startedAt  DateTime  @default(now()) @map("started_at") @db.Timestamptz
+  finishedAt DateTime? @map("finished_at") @db.Timestamptz
+
+  @@unique([job, key])
+  @@map("job_runs")
+}

@@ -121,6 +121,10 @@ export class LedgerService {
 
 export type LevelRules = Pick<RuleSetConfig, 'level_base_xp' | 'level_exponent' | 'level_titles'>;
 
+export function levelRulesOf(config: RuleSetConfig): LevelRules {
+  return { level_base_xp: config.level_base_xp, level_exponent: config.level_exponent, level_titles: config.level_titles };
+}
+
 /** Live division from LP thresholds (ASSUMPTION Q-3). */
 export function divisionFor(lp: number, thresholds: RuleSetConfig['division_thresholds']): 'BRONZE' | 'SILVER' | 'GOLD' | 'PLATINUM' | 'DIAMOND' | 'ELITE' {
   const ordered = (['ELITE', 'DIAMOND', 'PLATINUM', 'GOLD', 'SILVER', 'BRONZE'] as const).filter((d) => thresholds[d] !== undefined);
