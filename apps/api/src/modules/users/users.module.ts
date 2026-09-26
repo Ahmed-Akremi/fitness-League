@@ -1,15 +1,14 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
-import { ScoringModule } from '../scoring/scoring.module';
+import { PrivacyModule } from './privacy.module';
 import { OnboardingService } from './onboarding.service';
-import { PrivacyService } from './privacy.service';
 import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
 
 @Module({
-  imports: [ScoringModule, AuthModule],
+  imports: [AuthModule, PrivacyModule],
   controllers: [UsersController],
-  providers: [UsersService, OnboardingService, PrivacyService],
-  exports: [UsersService, PrivacyService],
+  providers: [UsersService, OnboardingService],
+  exports: [UsersService],
 })
 export class UsersModule {}

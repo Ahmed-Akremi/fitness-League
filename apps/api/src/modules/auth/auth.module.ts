@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { RateLimitGuard } from '../../common/rate-limit/rate-limit';
-import { ScoringModule } from '../scoring/scoring.module';
 import { AuthController } from './auth.controller';
 import { AuthGuard } from './auth.guard';
 import { AuthService } from './auth.service';
@@ -10,7 +9,6 @@ import { PasswordService } from './password.service';
 import { TokenService } from './token.service';
 
 @Module({
-  imports: [ScoringModule],
   controllers: [AuthController],
   providers: [
     AuthService,

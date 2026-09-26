@@ -95,6 +95,17 @@ export const ruleSetConfigSchema = z
       .min(1)
       .refine((titles) => titles[0]?.fromLevel === 1, { message: 'first title must start at level 1' }),
 
+    /** Experience level is derived from performance, not declared (docs §5.4). */
+    strength_standards: z.record(
+      z.string(),
+      z.object({
+        bwRatio: z.object({ intermediate: z.number().positive(), advanced: z.number().positive() }),
+        absoluteKg: z.object({ intermediate: z.number().positive(), advanced: z.number().positive() }),
+      }),
+    ),
+    /** Race time thresholds in seconds (faster than `advanced` = advanced). */
+    running_standards: z.record(z.string(), z.object({ intermediate: z.number().positive(), advanced: z.number().positive() })),
+
     // Legal
     min_age_years: z.number().int().min(13).max(21),
 

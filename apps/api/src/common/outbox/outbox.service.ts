@@ -1,6 +1,7 @@
 import { Global, Injectable, Module } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { uuidv7 } from '../ids/uuid';
+import { OutboxDispatcher } from './outbox-dispatcher';
 
 export type DomainEventType = 'WorkoutAccepted' | 'WorkoutUpdated' | 'WorkoutDeleted' | 'WorkoutReviewed';
 
@@ -16,5 +17,5 @@ export class OutboxService {
 }
 
 @Global()
-@Module({ providers: [OutboxService], exports: [OutboxService] })
+@Module({ providers: [OutboxService, OutboxDispatcher], exports: [OutboxService, OutboxDispatcher] })
 export class OutboxModule {}

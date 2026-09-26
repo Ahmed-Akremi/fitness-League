@@ -7,22 +7,22 @@
     "workout_xp_minutes_per_point": 3,
     "workout_min_duration_min": 15,
     "diminishing_returns_after": 2,
-    "diminishing_multipliers": [0.5, 0],
+    "diminishing_multipliers": [
+      0.5,
+      0
+    ],
     "daily_xp_cap": 400,
     "weekly_xp_cap": 2000,
-
     "pr_xp_min": 50,
     "pr_xp_max": 500,
     "calibration_pr_xp": 10,
     "pr_same_metric_cooldown_days": 7,
     "e1rm_formula": "EPLEY",
     "e1rm_max_reps": 12,
-
     "goal_milestone_xp": 150,
     "first_workout_quest_xp": 100,
     "challenge_xp": 250,
     "weight_change_max_pct_per_week": 1,
-
     "calibration_days": 14,
     "baseline_first_logs": 2,
     "baseline_audit_days": 28,
@@ -30,15 +30,25 @@
     "progress_ceiling_ratio": 2,
     "progress_reward_cap": 1.5,
     "progress_top_n": 3,
-
-    "lp_weights": { "progress": 0.4, "consistency": 0.25, "performance": 0.2, "challenge": 0.15 },
+    "lp_weights": {
+      "progress": 0.4,
+      "consistency": 0.25,
+      "performance": 0.2,
+      "challenge": 0.15
+    },
     "weekly_lp_per_point": 1,
     "week_grace_hours": 24,
     "late_log_max_hours": 72,
     "verified_weight_multiplier": 1.25,
     "season_soft_reset_ratio": 0.5,
-    "division_thresholds": { "BRONZE": 0, "SILVER": 400, "GOLD": 900, "PLATINUM": 1400, "DIAMOND": 2000, "ELITE": 2600 },
-
+    "division_thresholds": {
+      "BRONZE": 0,
+      "SILVER": 400,
+      "GOLD": 900,
+      "PLATINUM": 1400,
+      "DIAMOND": 2000,
+      "ELITE": 2600
+    },
     "battle_win_lp": 25,
     "battle_draw_lp": 12,
     "battle_participation_lp": 5,
@@ -48,74 +58,331 @@
     "friend_battle_lp_weekly_max": 1,
     "friend_battle_same_opponent_season_max": 3,
     "gym_war_win_xp": 500,
-
     "level_base_xp": 100,
     "level_exponent": 1.5,
     "level_titles": [
-      { "fromLevel": 1, "key": "level.title.beginner" },
-      { "fromLevel": 6, "key": "level.title.rookie" },
-      { "fromLevel": 16, "key": "level.title.athlete" },
-      { "fromLevel": 31, "key": "level.title.advanced" },
-      { "fromLevel": 51, "key": "level.title.elite" },
-      { "fromLevel": 76, "key": "level.title.legend" }
+      {
+        "fromLevel": 1,
+        "key": "level.title.beginner"
+      },
+      {
+        "fromLevel": 6,
+        "key": "level.title.rookie"
+      },
+      {
+        "fromLevel": 16,
+        "key": "level.title.athlete"
+      },
+      {
+        "fromLevel": 31,
+        "key": "level.title.advanced"
+      },
+      {
+        "fromLevel": 51,
+        "key": "level.title.elite"
+      },
+      {
+        "fromLevel": 76,
+        "key": "level.title.legend"
+      }
     ],
-
     "min_age_years": 18,
-
     "anticheat": {
       "future_skew_max_min": 10,
       "clock_skew_hold_hours": 24,
-      "run_pace_s_per_km": { "hold": 195, "reject": 150 },
-      "run_distance_m": { "hold": 60000, "reject": 120000 },
+      "run_pace_s_per_km": {
+        "hold": 195,
+        "reject": 150
+      },
+      "run_distance_m": {
+        "hold": 60000,
+        "reject": 120000
+      },
       "run_time_s": {
-        "TIME_5K": { "hold": 900, "reject": 750 },
-        "TIME_10K": { "hold": 1860, "reject": 1560 },
-        "TIME_21K": { "hold": 4080, "reject": 3420 }
+        "TIME_5K": {
+          "hold": 900,
+          "reject": 750
+        },
+        "TIME_10K": {
+          "hold": 1860,
+          "reject": 1560
+        },
+        "TIME_21K": {
+          "hold": 4080,
+          "reject": 3420
+        }
       },
-      "ride_speed_kmh": { "hold": 45, "reject": 60 },
-      "ride_distance_m": { "hold": 250000, "reject": 400000 },
-      "walk_speed_kmh": { "hold": 9, "reject": 15 },
-      "swim_pace_s_per_100m": { "hold": 60, "reject": 45 },
+      "ride_speed_kmh": {
+        "hold": 45,
+        "reject": 60
+      },
+      "ride_distance_m": {
+        "hold": 250000,
+        "reject": 400000
+      },
+      "walk_speed_kmh": {
+        "hold": 9,
+        "reject": 15
+      },
+      "swim_pace_s_per_100m": {
+        "hold": 60,
+        "reject": 45
+      },
       "lifts": {
-        "BACK_SQUAT": { "bwRatio": { "hold": 3.0, "reject": 4.5 }, "absoluteKg": { "hold": 300, "reject": 500 } },
-        "BENCH_PRESS": { "bwRatio": { "hold": 2.2, "reject": 3.5 }, "absoluteKg": { "hold": 220, "reject": 360 } },
-        "DEADLIFT": { "bwRatio": { "hold": 3.2, "reject": 5.0 }, "absoluteKg": { "hold": 330, "reject": 510 } }
+        "BACK_SQUAT": {
+          "bwRatio": {
+            "hold": 3.0,
+            "reject": 4.5
+          },
+          "absoluteKg": {
+            "hold": 300,
+            "reject": 500
+          }
+        },
+        "BENCH_PRESS": {
+          "bwRatio": {
+            "hold": 2.2,
+            "reject": 3.5
+          },
+          "absoluteKg": {
+            "hold": 220,
+            "reject": 360
+          }
+        },
+        "DEADLIFT": {
+          "bwRatio": {
+            "hold": 3.2,
+            "reject": 5.0
+          },
+          "absoluteKg": {
+            "hold": 330,
+            "reject": 510
+          }
+        }
       },
-      "reps_weighted": { "hold": 50, "reject": 200 },
-      "reps_bodyweight": { "hold": 150, "reject": 1000 },
-      "workout_duration_h": { "hold": 5, "reject": 12 },
-      "sets_per_workout": { "hold": 60, "reject": 150 },
+      "reps_weighted": {
+        "hold": 50,
+        "reject": 200
+      },
+      "reps_bodyweight": {
+        "hold": 150,
+        "reject": 1000
+      },
+      "workout_duration_h": {
+        "hold": 5,
+        "reject": 12
+      },
+      "sets_per_workout": {
+        "hold": 60,
+        "reject": 150
+      },
       "workouts_per_day_hold": 4,
-      "identical_fingerprint_hold": { "count": 3, "days": 14 }
+      "identical_fingerprint_hold": {
+        "count": 3,
+        "days": 14
+      }
+    },
+    "strength_standards": {
+      "BACK_SQUAT": {
+        "bwRatio": {
+          "intermediate": 1.25,
+          "advanced": 2.0
+        },
+        "absoluteKg": {
+          "intermediate": 100,
+          "advanced": 160
+        }
+      },
+      "BENCH_PRESS": {
+        "bwRatio": {
+          "intermediate": 1.0,
+          "advanced": 1.5
+        },
+        "absoluteKg": {
+          "intermediate": 70,
+          "advanced": 110
+        }
+      },
+      "DEADLIFT": {
+        "bwRatio": {
+          "intermediate": 1.5,
+          "advanced": 2.25
+        },
+        "absoluteKg": {
+          "intermediate": 120,
+          "advanced": 190
+        }
+      }
+    },
+    "running_standards": {
+      "TIME_5K": {
+        "intermediate": 1620,
+        "advanced": 1260
+      }
     }
   },
   "expectedProgression": [
-    { "level": "BEGINNER", "exercise": null, "metric": "E1RM", "pct": 8 },
-    { "level": "INTERMEDIATE", "exercise": null, "metric": "E1RM", "pct": 3 },
-    { "level": "ADVANCED", "exercise": null, "metric": "E1RM", "pct": 1 },
-    { "level": "BEGINNER", "exercise": "BENCH_PRESS", "metric": "E1RM", "pct": 6 },
-    { "level": "INTERMEDIATE", "exercise": "BENCH_PRESS", "metric": "E1RM", "pct": 2 },
-    { "level": "ADVANCED", "exercise": "BENCH_PRESS", "metric": "E1RM", "pct": 0.75 },
-    { "level": "BEGINNER", "exercise": null, "metric": "MAX_REPS", "pct": 15 },
-    { "level": "INTERMEDIATE", "exercise": null, "metric": "MAX_REPS", "pct": 6 },
-    { "level": "ADVANCED", "exercise": null, "metric": "MAX_REPS", "pct": 2 },
-    { "level": "BEGINNER", "exercise": null, "metric": "TIME_1K", "pct": 5 },
-    { "level": "INTERMEDIATE", "exercise": null, "metric": "TIME_1K", "pct": 2 },
-    { "level": "ADVANCED", "exercise": null, "metric": "TIME_1K", "pct": 0.7 },
-    { "level": "BEGINNER", "exercise": null, "metric": "TIME_5K", "pct": 5 },
-    { "level": "INTERMEDIATE", "exercise": null, "metric": "TIME_5K", "pct": 2 },
-    { "level": "ADVANCED", "exercise": null, "metric": "TIME_5K", "pct": 0.7 },
-    { "level": "BEGINNER", "exercise": null, "metric": "TIME_10K", "pct": 5 },
-    { "level": "INTERMEDIATE", "exercise": null, "metric": "TIME_10K", "pct": 2 },
-    { "level": "ADVANCED", "exercise": null, "metric": "TIME_10K", "pct": 0.7 },
-    { "level": "BEGINNER", "exercise": null, "metric": "TIME_21K", "pct": 4 },
-    { "level": "INTERMEDIATE", "exercise": null, "metric": "TIME_21K", "pct": 1.5 },
-    { "level": "ADVANCED", "exercise": null, "metric": "TIME_21K", "pct": 0.5 },
-    { "level": "BEGINNER", "exercise": null, "metric": "PACE", "pct": 5 },
-    { "level": "INTERMEDIATE", "exercise": null, "metric": "PACE", "pct": 2 },
-    { "level": "ADVANCED", "exercise": null, "metric": "PACE", "pct": 0.7 },
-    { "level": "BEGINNER", "exercise": null, "metric": "DISTANCE", "pct": 10 },
-    { "level": "INTERMEDIATE", "exercise": null, "metric": "DISTANCE", "pct": 4 },
-    { "level": "ADVANCED", "exercise": null, "metric": "DISTANCE", "pct": 1.5 }
+    {
+      "level": "BEGINNER",
+      "exercise": null,
+      "metric": "E1RM",
+      "pct": 8
+    },
+    {
+      "level": "INTERMEDIATE",
+      "exercise": null,
+      "metric": "E1RM",
+      "pct": 3
+    },
+    {
+      "level": "ADVANCED",
+      "exercise": null,
+      "metric": "E1RM",
+      "pct": 1
+    },
+    {
+      "level": "BEGINNER",
+      "exercise": "BENCH_PRESS",
+      "metric": "E1RM",
+      "pct": 6
+    },
+    {
+      "level": "INTERMEDIATE",
+      "exercise": "BENCH_PRESS",
+      "metric": "E1RM",
+      "pct": 2
+    },
+    {
+      "level": "ADVANCED",
+      "exercise": "BENCH_PRESS",
+      "metric": "E1RM",
+      "pct": 0.75
+    },
+    {
+      "level": "BEGINNER",
+      "exercise": null,
+      "metric": "MAX_REPS",
+      "pct": 15
+    },
+    {
+      "level": "INTERMEDIATE",
+      "exercise": null,
+      "metric": "MAX_REPS",
+      "pct": 6
+    },
+    {
+      "level": "ADVANCED",
+      "exercise": null,
+      "metric": "MAX_REPS",
+      "pct": 2
+    },
+    {
+      "level": "BEGINNER",
+      "exercise": null,
+      "metric": "TIME_1K",
+      "pct": 5
+    },
+    {
+      "level": "INTERMEDIATE",
+      "exercise": null,
+      "metric": "TIME_1K",
+      "pct": 2
+    },
+    {
+      "level": "ADVANCED",
+      "exercise": null,
+      "metric": "TIME_1K",
+      "pct": 0.7
+    },
+    {
+      "level": "BEGINNER",
+      "exercise": null,
+      "metric": "TIME_5K",
+      "pct": 5
+    },
+    {
+      "level": "INTERMEDIATE",
+      "exercise": null,
+      "metric": "TIME_5K",
+      "pct": 2
+    },
+    {
+      "level": "ADVANCED",
+      "exercise": null,
+      "metric": "TIME_5K",
+      "pct": 0.7
+    },
+    {
+      "level": "BEGINNER",
+      "exercise": null,
+      "metric": "TIME_10K",
+      "pct": 5
+    },
+    {
+      "level": "INTERMEDIATE",
+      "exercise": null,
+      "metric": "TIME_10K",
+      "pct": 2
+    },
+    {
+      "level": "ADVANCED",
+      "exercise": null,
+      "metric": "TIME_10K",
+      "pct": 0.7
+    },
+    {
+      "level": "BEGINNER",
+      "exercise": null,
+      "metric": "TIME_21K",
+      "pct": 4
+    },
+    {
+      "level": "INTERMEDIATE",
+      "exercise": null,
+      "metric": "TIME_21K",
+      "pct": 1.5
+    },
+    {
+      "level": "ADVANCED",
+      "exercise": null,
+      "metric": "TIME_21K",
+      "pct": 0.5
+    },
+    {
+      "level": "BEGINNER",
+      "exercise": null,
+      "metric": "PACE",
+      "pct": 5
+    },
+    {
+      "level": "INTERMEDIATE",
+      "exercise": null,
+      "metric": "PACE",
+      "pct": 2
+    },
+    {
+      "level": "ADVANCED",
+      "exercise": null,
+      "metric": "PACE",
+      "pct": 0.7
+    },
+    {
+      "level": "BEGINNER",
+      "exercise": null,
+      "metric": "DISTANCE",
+      "pct": 10
+    },
+    {
+      "level": "INTERMEDIATE",
+      "exercise": null,
+      "metric": "DISTANCE",
+      "pct": 4
+    },
+    {
+      "level": "ADVANCED",
+      "exercise": null,
+      "metric": "DISTANCE",
+      "pct": 1.5
+    }
   ]
 }

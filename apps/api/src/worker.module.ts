@@ -1,10 +1,6 @@
 import { Module } from '@nestjs/common';
-import { CommonModule } from './common/common.module';
-import { ConfigModule } from './common/config/config.module';
-import { LoggerModule } from './common/logging/logger.module';
-import { PrismaModule } from './common/prisma/prisma.module';
+import { AppModule } from './app.module';
 
-@Module({
-  imports: [ConfigModule, LoggerModule, PrismaModule, CommonModule],
-})
+/** The worker reuses every domain module (and their event handlers); it just never listens for HTTP. */
+@Module({ imports: [AppModule] })
 export class WorkerModule {}
