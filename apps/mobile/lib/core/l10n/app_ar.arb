@@ -134,5 +134,12 @@
   "wodEnded": "انتهى",
   "timeLeftDays": "متبقٍ {days} ي {hours} س",
   "timeLeftHours": "متبقٍ {hours} س {minutes} د",
-  "timeLeftMinutes": "متبقٍ {minutes} د"
+  "timeLeftMinutes": "متبقٍ {minutes} د",
+  "gymsTitle": "الصالات",
+  "gymsSearchHint": "ابحث عن صالة",
+  "gymsGovernorate": "الولاية",
+  "gymsAllGovernorates": "كل الولايات",
+  "gymsEmpty": "لم يتم العثور على صالة",
+  "gymVerified": "صالة موثقة",
+  "gymMembersCount": "{count, plural, =1{عضو واحد} other{{count} عضو}}"
 }

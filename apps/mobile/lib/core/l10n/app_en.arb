@@ -281,5 +281,19 @@
         "type": "int"
       }
     }
+  },
+  "gymsTitle": "Gyms",
+  "gymsSearchHint": "Search a gym",
+  "gymsGovernorate": "Governorate",
+  "gymsAllGovernorates": "All governorates",
+  "gymsEmpty": "No gym found",
+  "gymVerified": "Verified gym",
+  "gymMembersCount": "{count, plural, =1{1 member} other{{count} members}}",
+  "@gymMembersCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   }
 }

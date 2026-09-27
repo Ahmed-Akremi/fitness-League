@@ -10,7 +10,13 @@ class GymLogo extends StatelessWidget {
 
   static const _palette = [Color(0xFFC6F432), Color(0xFF3DA9FC), Color(0xFFFF8A3D), Color(0xFFF15BB5), Color(0xFF06D6A0), Color(0xFFFFD166), Color(0xFF9B5DE5)];
 
-  String get _initials => name.split(RegExp(r'\s+')).where((w) => w.isNotEmpty && RegExp(r'^\p{L}', unicode: true).hasMatch(w)).take(2).map((w) => w.characters.first.toUpperCase()).join();
+  /// Two letters: first letters of the first two words, or the first two letters of a single-word name.
+  String get _initials {
+    final words = name.split(RegExp(r'\s+')).where((w) => w.isNotEmpty && RegExp(r'^\p{L}', unicode: true).hasMatch(w)).toList();
+    if (words.isEmpty) return '?';
+    if (words.length == 1) return words.first.characters.take(2).toString().toUpperCase();
+    return words.take(2).map((w) => w.characters.first.toUpperCase()).join();
+  }
 
   @override
   Widget build(BuildContext context) {
