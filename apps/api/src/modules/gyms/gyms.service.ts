@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Gym, Prisma, Role } from '@prisma/client';
+import { Gym, Media, Prisma, Role } from '@prisma/client';
 import { AuditService } from '../../common/audit/audit.service';
 import type { AuthUser } from '../../common/auth/auth-user';
 import { ClockService } from '../../common/clock/clock.service';
@@ -8,6 +8,7 @@ import { uuidv7 } from '../../common/ids/uuid';
 import { CursorCodec } from '../../common/pagination/cursor';
 import { PageQueryDto, toPage } from '../../common/pagination/page';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { StorageService } from '../../common/storage/storage.service';
 import { CreateGymDto, isHttpUrl, ListGymsQueryDto, ReviewGymDto, SOCIAL_LINK_KEYS, UpdateGymDto } from './dto/gym.dto';
 
 const STAFF: Role[] = ['ADMIN', 'SUPER_ADMIN'];
@@ -20,6 +21,7 @@ export class GymsService {
     private readonly audit: AuditService,
     private readonly cursors: CursorCodec,
     private readonly clock: ClockService,
+    private readonly storage: StorageService,
   ) {}
 
   // ───────────── Directory ─────────────
@@ -33,7 +35,7 @@ export class GymsService {
       ...(q.q && { name: { contains: q.q, mode: 'insensitive' } }),
       ...(c && { OR: [{ name: { gt: c.n } }, { name: c.n, id: { gt: c.id } }] }),
     };
-    const rows = await this.prisma.gym.findMany({ where, include: { city: true, governorate: true, _count: { select: { members: { where: { status: 'APPROVED' } } } } }, orderBy: [{ name: 'asc' }, { id: 'asc' }], take: q.limit + 1 });
+    const rows = await this.prisma.gym.findMany({ where, include: { city: true, governorate: true, logo: true, _count: { select: { members: { where: { status: 'APPROVED' } } } } }, orderBy: [{ name: 'asc' }, { id: 'asc' }], take: q.limit + 1 });
     const page = toPage(rows, q.limit, (g) => ({ n: g.name, id: g.id }), (k) => this.cursors.encode(k));
     return { data: page.data.map((g) => this.card(g)), page: page.page };
   }
@@ -42,7 +44,7 @@ export class GymsService {
   async get(id: string) {
     const gym = await this.prisma.gym.findUnique({
       where: { id },
-      include: { city: true, governorate: true, _count: { select: { members: { where: { status: 'APPROVED' } } } } },
+      include: { city: true, governorate: true, logo: true, _count: { select: { members: { where: { status: 'APPROVED' } } } } },
     });
     if (!gym || gym.deletedAt || gym.status !== 'VERIFIED') throw AppException.notFound('Gym');
     const top = await this.prisma.userStats.findMany({
@@ -60,7 +62,7 @@ export class GymsService {
     };
   }
 
-  private card(g: Gym & { city: { nameI18n: Prisma.JsonValue }; governorate: { id: string; code: string; nameI18n: Prisma.JsonValue }; _count: { members: number } }) {
+  private card(g: Gym & { city: { nameI18n: Prisma.JsonValue }; governorate: { id: string; code: string; nameI18n: Prisma.JsonValue }; logo: Media | null; _count: { members: number } }) {
     return {
       id: g.id,
       name: g.name,
@@ -68,6 +70,7 @@ export class GymsService {
       verified: g.status === 'VERIFIED',
       city: g.city.nameI18n,
       governorate: { id: g.governorate.id, code: g.governorate.code, name: g.governorate.nameI18n },
+      logoUrl: this.logoUrl(g.logo),
       membersCount: g._count.members,
     };
   }
@@ -224,8 +227,12 @@ export class GymsService {
 
   // ───────────── Internals ─────────────
 
+  logoUrl(logo: Media | null): string | null {
+    return logo && logo.status !== 'DELETED' ? this.storage.url(logo.objectKey) : null;
+  }
+
   /** Gym admin of THIS gym (the verified owner), or platform staff. */
-  private async manageable(user: AuthUser, gymId: string): Promise<Gym> {
+  async manageable(user: AuthUser, gymId: string): Promise<Gym> {
     const gym = await this.prisma.gym.findUnique({ where: { id: gymId } });
     if (!gym || gym.deletedAt) throw AppException.notFound('Gym');
     const owner = gym.ownerUserId === user.id && user.role === 'GYM_ADMIN' && gym.status === 'VERIFIED';

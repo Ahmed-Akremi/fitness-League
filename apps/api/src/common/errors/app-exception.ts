@@ -29,6 +29,7 @@ export const ErrorCode = {
   UNDER_AGE: 'UNDER_AGE',
   WORKOUT_REJECTED: 'WORKOUT_REJECTED',
   PAYLOAD_TOO_LARGE: 'PAYLOAD_TOO_LARGE',
+  UNSUPPORTED_MEDIA_TYPE: 'UNSUPPORTED_MEDIA_TYPE',
   INTERNAL: 'INTERNAL',
 } as const;
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];

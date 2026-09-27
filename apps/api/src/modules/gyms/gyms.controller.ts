@@ -1,16 +1,21 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Patch, Post, Put, Query, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiBearerAuth, ApiConsumes, ApiTags } from '@nestjs/swagger';
 import type { AuthUser } from '../../common/auth/auth-user';
 import { AdminApi, CurrentUser, RequiresVerifiedEmail, Roles } from '../../common/auth/decorators';
 import { PageQueryDto } from '../../common/pagination/page';
 import { CreateGymDto, ListGymsQueryDto, ReviewGymDto, UpdateGymDto } from './dto/gym.dto';
+import { GymLogoService, LOGO_MAX_BYTES } from './gym-logo.service';
 import { GymsService } from './gyms.service';
 
 @ApiTags('gyms')
 @ApiBearerAuth()
 @Controller('gyms')
 export class GymsController {
-  constructor(private readonly gyms: GymsService) {}
+  constructor(
+    private readonly gyms: GymsService,
+    private readonly logos: GymLogoService,
+  ) {}
 
   @Get()
   list(@Query() q: ListGymsQueryDto) {
@@ -32,6 +37,19 @@ export class GymsController {
   @HttpCode(HttpStatus.NO_CONTENT)
   leave(@CurrentUser() user: AuthUser): Promise<void> {
     return this.gyms.leave(user.id);
+  }
+
+  @Put(':id/logo')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: LOGO_MAX_BYTES + 1, files: 1 } }))
+  @ApiConsumes('multipart/form-data')
+  setLogo(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string, @UploadedFile() file?: Express.Multer.File) {
+    return this.logos.set(user, id, file);
+  }
+
+  @Delete(':id/logo')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  removeLogo(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string): Promise<void> {
+    return this.logos.remove(user, id);
   }
 
   @Get(':id')

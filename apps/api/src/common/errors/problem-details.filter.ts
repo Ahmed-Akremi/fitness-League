@@ -23,6 +23,7 @@ const statusToCode: Partial<Record<number, ErrorCode>> = {
   404: ErrorCode.NOT_FOUND,
   409: ErrorCode.CONFLICT,
   413: ErrorCode.PAYLOAD_TOO_LARGE,
+  415: ErrorCode.UNSUPPORTED_MEDIA_TYPE,
   422: ErrorCode.VALIDATION_FAILED,
   429: ErrorCode.RATE_LIMITED,
 };

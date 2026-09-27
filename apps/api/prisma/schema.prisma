@@ -141,6 +141,7 @@ enum MediaStatus {
   SCANNING
   READY
   REJECTED
+  DELETED
 }
 
 enum MediaPurpose {
@@ -149,6 +150,7 @@ enum MediaPurpose {
   REPORT_EVIDENCE
   GYM_PROOF
   EXPORT
+  GYM_LOGO
 }
 
 enum BaselineStatus {
@@ -750,6 +752,7 @@ model Media {
   createdAt DateTime     @default(now()) @map("created_at") @db.Timestamptz
   updatedAt DateTime     @updatedAt @map("updated_at") @db.Timestamptz
   owner     User         @relation(fields: [ownerId], references: [id])
+  gymLogos  Gym[]        @relation("GymLogo")
 
   @@index([ownerId])
   @@index([status, createdAt])
@@ -1235,6 +1238,7 @@ model Gym {
   rating        Decimal   @default(1500) @db.Decimal(7, 2)
   ratingRd      Decimal   @default(350) @map("rating_rd") @db.Decimal(6, 2)
   logoMediaId   String?   @map("logo_media_id") @db.Uuid
+  logo          Media?    @relation("GymLogo", fields: [logoMediaId], references: [id])
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz
   deletedAt     DateTime? @map("deleted_at") @db.Timestamptz
