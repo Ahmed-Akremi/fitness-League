@@ -391,5 +391,32 @@
   "followers": "Followers",
   "seasonLp": "Season LP",
   "searchAthletesHint": "Name or username (2 letters min.)",
-  "noAthleteFound": "No athlete found"
+  "noAthleteFound": "No athlete found",
+  "battles": "Battles",
+  "battlesActive": "Active",
+  "battlesInvites": "Invites",
+  "battlesFinished": "Finished",
+  "newBattle": "New battle",
+  "sendChallenge": "Send challenge",
+  "cancelBattle": "Cancel",
+  "battleWon": "You won!",
+  "battleLost": "Defeat",
+  "battleDraw": "Draw",
+  "days": "{count, plural, =1{1 day} other{{count} days}}",
+  "@days": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "vs": "VS",
+  "componentProgress": "Progress",
+  "componentConsistency": "Consistency",
+  "componentPerformance": "Performance",
+  "battleWaiting": "Waiting for your friend",
+  "battleInvited": "You've been challenged!",
+  "battleDuration": "Duration",
+  "battleComponents": "What counts",
+  "noBattles": "No battle here yet"
 }

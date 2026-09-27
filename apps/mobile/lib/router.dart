@@ -4,6 +4,9 @@ import 'package:go_router/go_router.dart';
 
 import 'core/widgets/error_text.dart';
 import 'features/auth/data/session_controller.dart';
+import 'features/battles/presentation/battle_screen.dart';
+import 'features/battles/presentation/battles_screen.dart';
+import 'features/battles/presentation/new_battle_screen.dart';
 import 'features/auth/presentation/login_screen.dart';
 import 'features/auth/presentation/register_screen.dart';
 import 'features/goals/presentation/goals_screen.dart';
@@ -75,6 +78,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/progress', builder: (_, _) => const ProgressScreen()),
       GoRoute(path: '/gyms', builder: (_, _) => const GymsScreen()),
       GoRoute(path: '/friends', builder: (_, _) => const FriendsScreen()),
+      GoRoute(path: '/battles', builder: (_, _) => const BattlesScreen()),
+      GoRoute(path: '/battles/new', builder: (_, s) => NewBattleScreen(opponentId: s.uri.queryParameters['opponent'])),
+      GoRoute(path: '/battles/:id', builder: (_, s) => BattleScreen(id: s.pathParameters['id']!, myId: (ref.read(meProvider).valueOrNull?['id'] ?? '') as String)),
       GoRoute(path: '/search', builder: (_, _) => const SearchScreen()),
       GoRoute(path: '/u/:username', builder: (_, s) => PublicProfileScreen(username: s.pathParameters['username']!)),
       GoRoute(path: '/gyms/:id', builder: (_, s) => GymProfileScreen(id: s.pathParameters['id']!)),
