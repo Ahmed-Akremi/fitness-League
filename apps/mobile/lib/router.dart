@@ -19,6 +19,9 @@ import 'features/onboarding/presentation/onboarding_screen.dart';
 import 'features/profile/presentation/profile_screen.dart';
 import 'features/progress/presentation/progress_screen.dart';
 import 'features/shell/app_shell.dart';
+import 'features/social/presentation/friends_screen.dart';
+import 'features/social/presentation/public_profile_screen.dart';
+import 'features/social/presentation/search_screen.dart';
 import 'features/workouts/presentation/log_workout_screen.dart';
 import 'features/workouts/presentation/train_screen.dart';
 import 'features/workouts/presentation/workout_detail_screen.dart';
@@ -71,6 +74,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/workouts/:id', builder: (_, s) => WorkoutDetailScreen(id: s.pathParameters['id']!)),
       GoRoute(path: '/progress', builder: (_, _) => const ProgressScreen()),
       GoRoute(path: '/gyms', builder: (_, _) => const GymsScreen()),
+      GoRoute(path: '/friends', builder: (_, _) => const FriendsScreen()),
+      GoRoute(path: '/search', builder: (_, _) => const SearchScreen()),
+      GoRoute(path: '/u/:username', builder: (_, s) => PublicProfileScreen(username: s.pathParameters['username']!)),
       GoRoute(path: '/gyms/:id', builder: (_, s) => GymProfileScreen(id: s.pathParameters['id']!)),
       GoRoute(path: '/gyms/:id/members', builder: (_, s) => GymMembersScreen(id: s.pathParameters['id']!)),
       GoRoute(path: '/gyms/:id/wods/new', builder: (_, s) => CreateWodScreen(gymId: s.pathParameters['id']!)),
