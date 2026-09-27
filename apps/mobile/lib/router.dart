@@ -7,6 +7,8 @@ import 'features/auth/data/session_controller.dart';
 import 'features/auth/presentation/login_screen.dart';
 import 'features/auth/presentation/register_screen.dart';
 import 'features/goals/presentation/goals_screen.dart';
+import 'features/gym_wods/presentation/create_wod_screen.dart';
+import 'features/gym_wods/presentation/wod_screen.dart';
 import 'features/gyms/presentation/gym_members_screen.dart';
 import 'features/gyms/presentation/gym_profile_screen.dart';
 import 'features/gyms/presentation/gyms_screen.dart';
@@ -71,6 +73,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/gyms', builder: (_, _) => const GymsScreen()),
       GoRoute(path: '/gyms/:id', builder: (_, s) => GymProfileScreen(id: s.pathParameters['id']!)),
       GoRoute(path: '/gyms/:id/members', builder: (_, s) => GymMembersScreen(id: s.pathParameters['id']!)),
+      GoRoute(path: '/gyms/:id/wods/new', builder: (_, s) => CreateWodScreen(gymId: s.pathParameters['id']!)),
+      GoRoute(
+        path: '/gyms/:id/wods/:wodId',
+        builder: (_, s) => WodScreen(gymId: s.pathParameters['id']!, wodId: s.pathParameters['wodId']!, myId: (ref.read(meProvider).valueOrNull?['id'] ?? '') as String),
+      ),
       StatefulShellRoute.indexedStack(
         builder: (_, _, shell) => AppShell(shell: shell),
         branches: [

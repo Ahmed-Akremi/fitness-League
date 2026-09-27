@@ -319,5 +319,45 @@
   "memberActions": "Member actions",
   "makeCoach": "Make coach",
   "removeCoach": "Remove coach role",
-  "removeMember": "Remove from gym"
+  "removeMember": "Remove from gym",
+  "scaled": "Scaled",
+  "wodSubmitScore": "Submit my score",
+  "wodYourTime": "Your time",
+  "wodOverCap": "Over the time cap",
+  "wodRounds": "Rounds",
+  "wodExtraReps": "Extra reps",
+  "wodRepsPerRound": "Reps per round",
+  "wodLoad": "Load (kg)",
+  "wodMyScore": "My score",
+  "wodInvalidated": "Invalidated by the coach: {reason}",
+  "@wodInvalidated": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "invalidate": "Invalidate",
+  "invalidateReason": "Reason",
+  "gymWods": "Gym WODs",
+  "wodCreate": "Create a WOD",
+  "wodNotScored": "No score yet",
+  "wodNone": "No WOD running right now",
+  "wodNoScores": "No score yet: be the first!",
+  "wodPast": "Past WODs",
+  "wodsMembersOnly": "Join the gym to see its WODs",
+  "wodTitle": "Title",
+  "wodDescription": "Movements",
+  "wodScoreType": "Score type",
+  "forTime": "For time",
+  "amrap": "AMRAP",
+  "maxLoad": "Max load",
+  "wodTimeCap": "Time cap (optional)",
+  "wodStarts": "Starts",
+  "wodEnds": "Ends",
+  "wodDraft": "Save as draft",
+  "wodPublish": "Publish",
+  "wodEndsBeforeStart": "The end must be after the start",
+  "wodWindowTooLong": "A WOD lasts 31 days at most",
+  "none": "None"
 }
