@@ -114,4 +114,13 @@ describe('Gym WODs (integration)', () => {
     const view = await api().get(`/api/v1/gyms/${gymId}/wods/${wod.id}`).set(bearer(member.session.accessToken)).expect(200);
     expect(view.body.myScore).toMatchObject({ status: 'INVALIDATED', invalidationReason: 'No-rep on pull-ups' });
   });
+
+  it('invalidates cleanly even when the member already deleted the linked workout', async () => {
+    const wod = (await api().post(`/api/v1/gyms/${gymId}/wods`).set(bearer(coach.session.accessToken)).send({ ...wodBody, title: 'Deleted session' }).expect(201)).body;
+    const sub = await api().put(`/api/v1/gyms/${gymId}/wods/${wod.id}/score`).set(bearer(member.session.accessToken)).send({ division: 'RX', timeS: 500, performedAt: h(-6), clientId: randomUUID() }).expect(200);
+    const score = await prisma.gymWodScore.findUniqueOrThrow({ where: { id: sub.body.myScore.id } });
+    await api().delete(`/api/v1/workouts/${score.workoutId}`).set(bearer(member.session.accessToken)).expect(204);
+    await api().post(`/api/v1/gyms/${gymId}/wods/${wod.id}/scores/${score.id}/invalidate`).set(bearer(coach.session.accessToken)).send({ reason: 'Late check' }).expect(200);
+    expect((await prisma.gymWodScore.findUniqueOrThrow({ where: { id: score.id } })).status).toBe('INVALIDATED');
+  });
 });

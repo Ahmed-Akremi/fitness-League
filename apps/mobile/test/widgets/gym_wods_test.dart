@@ -1,4 +1,5 @@
 import 'package:fitness_league/features/gym_wods/presentation/create_wod_screen.dart';
+import 'package:fitness_league/features/gym_wods/presentation/gym_wods_section.dart';
 import 'package:fitness_league/features/gym_wods/presentation/wod_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -104,5 +105,55 @@ void main() {
     expect(body['title'], 'Monday Grind');
     expect(body['scoreType'], 'AMRAP');
     expect(DateTime.parse(body['endsAt'] as String).isAfter(DateTime.parse(body['startsAt'] as String)), isTrue);
+  });
+
+  testWidgets('an invalid or too short time cap blocks publishing; MAX_LOAD never sends a cap', (tester) async {
+    final b = backend(coach: true);
+    await pumpScreen(tester, const CreateWodScreen(gymId: 'b'), b);
+    await tester.enterText(find.byKey(const Key('wod-title')), 'Cap test');
+    await tester.enterText(find.byKey(const Key('wod-description')), '21-15-9');
+    final publish = find.widgetWithText(FilledButton, 'Publish');
+    for (final bad in ['1:75', '0:45']) {
+      await tester.enterText(find.byKey(const Key('wod-cap')), bad);
+      await tester.pump();
+      expect(tester.widget<FilledButton>(publish).onPressed, isNull, reason: bad);
+    }
+    await tester.enterText(find.byKey(const Key('wod-cap')), '12:00');
+    await tester.pump();
+    await tester.tap(find.text('Max load'));
+    await tester.pump();
+    await tester.tap(publish);
+    await tester.pumpAndSettle();
+    final body = b.calls('POST', '/gyms/b/wods').single.data as Map;
+    expect(body['scoreType'], 'MAX_LOAD');
+    expect(body.containsKey('timeCapS'), isFalse);
+  });
+
+  testWidgets('a coach publishes a draft from the WOD screen', (tester) async {
+    var status = 'DRAFT';
+    final b = backend(coach: true)
+      ..on('GET', '/gyms/b/wods/w1', (_) => (200, {...wod(), 'status': status, 'isOpen': false}))
+      ..on('PATCH', '/gyms/b/wods/w1', (req) {
+        status = (req.data as Map)['status'] as String;
+        return (200, {...wod(), 'status': status});
+      });
+    await pumpScreen(tester, const WodScreen(gymId: 'b', wodId: 'w1', myId: 'me'), b);
+    expect(find.text('Draft'), findsOneWidget);
+    await tester.tap(find.widgetWithText(FilledButton, 'Publish'));
+    await tester.pumpAndSettle();
+    expect(b.calls('PATCH', '/gyms/b/wods/w1').single.data, {'status': 'PUBLISHED'});
+  });
+
+  testWidgets('coaches also see upcoming WODs in the gym section', (tester) async {
+    final b = FakeBackend()
+      ..on('GET', '/gyms/b/wods', (req) => (200, {
+            'data': req.queryParameters['when'] == 'upcoming' ? [{...wod(), 'id': 'w2', 'title': 'Next Monday', 'isOpen': false, 'status': 'DRAFT'}] : <Object>[],
+            'page': {'nextCursor': null, 'hasMore': false},
+          }));
+    await pumpScreen(tester, const Scaffold(body: SingleChildScrollView(child: GymWodsSection(gymId: 'b', isMember: true, isCoach: true))), b);
+    await tester.tap(find.text('Upcoming'));
+    await tester.pumpAndSettle();
+    expect(find.text('Next Monday'), findsOneWidget);
+    expect(find.text('Draft'), findsOneWidget);
   });
 }

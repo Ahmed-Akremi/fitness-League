@@ -7,6 +7,7 @@ import { AppException, ErrorCode } from '../../common/errors/app-exception';
 import { uuidv7 } from '../../common/ids/uuid';
 import { CursorCodec } from '../../common/pagination/cursor';
 import { toPage } from '../../common/pagination/page';
+import { OutboxService } from '../../common/outbox/outbox.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { GymsService } from '../gyms/gyms.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -29,6 +30,7 @@ export class GymWodsService {
     private readonly clock: ClockService,
     private readonly workouts: WorkoutsService,
     private readonly notifications: NotificationsService,
+    private readonly outbox: OutboxService,
   ) {}
 
   async create(user: AuthUser, gymId: string, dto: CreateGymWodDto) {
@@ -181,11 +183,14 @@ export class GymWodsService {
     if (!score || score.status !== 'VALID') throw AppException.notFound('Score');
     await this.prisma.$transaction(async (tx) => {
       await tx.gymWodScore.update({ where: { id: score.id }, data: { status: 'INVALIDATED', invalidatedById: user.id, invalidationReason: reason } });
+      // Soft-delete the linked workout in the same transaction; its XP is reversed by the WorkoutDeleted pipeline.
+      // Already deleted by the member: nothing to reverse, the invalidation still succeeds.
+      const workout = await tx.workout.findUnique({ where: { id: score.workoutId } });
+      const removed = await tx.workout.updateMany({ where: { id: score.workoutId, deletedAt: null }, data: { deletedAt: this.clock.now() } });
+      if (removed.count && workout) await this.outbox.enqueue(tx, 'WorkoutDeleted', { workoutId: workout.id, userId: workout.userId, previousStatus: workout.status });
       await this.notifications.notify(tx, score.userId, 'GYM_WOD_SCORE_INVALIDATED', { gymId, wodId, wodTitle: wod.title, reason });
       await this.audit.log({ actorId: user.id, actorRole: user.role, action: 'GYM_WOD_SCORE_INVALIDATED', entityType: 'gym_wod_score', entityId: score.id, after: { reason } }, tx);
     });
-    // Soft-deleting the linked workout reverses its XP through the existing WorkoutDeleted pipeline.
-    await this.workouts.remove(score.userId, score.workoutId);
     return { id: score.id, status: 'INVALIDATED' };
   }
 

@@ -34,6 +34,9 @@ class _HyroxRaceSheetState extends State<HyroxRaceSheet> {
   late Map<String, dynamic>? _race = _races.firstOrNull;
   late final List<Map<String, dynamic>> _stations = _pickStations();
   late final List<int?> _splits = List.filled(_stations.length, null);
+
+  /// Sum of the 8 × 1 km runs: needed for a real race total (stations alone are far below it).
+  int? _runs;
   final _total = TextEditingController();
   int? _totalSeconds;
   bool _totalEdited = false;
@@ -52,15 +55,17 @@ class _HyroxRaceSheetState extends State<HyroxRaceSheet> {
     super.dispose();
   }
 
-  void _onSplit(int i, int? v) {
-    setState(() {
-      _splits[i] = v;
-      if (_totalEdited) return;
-      final known = _splits.whereType<int>();
-      final sum = known.fold<int>(0, (a, b) => a + b);
-      _totalSeconds = known.isEmpty ? null : sum;
-      _total.text = known.isEmpty ? '' : formatDuration(sum);
-    });
+  void _onSplit(int i, int? v) => setState(() {
+        _splits[i] = v;
+        _recompute();
+      });
+
+  /// Auto-total = all 8 stations + runs; left empty until both are known (unless typed by hand).
+  void _recompute() {
+    if (_totalEdited) return;
+    final complete = _runs != null && _splits.every((s) => s != null);
+    _totalSeconds = complete ? _splits.fold<int>(_runs!, (a, b) => a + b!) : null;
+    _total.text = _totalSeconds == null ? '' : formatDuration(_totalSeconds!);
   }
 
   @override
@@ -85,6 +90,14 @@ class _HyroxRaceSheetState extends State<HyroxRaceSheet> {
             padding: const EdgeInsets.only(bottom: 8),
             child: TimeField(key: Key('station-${i + 1}'), label: '${i + 1}. ${localized(s['name'], locale)}', onChanged: (v) => _onSplit(i, v)),
           ),
+        TimeField(
+          key: const Key('hyrox-runs'),
+          label: l.hyroxRuns,
+          onChanged: (v) => setState(() {
+            _runs = v;
+            _recompute();
+          }),
+        ),
         const Divider(height: 24),
         TimeField(
           key: const Key('hyrox-total'),

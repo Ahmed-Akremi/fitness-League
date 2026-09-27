@@ -486,5 +486,11 @@
   "gymSubmitted": "Thanks! Your gym is waiting for approval by an admin. You'll become its admin once it is verified.",
   "gymPending": "Waiting for verification",
   "gymRejected": "Request declined",
-  "myGyms": "My gyms"
+  "myGyms": "My gyms",
+  "hyroxRuns": "8 × 1 km runs (total)",
+  "wodCapTooShort": "Time cap must be a valid time of at least 1:00",
+  "gymPhotoFailed": "The photo could not be uploaded (PNG, JPEG or WebP, 2 MB max).",
+  "retryPhoto": "Retry the photo",
+  "wodUpcoming": "Upcoming",
+  "wodDraftBadge": "Draft"
 }

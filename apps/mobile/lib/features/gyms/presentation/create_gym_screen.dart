@@ -44,6 +44,8 @@ class _CreateGymScreenState extends ConsumerState<CreateGymScreen> {
   PickedImage? _photo;
   bool _busy = false;
   bool _submitted = false;
+  String? _createdId;
+  bool _photoFailed = false;
   Object? _error;
 
   @override
@@ -98,13 +100,26 @@ class _CreateGymScreenState extends ConsumerState<CreateGymScreen> {
         if (_sportIds.isNotEmpty) 'sportIds': _sportIds,
         'proofOfOwnership': opt(_proof),
       });
-      if (_photo != null) await repo.uploadLogo(created['id'] as String, _photo!.bytes, _photo!.name);
+      _createdId = created['id'] as String;
       ref.invalidate(myGymsProvider);
       if (mounted) setState(() => _submitted = true);
+      await _uploadPhoto();
     } catch (e) {
       if (mounted) setState(() => _error = e);
     } finally {
       if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  /// The gym exists once created: a photo failure never re-submits it, only the photo is retried.
+  Future<void> _uploadPhoto() async {
+    if (_photo == null || _createdId == null) return;
+    try {
+      await ref.read(gymsRepositoryProvider).uploadLogo(_createdId!, _photo!.bytes, _photo!.name);
+      ref.invalidate(myGymsProvider);
+      if (mounted) setState(() => _photoFailed = false);
+    } catch (_) {
+      if (mounted) setState(() => _photoFailed = true);
     }
   }
 
@@ -125,6 +140,12 @@ class _CreateGymScreenState extends ConsumerState<CreateGymScreen> {
                 Icon(Icons.hourglass_top_rounded, size: 64, color: t.colorScheme.primary),
                 const SizedBox(height: 16),
                 Text(l.gymSubmitted, textAlign: TextAlign.center, style: t.textTheme.titleMedium),
+                if (_photoFailed) ...[
+                  const SizedBox(height: 20),
+                  Text(l.gymPhotoFailed, textAlign: TextAlign.center, style: TextStyle(color: t.colorScheme.error)),
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(key: const Key('gym-photo-retry'), onPressed: _uploadPhoto, icon: const Icon(Icons.refresh_rounded), label: Text(l.retryPhoto)),
+                ],
               ],
             ),
           ),

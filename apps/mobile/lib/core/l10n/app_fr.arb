@@ -301,5 +301,11 @@
   "gymSubmitted": "Merci ! Ta salle est en attente de validation par un admin. Tu en deviendras l'admin une fois vérifiée.",
   "gymPending": "En attente de vérification",
   "gymRejected": "Demande refusée",
-  "myGyms": "Mes salles"
+  "myGyms": "Mes salles",
+  "hyroxRuns": "8 × 1 km de course (total)",
+  "wodCapTooShort": "Le time cap doit être un temps valide d'au moins 1:00",
+  "gymPhotoFailed": "La photo n'a pas pu être envoyée (PNG, JPEG ou WebP, 2 Mo max).",
+  "retryPhoto": "Réessayer la photo",
+  "wodUpcoming": "À venir",
+  "wodDraftBadge": "Brouillon"
 }

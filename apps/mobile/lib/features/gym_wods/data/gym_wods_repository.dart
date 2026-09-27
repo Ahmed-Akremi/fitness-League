@@ -12,6 +12,7 @@ class GymWodsRepository {
   Future<Map<String, dynamic>> list(String gymId, {String when = 'active'}) => api.get<Map<String, dynamic>>('/gyms/$gymId/wods', query: {'when': when, 'limit': 20});
   Future<Map<String, dynamic>> get(String gymId, String wodId) => api.get<Map<String, dynamic>>('/gyms/$gymId/wods/$wodId');
   Future<Map<String, dynamic>> create(String gymId, Map<String, dynamic> body) => api.post<Map<String, dynamic>>('/gyms/$gymId/wods', data: body);
+  Future<Map<String, dynamic>> update(String gymId, String wodId, Map<String, dynamic> patch) => api.patch<Map<String, dynamic>>('/gyms/$gymId/wods/$wodId', data: patch);
   Future<Map<String, dynamic>> submit(String gymId, String wodId, Map<String, dynamic> body) => api.put<Map<String, dynamic>>('/gyms/$gymId/wods/$wodId/score', data: body);
   Future<Map<String, dynamic>> board(String gymId, String wodId, {String division = 'RX', String? cursor}) =>
       api.get<Map<String, dynamic>>('/gyms/$gymId/wods/$wodId/leaderboard', query: {'division': division, 'limit': 50, 'cursor': ?cursor});

@@ -65,4 +65,36 @@ void main() {
     await tester.scrollUntilVisible(submit, 300, scrollable: find.byType(Scrollable).first);
     expect(tester.widget<FilledButton>(submit).onPressed, isNull);
   });
+
+  testWidgets('a failed photo upload keeps the created gym and offers to retry only the photo', (tester) async {
+    var logoCalls = 0;
+    final b = backend()
+      ..on('PUT', '/gyms/new-gym/logo', (_) => ++logoCalls == 1 ? (415, {'code': 'UNSUPPORTED_MEDIA_TYPE'}) : (200, {'logoUrl': 'http://x/logo.webp'}));
+    await pumpScreen(tester, CreateGymScreen(pickImage: () async => (bytes: Uint8List.fromList([1, 2, 3]), name: 'logo.png')), b);
+    await tester.tap(find.byKey(const Key('gym-photo')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('gym-name')), 'Lac Hybrid Club');
+    await tester.tap(find.byKey(const Key('gym-governorate')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Tunis').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('gym-city')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Tunis').last);
+    await tester.pumpAndSettle();
+    final scroll = find.byType(Scrollable).first;
+    await tester.scrollUntilVisible(find.byKey(const Key('gym-proof')), 200, scrollable: scroll);
+    await tester.enterText(find.byKey(const Key('gym-proof')), 'RNE 7654321B, contrat de bail');
+    await tester.pump();
+    await tester.scrollUntilVisible(find.byKey(const Key('gym-submit')), 300, scrollable: scroll);
+    await tester.tap(find.byKey(const Key('gym-submit')));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('waiting for approval'), findsOneWidget); // the gym itself was submitted
+    await tester.tap(find.byKey(const Key('gym-photo-retry')));
+    await tester.pumpAndSettle();
+    expect(logoCalls, 2);
+    expect(b.calls('POST', '/gyms'), hasLength(1)); // never re-submitted
+    expect(find.byKey(const Key('gym-photo-retry')), findsNothing);
+  });
 }

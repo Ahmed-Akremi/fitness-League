@@ -46,6 +46,15 @@ class _WodScreenState extends ConsumerState<WodScreen> {
     if (mounted) _refresh();
   }
 
+  Future<void> _publish() async {
+    try {
+      await ref.read(gymWodsRepositoryProvider).update(widget.gymId, widget.wodId, {'status': 'PUBLISHED'});
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(errorMessage(context, e))));
+    }
+    if (mounted) _refresh();
+  }
+
   Future<void> _invalidate(Map<String, dynamic> row) async {
     final l = context.l10n;
     final reason = TextEditingController();
@@ -99,7 +108,14 @@ class _WodScreenState extends ConsumerState<WodScreen> {
       length: 2,
       child: Scaffold(
         appBar: AppBar(title: Text(l.gymWods)),
-        bottomNavigationBar: w['isOpen'] == true
+        bottomNavigationBar: isCoach && w['status'] == 'DRAFT'
+            ? SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                  child: FilledButton.icon(onPressed: _publish, icon: const Icon(Icons.publish_rounded), label: Text(l.wodPublish)),
+                ),
+              )
+            : w['isOpen'] == true
             ? SafeArea(child: Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 12), child: FilledButton.icon(onPressed: () => _openScoreSheet(w), icon: const Icon(Icons.edit_note_rounded), label: Text(l.wodSubmitScore))))
             : null,
         body: NestedScrollView(
@@ -109,6 +125,7 @@ class _WodScreenState extends ConsumerState<WodScreen> {
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text(w['title'] as String, style: AppTheme.display(context, size: 34)),
+                  if (w['status'] == 'DRAFT') Padding(padding: const EdgeInsets.only(top: 6), child: Chip(avatar: const Icon(Icons.edit_note_rounded, size: 16), label: Text(l.wodDraftBadge))),
                   const SizedBox(height: 8),
                   Wrap(spacing: 8, runSpacing: 6, children: [
                     Chip(avatar: const Icon(Icons.bolt_rounded, size: 16), label: Text(typeLabel)),

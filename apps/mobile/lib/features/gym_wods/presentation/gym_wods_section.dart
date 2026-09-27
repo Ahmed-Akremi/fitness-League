@@ -33,22 +33,29 @@ class GymWodsSection extends ConsumerWidget {
       if (active.isLoading) const Padding(padding: EdgeInsets.all(16), child: Center(child: CircularProgressIndicator())),
       if (!active.isLoading && wods.isEmpty) Card(child: ListTile(leading: const Icon(Icons.event_busy_outlined), title: Text(l.wodNone))),
       for (final w in wods) WodCard(gymId: gymId, wod: w),
+      if (isCoach)
+        ExpansionTile(
+          tilePadding: const EdgeInsets.symmetric(horizontal: 4),
+          title: Text(l.wodUpcoming, style: t.textTheme.titleSmall),
+          children: [_WodList(gymId: gymId, when: 'upcoming')],
+        ),
       ExpansionTile(
         tilePadding: const EdgeInsets.symmetric(horizontal: 4),
         title: Text(l.wodPast, style: t.textTheme.titleSmall),
-        children: [_PastWods(gymId: gymId)],
+        children: [_WodList(gymId: gymId, when: 'past')],
       ),
     ]);
   }
 }
 
-class _PastWods extends ConsumerWidget {
-  const _PastWods({required this.gymId});
+class _WodList extends ConsumerWidget {
+  const _WodList({required this.gymId, required this.when});
   final String gymId;
+  final String when;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final past = ref.watch(gymWodsProvider((gymId, 'past')));
+    final past = ref.watch(gymWodsProvider((gymId, when)));
     final wods = (past.valueOrNull?['data'] as List? ?? const []).cast<Map<String, dynamic>>();
     if (past.isLoading) return const Padding(padding: EdgeInsets.all(12), child: CircularProgressIndicator());
     return Column(children: [for (final w in wods) WodCard(gymId: gymId, wod: w)]);
@@ -83,7 +90,10 @@ class WodCard extends StatelessWidget {
             const SizedBox(width: 12),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(wod['title'] as String, style: t.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+                Row(children: [
+                  Flexible(child: Text(wod['title'] as String, style: t.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800), overflow: TextOverflow.ellipsis)),
+                  if (wod['status'] == 'DRAFT') Padding(padding: const EdgeInsetsDirectional.only(start: 6), child: _DraftBadge(label: l.wodDraftBadge)),
+                ]),
                 CountdownText(endsAt: DateTime.parse(wod['endsAt'] as String), style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.outline)),
               ]),
             ),
@@ -93,6 +103,21 @@ class WodCard extends StatelessWidget {
           ]),
         ),
       ),
+    );
+  }
+}
+
+class _DraftBadge extends StatelessWidget {
+  const _DraftBadge({required this.label});
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(color: t.colorScheme.tertiaryContainer, borderRadius: BorderRadius.circular(8)),
+      child: Text(label, style: t.textTheme.labelSmall?.copyWith(color: t.colorScheme.onTertiaryContainer, fontWeight: FontWeight.w800)),
     );
   }
 }

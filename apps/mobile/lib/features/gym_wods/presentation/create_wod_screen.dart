@@ -22,6 +22,10 @@ class _CreateWodScreenState extends ConsumerState<CreateWodScreen> {
   final _description = TextEditingController();
   String _scoreType = 'FOR_TIME';
   int? _cap;
+  final _capText = TextEditingController();
+
+  /// Cap typed but unparsable or under the API minimum (60 s).
+  bool get _capInvalid => _scoreType != 'MAX_LOAD' && _capText.text.trim().isNotEmpty && (_cap == null || _cap! < 60);
   late DateTime _startsAt = DateTime.now();
   late DateTime _endsAt = DateTime.now().add(const Duration(days: 7));
   String? _sportId;
@@ -33,6 +37,7 @@ class _CreateWodScreenState extends ConsumerState<CreateWodScreen> {
   void dispose() {
     _title.dispose();
     _description.dispose();
+    _capText.dispose();
     super.dispose();
   }
 
@@ -44,7 +49,7 @@ class _CreateWodScreenState extends ConsumerState<CreateWodScreen> {
     return null;
   }
 
-  bool get _valid => _title.text.trim().length >= 3 && _title.text.trim().length <= 80 && _description.text.trim().isNotEmpty && _endsAt.isAfter(_startsAt) && _endsAt.difference(_startsAt) <= const Duration(days: 31);
+  bool get _valid => !_capInvalid && _title.text.trim().length >= 3 && _title.text.trim().length <= 80 && _description.text.trim().isNotEmpty && _endsAt.isAfter(_startsAt) && _endsAt.difference(_startsAt) <= const Duration(days: 31);
 
   Future<DateTime?> _pick(DateTime initial) async {
     final date = await showDatePicker(context: context, initialDate: initial, firstDate: DateTime.now().subtract(const Duration(days: 30)), lastDate: DateTime.now().add(const Duration(days: 365)));
@@ -63,7 +68,7 @@ class _CreateWodScreenState extends ConsumerState<CreateWodScreen> {
         'title': _title.text.trim(),
         'description': _description.text.trim(),
         'scoreType': _scoreType,
-        'timeCapS': ?_cap,
+        if (_scoreType != 'MAX_LOAD') 'timeCapS': ?_cap,
         'startsAt': _startsAt.toUtc().toIso8601String(),
         'endsAt': _endsAt.toUtc().toIso8601String(),
         'sportId': ?_sportId,
@@ -104,7 +109,8 @@ class _CreateWodScreenState extends ConsumerState<CreateWodScreen> {
           onSelectionChanged: (s) => setState(() => _scoreType = s.first),
         ),
         const SizedBox(height: 16),
-        if (_scoreType != 'MAX_LOAD') TimeField(label: l.wodTimeCap, onChanged: (v) => setState(() => _cap = v)),
+        if (_scoreType != 'MAX_LOAD') TimeField(key: const Key('wod-cap'), controller: _capText, label: l.wodTimeCap, onChanged: (v) => setState(() => _cap = v)),
+        if (_capInvalid) Padding(padding: const EdgeInsets.only(top: 4), child: Text(l.wodCapTooShort, style: TextStyle(color: t.colorScheme.error))),
         const SizedBox(height: 8),
         ListTile(contentPadding: EdgeInsets.zero, leading: const Icon(Icons.play_circle_outline), title: Text(l.wodStarts), subtitle: Text(fmt(_startsAt)), onTap: () async {
           final d = await _pick(_startsAt);

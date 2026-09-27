@@ -63,9 +63,11 @@ void main() {
       await tester.enterText(find.byKey(Key('station-$i')), '5:00');
     }
     await tester.pump();
-    expect(find.text('40:00'), findsOneWidget); // computed total, still editable
-    await tester.enterText(find.byKey(const Key('hyrox-total')), '1:18:30');
+    // Stations alone are not a race time: no total, Add disabled, until the runs are entered.
+    expect(tester.widget<FilledButton>(find.widgetWithText(FilledButton, 'Add to workout')).onPressed, isNull);
+    await tester.enterText(find.byKey(const Key('hyrox-runs')), '38:30');
     await tester.pump();
+    expect(find.text('1:18:30'), findsOneWidget); // 8 × 5:00 + 38:30, still editable
     await tester.tap(find.widgetWithText(FilledButton, 'Add to workout'));
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(find.byKey(const Key('log-save')), 400, scrollable: find.byType(Scrollable).first);
