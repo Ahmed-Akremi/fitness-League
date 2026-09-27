@@ -18,9 +18,9 @@ type Tx = Prisma.TransactionClient;
 /** XP events eligible for the daily/weekly caps (quests are onboarding rewards and stay outside). */
 const CAPPED_SOURCE = ['workout', 'pr'];
 /** Metrics whose PRs earn XP; REPS_AT_WEIGHT records are kept for history only. */
-const XP_METRICS = new Set(['E1RM', 'MAX_WEIGHT', 'MAX_REPS', 'DISTANCE', 'PACE', 'TIME_1K', 'TIME_5K', 'TIME_10K', 'TIME_21K']);
+const XP_METRICS = new Set(['E1RM', 'FINISH_TIME', 'MAX_WEIGHT', 'MAX_REPS', 'DISTANCE', 'PACE', 'TIME_1K', 'TIME_5K', 'TIME_10K', 'TIME_21K']);
 /** When one workout improves several metrics of an exercise, only the most meaningful one is rewarded. */
-const PR_PRIORITY = ['E1RM', 'TIME_21K', 'TIME_10K', 'TIME_5K', 'TIME_1K', 'MAX_WEIGHT', 'PACE', 'MAX_REPS', 'DISTANCE'];
+const PR_PRIORITY = ['E1RM', 'FINISH_TIME', 'TIME_21K', 'TIME_10K', 'TIME_5K', 'TIME_1K', 'MAX_WEIGHT', 'PACE', 'MAX_REPS', 'DISTANCE'];
 
 /**
  * Consumes workout events from the outbox and turns them into progress, records and XP (docs §5.3).

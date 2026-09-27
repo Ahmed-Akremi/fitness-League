@@ -9,7 +9,7 @@ import { OutboxService } from '../../common/outbox/outbox.service';
 import { CursorCodec } from '../../common/pagination/cursor';
 import { Page, toPage } from '../../common/pagination/page';
 import { PrismaService } from '../../common/prisma/prisma.service';
-import { evaluateWorkout, Evaluation, OVERLAP_TOLERANCE_MS, RuleHit } from '../anticheat/rules';
+import { evaluateWorkout, Evaluation, OVERLAP_TOLERANCE_MS, Plausibility, RuleHit } from '../anticheat/rules';
 import { RuleSetService } from '../scoring/rule-set.service';
 import { SocialAccess } from '../social/social-access';
 import { PrivacyService } from '../users/privacy.service';
@@ -265,7 +265,7 @@ export class WorkoutsService {
       config,
       (code) => {
         const ex = [...input.catalog.values()].find((e) => e.code === code);
-        return (ex?.plausibility ?? {}) as { hold_kg?: number; reject_kg?: number };
+        return (ex?.plausibility ?? {}) as Plausibility;
       },
     );
     return { ...evaluation, ruleSetVersion: version, fingerprint: fp };

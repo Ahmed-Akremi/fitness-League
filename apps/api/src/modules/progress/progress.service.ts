@@ -48,7 +48,7 @@ export class ProgressService {
 
   async recordWorkout(tx: Tx, ctx: RecordContext): Promise<{ prs: PrOutcome[]; observations: Observation[] }> {
     const metrics = await this.metricTypes(tx);
-    const observations = extractObservations(ctx.input, ctx.tracked, ctx.config);
+    const observations = extractObservations(ctx.input, ctx.tracked, ctx.config, (code) => metrics.get(code)?.direction === 'LOWER_IS_BETTER');
     const codeOf = new Map(ctx.input.exercises.map((e) => [e.exerciseId, e.exerciseCode]));
 
     await tx.metricObservation.deleteMany({ where: { workoutId: ctx.workoutId } });

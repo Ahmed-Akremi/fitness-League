@@ -109,24 +109,27 @@ describe('Admin API: 2FA sign-in, users, rule sets, seasons, ledger (integration
   it('edits rule sets as drafts, validates with a dry run, and lets only super admins activate', async () => {
     const admin = await staff('ADMIN');
     const superAdmin = await staff('SUPER_ADMIN');
+    // The seed ships v1 then v2 (v2 active); a new draft is based on whatever is active.
+    const base = (await prisma.scoringRuleSet.findFirstOrThrow({ where: { status: 'ACTIVE' } })).version;
+    const v = base + 1;
     const draft = await api().post('/api/v1/admin/rule-sets').set(admin.auth).send({ changeNote: 'Double the workout base XP' }).expect(201);
-    expect(draft.body).toMatchObject({ version: 2, status: 'DRAFT', basedOnVersion: 1 });
+    expect(draft.body).toMatchObject({ version: v, status: 'DRAFT', basedOnVersion: base });
 
     const config = { ...draft.body.config, lp_weights: { progress: 0.5, consistency: 0.25, performance: 0.2, challenge: 0.15 } };
-    const invalid = await api().put('/api/v1/admin/rule-sets/2').set(admin.auth).send({ config }).expect(422);
+    const invalid = await api().put(`/api/v1/admin/rule-sets/${v}`).set(admin.auth).send({ config }).expect(422);
     expect(invalid.body.errors[0]).toMatchObject({ field: 'config.lp_weights', code: 'INVALID' });
 
-    await api().put('/api/v1/admin/rule-sets/2').set(admin.auth).send({ config: { ...draft.body.config, workout_base_xp: 20 } }).expect(200);
-    const check = await api().post('/api/v1/admin/rule-sets/2/validate').set(admin.auth).expect(200);
+    await api().put(`/api/v1/admin/rule-sets/${v}`).set(admin.auth).send({ config: { ...draft.body.config, workout_base_xp: 20 } }).expect(200);
+    const check = await api().post(`/api/v1/admin/rule-sets/${v}/validate`).set(admin.auth).expect(200);
     expect(check.body).toMatchObject({ valid: true, dryRun: { users: expect.any(Number) } });
 
-    await api().post('/api/v1/admin/rule-sets/2/activate').set(admin.auth).expect(403);
-    await api().post('/api/v1/admin/rule-sets/2/activate').set(superAdmin.auth).expect(200);
+    await api().post(`/api/v1/admin/rule-sets/${v}/activate`).set(admin.auth).expect(403);
+    await api().post(`/api/v1/admin/rule-sets/${v}/activate`).set(superAdmin.auth).expect(200);
     const list = await api().get('/api/v1/admin/rule-sets').set(admin.auth).expect(200);
-    expect(list.body.map((r: { version: number; status: string }) => `${r.version}:${r.status}`)).toEqual(['2:ACTIVE', '1:ARCHIVED']);
-    await api().put('/api/v1/admin/rule-sets/2').set(admin.auth).send({ config: draft.body.config }).expect(409); // published = immutable
+    expect(list.body.map((r: { version: number; status: string }) => `${r.version}:${r.status}`)).toEqual([`${v}:ACTIVE`, ...Array.from({ length: base }, (_, i) => `${base - i}:ARCHIVED`)]);
+    await api().put(`/api/v1/admin/rule-sets/${v}`).set(admin.auth).send({ config: draft.body.config }).expect(409); // published = immutable
 
-    // New workouts are scored with v2 (base 20 + 60 min / 3 = 40), and the entry records the version.
+    // New workouts are scored with the new version (base 20 + 60 min / 3 = 40), and the entry records the version.
     const athlete = await registerUser(app, prisma);
     const sport = await prisma.sport.findUniqueOrThrow({ where: { code: 'POWERLIFTING' } });
     const squat = await prisma.exercise.findUniqueOrThrow({ where: { code: 'BACK_SQUAT' } });
@@ -134,7 +137,7 @@ describe('Admin API: 2FA sign-in, users, rule sets, seasons, ledger (integration
     await api().post('/api/v1/workouts').set({ authorization: `Bearer ${athlete.session.accessToken}` }).set('idempotency-key', w.clientId).send(w).expect(201);
     await app.get(OutboxDispatcher).drainAll();
     const xp = await prisma.xpTransaction.findFirstOrThrow({ where: { userId: athlete.session.userId, reason: 'WORKOUT' } });
-    expect(xp).toMatchObject({ amount: 40, ruleSetVersion: 2 });
+    expect(xp).toMatchObject({ amount: 40, ruleSetVersion: v });
     expect(await prisma.auditLog.count({ where: { action: 'RULESET_ACTIVATED' } })).toBe(1);
   });
 

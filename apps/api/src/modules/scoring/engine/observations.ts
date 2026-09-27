@@ -21,13 +21,16 @@ const STANDARD_DISTANCES: [string, number][] = [
  * Standard-distance times are projected from the average pace of a run at least that long
  * (ASSUMPTION: no splits before wearable integrations, docs §12.2).
  */
+/** Fallback when metric directions are not loaded (unit tests); the scoring service passes the real ones. */
+export const defaultLowerIsBetter = (code: string) => code === 'PACE' || code === 'FINISH_TIME' || code.startsWith('TIME_');
+
 export function extractObservations(
   w: WorkoutInput,
   tracked: (exerciseId: string) => string[],
   config: Pick<RuleSetConfig, 'e1rm_formula' | 'e1rm_max_reps'>,
+  lowerIsBetter: (code: string) => boolean = defaultLowerIsBetter,
 ): Observation[] {
   const best = new Map<string, Observation>();
-  const lowerIsBetter = (code: string) => code === 'PACE' || code.startsWith('TIME_');
   const offer = (o: Observation) => {
     const key = `${o.exerciseId}|${o.metricCode}|${o.qualifier}`;
     const cur = best.get(key);
@@ -50,6 +53,8 @@ export function extractObservations(
         if (metrics.has('REPS_AT_WEIGHT')) offer({ exerciseId: ex.exerciseId, metricCode: 'REPS_AT_WEIGHT', qualifier: weight, value: reps });
       }
       if (reps >= 1 && metrics.has('MAX_REPS')) offer({ exerciseId: ex.exerciseId, metricCode: 'MAX_REPS', qualifier: 0, value: reps });
+      // Benchmark WODs, Hyrox races and stations: one timed set = the finish time.
+      if (s.durationS && s.durationS > 0 && metrics.has('FINISH_TIME')) offer({ exerciseId: ex.exerciseId, metricCode: 'FINISH_TIME', qualifier: 0, value: s.durationS });
 
       if (s.distanceM) {
         distance += s.distanceM;

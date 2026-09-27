@@ -40,6 +40,8 @@ export interface Evaluation {
 }
 
 type AnticheatRules = RuleSetConfig['anticheat'];
+/** Per-exercise bounds from the catalog: loads (kg), finish times (s), AMRAP totals (reps). */
+export type Plausibility = { hold_kg?: number; reject_kg?: number; hold_s?: number; reject_s?: number; hold_reps?: number; reject_reps?: number };
 type Limits = { hold: number; reject: number };
 
 const LIFTS = ['BACK_SQUAT', 'BENCH_PRESS', 'DEADLIFT'] as const;
@@ -64,7 +66,7 @@ export function evaluateWorkout(
   w: WorkoutInput,
   ctx: EvaluationContext,
   config: Pick<RuleSetConfig, 'anticheat' | 'late_log_max_hours' | 'e1rm_formula' | 'e1rm_max_reps'>,
-  plausibility: (exerciseCode: string) => { hold_kg?: number; reject_kg?: number },
+  plausibility: (exerciseCode: string) => Plausibility,
 ): Evaluation {
   const r = config.anticheat;
   const hits: (RuleHit | null)[] = [];
@@ -86,14 +88,17 @@ export function evaluateWorkout(
   hits.push(above('SETS_PER_WORKOUT', setCount, r.sets_per_workout));
 
   w.exercises.forEach((ex, exerciseIndex) => {
+    const p = plausibility(ex.exerciseCode);
     ex.sets.forEach((s, setIndex) => {
-      if (s.reps != null) {
+      // AMRAP totals (e.g. Cindy) are judged by their own bounds below, not the per-set rep limit.
+      if (s.reps != null && !p.hold_reps) {
         const limits = ex.isBodyweight || !s.weightKg ? r.reps_bodyweight : r.reps_weighted;
         hits.push(above('REPS_PER_SET', s.reps, limits, { exerciseIndex, setIndex }));
       }
     });
     hits.push(...strengthHits(ex, exerciseIndex, ctx.bodyWeightKg, r, config, plausibility));
     hits.push(...cardioHits(ex, exerciseIndex, w, r));
+    hits.push(...timedHits(ex, exerciseIndex, p));
   });
 
   // History
@@ -124,7 +129,7 @@ function strengthHits(
   bodyWeightKg: number | null,
   r: AnticheatRules,
   config: Pick<RuleSetConfig, 'e1rm_formula' | 'e1rm_max_reps'>,
-  plausibility: (exerciseCode: string) => { hold_kg?: number; reject_kg?: number },
+  plausibility: (exerciseCode: string) => Plausibility,
 ): (RuleHit | null)[] {
   const sets = workingSets(ex.sets).filter((s) => (s.weightKg ?? 0) > 0);
   if (!sets.length) return [];
@@ -141,6 +146,16 @@ function strengthHits(
   const p = plausibility(ex.exerciseCode);
   if (p.hold_kg && p.reject_kg) return [above('LOAD_KG', maxLoad, { hold: p.hold_kg, reject: p.reject_kg }, { exerciseIndex })];
   return [];
+}
+
+/** Finish times (lower is suspicious) and AMRAP totals (higher is suspicious) against the exercise's bounds. */
+function timedHits(ex: WorkoutInput['exercises'][number], exerciseIndex: number, p: Plausibility): (RuleHit | null)[] {
+  const out: (RuleHit | null)[] = [];
+  ex.sets.forEach((s, setIndex) => {
+    if (p.hold_s && p.reject_s && s.durationS) out.push(below('FINISH_TIME_S', s.durationS, { hold: p.hold_s, reject: p.reject_s }, { exerciseIndex, setIndex }));
+    if (p.hold_reps && p.reject_reps && s.reps != null) out.push(above('WOD_TOTAL_REPS', s.reps, { hold: p.hold_reps, reject: p.reject_reps }, { exerciseIndex, setIndex }));
+  });
+  return out;
 }
 
 function cardioHits(ex: WorkoutInput['exercises'][number], exerciseIndex: number, w: WorkoutInput, r: AnticheatRules): (RuleHit | null)[] {

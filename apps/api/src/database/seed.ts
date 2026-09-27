@@ -1,6 +1,6 @@
 /**
  * Idempotent seed: Tunisia (24 governorates + cities), sports, metric types, exercises, divisions,
- * default scoring rule set v1 (+ expected progression), current & next season, First Step badge, sample gyms.
+ * default scoring rule sets v1 and v2 (+ expected progression), current & next season, First Step badge, sample gyms.
  * Safe to run repeatedly: everything is upserted by a stable business key.
  */
 import { createHash } from 'node:crypto';
@@ -124,22 +124,30 @@ async function seedCatalog(prisma: PrismaClient, data: CatalogData): Promise<voi
   }
 }
 
-async function seedRuleSet(prisma: PrismaClient, data: RuleSetData, divisions: CatalogData['divisions']): Promise<void> {
+async function seedRuleSet(prisma: PrismaClient, data: RuleSetData, divisions: CatalogData['divisions'], opts: { supersede?: boolean } = {}): Promise<void> {
   const config = ruleSetConfigSchema.parse(data.config);
   const existing = await prisma.scoringRuleSet.findUnique({ where: { version: data.version } });
   // A published rule set is immutable: never overwrite it, even from the seed.
+  // `supersede`: a newer shipped version replaces the active one ONCE, when first created (never re-activated later,
+  // so an admin's later choice sticks). Not retroactive: past scores keep the version they were computed with.
+  const active = await prisma.scoringRuleSet.findFirst({ where: { status: 'ACTIVE' } });
+  const activate = !active || (opts.supersede && active.version < data.version);
   const ruleSet =
     existing ??
-    (await prisma.scoringRuleSet.create({
-      data: {
-        id: uuidv7(),
-        version: data.version,
-        status: (await prisma.scoringRuleSet.count({ where: { status: 'ACTIVE' } })) ? 'DRAFT' : 'ACTIVE',
-        config,
-        configHash: createHash('sha256').update(JSON.stringify(config)).digest(),
-        changeNote: data.changeNote,
-        activatedAt: new Date(),
-      },
+    (await prisma.$transaction(async (tx) => {
+      if (activate && active) await tx.scoringRuleSet.update({ where: { id: active.id }, data: { status: 'ARCHIVED' } });
+      return tx.scoringRuleSet.create({
+        data: {
+          id: uuidv7(),
+          version: data.version,
+          status: activate ? 'ACTIVE' : 'DRAFT',
+          basedOnVersion: active?.version ?? null,
+          config,
+          configHash: createHash('sha256').update(JSON.stringify(config)).digest(),
+          changeNote: data.changeNote,
+          activatedAt: activate ? new Date() : null,
+        },
+      });
     }));
 
   if (!existing) {
@@ -164,8 +172,8 @@ async function seedRuleSet(prisma: PrismaClient, data: RuleSetData, divisions: C
     });
   }
 
-  const active = await prisma.scoringRuleSet.findFirstOrThrow({ where: { status: 'ACTIVE' } });
-  const thresholds = ruleSetConfigSchema.parse(active.config).division_thresholds;
+  const current = await prisma.scoringRuleSet.findFirstOrThrow({ where: { status: 'ACTIVE' } });
+  const thresholds = ruleSetConfigSchema.parse(current.config).division_thresholds;
   for (const d of divisions) {
     const fields = { order: d.order, minLp: thresholds[d.code]!, nameI18n: d.name };
     await prisma.division.upsert({ where: { code: d.code }, update: fields, create: { id: uuidv7(), code: d.code, ...fields } });
@@ -216,6 +224,7 @@ export async function seed(prisma: PrismaClient, now = new Date()): Promise<void
   await seedLocations(prisma, readJson<TunisiaData>('tunisia.json'));
   await seedCatalog(prisma, catalog);
   await seedRuleSet(prisma, readJson<RuleSetData>('ruleset-v1.json'), catalog.divisions);
+  await seedRuleSet(prisma, readJson<RuleSetData>('ruleset-v2.json'), catalog.divisions, { supersede: true });
   await seedSeasons(prisma, now);
   await seedGyms(prisma, catalog.gyms);
 }

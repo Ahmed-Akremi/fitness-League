@@ -125,6 +125,31 @@ describe('extractObservations', () => {
     expect(get('MAX_REPS')).toBe(10);
   });
 
+  it('records FINISH_TIME from a timed set and keeps the lowest', () => {
+    const obs = extractObservations(
+      {
+        sportId: 's',
+        workoutType: 'WOD',
+        performedAt: new Date(),
+        durationS: 900,
+        exercises: [{ exerciseId: 'fran', exerciseCode: 'WOD_FRAN', isBodyweight: false, sets: [{ durationS: 312 }, { durationS: 298 }] }],
+      },
+      () => ['FINISH_TIME'],
+      config,
+      (code) => code === 'FINISH_TIME',
+    );
+    expect(obs).toEqual([{ exerciseId: 'fran', metricCode: 'FINISH_TIME', qualifier: 0, value: 298 }]);
+  });
+
+  it('ignores FINISH_TIME when the set has no duration', () => {
+    const obs = extractObservations(
+      { sportId: 's', workoutType: 'WOD', performedAt: new Date(), durationS: 900, exercises: [{ exerciseId: 'fran', exerciseCode: 'WOD_FRAN', isBodyweight: false, sets: [{ reps: 45 }] }] },
+      () => ['FINISH_TIME'],
+      config,
+    );
+    expect(obs).toEqual([]);
+  });
+
   it('projects standard-distance times from a longer run', () => {
     const obs = extractObservations(
       { sportId: 'r', workoutType: 'RUN', performedAt: new Date(), durationS: 3000, exercises: [{ exerciseId: 'run', exerciseCode: 'RUN', isBodyweight: true, sets: [{ distanceM: 10000, durationS: 3000 }] }] },

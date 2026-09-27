@@ -36,7 +36,30 @@ const lift = (code: string, weightKg: number, reps = 1): WorkoutInput => ({
 const evalW = (w: WorkoutInput, c = ctx()) => evaluateWorkout(w, c, config, plaus);
 const rules = (w: WorkoutInput, c = ctx()) => evalW(w, c).hits.map((h) => `${h.rule}:${h.severity}`);
 
+const timed = (code: string, durationS: number, reps?: number): WorkoutInput => ({
+  sportId: 'cf',
+  workoutType: 'WOD',
+  performedAt: new Date('2026-09-25T07:00:00Z'),
+  durationS: Math.max(durationS, 600),
+  exercises: [{ exerciseId: 'x', exerciseCode: code, isBodyweight: false, sets: [reps === undefined ? { durationS } : { reps }] }],
+});
+const timedPlaus = (code: string) =>
+  ({ HYROX_OPEN: { hold_s: 3300, reject_s: 3000 }, WOD_FRAN: { hold_s: 120, reject_s: 100 }, WOD_CINDY: { hold_reps: 700, reject_reps: 900 } })[code] ?? {};
+
 describe('anti-cheat rules (layer 1)', () => {
+  it('rejects an impossible Hyrox time and holds a suspicious Fran', () => {
+    expect(evaluateWorkout(timed('HYROX_OPEN', 2700), ctx(), config, timedPlaus).outcome).toBe('REJECTED');
+    expect(evaluateWorkout(timed('HYROX_OPEN', 4200), ctx(), config, timedPlaus).outcome).toBe('ACCEPTED');
+    const fran = evaluateWorkout(timed('WOD_FRAN', 110), ctx(), config, timedPlaus);
+    expect(fran.outcome).toBe('HELD_FOR_REVIEW');
+    expect(fran.hits.map((h) => h.rule)).toContain('FINISH_TIME_S');
+  });
+
+  it('judges an AMRAP total with its own bounds instead of the per-set rep limit', () => {
+    expect(evaluateWorkout(timed('WOD_CINDY', 0, 410), ctx(), config, timedPlaus).outcome).toBe('ACCEPTED');
+    expect(evaluateWorkout(timed('WOD_CINDY', 0, 950), ctx(), config, timedPlaus).hits.map((h) => `${h.rule}:${h.severity}`)).toEqual(['WOD_TOTAL_REPS:HARD']);
+  });
+
   it('accepts a normal 5K run', () => {
     expect(evalW(run(5000, 27 * 60))).toMatchObject({ outcome: 'ACCEPTED', hits: [], countsForCompetition: true });
   });
