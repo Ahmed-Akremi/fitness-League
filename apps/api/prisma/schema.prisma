@@ -108,6 +108,28 @@ enum GymMemberRole {
   COACH
 }
 
+enum WodScoreType {
+  FOR_TIME
+  AMRAP
+  MAX_LOAD
+}
+
+enum GymWodStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum WodDivision {
+  RX
+  SCALED
+}
+
+enum WodScoreStatus {
+  VALID
+  INVALIDATED
+}
+
 enum ExerciseGroup {
   MOVEMENT
   BENCHMARK_WOD
@@ -373,6 +395,8 @@ model User {
   seasonStandings    SeasonStanding[]
   gymMemberships     GymMember[]              @relation("GymMemberUser")
   ownedGyms          Gym[]                    @relation("GymOwner")
+  gymWods            GymWod[]                 @relation("GymWodAuthor")
+  gymWodScores       GymWodScore[]            @relation("GymWodScoreUser")
   battleParticipants BattleParticipant[]
   battlesCreated     Battle[]                 @relation("BattleCreator")
   notifications      Notification[]
@@ -609,6 +633,7 @@ model Sport {
   userSports          UserSport[]
   expectedProgression ExpectedProgression[]
   gyms                GymSport[]
+  gymWods             GymWod[]
 
   @@map("sports")
 }
@@ -692,6 +717,7 @@ model Workout {
   exercises          WorkoutExercise[]
   evaluation         WorkoutEvaluation?
   personalRecords    PersonalRecord[]
+  gymWodScores       GymWodScore[]
   metricObservations MetricObservation[]
 
   @@unique([userId, clientId])
@@ -1267,6 +1293,7 @@ model Gym {
   verificationRequests GymVerificationRequest[]
   primaryForProfiles   Profile[]
   sports               GymSport[]
+  wods                 GymWod[]
 
   @@index([governorateId, status])
   @@map("gyms")
@@ -1426,4 +1453,54 @@ model GymSport {
   @@id([gymId, sportId])
   @@index([sportId])
   @@map("gym_sports")
+}
+
+/// Coach-made WOD of a gym (spec §4). Scores count for the gym board and plain workout XP, never PRs or national LP.
+model GymWod {
+  id          String       @id @db.Uuid
+  gymId       String       @map("gym_id") @db.Uuid
+  createdById String       @map("created_by") @db.Uuid
+  title       String
+  description String
+  scoreType   WodScoreType @map("score_type")
+  timeCapS    Int?         @map("time_cap_s")
+  startsAt    DateTime     @map("starts_at") @db.Timestamptz
+  endsAt      DateTime     @map("ends_at") @db.Timestamptz
+  status      GymWodStatus @default(PUBLISHED)
+  sportId     String?      @map("sport_id") @db.Uuid
+  createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime     @updatedAt @map("updated_at") @db.Timestamptz
+
+  gym       Gym           @relation(fields: [gymId], references: [id])
+  createdBy User          @relation("GymWodAuthor", fields: [createdById], references: [id])
+  sport     Sport?        @relation(fields: [sportId], references: [id])
+  scores    GymWodScore[]
+
+  @@index([gymId, status, endsAt])
+  @@map("gym_wods")
+}
+
+/// One score per member and WOD (the best one); value = seconds (FOR_TIME), total reps (AMRAP) or kg (MAX_LOAD).
+model GymWodScore {
+  id                 String         @id @db.Uuid
+  wodId              String         @map("wod_id") @db.Uuid
+  userId             String         @map("user_id") @db.Uuid
+  division           WodDivision
+  value              Decimal        @db.Decimal(10, 2)
+  rounds             Int?
+  reps               Int?
+  workoutId          String         @map("workout_id") @db.Uuid
+  status             WodScoreStatus @default(VALID)
+  invalidatedById    String?        @map("invalidated_by") @db.Uuid
+  invalidationReason String?        @map("invalidation_reason")
+  createdAt          DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime       @updatedAt @map("updated_at") @db.Timestamptz
+
+  wod     GymWod  @relation(fields: [wodId], references: [id])
+  user    User    @relation("GymWodScoreUser", fields: [userId], references: [id])
+  workout Workout @relation(fields: [workoutId], references: [id])
+
+  @@unique([wodId, userId])
+  @@index([wodId, division, status, value])
+  @@map("gym_wod_scores")
 }
