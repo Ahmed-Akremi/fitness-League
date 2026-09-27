@@ -10,6 +10,7 @@ import { existsSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { PrismaClient } from '@prisma/client';
 import { uuidv7 } from '../src/common/ids/uuid';
+import { demoGyms } from './demo-gyms';
 
 const API = process.env.DEMO_API_URL ?? 'http://localhost:3000/api/v1';
 export const DEMO_PASSWORD = 'demo-password-2026';
@@ -38,7 +39,8 @@ async function main(): Promise<void> {
   const prisma = new PrismaClient();
   try {
     if (await prisma.user.findUnique({ where: { username: 'ahmed' } })) {
-      console.log('Demo data already present.');
+      console.log('Demo users already present.');
+      await demoGyms(prisma, API, call, DEMO_PASSWORD);
       return;
     }
     const sports = await call<{ id: string; code: string }[]>('GET', '/ref/sports');
@@ -131,6 +133,7 @@ async function main(): Promise<void> {
     });
     await prisma.user.update({ where: { id: admin.userId }, data: { role: 'SUPER_ADMIN', emailVerifiedAt: new Date() } });
 
+    await demoGyms(prisma, API, call, DEMO_PASSWORD);
     console.log(`Demo ready. Athletes: ${athletes.map((a) => `${a.username}@demo.fitnessleague.test`).join(', ')}`);
     console.log(`Admin: admin@demo.fitnessleague.test — password for all: ${DEMO_PASSWORD}`);
   } finally {
