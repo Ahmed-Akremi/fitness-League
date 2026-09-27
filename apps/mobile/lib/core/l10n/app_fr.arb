@@ -286,5 +286,20 @@
   "findGym": "Trouver une salle",
   "findGymHint": "Rejoins ta salle pour sa ligue et ses WODs",
   "rankNationalShort": "Tunisie",
-  "shortcuts": "Raccourcis"
+  "shortcuts": "Raccourcis",
+  "addMyGym": "Ajouter ma salle",
+  "addMyGymIntro": "Tu possèdes ou gères une salle ? Déclare-la : un admin Fitness League la vérifie, puis tu en deviens l'admin et tu peux nommer des coachs.",
+  "gymPhoto": "Photo",
+  "gymDetails": "Salle",
+  "gymName": "Nom de la salle",
+  "gymAddress": "Adresse (facultatif)",
+  "gymContact": "Contact (privé, pour l'équipe admin)",
+  "gymPhone": "Téléphone",
+  "gymProof": "Preuve de propriété",
+  "gymProofHint": "N° RNE, site web, bail…",
+  "gymSubmit": "Envoyer pour vérification",
+  "gymSubmitted": "Merci ! Ta salle est en attente de validation par un admin. Tu en deviendras l'admin une fois vérifiée.",
+  "gymPending": "En attente de vérification",
+  "gymRejected": "Demande refusée",
+  "myGyms": "Mes salles"
 }

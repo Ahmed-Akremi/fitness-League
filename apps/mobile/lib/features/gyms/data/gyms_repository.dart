@@ -18,6 +18,8 @@ class GymsRepository {
         'cursor': ?cursor,
       });
   Future<Map<String, dynamic>> get(String id) => api.get<Map<String, dynamic>>('/gyms/$id');
+  Future<Map<String, dynamic>> create(Map<String, dynamic> body) => api.post<Map<String, dynamic>>('/gyms', data: body);
+  Future<List<Map<String, dynamic>>> mine() async => (await api.get<List<dynamic>>('/gyms/mine')).cast<Map<String, dynamic>>();
   Future<void> join(String id) => api.post<dynamic>('/gyms/$id/membership');
   Future<void> leave() => api.delete<dynamic>('/gyms/me/membership');
   Future<Map<String, dynamic>> uploadLogo(String id, List<int> bytes, String filename) => api.upload<Map<String, dynamic>>('/gyms/$id/logo', bytes: bytes, filename: filename);
@@ -29,3 +31,4 @@ class GymsRepository {
 
 final gymsRepositoryProvider = Provider<GymsRepository>((ref) => GymsRepository(ref.watch(apiClientProvider)));
 final gymProvider = FutureProvider.autoDispose.family<Map<String, dynamic>, String>((ref, id) => ref.watch(gymsRepositoryProvider).get(id));
+final myGymsProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) => ref.watch(gymsRepositoryProvider).mine());

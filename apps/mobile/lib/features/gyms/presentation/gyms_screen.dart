@@ -94,7 +94,9 @@ class _GymsScreenState extends ConsumerState<GymsScreen> {
     final locale = Localizations.localeOf(context).languageCode;
     final govName = _gov == null ? null : govs.where((g) => g['id'] == _gov).map((g) => localized(g['name'], locale)).firstOrNull;
     return Scaffold(
-      appBar: AppBar(title: Text(l.gymsTitle)),
+      appBar: AppBar(title: Text(l.gymsTitle), actions: [
+        IconButton(tooltip: l.addMyGym, icon: const Icon(Icons.add_business_outlined), onPressed: () => context.push('/gyms/new')),
+      ]),
       body: Column(children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),

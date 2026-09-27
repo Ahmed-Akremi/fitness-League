@@ -471,5 +471,20 @@
   "findGym": "Find a gym",
   "findGymHint": "Join your gym to compete in its league and WODs",
   "rankNationalShort": "Tunisia",
-  "shortcuts": "Shortcuts"
+  "shortcuts": "Shortcuts",
+  "addMyGym": "Add my gym",
+  "addMyGymIntro": "You own or manage a gym? Submit it: a Fitness League admin checks it, then you become its admin and can appoint coaches.",
+  "gymPhoto": "Photo",
+  "gymDetails": "Gym",
+  "gymName": "Gym name",
+  "gymAddress": "Address (optional)",
+  "gymContact": "Contact (private, for the admin team)",
+  "gymPhone": "Phone",
+  "gymProof": "Proof of ownership",
+  "gymProofHint": "Business registration number, website, lease…",
+  "gymSubmit": "Submit for verification",
+  "gymSubmitted": "Thanks! Your gym is waiting for approval by an admin. You'll become its admin once it is verified.",
+  "gymPending": "Waiting for verification",
+  "gymRejected": "Request declined",
+  "myGyms": "My gyms"
 }
