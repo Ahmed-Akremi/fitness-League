@@ -75,7 +75,17 @@ interface GymRequest {
   id: string;
   proofText: string | null;
   createdAt: string;
-  gym: { id: string; name: string; governorate: string; addressLine: string | null; contactPhone: string | null; contactEmail: string | null; socialLinks: Record<string, string> };
+  gym: {
+    id: string;
+    name: string;
+    governorate: string;
+    addressLine: string | null;
+    contactPhone: string | null;
+    contactEmail: string | null;
+    socialLinks: Record<string, string>;
+    logoUrl?: string | null;
+    sports?: string[];
+  };
 }
 
 export function GymVerification() {
@@ -101,9 +111,17 @@ export function GymVerification() {
       {data?.data.length === 0 && <p>Aucune demande.</p>}
       {data?.data.map((r) => (
         <article key={r.id} className="card">
-          <h3>
-            {r.gym.name} · {r.gym.governorate}
-          </h3>
+          <div className="row">
+            {r.gym.logoUrl ? (
+              <img src={r.gym.logoUrl} alt={`Logo ${r.gym.name}`} width={64} height={64} style={{ borderRadius: 14, objectFit: 'cover' }} />
+            ) : (
+              <span className="muted">Pas de logo</span>
+            )}
+            <h3>
+              {r.gym.name} · {r.gym.governorate}
+            </h3>
+          </div>
+          {r.gym.sports && r.gym.sports.length > 0 && <p>Sports : {r.gym.sports.join(', ')}</p>}
           <p>{r.gym.addressLine}</p>
           <p>
             {r.gym.contactPhone} · {r.gym.contactEmail}
