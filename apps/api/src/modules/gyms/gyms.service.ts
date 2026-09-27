@@ -156,7 +156,7 @@ export class GymsService {
     const c = q.cursor ? this.cursors.decode<{ id: string }>(q.cursor) : null;
     const rows = await this.prisma.gymVerificationRequest.findMany({
       where: { status: 'PENDING', ...(c && { id: { gt: c.id } }) },
-      include: { gym: { include: { city: true, governorate: true } } },
+      include: { gym: { include: { city: true, governorate: true, logo: true, sports: { include: { sport: true } } } } },
       orderBy: { id: 'asc' },
       take: q.limit + 1,
     });
@@ -167,7 +167,18 @@ export class GymsService {
         submittedById: r.submittedById,
         proofText: r.proofText,
         createdAt: r.createdAt.toISOString(),
-        gym: { id: r.gym.id, name: r.gym.name, city: r.gym.city.nameI18n, governorate: r.gym.governorate.code, addressLine: r.gym.addressLine, contactPhone: r.gym.contactPhone, contactEmail: r.gym.contactEmail, socialLinks: r.gym.socialLinks },
+        gym: {
+          id: r.gym.id,
+          name: r.gym.name,
+          city: r.gym.city.nameI18n,
+          governorate: r.gym.governorate.code,
+          addressLine: r.gym.addressLine,
+          contactPhone: r.gym.contactPhone,
+          contactEmail: r.gym.contactEmail,
+          socialLinks: r.gym.socialLinks,
+          logoUrl: this.logoUrl(r.gym.logo),
+          sports: r.gym.sports.map((s) => s.sport.code).sort(),
+        },
       })),
       page: page.page,
     };
@@ -313,6 +324,21 @@ export class GymsService {
     if (!gym || gym.deletedAt) throw AppException.notFound('Gym');
     if (!this.canManage(user, gym)) throw AppException.forbidden('Only this gym\'s admin can do that.');
     return gym;
+  }
+
+  /** Logo edits: the gym's admin or staff, and also the submitter while the gym awaits verification. */
+  async logoEditable(user: AuthUser, gymId: string): Promise<Gym> {
+    const gym = await this.prisma.gym.findUnique({ where: { id: gymId } });
+    if (!gym || gym.deletedAt) throw AppException.notFound('Gym');
+    const pendingSubmitter = gym.ownerUserId === user.id && gym.status === 'PENDING';
+    if (!pendingSubmitter && !this.canManage(user, gym)) throw AppException.forbidden('Only this gym\'s admin can do that.');
+    return gym;
+  }
+
+  /** Gyms I submitted or own, whatever their verification status (to follow a request). */
+  async mine(userId: string) {
+    const rows = await this.prisma.gym.findMany({ where: { ownerUserId: userId, deletedAt: null }, include: { logo: true }, orderBy: { createdAt: 'desc' } });
+    return rows.map((g) => ({ id: g.id, name: g.name, slug: g.slug, status: g.status, logoUrl: this.logoUrl(g.logo) }));
   }
 
   canManage(user: AuthUser, gym: Gym): boolean {

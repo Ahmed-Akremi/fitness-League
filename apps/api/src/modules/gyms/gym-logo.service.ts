@@ -31,7 +31,7 @@ export class GymLogoService {
   ) {}
 
   async set(user: AuthUser, gymId: string, file: { buffer: Buffer; size: number } | undefined): Promise<{ logoUrl: string }> {
-    const gym = await this.gyms.manageable(user, gymId);
+    const gym = await this.gyms.logoEditable(user, gymId);
     if (!file) throw AppException.validation([{ field: 'file', code: 'REQUIRED' }]);
     if (file.size > LOGO_MAX_BYTES) throw new AppException(HttpStatus.PAYLOAD_TOO_LARGE, ErrorCode.PAYLOAD_TOO_LARGE, 'Logo must be 2 MB or less.');
     if (!sniffImage(file.buffer)) throw new AppException(HttpStatus.UNSUPPORTED_MEDIA_TYPE, ErrorCode.UNSUPPORTED_MEDIA_TYPE, 'Logo must be a PNG, JPEG or WebP image.');
@@ -44,14 +44,21 @@ export class GymLogoService {
     }
     const hash = createHash('sha256').update(webp).digest();
     const key = `gyms/${gym.id}/logo-${hash.toString('hex').slice(0, 16)}.webp`;
+    const previous = gym.logoMediaId ? await this.prisma.media.findUnique({ where: { id: gym.logoMediaId } }) : null;
+    if (previous?.objectKey === key && previous.status !== 'DELETED') return { logoUrl: this.storage.url(key) }; // same image again: nothing to do
     await this.storage.put(key, webp, 'image/webp');
 
-    const previous = gym.logoMediaId ? await this.prisma.media.findUnique({ where: { id: gym.logoMediaId } }) : null;
-    const mediaId = uuidv7();
+    // Same content as an earlier, deleted logo: revive that media row (object keys are unique).
+    const earlier = await this.prisma.media.findUnique({ where: { objectKey: key } });
+    const mediaId = earlier?.id ?? uuidv7();
     await this.prisma.$transaction(async (tx) => {
-      await tx.media.create({
-        data: { id: mediaId, ownerId: user.id, bucket: 'gyms', objectKey: key, mime: 'image/webp', sizeBytes: webp.length, sha256: hash, status: 'READY', purpose: 'GYM_LOGO', width: LOGO_SIZE, height: LOGO_SIZE },
-      });
+      if (earlier) {
+        await tx.media.update({ where: { id: earlier.id }, data: { status: 'READY' } });
+      } else {
+        await tx.media.create({
+          data: { id: mediaId, ownerId: user.id, bucket: 'gyms', objectKey: key, mime: 'image/webp', sizeBytes: webp.length, sha256: hash, status: 'READY', purpose: 'GYM_LOGO', width: LOGO_SIZE, height: LOGO_SIZE },
+        });
+      }
       await tx.gym.update({ where: { id: gym.id }, data: { logoMediaId: mediaId } });
       if (previous) await tx.media.update({ where: { id: previous.id }, data: { status: 'DELETED' } });
       await this.audit.log({ actorId: user.id, actorRole: user.role, action: 'GYM_LOGO_UPDATED', entityType: 'gym', entityId: gym.id, after: { mediaId } }, tx);
@@ -61,7 +68,7 @@ export class GymLogoService {
   }
 
   async remove(user: AuthUser, gymId: string): Promise<void> {
-    const gym = await this.gyms.manageable(user, gymId);
+    const gym = await this.gyms.logoEditable(user, gymId);
     if (!gym.logoMediaId) return;
     const media = await this.prisma.media.findUniqueOrThrow({ where: { id: gym.logoMediaId } });
     await this.prisma.$transaction(async (tx) => {

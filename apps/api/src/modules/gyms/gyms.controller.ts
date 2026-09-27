@@ -28,6 +28,11 @@ export class GymsController {
     return this.gyms.create(user, dto);
   }
 
+  @Get('mine')
+  mine(@CurrentUser() user: AuthUser) {
+    return this.gyms.mine(user.id);
+  }
+
   @Get('me/membership')
   myMembership(@CurrentUser() user: AuthUser) {
     return this.gyms.myMembership(user.id);

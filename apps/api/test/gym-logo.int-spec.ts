@@ -58,6 +58,11 @@ describe('Gym logo upload (integration)', () => {
 
     await api().delete(`/api/v1/gyms/${gym.id}/logo`).set(bearer(owner.session.accessToken)).expect(204);
     expect((await api().get(`/api/v1/gyms/${gym.id}`).set(bearer(owner.session.accessToken)).expect(200)).body.logoUrl).toBeNull();
+
+    // Putting back a logo that was deleted before (same content → same key) works and serves the file again.
+    const back = await api().put(`/api/v1/gyms/${gym.id}/logo`).set(bearer(owner.session.accessToken)).attach('file', other, 'logo2.png').expect(200);
+    expect(back.body.logoUrl).toBe(again.body.logoUrl);
+    await api().get(new URL(back.body.logoUrl).pathname).expect(200);
   });
 
   it('refuses strangers, oversized files and fake images', async () => {
