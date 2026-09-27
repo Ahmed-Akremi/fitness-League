@@ -58,12 +58,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               child: Form(
                 key: _form,
                 child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                  Container(
-                    width: 64,
-                    height: 64,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(color: t.colorScheme.primary, borderRadius: BorderRadius.circular(18)),
-                    child: const Icon(Icons.bolt_rounded, size: 40, color: Color(0xFF0E0F12)),
+                  Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: Container(
+                      width: 64,
+                      height: 64,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(color: t.colorScheme.primary, borderRadius: BorderRadius.circular(18)),
+                      child: const Icon(Icons.bolt_rounded, size: 40, color: Color(0xFF0E0F12)),
+                    ),
                   ),
                   const SizedBox(height: 20),
                   Text(appName.toUpperCase(), style: t.textTheme.displaySmall?.copyWith(color: t.colorScheme.primary, height: 1)),

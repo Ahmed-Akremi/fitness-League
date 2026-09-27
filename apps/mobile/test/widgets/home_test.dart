@@ -44,6 +44,16 @@ void main() {
     expect(find.descendant(of: find.byType(Badge), matching: find.text('1')), findsOneWidget);
   });
 
+  testWidgets('in Arabic, the goal numbers stay left-to-right', (tester) async {
+    final b = backend()
+      ..on('GET', '/goals', (_) => (200, [
+            {'id': 'g1', 'status': 'ACTIVE', 'startValue': 122.5, 'targetValue': 130, 'metric': {'code': 'E1RM', 'unit': 'kg'}, 'milestones': [1, 2, 3], 'milestonesReached': 0},
+          ]));
+    await pumpScreen(tester, const HomeScreen(), b, locale: const Locale('ar'));
+    final goal = tester.widget<Text>(find.textContaining('→'));
+    expect(goal.textDirection, TextDirection.ltr);
+  });
+
   testWidgets('without a gym, invites to find one', (tester) async {
     await pumpScreen(tester, const HomeScreen(), backend());
     expect(find.text('Find a gym'), findsOneWidget);

@@ -165,7 +165,9 @@ class _HomeBody extends ConsumerWidget {
             label: l.yourGoal,
             onTap: () => context.go('/goals'),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('${formatMetric(g['startValue'] as num, unit, locale)} → ${formatMetric(g['targetValue'] as num, unit, locale)}', style: AppTheme.display(context, size: 28)),
+              // Numbers and units read left-to-right, also in Arabic.
+              Text('${formatMetric(g['startValue'] as num, unit, locale)} → ${formatMetric(g['targetValue'] as num, unit, locale)}',
+                  textDirection: TextDirection.ltr, style: AppTheme.display(context, size: 28)),
               const SizedBox(height: 8),
               XpBar(value: milestones.isEmpty ? 0 : (g['milestonesReached'] as int) / milestones.length),
               const SizedBox(height: 6),

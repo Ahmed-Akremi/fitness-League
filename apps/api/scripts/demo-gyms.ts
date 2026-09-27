@@ -29,8 +29,8 @@ export async function demoGyms(prisma: PrismaClient, api: string, call: Call, pa
   for (const u of Object.keys(tok)) ids[u] = (await user(u)).id;
 
   const sportId = new Map((await prisma.sport.findMany()).map((s) => [s.code, s.id]));
-  const newGyms: { slug: string; name: string; gov: string; owner: string; sports: string[]; palette: [string, string]; motif: Motif; address: string; instagram: string }[] = [
-    { slug: 'bodynade', name: 'Bodynade', gov: 'TN-11', owner: 'ahmed', sports: ['CROSSFIT', 'HYROX', 'BODYBUILDING'], palette: ['#C6F432', '#3DDC97'], motif: 'bolt', address: 'Les Berges du Lac, Tunis', instagram: 'https://instagram.com/bodynade.demo' },
+  const newGyms: { slug: string; name: string; gov: string; city?: string; owner: string; sports: string[]; palette: [string, string]; motif: Motif; address: string; instagram: string }[] = [
+    { slug: 'bodynade', name: 'Bodynade', gov: 'TN-11', city: 'Tunis', owner: 'ahmed', sports: ['CROSSFIT', 'HYROX', 'BODYBUILDING'], palette: ['#C6F432', '#3DDC97'], motif: 'bolt', address: 'Les Berges du Lac, Tunis', instagram: 'https://instagram.com/bodynade.demo' },
     { slug: 'sfax-hybrid-box', name: 'Sfax Hybrid Box', gov: 'TN-61', owner: 'karim', sports: ['CROSSFIT', 'HYROX'], palette: ['#FF8A3D', '#FF3D71'], motif: 'hex', address: 'Route de Tunis km 3, Sfax', instagram: 'https://instagram.com/sfaxhybrid.demo' },
     { slug: 'nabeul-run-row', name: 'Nabeul Run & Row', gov: 'TN-21', owner: 'karim', sports: ['RUNNING', 'HYROX'], palette: ['#3DA9FC', '#7B61FF'], motif: 'wave', address: 'Avenue Habib Bourguiba, Nabeul', instagram: 'https://instagram.com/nabeulrun.demo' },
     { slug: 'bizerte-barbell', name: 'Bizerte Barbell', gov: 'TN-23', owner: 'karim', sports: ['POWERLIFTING', 'WEIGHT_TRAINING'], palette: ['#F5F5F5', '#9AA0A6'], motif: 'bar', address: 'Corniche, Bizerte', instagram: 'https://instagram.com/bizertebarbell.demo' },
@@ -39,8 +39,9 @@ export async function demoGyms(prisma: PrismaClient, api: string, call: Call, pa
   for (const g of newGyms) {
     const gov = await prisma.governorate.findUnique({ where: { code: g.gov }, include: { cities: { orderBy: { code: 'asc' } } } });
     if (!gov) throw new Error(`Unknown governorate ${g.gov}`);
+    const city = gov.cities.find((c) => (c.nameI18n as { fr?: string }).fr === g.city) ?? gov.cities[0]!;
     await prisma.gym.create({
-      data: { id: uuidv7(), slug: g.slug, name: g.name, governorateId: gov.id, cityId: gov.cities[0]!.id, addressLine: g.address, socialLinks: { instagram: g.instagram }, status: 'VERIFIED', verifiedAt: new Date(), ownerUserId: ids[g.owner] },
+      data: { id: uuidv7(), slug: g.slug, name: g.name, governorateId: gov.id, cityId: city.id, addressLine: g.address, socialLinks: { instagram: g.instagram }, status: 'VERIFIED', verifiedAt: new Date(), ownerUserId: ids[g.owner] },
     });
   }
   // Catalog gyms get an owner too, so their logo goes through the same API path.

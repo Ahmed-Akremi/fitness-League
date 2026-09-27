@@ -61,6 +61,16 @@ void main() {
     expect(find.text('No gym found'), findsOneWidget);
   });
 
+  testWidgets('French plural: a gym without members shows 0, not 1', (tester) async {
+    final b = FakeBackend()
+      ..on('GET', '/ref/sports', (_) => (200, <Object>[]))
+      ..on('GET', '/ref/governorates', (_) => (200, <Object>[]))
+      ..on('GET', '/gyms', (_) => (200, {'data': [gym('z', 'Zero Gym', ['BODYBUILDING'], 0)], 'page': {'nextCursor': null, 'hasMore': false}}));
+    await pumpScreen(tester, const GymsScreen(), b, locale: const Locale('fr'));
+    expect(find.text('0 membre'), findsOneWidget);
+    expect(find.text('1 membre'), findsNothing);
+  });
+
   testWidgets('lays out right-to-left in Arabic', (tester) async {
     await pumpScreen(tester, const GymsScreen(), backend(), locale: const Locale('ar'));
     expect(Directionality.of(tester.element(find.text('Bodynade'))), TextDirection.rtl);
