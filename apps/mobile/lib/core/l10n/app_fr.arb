@@ -281,5 +281,10 @@
   "showAgeBracket": "Afficher ma tranche d'âge",
   "showOnLeaderboards": "Apparaître dans les classements",
   "sendLink": "Envoyer le lien",
-  "resetLinkSent": "Si un compte existe pour cet email, un lien de réinitialisation arrive."
+  "resetLinkSent": "Si un compte existe pour cet email, un lien de réinitialisation arrive.",
+  "myGym": "Ma salle",
+  "findGym": "Trouver une salle",
+  "findGymHint": "Rejoins ta salle pour sa ligue et ses WODs",
+  "rankNationalShort": "Tunisie",
+  "shortcuts": "Raccourcis"
 }

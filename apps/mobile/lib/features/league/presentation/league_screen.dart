@@ -2,7 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/l10n/l10n.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/format.dart';
+import '../../../core/widgets/avatar_badge.dart';
+import '../../../core/widgets/gym_logo.dart';
+import 'package:go_router/go_router.dart';
+import '../../gyms/data/gyms_repository.dart';
 import '../../../core/widgets/common.dart';
 import '../../../core/widgets/error_text.dart';
 import '../../home/data/me_repository.dart';
@@ -24,14 +29,33 @@ class LeagueScreen extends ConsumerWidget {
       child: Scaffold(
         appBar: AppBar(
           title: Text(l.navLeague),
-          bottom: TabBar(tabs: [Tab(text: l.leagueGlobal), Tab(text: l.leagueRegion), Tab(text: l.leagueGym), Tab(text: l.leagueFriends)]),
+          bottom: TabBar(
+            tabs: [
+              Tab(text: l.leagueGlobal),
+              Tab(text: l.leagueRegion),
+              Tab(text: l.leagueGym),
+              Tab(text: l.leagueFriends),
+            ],
+          ),
         ),
-        body: TabBarView(children: [
-          LeaderboardList(scope: LeagueScope.national, myId: me?['id'] as String?),
-          if (governorateId != null) LeaderboardList(scope: LeagueScope.region, governorateId: governorateId, myId: me?['id'] as String?) else const SizedBox.shrink(),
-          if (gymId != null) LeaderboardList(scope: LeagueScope.gym, gymId: gymId, myId: me?['id'] as String?) else EmptyState(icon: Icons.fitness_center_rounded, message: l.noGym),
-          LeaderboardList(scope: LeagueScope.friends, myId: me?['id'] as String?),
-        ]),
+        body: TabBarView(
+          children: [
+            LeaderboardList(scope: LeagueScope.national, myId: me?['id'] as String?),
+            if (governorateId != null) LeaderboardList(scope: LeagueScope.region, governorateId: governorateId, myId: me?['id'] as String?) else const SizedBox.shrink(),
+            if (gymId != null)
+              Column(
+                children: [
+                  _GymHeader(gymId: gymId, name: (profile?['gym'] as Map)['name'] as String),
+                  Expanded(
+                    child: LeaderboardList(scope: LeagueScope.gym, gymId: gymId, myId: me?['id'] as String?),
+                  ),
+                ],
+              )
+            else
+              EmptyState(icon: Icons.fitness_center_rounded, message: l.noGym, actionLabel: l.findGym, onAction: () => context.push('/gyms')),
+            LeaderboardList(scope: LeagueScope.friends, myId: me?['id'] as String?),
+          ],
+        ),
       ),
     );
   }
@@ -97,49 +121,96 @@ class _LeaderboardListState extends ConsumerState<LeaderboardList> with Automati
     if (_error != null && _rows.isEmpty) return ErrorView(error: _error!, onRetry: () => _load(reset: true));
     if (_rows.isEmpty && _loading) return const Center(child: CircularProgressIndicator());
     if (_rows.isEmpty) return EmptyState(icon: Icons.emoji_events_rounded, message: widget.scope == LeagueScope.friends ? l.emptyFriends : l.emptyLeague);
-    return Stack(children: [
-      NotificationListener<ScrollNotification>(
-        onNotification: (n) {
-          if (n.metrics.extentAfter < 300 && _hasMore && !_loading) _load();
-          return false;
-        },
-        child: RefreshIndicator(
-          onRefresh: () => _load(reset: true),
-          child: ListView.builder(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 88),
-            itemCount: _rows.length,
-            itemBuilder: (_, i) {
-              final r = _rows[i];
-              final athlete = r['athlete'] as Map<String, dynamic>;
-              final mine = athlete['id'] == widget.myId;
-              return Card(
-                key: Key('rank-${athlete['id']}'),
-                color: mine ? t.colorScheme.primary.withValues(alpha: 0.14) : null,
-                margin: const EdgeInsets.only(bottom: 8),
-                child: ListTile(
-                  leading: SizedBox(width: 44, child: Text('#${r['rank']}', style: t.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800))),
-                  title: Text(athlete['fullName'] as String, maxLines: 1, overflow: TextOverflow.ellipsis),
-                  subtitle: Text([
-                    if (r['gym'] != null) (r['gym'] as Map)['name'],
-                    localized((r['governorate'] as Map)['name'], locale),
-                    l.level(r['level'] as int),
-                  ].join(' · ')),
-                  trailing: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.end, children: [
-                    Text('${formatNumber(r['lp'] as num, locale)} LP', style: t.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
-                    if (r['movement'] != null) MovementBadge(movement: r['movement'], newLabel: l.movementNew),
-                  ]),
-                ),
-              );
-            },
+    return Stack(
+      children: [
+        NotificationListener<ScrollNotification>(
+          onNotification: (n) {
+            if (n.metrics.extentAfter < 300 && _hasMore && !_loading) _load();
+            return false;
+          },
+          child: RefreshIndicator(
+            onRefresh: () => _load(reset: true),
+            child: ListView.builder(
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 88),
+              itemCount: _rows.length,
+              itemBuilder: (_, i) {
+                final r = _rows[i];
+                final athlete = r['athlete'] as Map<String, dynamic>;
+                final mine = athlete['id'] == widget.myId;
+                final rank = r['rank'] as int;
+                final medal = switch (rank) {
+                  1 => const Color(0xFFFFD166),
+                  2 => const Color(0xFFC0C4CC),
+                  3 => const Color(0xFFE09F6B),
+                  _ => t.colorScheme.onSurface,
+                };
+                return Card(
+                  key: Key('rank-${athlete['id']}'),
+                  color: mine ? t.colorScheme.primary.withValues(alpha: 0.14) : null,
+                  margin: const EdgeInsets.only(bottom: 8),
+                  shape: rank <= 3
+                      ? RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                          side: BorderSide(color: medal.withValues(alpha: 0.6)),
+                        )
+                      : null,
+                  child: ListTile(
+                    leading: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          width: 44,
+                          child: Text('#$rank', style: AppTheme.display(context, size: 22).copyWith(color: medal)),
+                        ),
+                        AvatarBadge(name: athlete['fullName'] as String, division: r['division'] as String?, size: 40),
+                      ],
+                    ),
+                    title: Text(athlete['fullName'] as String, maxLines: 1, overflow: TextOverflow.ellipsis),
+                    subtitle: Text([if (r['gym'] != null) (r['gym'] as Map)['name'], localized((r['governorate'] as Map)['name'], locale), l.level(r['level'] as int)].join(' · ')),
+                    trailing: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text('${formatNumber(r['lp'] as num, locale)} LP', style: AppTheme.display(context, size: 20)),
+                        if (r['movement'] != null) MovementBadge(movement: r['movement'], newLabel: l.movementNew),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
           ),
         ),
-      ),
-      if (widget.myId != null)
-        PositionedDirectional(
-          end: 16,
-          bottom: 16,
-          child: FloatingActionButton.small(heroTag: 'jump-${widget.scope.name}', tooltip: l.jumpToMe, onPressed: () => _load(aroundMe: true), child: const Icon(Icons.my_location_rounded)),
+        if (widget.myId != null)
+          PositionedDirectional(
+            end: 16,
+            bottom: 16,
+            child: FloatingActionButton.small(heroTag: 'jump-${widget.scope.name}', tooltip: l.jumpToMe, onPressed: () => _load(aroundMe: true), child: const Icon(Icons.my_location_rounded)),
+          ),
+      ],
+    );
+  }
+}
+
+/// Gym tab header: logo + name, opens the gym profile.
+class _GymHeader extends ConsumerWidget {
+  const _GymHeader({required this.gymId, required this.name});
+  final String gymId;
+  final String name;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final logo = ref.watch(gymProvider(gymId)).valueOrNull?['logoUrl'] as String?;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+      child: Card(
+        child: ListTile(
+          leading: GymLogo(name: name, url: logo, size: 44),
+          title: Text(name, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+          trailing: const Icon(Icons.chevron_right_rounded),
+          onTap: () => context.push('/gyms/$gymId'),
         ),
-    ]);
+      ),
+    );
   }
 }

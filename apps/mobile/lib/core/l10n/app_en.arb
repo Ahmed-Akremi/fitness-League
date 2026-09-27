@@ -466,5 +466,10 @@
   "showAgeBracket": "Show my age bracket",
   "showOnLeaderboards": "Appear on leaderboards",
   "sendLink": "Send link",
-  "resetLinkSent": "If an account exists for this email, a reset link is on its way."
+  "resetLinkSent": "If an account exists for this email, a reset link is on its way.",
+  "myGym": "My gym",
+  "findGym": "Find a gym",
+  "findGymHint": "Join your gym to compete in its league and WODs",
+  "rankNationalShort": "Tunisia",
+  "shortcuts": "Shortcuts"
 }
