@@ -66,6 +66,18 @@ cd apps/admin && pnpm dev                                        # http://localh
 
 First sign-in enrols an authenticator app (TOTP is mandatory for staff).
 
+### Media storage
+
+`STORAGE_DRIVER=local` (default) keeps files in `apps/api/storage/` and serves them at `/api/v1/media/...`;
+`STORAGE_DRIVER=s3` uses `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`. `MEDIA_PUBLIC_BASE_URL` is the
+public base of stored files (CDN in production).
+
+### Demo data
+
+With the API running: `cd apps/api && pnpm demo-data` (idempotent). Athletes `ahmed`, `yassine`, `nour`, `sami`,
+`karim` `@demo.fitnessleague.test`, password `demo-password-2026`. `ahmed` owns and coaches the fictional gym
+**Bodynade** (Tunis), with an open WOD and a past one; 8 fictional gyms have generated logos.
+
 ## Mobile app
 
 See [`apps/mobile/README.md`](apps/mobile/README.md) (`flutter pub get`, `build_runner`, `gen-l10n`, `flutter run`).
@@ -84,7 +96,11 @@ See [`apps/mobile/README.md`](apps/mobile/README.md) (`flutter pub get`, `build_
 | Gyms: directory, verification, memberships | Done, tested |
 | Friends, blocks, search, public profiles, Friend Battles, in-app notifications | Done, tested |
 | Admin API (2FA, RBAC, rule sets with dry run, seasons, catalog, audit, ledger adjustments) + React panel | Done, tested |
-| Mobile app (all Phase 1 screens, offline outbox, fr/en/ar RTL) | Done, unit/widget tested; not run on a device yet |
+| Media storage (local disk in dev, S3/MinIO in prod), gym logos (PNG/JPEG/WebP ≤ 2 MB → 512×512 WebP) | Done, tested |
+| Gym directory: sports offered, accent-insensitive search, sort by members; owners submit a gym with a photo, staff approve it | Done, tested |
+| CrossFit & Hyrox: movements, benchmark WODs (Fran, Murph, Cindy…), Hyrox race and stations, `FINISH_TIME` records, timed anti-cheat bounds, rule set v2 | Done, tested |
+| Gym coaches and coach-made WODs (for time / AMRAP / max load, Rx/Scaled boards, invalidation reverses XP) | Done, tested |
+| Mobile app: all screens (gyms, WODs, CrossFit/Hyrox logging, friends, battles, notifications, records, body, settings), redesigned UI (Barlow Condensed + Inter), fr/en/ar RTL | Done, widget tested; web preview verified at 390×844 |
 | Docker images / compose, CI | Written, not yet run (no Docker locally; CI runs on the next push) |
 
 ## Security notes

@@ -114,10 +114,11 @@ class _CreateWodScreenState extends ConsumerState<CreateWodScreen> {
           final d = await _pick(_endsAt);
           if (d != null) setState(() => _endsAt = d);
         }),
+        const SizedBox(height: 12),
         if (sports.isNotEmpty)
           DropdownButtonFormField<String?>(
             initialValue: _sportId,
-            decoration: InputDecoration(labelText: l.gymSports),
+            decoration: InputDecoration(labelText: l.sport),
             items: [
               DropdownMenuItem(value: null, child: Text(l.none)),
               for (final s in sports) DropdownMenuItem(value: s['id'] as String, child: Text(s['code'] == 'HYROX' ? 'Hyrox' : 'CrossFit')),

@@ -14,6 +14,16 @@ flutter run --dart-define=API_BASE_URL=http://10.0.2.2:3000/api/v1   # Android e
 
 Build-time flags (`--dart-define`): `APP_NAME` (default "Fitness League"), `API_BASE_URL`, `ACCENT_COLOR` (ARGB int).
 
+Web preview (same UI as the phone app):
+
+```bash
+flutter build web --dart-define=API_BASE_URL=http://localhost:3000/api/v1
+cd build/web && python3 -m http.server 8080      # the API must allow http://localhost:8080 in CORS_ORIGINS
+```
+
+Fonts (Barlow Condensed, Inter) are bundled in `assets/fonts` under the SIL Open Font License (`OFL-*.txt`).
+Gym photos use `image_picker` (iOS usage strings are in `ios/Runner/Info.plist`).
+
 ## Structure
 
 ```

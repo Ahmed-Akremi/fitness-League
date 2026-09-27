@@ -66,5 +66,9 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Choose a photo for your gym's profile.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Take a photo for your gym's profile.</string>
 </dict>
 </plist>
