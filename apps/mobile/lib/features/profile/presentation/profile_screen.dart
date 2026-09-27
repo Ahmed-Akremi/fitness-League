@@ -3,10 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/l10n/l10n.dart';
-import '../../../core/providers.dart';
 import '../../../core/utils/format.dart';
 import '../../../core/widgets/error_text.dart';
-import '../../auth/data/session_controller.dart';
 import '../../home/data/me_repository.dart';
 import '../../progress/data/progress_repository.dart';
 
@@ -47,117 +45,12 @@ class ProfileScreen extends ConsumerWidget {
                       ),
                   ],
                 ),
-                const Divider(),
-                Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 4), child: Text(l.settings, style: t.textTheme.titleMedium)),
-                const _SettingsSection(),
-                const Divider(),
-                ListTile(leading: const Icon(Icons.download_rounded), title: Text(l.exportData), onTap: () => _export(context, ref)),
-                ListTile(leading: Icon(Icons.delete_forever_rounded, color: t.colorScheme.error), title: Text(l.deleteAccount), onTap: () => _delete(context, ref)),
-                ListTile(
-                  key: const Key('logout'),
-                  leading: const Icon(Icons.logout_rounded),
-                  title: Text(l.logout),
-                  onTap: () => ref.read(sessionProvider.notifier).logout(),
-                ),
+                ListTile(leading: const Icon(Icons.emoji_events_outlined), title: Text(l.allRecords), onTap: () => context.push('/records')),
+                ListTile(leading: const Icon(Icons.monitor_weight_outlined), title: Text(l.body), onTap: () => context.push('/me/body')),
+                ListTile(leading: const Icon(Icons.settings_outlined), title: Text(l.settings), onTap: () => context.push('/settings')),
               ]);
             },
           ),
     );
-  }
-
-  Future<void> _export(BuildContext context, WidgetRef ref) async {
-    final messenger = ScaffoldMessenger.of(context);
-    final l = context.l10n;
-    try {
-      final data = await ref.read(meRepositoryProvider).exportData();
-      messenger.showSnackBar(SnackBar(content: Text('${l.exportData}: ${(data['workouts'] as List).length} workouts')));
-    } catch (e) {
-      if (context.mounted) messenger.showSnackBar(SnackBar(content: Text(errorMessage(context, e))));
-    }
-  }
-
-  Future<void> _delete(BuildContext context, WidgetRef ref) async {
-    final l = context.l10n;
-    final password = TextEditingController();
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l.deleteAccount),
-        content: Column(mainAxisSize: MainAxisSize.min, children: [
-          Text(l.deleteAccountWarning),
-          const SizedBox(height: 12),
-          TextField(controller: password, obscureText: true, decoration: InputDecoration(labelText: l.password)),
-        ]),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l.cancel)),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(l.delete)),
-        ],
-      ),
-    );
-    if (ok != true) return;
-    try {
-      await ref.read(meRepositoryProvider).deleteAccount(password.text);
-      await ref.read(apiClientProvider).clearSession();
-      ref.read(sessionExpiredProvider.notifier).state++;
-    } catch (e) {
-      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(errorMessage(context, e))));
-    }
-  }
-}
-
-class _SettingsSection extends ConsumerWidget {
-  const _SettingsSection();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final l = context.l10n;
-    final locale = ref.watch(localeProvider);
-    final theme = ref.watch(themeModeProvider);
-    final me = ref.watch(meProvider).valueOrNull;
-    final planned = ((me?['profile'] as Map?)?['plannedTrainingDaysPerWeek'] as int?) ?? 3;
-    return Column(children: [
-      ListTile(
-        title: Text(l.language),
-        trailing: DropdownButton<String>(
-          key: const Key('settings-language'),
-          value: locale?.languageCode ?? Localizations.localeOf(context).languageCode,
-          items: const [
-            DropdownMenuItem(value: 'fr', child: Text('Français')),
-            DropdownMenuItem(value: 'en', child: Text('English')),
-            DropdownMenuItem(value: 'ar', child: Text('العربية')),
-          ],
-          onChanged: (v) {
-            if (v == null) return;
-            ref.read(localeProvider.notifier).set(Locale(v));
-            ref.read(apiClientProvider).language = v;
-            ref.read(meRepositoryProvider).updateSettings({'locale': v}).ignore();
-          },
-        ),
-      ),
-      ListTile(
-        title: Text(l.theme),
-        trailing: SegmentedButton<ThemeMode>(
-          segments: [
-            ButtonSegment(value: ThemeMode.dark, label: Text(l.themeDark)),
-            ButtonSegment(value: ThemeMode.light, label: Text(l.themeLight)),
-            ButtonSegment(value: ThemeMode.system, label: Text(l.themeSystem)),
-          ],
-          selected: {theme},
-          onSelectionChanged: (s) => ref.read(themeModeProvider.notifier).set(s.first),
-        ),
-      ),
-      ListTile(
-        title: Text(l.trainingDaysPerWeek),
-        trailing: DropdownButton<int>(
-          value: planned,
-          items: [for (var d = 1; d <= 6; d++) DropdownMenuItem(value: d, child: Text('$d'))],
-          onChanged: (v) async {
-            if (v == null) return;
-            await ref.read(meRepositoryProvider).updateProfile({'plannedTrainingDaysPerWeek': v});
-            ref.invalidate(meProvider);
-          },
-        ),
-      ),
-    ]);
   }
 }

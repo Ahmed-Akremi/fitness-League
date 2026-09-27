@@ -91,6 +91,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     child: _busy ? const SizedBox.square(dimension: 22, child: CircularProgressIndicator(strokeWidth: 2)) : Text(l.login),
                   ),
                   const SizedBox(height: 8),
+                  TextButton(onPressed: () => context.push('/forgot-password'), child: Text(l.forgotPassword)),
                   TextButton(onPressed: () => context.go('/register'), child: Text(l.noAccount)),
                 ]),
               ),

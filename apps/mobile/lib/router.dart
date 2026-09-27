@@ -7,6 +7,7 @@ import 'features/auth/data/session_controller.dart';
 import 'features/battles/presentation/battle_screen.dart';
 import 'features/battles/presentation/battles_screen.dart';
 import 'features/battles/presentation/new_battle_screen.dart';
+import 'features/auth/presentation/forgot_password_screen.dart';
 import 'features/auth/presentation/login_screen.dart';
 import 'features/auth/presentation/register_screen.dart';
 import 'features/goals/presentation/goals_screen.dart';
@@ -21,7 +22,10 @@ import 'features/league/presentation/league_screen.dart';
 import 'features/notifications/presentation/notifications_screen.dart';
 import 'features/onboarding/presentation/onboarding_screen.dart';
 import 'features/profile/presentation/profile_screen.dart';
+import 'features/progress/presentation/body_screen.dart';
 import 'features/progress/presentation/progress_screen.dart';
+import 'features/progress/presentation/records_screen.dart';
+import 'features/settings/presentation/settings_screen.dart';
 import 'features/shell/app_shell.dart';
 import 'features/social/presentation/friends_screen.dart';
 import 'features/social/presentation/public_profile_screen.dart';
@@ -59,7 +63,7 @@ final routerProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final auth = ref.read(sessionProvider);
       final loc = state.matchedLocation;
-      final public = loc == '/login' || loc == '/register';
+      final public = loc == '/login' || loc == '/register' || loc == '/forgot-password';
       if (auth == AuthStatus.unknown) return loc == '/splash' ? null : '/splash';
       if (auth == AuthStatus.signedOut) return public ? null : '/login';
       final me = ref.read(meProvider).valueOrNull;
@@ -73,6 +77,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/splash', builder: (_, _) => const SplashScreen()),
       GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
       GoRoute(path: '/register', builder: (_, _) => const RegisterScreen()),
+      GoRoute(path: '/forgot-password', builder: (_, _) => const ForgotPasswordScreen()),
+      GoRoute(path: '/records', builder: (_, _) => const RecordsScreen()),
+      GoRoute(path: '/me/body', builder: (_, _) => const BodyScreen()),
+      GoRoute(path: '/settings', builder: (_, _) => const SettingsScreen()),
       GoRoute(path: '/onboarding', builder: (_, _) => const OnboardingScreen()),
       GoRoute(path: '/workouts/new', builder: (_, _) => const LogWorkoutScreen()),
       GoRoute(path: '/workouts/:id', builder: (_, s) => WorkoutDetailScreen(id: s.pathParameters['id']!)),

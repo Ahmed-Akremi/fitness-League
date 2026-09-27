@@ -64,7 +64,7 @@
   "addExercise": "Add exercise",
   "addSet": "Add set",
   "reps": "Reps",
-  "weightKg": "kg",
+  "weightKg": "Weight (kg)",
   "distanceKm": "km",
   "durationMin": "Duration (min)",
   "timeMin": "min",
@@ -439,5 +439,32 @@
     }
   },
   "notifGeneric": "New notification",
-  "noNotifications": "You're all caught up"
+  "noNotifications": "You're all caught up",
+  "allRecords": "All my records",
+  "recordsTimed": "Times",
+  "recordsStrength": "Strength",
+  "recordsOther": "Other",
+  "noRecords": "No record yet: log a workout!",
+  "recordPrevious": "Previous: {value}",
+  "@recordPrevious": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "body": "Body",
+  "addMeasurement": "Add a weigh-in",
+  "noMeasurements": "No weigh-in yet",
+  "healthConsentNeeded": "Allow health data in Settings to track your weight",
+  "preferences": "Preferences",
+  "account": "Account",
+  "workoutVisibility": "Who sees my workouts",
+  "visibilityPublic": "Everyone",
+  "visibilityFriends": "Friends",
+  "visibilityPrivate": "Only me",
+  "showAgeBracket": "Show my age bracket",
+  "showOnLeaderboards": "Appear on leaderboards",
+  "sendLink": "Send link",
+  "resetLinkSent": "If an account exists for this email, a reset link is on its way."
 }
