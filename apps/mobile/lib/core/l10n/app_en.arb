@@ -249,5 +249,37 @@
         "type": "int"
       }
     }
+  },
+  "timeFormatError": "Use m:ss or h:mm:ss",
+  "wodEnded": "Ended",
+  "timeLeftDays": "{days}d {hours}h left",
+  "@timeLeftDays": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      },
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+  "timeLeftHours": "{hours}h {minutes}m left",
+  "@timeLeftHours": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      },
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "timeLeftMinutes": "{minutes}m left",
+  "@timeLeftMinutes": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
   }
 }

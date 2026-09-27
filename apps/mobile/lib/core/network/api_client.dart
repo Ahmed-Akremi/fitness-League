@@ -55,6 +55,11 @@ class ApiClient {
   Future<T> post<T>(String path, {Object? data, Map<String, String>? headers}) => _call(() => dio.post<T>(path, data: data, options: Options(headers: headers)));
   Future<T> patch<T>(String path, {Object? data, Map<String, String>? headers}) => _call(() => dio.patch<T>(path, data: data, options: Options(headers: headers)));
   Future<T> delete<T>(String path, {Object? data}) => _call(() => dio.delete<T>(path, data: data));
+  Future<T> put<T>(String path, {Object? data}) => _call(() => dio.put<T>(path, data: data));
+
+  /// Multipart upload (field "file" by default).
+  Future<T> upload<T>(String path, {required List<int> bytes, required String filename, String field = 'file'}) =>
+      _call(() => dio.put<T>(path, data: FormData.fromMap({field: MultipartFile.fromBytes(bytes, filename: filename)})));
 
   Future<T> _call<T>(Future<Response<T>> Function() request) async {
     try {

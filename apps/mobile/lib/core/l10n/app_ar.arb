@@ -129,5 +129,10 @@
   "errorRateLimited": "تمهّل قليلًا وأعد المحاولة بعد لحظة.",
   "errorWorkoutRejected": "تتجاوز هذه الحصة الحدود الفسيولوجية أو تكرر حصة أخرى.",
   "errorValidation": "يرجى التحقق من الحقول المشار إليها.",
-  "errorGeneric": "حدث خطأ ما."
+  "errorGeneric": "حدث خطأ ما.",
+  "timeFormatError": "استخدم الصيغة د:ثث أو س:دد:ثث",
+  "wodEnded": "انتهى",
+  "timeLeftDays": "متبقٍ {days} ي {hours} س",
+  "timeLeftHours": "متبقٍ {hours} س {minutes} د",
+  "timeLeftMinutes": "متبقٍ {minutes} د"
 }

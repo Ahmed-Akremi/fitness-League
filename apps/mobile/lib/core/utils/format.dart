@@ -24,3 +24,13 @@ String localized(Object? i18n, String locale) {
   if (i18n is Map) return (i18n[locale] ?? i18n['fr'] ?? i18n['en'] ?? '').toString();
   return i18n?.toString() ?? '';
 }
+
+/// "4:58" → 298, "1:28:00" → 5280. Null when empty, malformed, minutes/seconds ≥ 60 or zero.
+int? parseDuration(String input) {
+  final parts = input.trim().split(':');
+  if (parts.length < 2 || parts.length > 3 || parts.any((p) => p.isEmpty || int.tryParse(p) == null)) return null;
+  final n = parts.map(int.parse).toList();
+  if (n.skip(1).any((v) => v >= 60) || n.any((v) => v < 0)) return null;
+  final total = n.length == 3 ? n[0] * 3600 + n[1] * 60 + n[2] : n[0] * 60 + n[1];
+  return total > 0 ? total : null;
+}

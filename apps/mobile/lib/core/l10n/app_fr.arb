@@ -129,5 +129,10 @@
   "errorRateLimited": "Doucement ! Réessaie dans un instant.",
   "errorWorkoutRejected": "Cette séance dépasse les limites physiologiques ou en duplique une autre.",
   "errorValidation": "Vérifie les champs indiqués.",
-  "errorGeneric": "Une erreur est survenue."
+  "errorGeneric": "Une erreur est survenue.",
+  "timeFormatError": "Format m:ss ou h:mm:ss",
+  "wodEnded": "Terminé",
+  "timeLeftDays": "encore {days} j {hours} h",
+  "timeLeftHours": "encore {hours} h {minutes} min",
+  "timeLeftMinutes": "encore {minutes} min"
 }
