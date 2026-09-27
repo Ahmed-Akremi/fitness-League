@@ -57,6 +57,28 @@ describe('Admin API: 2FA sign-in, users, rule sets, seasons, ledger (integration
     expect(await prisma.auditLog.count({ where: { actorId: session.userId, action: 'ADMIN_LOGIN' } })).toBe(2);
   });
 
+  it('accepts a static dev 2FA code only when DEV_STATIC_TOTP_CODE is configured', async () => {
+    const { body, session } = await registerUser(app, prisma);
+    await prisma.user.update({ where: { id: session.userId }, data: { role: 'ADMIN' } });
+    const creds = { email: body.email, password: body.password, code: '000000' };
+
+    // Default app (no static code): 000000 is just a wrong code, and enrolment is still required.
+    const normal = await api().post('/api/v1/admin/auth/login').send(creds).expect(200);
+    expect(normal.body.totpSetup).toBeDefined();
+
+    const { app: devApp } = await setupTestApp({ DEV_STATIC_TOTP_CODE: '000000' });
+    try {
+      const dev = await request(devApp.getHttpServer()).post('/api/v1/admin/auth/login').send(creds).expect(200);
+      expect(dev.body.session.accessToken).toBeDefined();
+      await request(devApp.getHttpServer()).get('/api/v1/admin/stats/overview').set({ authorization: `Bearer ${dev.body.session.accessToken}` }).expect(200);
+      // The password is still checked, and other codes still fail.
+      await request(devApp.getHttpServer()).post('/api/v1/admin/auth/login').send({ ...creds, password: 'wrong password!' }).expect(401);
+      await request(devApp.getHttpServer()).post('/api/v1/admin/auth/login').send({ ...creds, code: '111111' }).expect(200); // no secret yet → enrolment offered
+    } finally {
+      await devApp.close();
+    }
+  });
+
   it('enforces the RBAC matrix on user sanctions and roles', async () => {
     const mod = await staff('MODERATOR');
     const admin = await staff('ADMIN');

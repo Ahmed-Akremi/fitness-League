@@ -1,7 +1,9 @@
-import { HttpStatus, Injectable } from '@nestjs/common';
+import { HttpStatus, Inject, Injectable, Logger } from '@nestjs/common';
 import { Role, User } from '@prisma/client';
 import { AuditService } from '../../common/audit/audit.service';
 import { ClockService } from '../../common/clock/clock.service';
+import { ENV } from '../../common/config/config.module';
+import type { Env } from '../../common/config/env.schema';
 import { HealthDataCipher } from '../../common/crypto/health-data-cipher';
 import { AppException, ErrorCode } from '../../common/errors/app-exception';
 import { PrismaService } from '../../common/prisma/prisma.service';
@@ -20,19 +22,33 @@ export type AdminLoginResult = { session: SessionDto } | { totpSetup: { secret: 
  */
 @Injectable()
 export class AdminAuthService {
+  private readonly logger = new Logger(AdminAuthService.name);
+
   constructor(
+    @Inject(ENV) private readonly env: Env,
     private readonly prisma: PrismaService,
     private readonly auth: AuthService,
     private readonly tokens: TokenService,
     private readonly cipher: HealthDataCipher,
     private readonly audit: AuditService,
     private readonly clock: ClockService,
-  ) {}
+  ) {
+    if (env.DEV_STATIC_TOTP_CODE) this.logger.warn('DEV_STATIC_TOTP_CODE is set: the admin second factor accepts a fixed code (development only).');
+  }
+
+  /** The fixed dev code (never configurable in production, see env.schema). */
+  private isDevCode(code: string | undefined): boolean {
+    return !!this.env.DEV_STATIC_TOTP_CODE && code === this.env.DEV_STATIC_TOTP_CODE;
+  }
 
   async login(email: string, password: string, code: string | undefined, ctx: RequestContext): Promise<AdminLoginResult> {
     const user = await this.auth.verifyCredentials(email, password, ctx);
     if (!STAFF_ROLES.includes(user.role)) throw AppException.forbidden('Staff accounts only.');
 
+    if (this.isDevCode(code)) {
+      this.logger.warn(`Admin sign-in with the static dev 2FA code (user ${user.id})`);
+      return { session: await this.open(user, ctx) };
+    }
     if (!user.totpSecretEnc) {
       // First staff sign-in: enrol an authenticator before any admin session exists.
       const secret = newTotpSecret();

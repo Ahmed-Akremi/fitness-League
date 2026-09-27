@@ -66,11 +66,27 @@ export const envSchema = z.object({
       return keys;
     }),
 
+  /**
+   * DEV ONLY: a fixed 6-digit code accepted as the admin second factor (and skipping authenticator enrolment).
+   * Refused at boot when NODE_ENV=production.
+   */
+  DEV_STATIC_TOTP_CODE: z
+    .string()
+    .regex(/^\d{6}$/, 'must be 6 digits')
+    .optional(),
+
   /** Base for links in emails; the app handles them as deep links. */
   APP_LINK_BASE_URL: z.string().url().default('https://app.fitnessleague.app'),
 });
 
 export type Env = z.infer<typeof envSchema>;
+
+/** Settings that must never reach production. */
+function assertSafeForEnvironment(env: Env): string[] {
+  const problems: string[] = [];
+  if (env.NODE_ENV === 'production' && env.DEV_STATIC_TOTP_CODE) problems.push('  - DEV_STATIC_TOTP_CODE: not allowed when NODE_ENV=production');
+  return problems;
+}
 
 export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
   const parsed = envSchema.safeParse(source);
@@ -78,5 +94,7 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
     const issues = parsed.error.issues.map((i) => `  - ${i.path.join('.')}: ${i.message}`).join('\n');
     throw new Error(`Invalid environment configuration:\n${issues}`);
   }
+  const unsafe = assertSafeForEnvironment(parsed.data);
+  if (unsafe.length) throw new Error(`Invalid environment configuration:\n${unsafe.join('\n')}`);
   return parsed.data;
 }
