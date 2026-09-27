@@ -55,6 +55,8 @@ export class ReferenceService {
       equipment: e.equipment,
       isBodyweight: e.isBodyweight,
       trackedMetrics: e.trackedMetrics,
+      group: e.group,
+      description: e.descriptionI18n,
       enabled: e.enabled,
       updatedAt: e.updatedAt.toISOString(),
     }));

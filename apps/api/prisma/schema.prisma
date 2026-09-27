@@ -103,6 +103,13 @@ enum SportCategory {
   CARDIO
 }
 
+enum ExerciseGroup {
+  MOVEMENT
+  BENCHMARK_WOD
+  HYROX_STATION
+  HYROX_RACE
+}
+
 enum LoggingMode {
   SETS_REPS_WEIGHT
   DISTANCE_TIME
@@ -625,6 +632,9 @@ model Exercise {
   equipment      String?
   isBodyweight   Boolean  @default(false) @map("is_bodyweight")
   trackedMetrics String[] @map("tracked_metrics")
+  /// Picker grouping on mobile (CrossFit movements, benchmark WODs, Hyrox).
+  group           ExerciseGroup?
+  descriptionI18n Json     @default("{}") @map("description_i18n")
   /// Per-exercise overrides of the anti-cheat thresholds (docs §7.2), e.g. {"hold_kg": 300, "reject_kg": 500}.
   plausibility   Json     @default("{}")
   enabled        Boolean  @default(true)

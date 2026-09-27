@@ -6,7 +6,7 @@
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { DivisionCode, ExperienceLevel, GymStatus, LoggingMode, MetricDirection, PrismaClient, SportCategory, BadgeCategory } from '@prisma/client';
+import { DivisionCode, ExerciseGroup, ExperienceLevel, GymStatus, LoggingMode, MetricDirection, PrismaClient, SportCategory, BadgeCategory } from '@prisma/client';
 import { BusinessCalendar, TUNIS_UTC_OFFSET_MINUTES } from '../common/clock/business-calendar';
 import { uuidv7 } from '../common/ids/uuid';
 import { ruleSetConfigSchema } from '../modules/scoring/rule-set.schema';
@@ -40,7 +40,9 @@ interface CatalogData {
     bodyweight: boolean;
     metrics: string[];
     plausibility: Record<string, number>;
+    group?: ExerciseGroup;
     name: I18n;
+    description?: I18n;
   }[];
   divisions: { code: DivisionCode; order: number; name: I18n }[];
   badges: { code: string; category: BadgeCategory; icon: string; rarity: string; rule: object; name: I18n; description: I18n }[];
@@ -104,6 +106,8 @@ async function seedCatalog(prisma: PrismaClient, data: CatalogData): Promise<voi
       isBodyweight: e.bodyweight,
       trackedMetrics: e.metrics,
       plausibility: e.plausibility,
+      group: e.group ?? null,
+      descriptionI18n: e.description ?? {},
     };
     await prisma.exercise.upsert({ where: { code: e.code }, update: fields, create: { id: uuidv7(), code: e.code, ...fields } });
   }
