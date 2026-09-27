@@ -72,11 +72,11 @@
   ],
   "_gymsNote": "Fictional sample gyms for development only (no real brands).",
   "gyms": [
-    { "slug": "carthage-strength-lab", "name": "Carthage Strength Lab", "governorate": "TN-11", "city": "Carthage", "status": "VERIFIED" },
-    { "slug": "ariana-fit-house", "name": "Ariana Fit House", "governorate": "TN-12", "city": "Ariana", "status": "VERIFIED" },
-    { "slug": "sahel-iron-club", "name": "Sahel Iron Club", "governorate": "TN-51", "city": "Sousse", "status": "VERIFIED" },
-    { "slug": "monastir-beach-athletics", "name": "Monastir Beach Athletics", "governorate": "TN-52", "city": "Monastir", "status": "VERIFIED" },
-    { "slug": "sfax-performance-center", "name": "Sfax Performance Center", "governorate": "TN-61", "city": "Sfax", "status": "VERIFIED" },
-    { "slug": "nabeul-cross-box", "name": "Nabeul Cross Box", "governorate": "TN-21", "city": "Nabeul", "status": "PENDING" }
+    { "slug": "carthage-strength-lab", "name": "Carthage Strength Lab", "governorate": "TN-11", "city": "Carthage", "status": "VERIFIED", "sports": ["BODYBUILDING", "POWERLIFTING"] },
+    { "slug": "ariana-fit-house", "name": "Ariana Fit House", "governorate": "TN-12", "city": "Ariana", "status": "VERIFIED", "sports": ["BODYBUILDING", "FUNCTIONAL"] },
+    { "slug": "sahel-iron-club", "name": "Sahel Iron Club", "governorate": "TN-51", "city": "Sousse", "status": "VERIFIED", "sports": ["BODYBUILDING", "POWERLIFTING", "WEIGHT_TRAINING"] },
+    { "slug": "monastir-beach-athletics", "name": "Monastir Beach Athletics", "governorate": "TN-52", "city": "Monastir", "status": "VERIFIED", "sports": ["BODYBUILDING"] },
+    { "slug": "sfax-performance-center", "name": "Sfax Performance Center", "governorate": "TN-61", "city": "Sfax", "status": "VERIFIED", "sports": ["BODYBUILDING"] },
+    { "slug": "nabeul-cross-box", "name": "Nabeul Cross Box", "governorate": "TN-21", "city": "Nabeul", "status": "PENDING", "sports": ["CROSSFIT"] }
   ]
 }

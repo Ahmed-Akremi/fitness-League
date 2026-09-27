@@ -44,7 +44,7 @@ interface CatalogData {
   }[];
   divisions: { code: DivisionCode; order: number; name: I18n }[];
   badges: { code: string; category: BadgeCategory; icon: string; rarity: string; rule: object; name: I18n; description: I18n }[];
-  gyms: { slug: string; name: string; governorate: string; city: string; status: GymStatus }[];
+  gyms: { slug: string; name: string; governorate: string; city: string; status: GymStatus; sports?: string[] }[];
 }
 
 interface RuleSetData {
@@ -199,7 +199,11 @@ async function seedGyms(prisma: PrismaClient, gyms: CatalogData['gyms']): Promis
       status: gym.status,
       verifiedAt: gym.status === 'VERIFIED' ? new Date() : null,
     };
-    await prisma.gym.upsert({ where: { slug: gym.slug }, update: fields, create: { id: uuidv7(), slug: gym.slug, ...fields } });
+    const row = await prisma.gym.upsert({ where: { slug: gym.slug }, update: fields, create: { id: uuidv7(), slug: gym.slug, ...fields } });
+    if (gym.sports?.length) {
+      const sportIds = (await prisma.sport.findMany({ where: { code: { in: gym.sports } } })).map((s) => s.id);
+      await prisma.gymSport.createMany({ data: sportIds.map((sportId) => ({ gymId: row.id, sportId })), skipDuplicates: true });
+    }
   }
 }
 

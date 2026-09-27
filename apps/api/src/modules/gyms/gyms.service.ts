@@ -13,6 +13,15 @@ import { CreateGymDto, isHttpUrl, ListGymsQueryDto, ReviewGymDto, SOCIAL_LINK_KE
 
 const STAFF: Role[] = ['ADMIN', 'SUPER_ADMIN'];
 
+const GYM_CARD_INCLUDE = {
+  city: true,
+  governorate: true,
+  logo: true,
+  sports: { include: { sport: true } },
+  _count: { select: { members: { where: { status: 'APPROVED' as const } } } },
+} satisfies Prisma.GymInclude;
+type GymCard = Prisma.GymGetPayload<{ include: typeof GYM_CARD_INCLUDE }>;
+
 /** Gyms, verification and memberships (spec §16.1). Gym Wars arrive in Phase 2. */
 @Injectable()
 export class GymsService {
@@ -27,25 +36,37 @@ export class GymsService {
   // ───────────── Directory ─────────────
 
   async list(q: ListGymsQueryDto) {
-    const c = q.cursor ? this.cursors.decode<{ n: string; id: string }>(q.cursor) : null;
-    const where: Prisma.GymWhereInput = {
-      status: 'VERIFIED',
-      deletedAt: null,
-      governorateId: q.governorateId,
-      ...(q.q && { name: { contains: q.q, mode: 'insensitive' } }),
-      ...(c && { OR: [{ name: { gt: c.n } }, { name: c.n, id: { gt: c.id } }] }),
-    };
-    const rows = await this.prisma.gym.findMany({ where, include: { city: true, governorate: true, logo: true, _count: { select: { members: { where: { status: 'APPROVED' } } } } }, orderBy: [{ name: 'asc' }, { id: 'asc' }], take: q.limit + 1 });
-    const page = toPage(rows, q.limit, (g) => ({ n: g.name, id: g.id }), (k) => this.cursors.encode(k));
-    return { data: page.data.map((g) => this.card(g)), page: page.page };
+    let sportId: string | undefined;
+    if (q.sport) {
+      const sport = await this.prisma.sport.findUnique({ where: { code: q.sport } });
+      if (!sport) throw AppException.validation([{ field: 'sport', code: 'UNKNOWN_SPORT' }]);
+      sportId = sport.id;
+    }
+    const byMembers = q.sort === 'members';
+    const c = q.cursor ? this.cursors.decode<{ n: string; m: number; id: string }>(q.cursor) : null;
+    // Accent/case-insensitive "contains"; LIKE wildcards typed by the user are matched literally.
+    const like = q.q?.trim() ? `%${q.q.trim().toLowerCase().replace(/[\\%_]/g, (ch) => `\\${ch}`)}%` : null;
+    const rows = await this.prisma.$queryRaw<{ id: string; name: string; members: number }[]>`
+      SELECT g.id, g.name, COUNT(m.id)::int AS members
+      FROM gyms g
+      LEFT JOIN gym_members m ON m.gym_id = g.id AND m.status = 'APPROVED'
+      WHERE g.status = 'VERIFIED' AND g.deleted_at IS NULL
+        ${q.governorateId ? Prisma.sql`AND g.governorate_id = ${q.governorateId}::uuid` : Prisma.empty}
+        ${sportId ? Prisma.sql`AND EXISTS (SELECT 1 FROM gym_sports s WHERE s.gym_id = g.id AND s.sport_id = ${sportId}::uuid)` : Prisma.empty}
+        ${like ? Prisma.sql`AND lower(f_unaccent(g.name)) LIKE lower(f_unaccent(${like})) ESCAPE '\\'` : Prisma.empty}
+      GROUP BY g.id
+      ${c ? (byMembers ? Prisma.sql`HAVING (COUNT(m.id)::int, g.id) < (${c.m}::int, ${c.id}::uuid)` : Prisma.sql`HAVING (g.name, g.id) > (${c.n}, ${c.id}::uuid)`) : Prisma.empty}
+      ORDER BY ${byMembers ? Prisma.sql`members DESC, g.id DESC` : Prisma.sql`g.name ASC, g.id ASC`}
+      LIMIT ${q.limit + 1}`;
+    const page = toPage(rows, q.limit, (r) => ({ n: r.name, m: r.members, id: r.id }), (k) => this.cursors.encode(k));
+    const full = await this.prisma.gym.findMany({ where: { id: { in: page.data.map((r) => r.id) } }, include: GYM_CARD_INCLUDE });
+    const byId = new Map(full.map((g) => [g.id, g]));
+    return { data: page.data.map((r) => this.card(byId.get(r.id)!)), page: page.page };
   }
 
-  /** Public gym profile: city-level location only, members count, top athletes of the season. */
-  async get(id: string) {
-    const gym = await this.prisma.gym.findUnique({
-      where: { id },
-      include: { city: true, governorate: true, logo: true, _count: { select: { members: { where: { status: 'APPROVED' } } } } },
-    });
+  /** Public gym profile: city-level location, members count, top athletes of the season. Phone and email stay private. */
+  async get(id: string, viewer?: AuthUser) {
+    const gym = await this.prisma.gym.findUnique({ where: { id }, include: GYM_CARD_INCLUDE });
     if (!gym || gym.deletedAt || gym.status !== 'VERIFIED') throw AppException.notFound('Gym');
     const top = await this.prisma.userStats.findMany({
       where: { user: { status: 'ACTIVE', profile: { primaryGymId: id } }, season: { status: 'ACTIVE' } },
@@ -53,16 +74,31 @@ export class GymsService {
       take: 5,
       include: { user: { select: { username: true, profile: { select: { fullName: true } } } } },
     });
+    // Gym rank of the active season: sum of the members' season LP.
+    const rankRows = await this.prisma.$queryRaw<{ rank: number }[]>`
+      WITH totals AS (
+        SELECT p.primary_gym_id AS gym_id, SUM(s.season_lp) AS lp
+        FROM user_stats s
+        JOIN profiles p ON p.user_id = s.user_id
+        JOIN seasons se ON se.id = s.current_season_id AND se.status = 'ACTIVE'
+        WHERE p.primary_gym_id IS NOT NULL
+        GROUP BY p.primary_gym_id
+        HAVING SUM(s.season_lp) > 0)
+      SELECT rank::int FROM (SELECT gym_id, RANK() OVER (ORDER BY lp DESC) AS rank FROM totals) r WHERE gym_id = ${id}::uuid`;
+    const membership = viewer ? await this.prisma.gymMember.findFirst({ where: { gymId: id, userId: viewer.id, status: { in: ['PENDING', 'APPROVED'] } } }) : null;
     return {
       ...this.card(gym),
-      level: gym.level,
+      addressLine: gym.addressLine,
       socialLinks: gym.socialLinks,
+      rank: rankRows[0]?.rank ?? null,
       topAthletes: top.map((s) => ({ id: s.userId, username: s.user.username, fullName: s.user.profile?.fullName, lp: s.seasonLp, level: s.level })),
+      myMembership: { status: membership?.status ?? 'NONE', role: membership?.status === 'APPROVED' ? 'MEMBER' : null },
+      canManage: viewer ? this.canManage(viewer, gym) : false,
       warRecord: null, // Gym Wars: Phase 2
     };
   }
 
-  private card(g: Gym & { city: { nameI18n: Prisma.JsonValue }; governorate: { id: string; code: string; nameI18n: Prisma.JsonValue }; logo: Media | null; _count: { members: number } }) {
+  private card(g: GymCard) {
     return {
       id: g.id,
       name: g.name,
@@ -71,7 +107,9 @@ export class GymsService {
       city: g.city.nameI18n,
       governorate: { id: g.governorate.id, code: g.governorate.code, name: g.governorate.nameI18n },
       logoUrl: this.logoUrl(g.logo),
+      sports: g.sports.map((s) => ({ code: s.sport.code, name: s.sport.nameI18n, icon: s.sport.icon })).sort((a, b) => a.code.localeCompare(b.code)),
       membersCount: g._count.members,
+      level: g.level,
     };
   }
 
@@ -82,6 +120,7 @@ export class GymsService {
     const city = await this.prisma.city.findUnique({ where: { id: dto.cityId } });
     if (!city || city.governorateId !== dto.governorateId) throw AppException.validation([{ field: 'cityId', code: 'NOT_IN_GOVERNORATE' }]);
     const links = this.cleanLinks(dto.socialLinks);
+    await this.checkSports(dto.sportIds);
     if (await this.prisma.gymVerificationRequest.count({ where: { submittedById: user.id, status: 'PENDING' } })) {
       throw AppException.conflict(ErrorCode.CONFLICT, 'You already have a gym waiting for verification.');
     }
@@ -103,6 +142,7 @@ export class GymsService {
           ownerUserId: user.id,
         },
       });
+      if (dto.sportIds?.length) await tx.gymSport.createMany({ data: dto.sportIds.map((sportId) => ({ gymId: id, sportId })) });
       await tx.gymVerificationRequest.create({ data: { id: uuidv7(), gymId: id, submittedById: user.id, proofText: dto.proofOfOwnership } });
       await this.audit.log({ actorId: user.id, actorRole: user.role, action: 'GYM_SUBMITTED', entityType: 'gym', entityId: id }, tx);
     });
@@ -154,12 +194,20 @@ export class GymsService {
 
   async update(user: AuthUser, id: string, dto: UpdateGymDto) {
     const gym = await this.manageable(user, id);
-    const updated = await this.prisma.gym.update({
-      where: { id: gym.id },
-      data: { name: dto.name?.trim(), addressLine: dto.addressLine, contactPhone: dto.contactPhone, contactEmail: dto.contactEmail, socialLinks: dto.socialLinks ? this.cleanLinks(dto.socialLinks) : undefined },
+    await this.checkSports(dto.sportIds);
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const row = await tx.gym.update({
+        where: { id: gym.id },
+        data: { name: dto.name?.trim(), addressLine: dto.addressLine, contactPhone: dto.contactPhone, contactEmail: dto.contactEmail, socialLinks: dto.socialLinks ? this.cleanLinks(dto.socialLinks) : undefined },
+      });
+      if (dto.sportIds) {
+        await tx.gymSport.deleteMany({ where: { gymId: gym.id } });
+        await tx.gymSport.createMany({ data: dto.sportIds.map((sportId) => ({ gymId: gym.id, sportId })) });
+      }
+      return row;
     });
-    await this.audit.log({ actorId: user.id, actorRole: user.role, action: 'GYM_UPDATED', entityType: 'gym', entityId: id, before: { name: gym.name }, after: { name: updated.name } });
-    return this.get(id);
+    await this.audit.log({ actorId: user.id, actorRole: user.role, action: 'GYM_UPDATED', entityType: 'gym', entityId: id, before: { name: gym.name }, after: { name: updated.name, sportIds: dto.sportIds ?? null } });
+    return this.get(id, user);
   }
 
   // ───────────── Memberships ─────────────
@@ -235,9 +283,19 @@ export class GymsService {
   async manageable(user: AuthUser, gymId: string): Promise<Gym> {
     const gym = await this.prisma.gym.findUnique({ where: { id: gymId } });
     if (!gym || gym.deletedAt) throw AppException.notFound('Gym');
-    const owner = gym.ownerUserId === user.id && user.role === 'GYM_ADMIN' && gym.status === 'VERIFIED';
-    if (!owner && !STAFF.includes(user.role)) throw AppException.forbidden('Only this gym\'s admin can do that.');
+    if (!this.canManage(user, gym)) throw AppException.forbidden('Only this gym\'s admin can do that.');
     return gym;
+  }
+
+  canManage(user: AuthUser, gym: Gym): boolean {
+    const owner = gym.ownerUserId === user.id && user.role === 'GYM_ADMIN' && gym.status === 'VERIFIED';
+    return owner || STAFF.includes(user.role);
+  }
+
+  private async checkSports(sportIds?: string[]): Promise<void> {
+    if (!sportIds?.length) return;
+    const found = await this.prisma.sport.count({ where: { id: { in: sportIds }, enabled: true } });
+    if (found !== sportIds.length) throw AppException.validation([{ field: 'sportIds', code: 'UNKNOWN_SPORT' }]);
   }
 
   private cleanLinks(links?: Record<string, string>): Prisma.InputJsonObject {

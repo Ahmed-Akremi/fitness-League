@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEmail, IsIn, IsObject, IsOptional, IsString, IsUUID, Length, Matches, MaxLength } from 'class-validator';
+import { ArrayMaxSize, ArrayUnique, IsArray, IsEmail, IsIn, IsObject, IsOptional, IsString, IsUUID, Length, Matches, MaxLength } from 'class-validator';
 import { PageQueryDto } from '../../../common/pagination/page';
 
 export class CreateGymDto {
@@ -37,6 +37,14 @@ export class CreateGymDto {
   @IsObject()
   socialLinks?: Record<string, string>;
 
+  @ApiPropertyOptional({ type: [String], description: 'Sports offered (ids from /ref/sports).' })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(10)
+  @ArrayUnique()
+  @IsUUID('all', { each: true })
+  sportIds?: string[];
+
   @ApiProperty({ description: 'How the owner can prove ownership (e.g. business registration number, website).' })
   @IsString()
   @Length(10, 1000)
@@ -70,6 +78,14 @@ export class UpdateGymDto {
   @IsOptional()
   @IsObject()
   socialLinks?: Record<string, string>;
+
+  @ApiPropertyOptional({ type: [String], description: 'Sports offered (ids from /ref/sports).' })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(10)
+  @ArrayUnique()
+  @IsUUID('all', { each: true })
+  sportIds?: string[];
 }
 
 export class ListGymsQueryDto extends PageQueryDto {
@@ -83,6 +99,16 @@ export class ListGymsQueryDto extends PageQueryDto {
   @IsString()
   @MaxLength(80)
   q?: string;
+
+  @ApiPropertyOptional({ example: 'CROSSFIT', description: 'Sport code' })
+  @IsOptional()
+  @Matches(/^[A-Z][A-Z0-9_]{1,39}$/)
+  sport?: string;
+
+  @ApiPropertyOptional({ enum: ['name', 'members'], default: 'name' })
+  @IsOptional()
+  @IsIn(['name', 'members'])
+  sort: 'name' | 'members' = 'name';
 }
 
 export class ReviewGymDto {

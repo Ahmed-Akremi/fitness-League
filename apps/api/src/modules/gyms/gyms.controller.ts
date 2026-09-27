@@ -53,8 +53,8 @@ export class GymsController {
   }
 
   @Get(':id')
-  get(@Param('id', ParseUUIDPipe) id: string) {
-    return this.gyms.get(id);
+  get(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string) {
+    return this.gyms.get(id, user);
   }
 
   @Patch(':id')

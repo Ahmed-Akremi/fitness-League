@@ -596,6 +596,7 @@ model Sport {
   workouts            Workout[]
   userSports          UserSport[]
   expectedProgression ExpectedProgression[]
+  gyms                GymSport[]
 
   @@map("sports")
 }
@@ -1250,6 +1251,7 @@ model Gym {
   members              GymMember[]
   verificationRequests GymVerificationRequest[]
   primaryForProfiles   Profile[]
+  sports               GymSport[]
 
   @@index([governorateId, status])
   @@map("gyms")
@@ -1397,4 +1399,15 @@ model JobRun {
 
   @@unique([job, key])
   @@map("job_runs")
+}
+
+model GymSport {
+  gymId   String @map("gym_id") @db.Uuid
+  sportId String @map("sport_id") @db.Uuid
+  gym     Gym    @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  sport   Sport  @relation(fields: [sportId], references: [id])
+
+  @@id([gymId, sportId])
+  @@index([sportId])
+  @@map("gym_sports")
 }
