@@ -28,6 +28,12 @@ describe('loadEnv', () => {
     expect(() => loadEnv({ ...valid, HEALTH_DATA_KEYS: 'k1:c2hvcnQ=' })).toThrow(/HEALTH_DATA_KEYS/);
   });
 
+  it('defaults to local media storage and requires S3 credentials for the s3 driver', () => {
+    expect(loadEnv(valid)).toMatchObject({ STORAGE_DRIVER: 'local', MEDIA_PUBLIC_BASE_URL: 'http://localhost:3000/api/v1/media' });
+    expect(() => loadEnv({ ...valid, STORAGE_DRIVER: 's3' })).toThrow(/S3_BUCKET: required when STORAGE_DRIVER=s3/);
+    expect(loadEnv({ ...valid, STORAGE_DRIVER: 's3', S3_BUCKET: 'b', S3_ACCESS_KEY: 'k', S3_SECRET_KEY: 's' }).STORAGE_DRIVER).toBe('s3');
+  });
+
   it('accepts a static dev 2FA code outside production only', () => {
     expect(loadEnv({ ...valid, DEV_STATIC_TOTP_CODE: '000000' }).DEV_STATIC_TOTP_CODE).toBe('000000');
     expect(() => loadEnv({ ...valid, DEV_STATIC_TOTP_CODE: '12ab' })).toThrow(/DEV_STATIC_TOTP_CODE/);

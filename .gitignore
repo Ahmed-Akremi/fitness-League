@@ -10,3 +10,4 @@ coverage/
 # Flutter
 apps/mobile/.dart_tool/
 apps/mobile/build/
+apps/api/storage/

@@ -75,6 +75,17 @@ export const envSchema = z.object({
     .regex(/^\d{6}$/, 'must be 6 digits')
     .optional(),
 
+  /** Media storage: `local` (dev, files served by /media) or `s3` (MinIO/S3 + CDN). */
+  STORAGE_DRIVER: z.enum(['local', 's3']).default('local'),
+  STORAGE_LOCAL_DIR: z.string().optional(),
+  /** Public base URL of stored media, without trailing slash. */
+  MEDIA_PUBLIC_BASE_URL: z.string().url().default('http://localhost:3000/api/v1/media'),
+  S3_ENDPOINT: z.string().url().optional(),
+  S3_REGION: z.string().default('us-east-1'),
+  S3_BUCKET: z.string().optional(),
+  S3_ACCESS_KEY: z.string().optional(),
+  S3_SECRET_KEY: z.string().optional(),
+
   /** Base for links in emails; the app handles them as deep links. */
   APP_LINK_BASE_URL: z.string().url().default('https://app.fitnessleague.app'),
 });
@@ -85,6 +96,9 @@ export type Env = z.infer<typeof envSchema>;
 function assertSafeForEnvironment(env: Env): string[] {
   const problems: string[] = [];
   if (env.NODE_ENV === 'production' && env.DEV_STATIC_TOTP_CODE) problems.push('  - DEV_STATIC_TOTP_CODE: not allowed when NODE_ENV=production');
+  if (env.STORAGE_DRIVER === 's3') {
+    for (const k of ['S3_BUCKET', 'S3_ACCESS_KEY', 'S3_SECRET_KEY'] as const) if (!env[k]) problems.push(`  - ${k}: required when STORAGE_DRIVER=s3`);
+  }
   return problems;
 }
 
