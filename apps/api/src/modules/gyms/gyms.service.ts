@@ -92,7 +92,10 @@ export class GymsService {
       socialLinks: gym.socialLinks,
       rank: rankRows[0]?.rank ?? null,
       topAthletes: top.map((s) => ({ id: s.userId, username: s.user.username, fullName: s.user.profile?.fullName, lp: s.seasonLp, level: s.level })),
-      myMembership: { status: membership?.status ?? 'NONE', role: membership?.status === 'APPROVED' ? 'MEMBER' : null },
+      myMembership: {
+        status: membership?.status ?? 'NONE',
+        role: membership?.status === 'APPROVED' ? (membership.role === 'COACH' || (viewer && this.canManage(viewer, gym)) ? 'COACH' : 'MEMBER') : null,
+      },
       canManage: viewer ? this.canManage(viewer, gym) : false,
       warRecord: null, // Gym Wars: Phase 2
     };
@@ -242,7 +245,7 @@ export class GymsService {
       take: q.limit + 1,
     });
     const page = toPage(rows, q.limit, (r) => ({ id: r.id }), (k) => this.cursors.encode(k));
-    return { data: page.data.map((m) => ({ id: m.user.id, username: m.user.username, fullName: m.user.profile?.fullName, since: m.approvedAt?.toISOString() ?? null })), page: page.page };
+    return { data: page.data.map((m) => ({ id: m.user.id, username: m.user.username, fullName: m.user.profile?.fullName, role: m.role, since: m.approvedAt?.toISOString() ?? null })), page: page.page };
   }
 
   async membershipRequests(user: AuthUser, gymId: string) {
@@ -271,6 +274,31 @@ export class GymsService {
       await this.audit.log({ actorId: user.id, actorRole: user.role, action: `GYM_MEMBER_${action.toUpperCase()}`, entityType: 'gym_member', entityId: m.id, after: { gymId, userId: memberId } }, tx);
     });
     return { userId: memberId, status: action === 'approve' ? 'APPROVED' : action === 'reject' ? 'REJECTED' : 'REMOVED' };
+  }
+
+  // ───────────── Coaches ─────────────
+
+  async setCoach(user: AuthUser, gymId: string, memberId: string, coach: boolean) {
+    await this.manageable(user, gymId);
+    const m = await this.prisma.gymMember.findFirst({ where: { gymId, userId: memberId, status: 'APPROVED' } });
+    if (!m) throw AppException.notFound('Membership');
+    await this.prisma.$transaction(async (tx) => {
+      await tx.gymMember.update({ where: { id: m.id }, data: { role: coach ? 'COACH' : 'MEMBER' } });
+      await this.audit.log({ actorId: user.id, actorRole: user.role, action: coach ? 'GYM_COACH_APPOINTED' : 'GYM_COACH_REMOVED', entityType: 'gym_member', entityId: m.id, after: { gymId, userId: memberId } }, tx);
+    });
+    return { userId: memberId, role: coach ? 'COACH' : 'MEMBER' };
+  }
+
+  approvedMember(userId: string, gymId: string) {
+    return this.prisma.gymMember.findFirst({ where: { gymId, userId, status: 'APPROVED' } });
+  }
+
+  /** Coach of this gym: an approved member with the COACH role, the gym's admin, or platform staff. */
+  async isCoach(user: AuthUser, gymId: string): Promise<boolean> {
+    const gym = await this.prisma.gym.findUnique({ where: { id: gymId } });
+    if (!gym || gym.deletedAt) return false;
+    if (this.canManage(user, gym)) return true;
+    return (await this.approvedMember(user.id, gymId))?.role === 'COACH';
   }
 
   // ───────────── Internals ─────────────

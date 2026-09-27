@@ -103,6 +103,11 @@ enum SportCategory {
   CARDIO
 }
 
+enum GymMemberRole {
+  MEMBER
+  COACH
+}
+
 enum ExerciseGroup {
   MOVEMENT
   BENCHMARK_WOD
@@ -1291,6 +1296,7 @@ model GymMember {
   gymId        String          @map("gym_id") @db.Uuid
   userId       String          @map("user_id") @db.Uuid
   status       GymMemberStatus @default(PENDING)
+  role         GymMemberRole   @default(MEMBER)
   requestedAt  DateTime        @default(now()) @map("requested_at") @db.Timestamptz
   approvedAt   DateTime?       @map("approved_at") @db.Timestamptz
   approvedById String?         @map("approved_by") @db.Uuid

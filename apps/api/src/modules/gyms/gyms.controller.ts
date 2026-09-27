@@ -89,6 +89,18 @@ export class GymsController {
     return this.gyms.decide(user, id, userId, 'reject');
   }
 
+  @Post(':id/members/:userId/coach')
+  @HttpCode(HttpStatus.OK)
+  appointCoach(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string, @Param('userId', ParseUUIDPipe) userId: string) {
+    return this.gyms.setCoach(user, id, userId, true);
+  }
+
+  @Delete(':id/members/:userId/coach')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async removeCoach(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string, @Param('userId', ParseUUIDPipe) userId: string): Promise<void> {
+    await this.gyms.setCoach(user, id, userId, false);
+  }
+
   @Post(':id/members/:userId/remove')
   @HttpCode(HttpStatus.OK)
   remove(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string, @Param('userId', ParseUUIDPipe) userId: string) {
