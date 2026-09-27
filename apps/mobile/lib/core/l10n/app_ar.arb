@@ -198,5 +198,16 @@
   "wodPublish": "نشر",
   "wodEndsBeforeStart": "يجب أن تكون النهاية بعد البداية",
   "wodWindowTooLong": "مدة التمرين 31 يومًا كحد أقصى",
-  "none": "لا شيء"
+  "none": "لا شيء",
+  "groupHyroxRace": "سباق هايروكس",
+  "groupBenchmark": "تمارين مرجعية",
+  "groupHyroxStations": "محطات هايروكس",
+  "groupMovements": "الحركات",
+  "groupOther": "أخرى",
+  "timeRequired": "أدخل زمنًا صالحًا لكل تمرين موقوت",
+  "finishTime": "الزمن النهائي",
+  "hyroxFullRace": "سباق هايروكس كامل",
+  "hyroxTotal": "الزمن الإجمالي",
+  "hyroxTotalHint": "المجموع مع 8 × 1 كم جري",
+  "hyroxAdd": "أضف إلى الحصة"
 }

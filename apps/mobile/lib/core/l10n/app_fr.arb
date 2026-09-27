@@ -198,5 +198,16 @@
   "wodPublish": "Publier",
   "wodEndsBeforeStart": "La fin doit être après le début",
   "wodWindowTooLong": "Un WOD dure 31 jours maximum",
-  "none": "Aucun"
+  "none": "Aucun",
+  "groupHyroxRace": "Course Hyrox",
+  "groupBenchmark": "WODs de référence",
+  "groupHyroxStations": "Stations Hyrox",
+  "groupMovements": "Mouvements",
+  "groupOther": "Autres",
+  "timeRequired": "Saisis un temps valide pour chaque exercice chronométré",
+  "finishTime": "Temps final",
+  "hyroxFullRace": "Course Hyrox complète",
+  "hyroxTotal": "Temps total",
+  "hyroxTotalHint": "Total, avec les 8 × 1 km de course",
+  "hyroxAdd": "Ajouter à la séance"
 }

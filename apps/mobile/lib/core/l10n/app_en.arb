@@ -359,5 +359,16 @@
   "wodPublish": "Publish",
   "wodEndsBeforeStart": "The end must be after the start",
   "wodWindowTooLong": "A WOD lasts 31 days at most",
-  "none": "None"
+  "none": "None",
+  "groupHyroxRace": "Hyrox race",
+  "groupBenchmark": "Benchmark WODs",
+  "groupHyroxStations": "Hyrox stations",
+  "groupMovements": "Movements",
+  "groupOther": "Other",
+  "timeRequired": "Enter a valid time for each timed exercise",
+  "finishTime": "Finish time",
+  "hyroxFullRace": "Full Hyrox race",
+  "hyroxTotal": "Total time",
+  "hyroxTotalHint": "Total, including the 8 × 1 km runs",
+  "hyroxAdd": "Add to workout"
 }
