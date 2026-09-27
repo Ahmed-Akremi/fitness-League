@@ -51,7 +51,7 @@ Date : 2026-09-27 · Statut : proposé · Réf. : `docs/ARCHITECTURE.md`
 
 Réponse par salle : `id`, `name`, `slug`, `city`, `governorate`, `status`, `logoUrl`, `sports[]` (`code`, `name`, `icon`), `membersCount`, `level`.
 
-`GET /gyms/:id` ajoute : `addressLine`, `contactPhone`, `contactEmail`, `socialLinks`, `rank` (rang de la salle au classement des salles de la saison, calculé par la somme des LP des membres, `null` si aucun), `topMembers` (5 premiers du classement salle), `myMembership` (`NONE | PENDING | APPROVED`, rôle `MEMBER | COACH`), `canManage`.
+`GET /gyms/:id` ajoute : `addressLine`, `socialLinks` (le téléphone et l'email restent privés, règle existante testée dans `gyms.int-spec.ts`), `rank` (rang de la salle au classement des salles de la saison, calculé par la somme des LP des membres, `null` si aucun), `topMembers` (5 premiers du classement salle), `myMembership` (`NONE | PENDING | APPROVED`, rôle `MEMBER | COACH`), `canManage`.
 
 ## 3. Backend — sports CrossFit et Hyrox
 
@@ -114,7 +114,7 @@ Réponse par salle : `id`, `name`, `slug`, `city`, `governorate`, `status`, `log
 
 **Navigation** : 5 onglets conservés (Accueil, Entraînement, Ligue, Objectifs, Profil). Cloche de notifications (avec compteur non lus) dans l'en-tête de l'Accueil. Les autres écrans sont des routes empilées.
 
-- **Salles** : `/gyms` (recherche, puces sports et gouvernorats, cartes avec logo, sports, membres, pagination infinie) ; `/gyms/:id` (bandeau, logo 96 px, stats, sports, contacts et réseaux, top 5, WODs de la salle, bouton Rejoindre/En attente/Membre/Quitter, « Changer le logo » pour le gérant via `image_picker`) ; `/gyms/:id/members` (gérant : demandes à approuver/refuser, « Nommer coach »).
+- **Salles** : `/gyms` (recherche, puces sports et gouvernorats, cartes avec logo, sports, membres, pagination infinie) ; `/gyms/:id` (bandeau, logo 96 px, stats, sports, adresse et réseaux, top 5, WODs de la salle, bouton Rejoindre/En attente/Membre/Quitter, « Changer le logo » pour le gérant via `image_picker`) ; `/gyms/:id/members` (gérant : demandes à approuver/refuser, « Nommer coach »).
 - **WODs de salle** : `/gyms/:id/wods/:wodId` (description, compte à rebours, onglets Rx/Scaled, classement, ma position, « Soumettre mon score ») ; `/gyms/:id/wods/new` (coach) ; appui long sur un score → « Invalider » (coach).
 - **Saisie de séance** : exercices groupés (Mouvements / WODs de référence / Stations Hyrox / Course Hyrox), `TimeField` pour les exercices `FINISH_TIME`, assistant « Course Hyrox complète » (8 stations + course, total calculé et modifiable).
 - **Social** : `/friends` (amis, demandes reçues/envoyées, accepter/refuser, retirer), `/search` (recherche d'athlètes), `/u/:username` (profil public : division, niveau, salle, records visibles, boutons Ajouter / Suivre / Défier / Bloquer).
