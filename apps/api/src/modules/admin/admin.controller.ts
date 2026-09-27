@@ -158,6 +158,12 @@ export class AdminController {
   }
 
   // Seasons
+  @Get('seasons')
+  @Roles('ADMIN', 'SUPER_ADMIN')
+  seasons() {
+    return this.admin.seasonList();
+  }
+
   @Post('seasons')
   @Roles('ADMIN', 'SUPER_ADMIN')
   createSeason(@CurrentUser() actor: AuthUser, @Body() dto: CreateSeasonDto) {

@@ -6,14 +6,14 @@ A mobile app that turns real training progress into a fair competitive game: it 
 The name is configurable (`APP_NAME`).
 
 - Architecture and decisions: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
-- Status: **Phase 1 (MVP): modules 1–2 of 12 done** (foundation; auth + users + reference). See "What exists today" below.
+- Status: **Phase 1 (MVP) implemented**: API, mobile app and admin panel. See "What exists today" and "Not done yet" below.
 
 ## Repository layout
 
 ```
 apps/api       NestJS API + worker (Prisma, PostgreSQL 16)
-apps/admin     React admin panel            (not started)
-apps/mobile    Flutter app                  (not started)
+apps/admin     React admin panel (Vite + TypeScript)
+apps/mobile    Flutter app (Android, iOS; web build for previews)
 infra/         docker-compose + seed data (Tunisia, sports, exercises, rule set v1)
 docs/          architecture document
 ```
@@ -57,22 +57,35 @@ pnpm lint && pnpm typecheck
 
 Integration tests only run `prisma migrate deploy` on a fresh database; they never reset an existing one.
 
+## Admin panel
+
+```bash
+cd apps/api && pnpm promote-admin you@example.com SUPER_ADMIN   # after registering in the app
+cd apps/admin && pnpm dev                                        # http://localhost:5173 (proxies /api to :3000)
+```
+
+First sign-in enrols an authenticator app (TOTP is mandatory for staff).
+
+## Mobile app
+
+See [`apps/mobile/README.md`](apps/mobile/README.md) (`flutter pub get`, `build_runner`, `gen-l10n`, `flutter run`).
+
 ## What exists today
 
 | Area | Status |
 |---|---|
-| API skeleton: env validation, problem+json errors, signed cursor pagination, request-id logs with PII redaction, Helmet, health/readiness | Done, tested |
-| Phase 1 database schema + constraints (append-only ledgers, no double grants, one reversal per entry, non-overlapping seasons…) | Done, tested |
-| Seed: 24 governorates, 92 cities, 9 sports, 25 exercises, 12 metric types, 6 divisions, rule set v1, seasons, sample gyms | Done, tested |
-| Scoring rule-set schema (zod) with the spec's configuration keys | Done, tested |
-| Worker process | Boots; no jobs yet |
-| Dockerfile / docker-compose | Written, **not yet run** (Docker unavailable on the dev machine) |
-| CI (GitHub Actions) | Written, not yet run (no remote) |
-| Auth: register (age gate, consents), login, Argon2id, lockout, refresh rotation + reuse detection, logout, email verification, password reset | Done, tested |
-| RBAC guard (`@Public`, `@Roles`, `@RequiresVerifiedEmail`), rate limits (in-memory) | Done, tested |
-| `/me` (profile, settings, stats), reference catalog (`/ref/*`, delta sync) | Done, tested |
-| Google / Apple sign-in, phone verification, onboarding endpoints, avatar upload, data export & deletion | Not started |
-| Workouts, scoring engine, leaderboards, battles, admin, mobile | Not started |
+| Foundation: env validation, problem+json errors, signed cursor pagination, PII-redacted logs, schema with append-only ledgers, idempotent seed (Tunisia) | Done, tested |
+| Auth: register (age gate, consents), login + lockout, rotating refresh tokens with reuse detection, email verification, password reset, Google/Apple sign-in | Done, tested |
+| Users: profile, settings, onboarding, encrypted health data, export, deletion with anonymisation | Done, tested |
+| Workouts: idempotent logging, offline batch sync, layer-1 anti-cheat, held-workout moderation | Done, tested |
+| Scoring: fairness model, calibration, anti-sandbagging (incl. baseline correction + reversal), PRs, XP caps/diminishing returns, ledgers with reversals | Done, tested |
+| Goals and suggestions (safe weight pace, habit goals with rest days) | Done, tested |
+| Weekly LP, divisions, seasons (soft reset), leaderboards (national/region/gym/friends), scheduled jobs | Done, tested |
+| Gyms: directory, verification, memberships | Done, tested |
+| Friends, blocks, search, public profiles, Friend Battles, in-app notifications | Done, tested |
+| Admin API (2FA, RBAC, rule sets with dry run, seasons, catalog, audit, ledger adjustments) + React panel | Done, tested |
+| Mobile app (all Phase 1 screens, offline outbox, fr/en/ar RTL) | Done, unit/widget tested; not run on a device yet |
+| Docker images / compose, CI | Written, not yet run (no Docker locally; CI runs on the next push) |
 
 ## Security notes
 

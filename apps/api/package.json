@@ -20,7 +20,8 @@
     "openapi:export": "ts-node --transpile-only scripts/export-openapi.ts",
     "seed:prod": "node dist/database/seed.js",
     "db:embedded": "ts-node --transpile-only scripts/embedded-db.ts",
-    "keys:generate": "ts-node --transpile-only scripts/generate-keys.ts"
+    "keys:generate": "ts-node --transpile-only scripts/generate-keys.ts",
+    "promote-admin": "ts-node --transpile-only scripts/promote-admin.ts"
   },
   "prisma": {
     "seed": "ts-node --transpile-only src/database/seed.ts"

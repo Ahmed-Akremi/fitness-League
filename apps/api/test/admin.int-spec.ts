@@ -120,6 +120,8 @@ describe('Admin API: 2FA sign-in, users, rule sets, seasons, ledger (integration
     const admin = await staff('ADMIN');
     await api().post('/api/v1/admin/seasons').set(admin.auth).send({ name: 'Overlap', startsAt: '2026-11-01T00:00:00Z', endsAt: '2027-02-01T00:00:00Z' }).expect(409);
     await api().post('/api/v1/admin/seasons').set(admin.auth).send({ name: 'Season 2027 Q1', startsAt: '2026-12-31T23:00:00Z', endsAt: '2027-03-31T23:00:00Z' }).expect(201);
+    const seasons = await api().get('/api/v1/admin/seasons').set(admin.auth).expect(200);
+    expect(seasons.body.map((s: { name: string }) => s.name)).toContain('Season 2027 Q1');
 
     const athlete = await registerUser(app, prisma);
     const res = await api().post('/api/v1/admin/ledger/adjustments').set(admin.auth).send({ userId: athlete.session.userId, kind: 'XP', amount: 50, reason: 'Compensation for outage' }).expect(201);

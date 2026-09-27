@@ -315,6 +315,11 @@ export class AdminService {
 
   // ───────────── Seasons ─────────────
 
+  async seasonList() {
+    const rows = await this.prisma.season.findMany({ orderBy: { startsAt: 'desc' }, include: { _count: { select: { standings: true } } } });
+    return rows.map((s) => ({ id: s.id, name: s.name, status: s.status, startsAt: s.startsAt.toISOString(), endsAt: s.endsAt.toISOString(), closedAt: s.closedAt?.toISOString() ?? null, standings: s._count.standings }));
+  }
+
   async createSeason(actor: AuthUser, dto: CreateSeasonDto) {
     const startsAt = new Date(dto.startsAt);
     const endsAt = new Date(dto.endsAt);
