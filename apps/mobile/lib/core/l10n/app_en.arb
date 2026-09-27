@@ -295,5 +295,29 @@
         "type": "int"
       }
     }
-  }
+  },
+  "gymChangeLogo": "Change logo",
+  "gymSports": "Sports",
+  "gymInfo": "Info",
+  "linkCopied": "Link copied",
+  "gymTopAthletes": "Top athletes",
+  "gymManageMembers": "Manage members",
+  "gymJoin": "Join",
+  "gymRequestSent": "Request sent",
+  "gymLeave": "Leave",
+  "gymLeaveConfirm": "Leave this gym?",
+  "logoTooLarge": "Image must be 2 MB or less",
+  "gymRank": "Rank",
+  "gymLevel": "Level",
+  "gymMembersLabel": "Members",
+  "requestsTab": "Requests",
+  "membersTab": "Members",
+  "noRequests": "No pending request",
+  "approve": "Approve",
+  "reject": "Decline",
+  "coach": "Coach",
+  "memberActions": "Member actions",
+  "makeCoach": "Make coach",
+  "removeCoach": "Remove coach role",
+  "removeMember": "Remove from gym"
 }
