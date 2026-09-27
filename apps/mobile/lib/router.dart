@@ -18,6 +18,7 @@ import 'features/gyms/presentation/gyms_screen.dart';
 import 'features/home/data/me_repository.dart';
 import 'features/home/presentation/home_screen.dart';
 import 'features/league/presentation/league_screen.dart';
+import 'features/notifications/presentation/notifications_screen.dart';
 import 'features/onboarding/presentation/onboarding_screen.dart';
 import 'features/profile/presentation/profile_screen.dart';
 import 'features/progress/presentation/progress_screen.dart';
@@ -78,6 +79,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/progress', builder: (_, _) => const ProgressScreen()),
       GoRoute(path: '/gyms', builder: (_, _) => const GymsScreen()),
       GoRoute(path: '/friends', builder: (_, _) => const FriendsScreen()),
+      GoRoute(path: '/notifications', builder: (_, _) => const NotificationsScreen()),
       GoRoute(path: '/battles', builder: (_, _) => const BattlesScreen()),
       GoRoute(path: '/battles/new', builder: (_, s) => NewBattleScreen(opponentId: s.uri.queryParameters['opponent'])),
       GoRoute(path: '/battles/:id', builder: (_, s) => BattleScreen(id: s.pathParameters['id']!, myId: (ref.read(meProvider).valueOrNull?['id'] ?? '') as String)),

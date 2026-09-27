@@ -250,5 +250,16 @@
   "battleInvited": "Tu as été défié !",
   "battleDuration": "Durée",
   "battleComponents": "Ce qui compte",
-  "noBattles": "Aucune battle ici"
+  "noBattles": "Aucune battle ici",
+  "notifications": "Notifications",
+  "markAllRead": "Tout marquer comme lu",
+  "notifFriendRequest": "Nouvelle demande d'ami",
+  "notifFriendAccepted": "Ta demande d'ami a été acceptée",
+  "notifBattleInvite": "Un ami te défie en battle",
+  "notifBattleStarted": "Ta battle a commencé",
+  "notifBattleDeclined": "Ton défi a été refusé",
+  "notifBattleResult": "Ta battle est terminée : vois le résultat",
+  "notifWodInvalidated": "Ton score sur {wod} a été invalidé : {reason}",
+  "notifGeneric": "Nouvelle notification",
+  "noNotifications": "Tu es à jour"
 }

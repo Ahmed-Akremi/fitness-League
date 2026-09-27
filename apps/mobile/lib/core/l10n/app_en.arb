@@ -418,5 +418,26 @@
   "battleInvited": "You've been challenged!",
   "battleDuration": "Duration",
   "battleComponents": "What counts",
-  "noBattles": "No battle here yet"
+  "noBattles": "No battle here yet",
+  "notifications": "Notifications",
+  "markAllRead": "Mark all as read",
+  "notifFriendRequest": "New friend request",
+  "notifFriendAccepted": "Your friend request was accepted",
+  "notifBattleInvite": "A friend challenges you to a battle",
+  "notifBattleStarted": "Your battle has started",
+  "notifBattleDeclined": "Your battle challenge was declined",
+  "notifBattleResult": "Your battle is over: see the result",
+  "notifWodInvalidated": "Your score on {wod} was invalidated: {reason}",
+  "@notifWodInvalidated": {
+    "placeholders": {
+      "wod": {
+        "type": "String"
+      },
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "notifGeneric": "New notification",
+  "noNotifications": "You're all caught up"
 }

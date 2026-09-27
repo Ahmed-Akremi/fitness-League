@@ -250,5 +250,16 @@
   "battleInvited": "لقد تم تحديك!",
   "battleDuration": "المدة",
   "battleComponents": "ما يُحتسب",
-  "noBattles": "لا توجد معارك هنا"
+  "noBattles": "لا توجد معارك هنا",
+  "notifications": "الإشعارات",
+  "markAllRead": "تعليم الكل كمقروء",
+  "notifFriendRequest": "طلب صداقة جديد",
+  "notifFriendAccepted": "تم قبول طلب صداقتك",
+  "notifBattleInvite": "صديق يتحداك في معركة",
+  "notifBattleStarted": "بدأت معركتك",
+  "notifBattleDeclined": "تم رفض تحديك",
+  "notifBattleResult": "انتهت معركتك: شاهد النتيجة",
+  "notifWodInvalidated": "أُلغيت نتيجتك في {wod}: {reason}",
+  "notifGeneric": "إشعار جديد",
+  "noNotifications": "لا جديد"
 }
