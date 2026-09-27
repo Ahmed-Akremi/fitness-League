@@ -6,6 +6,8 @@ export interface WorkoutInput {
   workoutType: string;
   performedAt: Date;
   durationS: number;
+  /** Free-text note; only part of the fingerprint for workouts without exercises (gym WOD scores). */
+  note?: string | null;
   exercises: {
     exerciseId: string;
     exerciseCode: string;
@@ -61,7 +63,9 @@ export function fingerprint(input: WorkoutInput): Buffer {
     ex.exerciseId,
     ex.sets.map((s) => [s.reps ?? null, s.weightKg ?? null, s.distanceM ?? null, s.durationS ?? null, s.isWarmup ?? false]),
   ]);
-  return createHash('sha256').update(JSON.stringify([input.sportId, content])).digest();
+  // Workouts without exercises (gym WOD scores) differ only by type and note (WOD, division, score).
+  const parts: unknown[] = input.exercises.length ? [input.sportId, content] : [input.sportId, content, input.workoutType, input.note ?? null];
+  return createHash('sha256').update(JSON.stringify(parts)).digest();
 }
 
 /** Stable hash of a request payload, independent of key order (idempotent replay vs conflict). */

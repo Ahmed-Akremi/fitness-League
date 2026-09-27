@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { canonicalHash, estimate1rm, fingerprint, totalDistanceM, totalVolumeKg, WorkoutInput } from './workout-metrics';
 
 const base: WorkoutInput = {
@@ -64,5 +65,20 @@ describe('canonicalHash', () => {
   it('does not depend on key order or undefined fields', () => {
     expect(canonicalHash({ a: 1, b: [1, { c: 2, d: undefined }] }).equals(canonicalHash({ b: [1, { c: 2 }], a: 1 }))).toBe(true);
     expect(canonicalHash({ a: 1 }).equals(canonicalHash({ a: 2 }))).toBe(false);
+  });
+});
+
+describe('fingerprint of workouts without exercises (gym WOD scores)', () => {
+  const base = { sportId: 'cf', workoutType: 'GYM_WOD', performedAt: new Date('2026-09-25T07:00:00Z'), durationS: 600, exercises: [] };
+
+  it('distinguishes different WOD scores by their note', () => {
+    expect(fingerprint({ ...base, note: 'Burner (RX): 420' }).equals(fingerprint({ ...base, note: 'Friday AMRAP (RX): 190' }))).toBe(false);
+    expect(fingerprint({ ...base, note: 'Burner (RX): 420' }).equals(fingerprint({ ...base, note: 'Burner (RX): 420' }))).toBe(true);
+  });
+
+  it('keeps the historical fingerprint of workouts with exercises (note ignored)', () => {
+    const w = { ...base, workoutType: 'STRENGTH', exercises: [{ exerciseId: 'sq', exerciseCode: 'BACK_SQUAT', isBodyweight: false, sets: [{ reps: 5, weightKg: 100 }] }] };
+    expect(fingerprint({ ...w, note: 'a' }).equals(fingerprint({ ...w, note: 'b' }))).toBe(true);
+    expect(fingerprint(w).toString('hex')).toBe(createHash('sha256').update(JSON.stringify(['cf', [['sq', [[5, 100, null, null, false]]]]])).digest('hex'));
   });
 });

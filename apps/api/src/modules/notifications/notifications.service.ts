@@ -15,7 +15,8 @@ export type NotificationType =
   | 'BATTLE_INVITE'
   | 'BATTLE_STARTED'
   | 'BATTLE_DECLINED'
-  | 'BATTLE_RESULT';
+  | 'BATTLE_RESULT'
+  | 'GYM_WOD_SCORE_INVALIDATED';
 
 /**
  * In-app notifications (Phase 1: list only). ASSUMPTION Q-17: push (FCM), per-type preferences and quiet hours

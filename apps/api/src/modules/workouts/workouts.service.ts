@@ -228,7 +228,7 @@ export class WorkoutsService {
       return { exerciseId: e.id, exerciseCode: e.code, isBodyweight: e.isBodyweight, sets: ex.sets };
     });
 
-    return { sport, catalog, sportId: sport.id, workoutType: dto.workoutType, performedAt: new Date(dto.performedAt), durationS: dto.durationS, exercises };
+    return { sport, catalog, sportId: sport.id, workoutType: dto.workoutType, performedAt: new Date(dto.performedAt), durationS: dto.durationS, note: dto.notes ?? null, exercises };
   }
 
   private async evaluate(userId: string, input: WorkoutInput & { catalog: Map<string, Exercise> }, deviceSubmittedAt: Date | null, selfId?: string): Promise<Evaluation & { ruleSetVersion: number; fingerprint: Buffer }> {
