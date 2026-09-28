@@ -43,6 +43,27 @@ describe('Gym directory (integration)', () => {
     expect(counts).toEqual([...counts].sort((a, b) => b - a));
   });
 
+  it('refuses a cursor made for another sort instead of returning an empty page', async () => {
+    const byName = await api().get('/api/v1/gyms?limit=1').set(bearer(token)).expect(200);
+    await api().get(`/api/v1/gyms?sort=members&limit=1&cursor=${encodeURIComponent(byName.body.page.nextCursor)}`).set(bearer(token)).expect(422);
+  });
+
+  it('ranks gyms among verified, live gyms only', async () => {
+    const season = await prisma.season.findFirstOrThrow({ where: { status: 'ACTIVE' } });
+    const gov = await prisma.governorate.findUniqueOrThrow({ where: { code: 'TN-51' }, include: { cities: true } });
+    const ghost = await prisma.gym.create({ data: { id: uuidv7(), name: 'Ghost Gym', slug: 'ghost-gym', governorateId: gov.id, cityId: gov.cities[0]!.id, status: 'VERIFIED', deletedAt: new Date() } });
+    const target = await prisma.gym.findUniqueOrThrow({ where: { slug: 'monastir-beach-athletics' } });
+    const athlete = async (gymId: string, lp: number) => {
+      const u = await registerUser(app, prisma);
+      await prisma.profile.update({ where: { userId: u.session.userId }, data: { primaryGymId: gymId } });
+      await prisma.userStats.update({ where: { userId: u.session.userId }, data: { seasonLp: lp, currentSeasonId: season.id } });
+    };
+    await athlete(ghost.id, 5000); // deleted gym: must not count
+    await athlete(target.id, 10);
+    const res = await api().get(`/api/v1/gyms/${target.id}`).set(bearer(token)).expect(200);
+    expect(res.body.rank).toBe(1);
+  });
+
   it('returns membership state, manage flag and no private contact details', async () => {
     const athlete = await registerUser(app, prisma);
     const gym = await prisma.gym.findUniqueOrThrow({ where: { slug: 'sahel-iron-club' } });

@@ -109,6 +109,8 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
     throw new Error(`Invalid environment configuration:\n${issues}`);
   }
   const unsafe = assertSafeForEnvironment(parsed.data);
+  // The default points at localhost: production must say where media are really served from.
+  if (parsed.data.NODE_ENV === 'production' && !source.MEDIA_PUBLIC_BASE_URL) unsafe.push('  - MEDIA_PUBLIC_BASE_URL: required when NODE_ENV=production');
   if (unsafe.length) throw new Error(`Invalid environment configuration:\n${unsafe.join('\n')}`);
   return parsed.data;
 }

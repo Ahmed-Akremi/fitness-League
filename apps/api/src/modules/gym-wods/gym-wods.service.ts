@@ -100,9 +100,8 @@ export class GymWodsService {
    * normal pipeline, no metric observations so no PRs or national LP). The board keeps the member's best score.
    */
   async submit(user: AuthUser, gymId: string, wodId: string, dto: SubmitWodScoreDto) {
-    if (!(await this.gyms.approvedMember(user.id, gymId)) && !(await this.gyms.isCoach(user, gymId))) {
-      throw AppException.forbidden('Only members of this gym can submit scores.');
-    }
+    // Scores come from the gym's approved members (coaches and the owner are members too), never from outside staff.
+    if (!(await this.gyms.approvedMember(user.id, gymId))) throw AppException.forbidden('Only members of this gym can submit scores.');
     const wod = await this.find(gymId, wodId);
     const now = this.clock.now();
     if (wod.status !== 'PUBLISHED' || now < wod.startsAt || now >= wod.endsAt) throw AppException.conflict(ErrorCode.WOD_CLOSED, 'This WOD is not open for scores.');

@@ -13,7 +13,12 @@ export class MediaController {
   @Public()
   @Get('*path')
   async get(@Req() req: Request, @Res() res: Response): Promise<void> {
-    const key = decodeURIComponent(req.path.replace(/^.*?\/media\//, ''));
+    let key: string;
+    try {
+      key = decodeURIComponent(req.path.replace(/^.*?\/media\//, ''));
+    } catch {
+      throw new NotFoundException();
+    }
     const file = await this.storage.read(key);
     if (!file) throw new NotFoundException();
     res.setHeader('Content-Type', file.mime);

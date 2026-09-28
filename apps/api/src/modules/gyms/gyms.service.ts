@@ -43,7 +43,11 @@ export class GymsService {
       sportId = sport.id;
     }
     const byMembers = q.sort === 'members';
-    const c = q.cursor ? this.cursors.decode<{ n: string; m: number; id: string }>(q.cursor) : null;
+    const c = q.cursor ? this.cursors.decode<{ n?: string; m?: number; id?: string }>(q.cursor) : null;
+    // A cursor only fits the sort it was issued for.
+    if (c && (typeof c.id !== 'string' || (byMembers ? typeof c.m !== 'number' : typeof c.n !== 'string'))) {
+      throw AppException.validation([{ field: 'cursor', code: 'CURSOR_SORT_MISMATCH' }]);
+    }
     // Accent/case-insensitive "contains"; LIKE wildcards typed by the user are matched literally.
     const like = q.q?.trim() ? `%${q.q.trim().toLowerCase().replace(/[\\%_]/g, (ch) => `\\${ch}`)}%` : null;
     const rows = await this.prisma.$queryRaw<{ id: string; name: string; members: number }[]>`
@@ -58,7 +62,7 @@ export class GymsService {
       ${c ? (byMembers ? Prisma.sql`HAVING (COUNT(m.id)::int, g.id) < (${c.m}::int, ${c.id}::uuid)` : Prisma.sql`HAVING (g.name, g.id) > (${c.n}, ${c.id}::uuid)`) : Prisma.empty}
       ORDER BY ${byMembers ? Prisma.sql`members DESC, g.id DESC` : Prisma.sql`g.name ASC, g.id ASC`}
       LIMIT ${q.limit + 1}`;
-    const page = toPage(rows, q.limit, (r) => ({ n: r.name, m: r.members, id: r.id }), (k) => this.cursors.encode(k));
+    const page = toPage(rows, q.limit, (r) => (byMembers ? { m: r.members, id: r.id } : { n: r.name, id: r.id }), (k) => this.cursors.encode(k));
     const full = await this.prisma.gym.findMany({ where: { id: { in: page.data.map((r) => r.id) } }, include: GYM_CARD_INCLUDE });
     const byId = new Map(full.map((g) => [g.id, g]));
     return { data: page.data.map((r) => this.card(byId.get(r.id)!)), page: page.page };
@@ -81,7 +85,7 @@ export class GymsService {
         FROM user_stats s
         JOIN profiles p ON p.user_id = s.user_id
         JOIN seasons se ON se.id = s.current_season_id AND se.status = 'ACTIVE'
-        WHERE p.primary_gym_id IS NOT NULL
+        JOIN gyms g ON g.id = p.primary_gym_id AND g.status = 'VERIFIED' AND g.deleted_at IS NULL
         GROUP BY p.primary_gym_id
         HAVING SUM(s.season_lp) > 0)
       SELECT rank::int FROM (SELECT gym_id, RANK() OVER (ORDER BY lp DESC) AS rank FROM totals) r WHERE gym_id = ${id}::uuid`;

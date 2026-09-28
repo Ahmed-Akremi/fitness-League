@@ -38,6 +38,9 @@ export async function setupTestApp(env: Record<string, string> = {}): Promise<{ 
   Object.assign(process.env, env);
   const prisma = new PrismaClient();
   await seed(prisma, TODAY);
+  // Dev-only shortcuts from a local .env (e.g. a static admin 2FA code) must not leak into tests unless asked for.
+  // Prisma loads apps/api/.env into process.env when the client is created, hence this runs after it.
+  if (!('DEV_STATIC_TOTP_CODE' in env)) delete process.env.DEV_STATIC_TOTP_CODE;
   const app = await createApp();
   await app.init();
   for (const [k, v] of Object.entries(previous)) {

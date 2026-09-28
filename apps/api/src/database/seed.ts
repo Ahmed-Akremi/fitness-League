@@ -127,6 +127,9 @@ async function seedCatalog(prisma: PrismaClient, data: CatalogData): Promise<voi
 async function seedRuleSet(prisma: PrismaClient, data: RuleSetData, divisions: CatalogData['divisions'], opts: { supersede?: boolean } = {}): Promise<void> {
   const config = ruleSetConfigSchema.parse(data.config);
   const existing = await prisma.scoringRuleSet.findUnique({ where: { version: data.version } });
+  if (existing && Buffer.from(existing.configHash).compare(createHash('sha256').update(JSON.stringify(config)).digest()) !== 0) {
+    console.warn(`Rule set v${data.version} already exists with a different config; the shipped ruleset-v${data.version}.json was not applied.`);
+  }
   // A published rule set is immutable: never overwrite it, even from the seed.
   // `supersede`: a newer shipped version replaces the active one ONCE, when first created (never re-activated later,
   // so an admin's later choice sticks). Not retroactive: past scores keep the version they were computed with.

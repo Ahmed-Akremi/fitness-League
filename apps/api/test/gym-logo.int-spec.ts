@@ -65,6 +65,11 @@ describe('Gym logo upload (integration)', () => {
     await api().get(new URL(back.body.logoUrl).pathname).expect(200);
   });
 
+  it('answers 4xx (never 500) for malformed or escaping media paths', async () => {
+    await api().get('/api/v1/media/%E0%A4%A').expect(400); // malformed escape, refused by the router
+    await api().get('/api/v1/media/gyms/..%2F..%2F.env').expect(404);
+  });
+
   it('refuses strangers, oversized files and fake images', async () => {
     const { owner, gym } = await ownedGym('ariana-fit-house');
     const stranger = await registerUser(app, prisma);

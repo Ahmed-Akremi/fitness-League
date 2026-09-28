@@ -34,6 +34,11 @@ describe('loadEnv', () => {
     expect(loadEnv({ ...valid, STORAGE_DRIVER: 's3', S3_BUCKET: 'b', S3_ACCESS_KEY: 'k', S3_SECRET_KEY: 's' }).STORAGE_DRIVER).toBe('s3');
   });
 
+  it('requires an explicit public media URL in production', () => {
+    expect(() => loadEnv({ ...valid, NODE_ENV: 'production' })).toThrow(/MEDIA_PUBLIC_BASE_URL: required when NODE_ENV=production/);
+    expect(loadEnv({ ...valid, NODE_ENV: 'production', MEDIA_PUBLIC_BASE_URL: 'https://cdn.example.com/media' }).MEDIA_PUBLIC_BASE_URL).toBe('https://cdn.example.com/media');
+  });
+
   it('accepts a static dev 2FA code outside production only', () => {
     expect(loadEnv({ ...valid, DEV_STATIC_TOTP_CODE: '000000' }).DEV_STATIC_TOTP_CODE).toBe('000000');
     expect(() => loadEnv({ ...valid, DEV_STATIC_TOTP_CODE: '12ab' })).toThrow(/DEV_STATIC_TOTP_CODE/);

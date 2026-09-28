@@ -123,4 +123,11 @@ describe('Gym WODs (integration)', () => {
     await api().post(`/api/v1/gyms/${gymId}/wods/${wod.id}/scores/${score.id}/invalidate`).set(bearer(coach.session.accessToken)).send({ reason: 'Late check' }).expect(200);
     expect((await prisma.gymWodScore.findUniqueOrThrow({ where: { id: score.id } })).status).toBe('INVALIDATED');
   });
+
+  it('only approved members post scores (not platform staff from outside the gym)', async () => {
+    const wod = (await api().post(`/api/v1/gyms/${gymId}/wods`).set(bearer(coach.session.accessToken)).send({ ...wodBody, title: 'Staff test' }).expect(201)).body;
+    const staff = await registerUser(app, prisma);
+    await prisma.user.update({ where: { id: staff.session.userId }, data: { role: 'ADMIN' } });
+    await api().put(`/api/v1/gyms/${gymId}/wods/${wod.id}/score`).set(bearer(staff.session.accessToken)).send({ division: 'RX', timeS: 400, performedAt: h(-8), clientId: randomUUID() }).expect(403);
+  });
 });
