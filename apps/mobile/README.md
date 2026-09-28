@@ -44,3 +44,13 @@ flutter test
 
 Unit tests cover token refresh (one refresh for concurrent 401s) and offline sync (queue, batch flush, conflicts);
 widget tests cover login, onboarding, workout logging (online, offline, rejected) and the leaderboard (paging, RTL).
+
+## Offline demo APK (no server)
+
+```bash
+flutter build apk --release --dart-define=DEMO=true
+```
+
+Every request is answered on the phone from `assets/demo/api.json` (responses recorded from the local API with demo
+data; any email/password signs in as `ahmed`; writes are accepted but not stored). To refresh the recording, run the
+API with `pnpm demo-data`, then `node tool/record-demo.mjs assets/demo/api.json`.

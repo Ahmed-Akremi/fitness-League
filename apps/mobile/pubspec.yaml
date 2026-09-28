@@ -37,6 +37,8 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   generate: true
+  assets:
+    - assets/demo/api.json  # offline demo only (--dart-define=DEMO=true)
   fonts:
     - family: BarlowCondensed
       fonts:
