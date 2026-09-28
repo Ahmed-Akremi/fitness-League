@@ -114,9 +114,16 @@ async function main(): Promise<void> {
     const battle = await call<{ id: string }>('POST', '/battles', ahmed.token, { opponentId: tokens.yassine!.id, durationDays: 7 });
     await call('POST', `/battles/${battle.id}/accept`, tokens.yassine!.token);
 
-    // Give the worker a moment to score the workouts before suggesting goals.
-    await new Promise((r) => setTimeout(r, 4000));
-    await call('POST', '/goals', ahmed.token, { type: 'STRENGTH', exerciseId: squat.id, metricCode: 'E1RM', targetValue: 130, wasSuggested: true });
+    // The worker scores the workouts asynchronously: retry until the strength goal has a current value (up to 60 s).
+    for (let attempt = 1; ; attempt++) {
+      try {
+        await call('POST', '/goals', ahmed.token, { type: 'STRENGTH', exerciseId: squat.id, metricCode: 'E1RM', targetValue: 130, wasSuggested: true });
+        break;
+      } catch (err) {
+        if (attempt >= 30 || !String(err).includes('NO_CURRENT_VALUE')) throw err;
+        await new Promise((r) => setTimeout(r, 2000));
+      }
+    }
     await call('POST', '/goals', ahmed.token, { type: 'HABIT', metricCode: 'WORKOUTS_PER_WEEK', targetValue: 3 });
 
     // Staff account for the admin panel (TOTP is enrolled at first sign-in).
