@@ -307,5 +307,6 @@
   "gymPhotoFailed": "La photo n'a pas pu être envoyée (PNG, JPEG ou WebP, 2 Mo max).",
   "retryPhoto": "Réessayer la photo",
   "wodUpcoming": "À venir",
-  "wodDraftBadge": "Brouillon"
+  "wodDraftBadge": "Brouillon",
+  "removeMemberConfirm": "Retirer {name} de la salle ?"
 }

@@ -43,6 +43,21 @@ class _GymMembersScreenState extends ConsumerState<GymMembersScreen> {
     if (mounted) setState(_reload);
   }
 
+  Future<void> _confirmRemove(Map<String, dynamic> m) async {
+    final l = context.l10n;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        content: Text(l.removeMemberConfirm((m['fullName'] ?? m['username']) as String)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(c, false), child: Text(l.cancel)),
+          FilledButton(onPressed: () => Navigator.pop(c, true), child: Text(l.removeMember)),
+        ],
+      ),
+    );
+    if (ok == true) await _act(() => _repo.decide(widget.id, m['id'] as String, 'remove'));
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
@@ -90,7 +105,7 @@ class _GymMembersScreenState extends ConsumerState<GymMembersScreen> {
                         onSelected: (a) => switch (a) {
                           'coach' => _act(() => _repo.setCoach(widget.id, m['id'] as String, true)),
                           'uncoach' => _act(() => _repo.setCoach(widget.id, m['id'] as String, false)),
-                          _ => _act(() => _repo.decide(widget.id, m['id'] as String, 'remove')),
+                          _ => _confirmRemove(m),
                         },
                         itemBuilder: (_) => [
                           if (m['role'] == 'COACH') PopupMenuItem(value: 'uncoach', child: Text(l.removeCoach)) else PopupMenuItem(value: 'coach', child: Text(l.makeCoach)),

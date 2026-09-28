@@ -95,4 +95,27 @@ void main() {
     await tester.pumpAndSettle();
     expect(b.calls('POST', '/gyms/b/members/u2/coach'), hasLength(1));
   });
+
+  testWidgets('removing a member asks for confirmation first', (tester) async {
+    final b = FakeBackend()
+      ..on('GET', '/gyms/b/membership-requests', (_) => (200, <Object>[]))
+      ..on('GET', '/gyms/b/members', (_) => (200, {
+            'data': [
+              {'id': 'u2', 'username': 'nour', 'fullName': 'Nour H.', 'role': 'MEMBER', 'since': null},
+            ],
+            'page': {'nextCursor': null, 'hasMore': false},
+          }))
+      ..on('POST', '/gyms/b/members/u2/remove', (_) => (200, {'userId': 'u2', 'status': 'REMOVED'}));
+    await pumpScreen(tester, const GymMembersScreen(id: 'b'), b);
+    await tester.tap(find.text('Members'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Member actions'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Remove from gym'));
+    await tester.pumpAndSettle();
+    expect(b.calls('POST', '/gyms/b/members/u2/remove'), isEmpty);
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    expect(b.calls('POST', '/gyms/b/members/u2/remove'), isEmpty);
+  });
 }

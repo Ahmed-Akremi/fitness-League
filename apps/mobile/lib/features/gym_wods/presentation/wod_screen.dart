@@ -56,30 +56,10 @@ class _WodScreenState extends ConsumerState<WodScreen> {
   }
 
   Future<void> _invalidate(Map<String, dynamic> row) async {
-    final l = context.l10n;
-    final reason = TextEditingController();
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (c) => StatefulBuilder(
-        builder: (c, setLocal) => AlertDialog(
-          title: Text(l.invalidate),
-          content: TextField(
-            key: const Key('invalidate-reason'),
-            controller: reason,
-            maxLength: 300,
-            decoration: InputDecoration(labelText: l.invalidateReason),
-            onChanged: (_) => setLocal(() {}),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(c, false), child: Text(l.cancel)),
-            FilledButton(onPressed: reason.text.trim().length >= 3 ? () => Navigator.pop(c, true) : null, child: Text(l.invalidate)),
-          ],
-        ),
-      ),
-    );
-    if (ok != true) return;
+    final text = await showDialog<String>(context: context, builder: (_) => const _InvalidateDialog());
+    if (text == null) return;
     try {
-      await ref.read(gymWodsRepositoryProvider).invalidate(widget.gymId, widget.wodId, row['scoreId'] as String, reason.text.trim());
+      await ref.read(gymWodsRepositoryProvider).invalidate(widget.gymId, widget.wodId, row['scoreId'] as String, text);
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(errorMessage(context, e))));
     }
@@ -210,6 +190,44 @@ class _BoardState extends ConsumerState<_Board> {
           ]);
         },
       ),
+    );
+  }
+}
+
+/// Asks the coach for a reason (≥ 3 characters); pops with the reason, or null when cancelled.
+class _InvalidateDialog extends StatefulWidget {
+  const _InvalidateDialog();
+
+  @override
+  State<_InvalidateDialog> createState() => _InvalidateDialogState();
+}
+
+class _InvalidateDialogState extends State<_InvalidateDialog> {
+  final _reason = TextEditingController();
+
+  @override
+  void dispose() {
+    _reason.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    final ok = _reason.text.trim().length >= 3;
+    return AlertDialog(
+      title: Text(l.invalidate),
+      content: TextField(
+        key: const Key('invalidate-reason'),
+        controller: _reason,
+        maxLength: 300,
+        decoration: InputDecoration(labelText: l.invalidateReason),
+        onChanged: (_) => setState(() {}),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(l.cancel)),
+        FilledButton(onPressed: ok ? () => Navigator.pop(context, _reason.text.trim()) : null, child: Text(l.invalidate)),
+      ],
     );
   }
 }

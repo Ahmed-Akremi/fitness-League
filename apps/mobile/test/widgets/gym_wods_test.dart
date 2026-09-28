@@ -156,4 +156,22 @@ void main() {
     expect(find.text('Next Monday'), findsOneWidget);
     expect(find.text('Draft'), findsOneWidget);
   });
+
+  testWidgets('retrying a failed score submission reuses the same clientId (no duplicate session)', (tester) async {
+    var calls = 0;
+    final b = backend()
+      ..on('PUT', '/gyms/b/wods/w1/score', (_) => ++calls == 1 ? (503, {'code': 'INTERNAL'}) : (200, wod()));
+    await pumpScreen(tester, const WodScreen(gymId: 'b', wodId: 'w1', myId: 'me'), b);
+    await tester.tap(find.text('Submit my score'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('wod-time')), '7:51');
+    await tester.pump();
+    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    await tester.pumpAndSettle();
+    final ids = b.calls('PUT', '/gyms/b/wods/w1/score').map((r) => (r.data as Map)['clientId']).toList();
+    expect(ids, hasLength(2));
+    expect(ids[0], ids[1]);
+  });
 }

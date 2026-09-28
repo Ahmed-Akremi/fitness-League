@@ -19,6 +19,8 @@ class WodScoreSheet extends StatefulWidget {
 
 class _WodScoreSheetState extends State<WodScoreSheet> {
   String _division = 'RX';
+  // One id per sheet: a retry after a timeout the server already processed is recognised, not duplicated.
+  final String _clientId = newClientId();
   int? _seconds;
   int? _rounds;
   int? _repsPerRound;
@@ -48,7 +50,7 @@ class _WodScoreSheetState extends State<WodScoreSheet> {
       _error = null;
     });
     try {
-      await widget.onSubmit({'division': _division, ..._score!, 'performedAt': DateTime.now().toUtc().toIso8601String(), 'clientId': newClientId()});
+      await widget.onSubmit({'division': _division, ..._score!, 'performedAt': DateTime.now().toUtc().toIso8601String(), 'clientId': _clientId});
       if (mounted) Navigator.pop(context);
     } catch (e) {
       if (mounted) setState(() => _error = e);

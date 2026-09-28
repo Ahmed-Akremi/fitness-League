@@ -492,5 +492,13 @@
   "gymPhotoFailed": "The photo could not be uploaded (PNG, JPEG or WebP, 2 MB max).",
   "retryPhoto": "Retry the photo",
   "wodUpcoming": "Upcoming",
-  "wodDraftBadge": "Draft"
+  "wodDraftBadge": "Draft",
+  "removeMemberConfirm": "Remove {name} from the gym?",
+  "@removeMemberConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  }
 }

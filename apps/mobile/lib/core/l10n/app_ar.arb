@@ -307,5 +307,6 @@
   "gymPhotoFailed": "تعذر رفع الصورة (PNG أو JPEG أو WebP، بحد أقصى 2 ميغابايت).",
   "retryPhoto": "أعد محاولة رفع الصورة",
   "wodUpcoming": "القادمة",
-  "wodDraftBadge": "مسودة"
+  "wodDraftBadge": "مسودة",
+  "removeMemberConfirm": "إزالة {name} من الصالة؟"
 }

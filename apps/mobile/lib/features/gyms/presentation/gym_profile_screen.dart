@@ -50,9 +50,11 @@ class _GymProfileViewState extends ConsumerState<_GymProfileView> {
   Map<String, dynamic> get gym => widget.gym;
 
   Future<void> _run(Future<void> Function() action) async {
+    if (!mounted) return;
     setState(() => _busy = true);
     try {
       await action();
+      if (!mounted) return;
       ref.invalidate(gymProvider(widget.id));
       ref.invalidate(meProvider);
     } catch (e) {
@@ -83,6 +85,7 @@ class _GymProfileViewState extends ConsumerState<_GymProfileView> {
     final file = await ImagePicker().pickImage(source: ImageSource.gallery, maxWidth: 1024, maxHeight: 1024, imageQuality: 90);
     if (file == null) return;
     final bytes = await file.readAsBytes();
+    if (!mounted) return;
     if (bytes.length > 2 * 1024 * 1024) {
       messenger.showSnackBar(SnackBar(content: Text(l.logoTooLarge)));
       return;
