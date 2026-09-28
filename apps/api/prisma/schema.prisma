@@ -310,6 +310,13 @@ enum BattleStatus {
   EXPIRED
 }
 
+enum DuelQueueStatus {
+  WAITING
+  MATCHED
+  GHOST
+  LEFT
+}
+
 enum BattleOutcome {
   WIN
   LOSS
@@ -398,6 +405,8 @@ model User {
   gymWods            GymWod[]                 @relation("GymWodAuthor")
   gymWodScores       GymWodScore[]            @relation("GymWodScoreUser")
   battleParticipants BattleParticipant[]
+  mmrRating          MmrRating?
+  duelQueueEntries   DuelQueueEntry[]
   battlesCreated     Battle[]                 @relation("BattleCreator")
   notifications      Notification[]
   userBadges         UserBadge[]
@@ -655,21 +664,21 @@ model MetricType {
 }
 
 model Exercise {
-  id             String   @id @db.Uuid
-  sportId        String?  @map("sport_id") @db.Uuid
-  code           String   @unique
-  nameI18n       Json     @map("name_i18n")
-  equipment      String?
-  isBodyweight   Boolean  @default(false) @map("is_bodyweight")
-  trackedMetrics String[] @map("tracked_metrics")
+  id              String         @id @db.Uuid
+  sportId         String?        @map("sport_id") @db.Uuid
+  code            String         @unique
+  nameI18n        Json           @map("name_i18n")
+  equipment       String?
+  isBodyweight    Boolean        @default(false) @map("is_bodyweight")
+  trackedMetrics  String[]       @map("tracked_metrics")
   /// Picker grouping on mobile (CrossFit movements, benchmark WODs, Hyrox).
   group           ExerciseGroup?
-  descriptionI18n Json     @default("{}") @map("description_i18n")
+  descriptionI18n Json           @default("{}") @map("description_i18n")
   /// Per-exercise overrides of the anti-cheat thresholds (docs §7.2), e.g. {"hold_kg": 300, "reject_kg": 500}.
-  plausibility   Json     @default("{}")
-  enabled        Boolean  @default(true)
-  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  plausibility    Json           @default("{}")
+  enabled         Boolean        @default(true)
+  createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime       @updatedAt @map("updated_at") @db.Timestamptz
 
   sport               Sport?                @relation(fields: [sportId], references: [id])
   workoutExercises    WorkoutExercise[]
@@ -1257,6 +1266,39 @@ model BattleParticipant {
   @@id([battleId, userId])
   @@index([userId, battleId])
   @@map("battle_participants")
+}
+
+/// Weekly Duel rating (Glicko-2, docs §6.1). One rating period = one business week.
+model MmrRating {
+  userId     String    @id @map("user_id") @db.Uuid
+  rating     Decimal   @default(1500) @db.Decimal(7, 2)
+  rd         Decimal   @default(350) @db.Decimal(6, 2)
+  volatility Decimal   @default(0.06) @db.Decimal(6, 5)
+  games      Int       @default(0)
+  /// Monday of the last rated week (RD decay counts the weeks since).
+  lastPeriod DateTime? @map("last_period") @db.Date
+  updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("mmr_ratings")
+}
+
+/// Opt-in for the Weekly Duel of the week starting `weekStart` (queue open Friday 00:00 → Monday 12:00).
+model DuelQueueEntry {
+  id        String          @id @db.Uuid
+  userId    String          @map("user_id") @db.Uuid
+  weekStart DateTime        @map("week_start") @db.Date
+  joinedAt  DateTime        @default(now()) @map("joined_at") @db.Timestamptz
+  status    DuelQueueStatus @default(WAITING)
+  battleId  String?         @map("battle_id") @db.Uuid
+  updatedAt DateTime        @updatedAt @map("updated_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, weekStart])
+  @@index([weekStart, status])
+  @@map("duel_queue_entries")
 }
 
 // ───────────────────────────── Gyms ─────────────────────────────

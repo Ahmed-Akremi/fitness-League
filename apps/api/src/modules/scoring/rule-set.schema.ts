@@ -87,6 +87,31 @@ export const ruleSetConfigSchema = z
     friend_battle_same_opponent_season_max: nonNegInt,
     gym_war_win_xp: nonNegInt,
 
+    /** Weekly Duels (docs §6.1). Defaulted so rule sets written before Phase 2 stay valid. */
+    duel: z
+      .object({
+        glicko_tau: z.number().positive(),
+        window_base: posInt,
+        window_step: nonNegInt,
+        window_step_hours: posInt,
+        window_max: posInt,
+        no_rematch_weeks: nonNegInt,
+        same_gym_allowed: z.boolean(),
+        recent_activity_days: posInt,
+        ghost_win_lp: nonNegInt,
+      })
+      .default({
+        glicko_tau: 0.5,
+        window_base: 150,
+        window_step: 100,
+        window_step_hours: 6,
+        window_max: 400,
+        no_rematch_weeks: 4,
+        same_gym_allowed: false,
+        recent_activity_days: 14,
+        ghost_win_lp: 10,
+      }),
+
     // Levels
     level_base_xp: posInt,
     level_exponent: z.number().min(1).max(3),

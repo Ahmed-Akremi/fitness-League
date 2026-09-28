@@ -5,6 +5,7 @@ import { ClockService } from '../../common/clock/clock.service';
 import { uuidv7 } from '../../common/ids/uuid';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { BattlesService } from '../battles/battles.service';
+import { DuelsService } from '../duels/duels.service';
 import { LeaderboardsService } from '../leaderboards/leaderboards.service';
 import { divisionFor, levelRulesOf } from '../ledger/ledger.service';
 import { levelFromXp } from '../scoring/level';
@@ -29,6 +30,7 @@ export class JobsService {
     private readonly leaderboards: LeaderboardsService,
     private readonly privacy: PrivacyService,
     private readonly battles: BattlesService,
+    private readonly duels: DuelsService,
     private readonly ruleSets: RuleSetService,
     private readonly clock: ClockService,
     private readonly calendar: BusinessCalendar,
@@ -47,6 +49,14 @@ export class JobsService {
     }
     const week = this.seasons.lastClosableWeek(now, config.week_grace_hours);
     out.weeklyClose = await this.once('weekly-close', this.calendar.localDate(week), () => this.seasons.closeWeek(week));
+    // Weekly Duels: a pairing batch every hour from Sunday 12:00 to Monday 12:00, then the ghost fallback once.
+    const pairing = this.duels.pairingWeek(now);
+    if (pairing) {
+      const hour = Math.floor((now.getTime() - this.calendar.dayStart(now).getTime()) / 3_600_000);
+      out.duels = await this.once('duel-matchmaking', `${today}T${String(hour).padStart(2, '0')}`, () => this.duels.runMatchmaking(now));
+    } else {
+      out.duels = await this.once('duel-ghosts', this.calendar.localDate(this.calendar.weekStart(now)), () => this.duels.runMatchmaking(now));
+    }
     // Battles close continuously (every tick), not once a day.
     out.battles = await this.battles.closeDue();
     out.calibration = await this.once('calibration-finalize', today, () => this.finalizeCalibrations());
