@@ -109,12 +109,13 @@ See [`apps/mobile/README.md`](apps/mobile/README.md) (`flutter pub get`, `build_
 | Activity feed: friends' activity (visibility, blocks, mutes, deleted workouts hidden), one reaction per athlete (👍 🔥 💪), comments (author or activity owner deletes), notifications; mobile feed with comments sheet | Done, tested |
 | Push notifications: every notification goes through the outbox to FCM HTTP v1 (`PUSH_DRIVER=fcm`, service account, no SDK) or a log driver; devices API, per-category switches, quiet hours (Africa/Tunis), dead tokens dropped; mobile settings section. The app does not register its FCM token yet (needs a Firebase project and `google-services.json`) | Done, tested (API) |
 | Real time: Socket.IO `/ws` (access-token auth, session version checked), `notification.new` to the recipient, `battle.score` to battle participants; events relayed from the worker through PostgreSQL LISTEN/NOTIFY (no Redis); mobile bell and battle screen update live, polling kept as fallback | Done, tested |
+| Admin score recompute: SUPER_ADMIN re-scores closed weeks of the running season with the active rule set (dry run first, reversal + new ledger entries, audited); admin panel form with preview | Done, tested |
 | Docker images / compose, CI | Written, not yet run (no Docker locally; CI runs on the next push) |
 
 ## Not done yet
 
 - Run Docker compose and CI once for real.
-- Phase 2: mobile FCM token registration (needs a Firebase project), live leaderboard moves, phone verification by SMS, admin score recompute job.
+- Phase 2: mobile FCM token registration (needs a Firebase project), live leaderboard moves, phone verification by SMS.
 - Phase 3: workout proofs (photo/video) and verified scoring, behavioural anti-cheat, reports, sanctions and appeals, gym admin dashboard.
 - Phase 4: integrations (watches, apps), coach tools, billing.
 

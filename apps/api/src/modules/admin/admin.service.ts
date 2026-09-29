@@ -21,6 +21,7 @@ import {
   CreateSeasonDto,
   ExerciseDto,
   LedgerAdjustmentDto,
+  RecomputeDto,
   ListUsersQueryDto,
   ReplaceExpectedProgressionDto,
   SportDto,
@@ -376,6 +377,20 @@ export class AdminService {
   }
 
   /** Manual correction, always a new ledger entry (never an edit) with the reason in the audit log. */
+  async recompute(actor: AuthUser, dto: RecomputeDto) {
+    const from = this.calendar.weekStart(new Date(`${dto.from.slice(0, 10)}T12:00:00Z`));
+    const to = this.calendar.weekStart(new Date(`${dto.to.slice(0, 10)}T12:00:00Z`));
+    if (to <= from) throw AppException.validation([{ field: 'to', code: 'INVALID_RANGE' }]);
+    // Only closed weeks: the running week is still provisional.
+    if (to.getTime() > this.seasons.lastClosableWeek(this.clock.now(), (await this.ruleSets.getActive()).config.week_grace_hours).getTime() + 7 * 86_400_000) {
+      throw AppException.validation([{ field: 'to', code: 'WEEK_NOT_CLOSED' }]);
+    }
+    const dryRun = dto.dryRun !== false;
+    const result = await this.seasons.recomputeRange(from, to, dryRun);
+    await this.audit.log({ actorId: actor.id, actorRole: actor.role, action: dryRun ? 'SCORES_RECOMPUTE_DRY_RUN' : 'SCORES_RECOMPUTED', entityType: 'weekly_scores', after: { from: dto.from, to: dto.to, reason: dto.reason, weeks: result.weeks, changed: result.changed, lpDelta: result.lpDelta } });
+    return { dryRun, ...result };
+  }
+
   async adjust(actor: AuthUser, dto: LedgerAdjustmentDto) {
     const { version, config } = await this.ruleSets.getActive();
     const target = await this.prisma.user.findUnique({ where: { id: dto.userId }, include: { stats: true } });

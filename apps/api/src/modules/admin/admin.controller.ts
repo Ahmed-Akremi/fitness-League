@@ -15,6 +15,7 @@ import {
   CreateSeasonDto,
   ExerciseDto,
   LedgerAdjustmentDto,
+  RecomputeDto,
   ListUsersQueryDto,
   ReplaceExpectedProgressionDto,
   SportDto,
@@ -195,6 +196,13 @@ export class AdminController {
   @Roles('ADMIN', 'SUPER_ADMIN')
   auditLogs(@Query() q: AuditQueryDto) {
     return this.admin.auditLogs(q);
+  }
+
+  /** Re-scores closed weeks of the running season with the active rule set (reversal + new entries). */
+  @Post('recompute')
+  @Roles('SUPER_ADMIN')
+  recompute(@CurrentUser() actor: AuthUser, @Body() dto: RecomputeDto) {
+    return this.admin.recompute(actor, dto);
   }
 
   @Post('ledger/adjustments')
