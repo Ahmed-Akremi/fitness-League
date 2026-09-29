@@ -323,6 +323,22 @@ enum BattleOutcome {
   DRAW
 }
 
+enum LeagueVisibility {
+  PUBLIC
+  PRIVATE
+}
+
+enum LeagueScoringPreset {
+  STANDARD
+  CONSISTENCY
+  PROGRESS
+}
+
+enum LeagueRole {
+  OWNER
+  MEMBER
+}
+
 enum ChallengeScope {
   PERSONAL
   FRIEND
@@ -442,6 +458,8 @@ model User {
   duelQueueEntries   DuelQueueEntry[]
   challengesCreated  Challenge[]              @relation("ChallengeCreator")
   challengeEntries   ChallengeParticipant[]
+  leaguesOwned       League[]                 @relation("LeagueOwner")
+  leagueMemberships  LeagueMember[]
   battlesCreated     Battle[]                 @relation("BattleCreator")
   notifications      Notification[]
   userBadges         UserBadge[]
@@ -1334,6 +1352,46 @@ model DuelQueueEntry {
   @@unique([userId, weekStart])
   @@index([weekStart, status])
   @@map("duel_queue_entries")
+}
+
+// ───────────────────────────── Private leagues ─────────────────────────────
+
+/// A user-made league ranking its members on their weekly scores over a period (docs §3.10).
+model League {
+  id            String              @id @db.Uuid
+  name          String
+  slug          String              @unique
+  visibility    LeagueVisibility    @default(PRIVATE)
+  inviteCode    String              @unique @map("invite_code")
+  ownerId       String              @map("owner_id") @db.Uuid
+  maxMembers    Int                 @default(50) @map("max_members")
+  startsAt      DateTime            @map("starts_at") @db.Timestamptz
+  endsAt        DateTime            @map("ends_at") @db.Timestamptz
+  scoringPreset LeagueScoringPreset @default(STANDARD) @map("scoring_preset")
+  createdAt     DateTime            @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime            @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt     DateTime?           @map("deleted_at") @db.Timestamptz
+
+  owner   User           @relation("LeagueOwner", fields: [ownerId], references: [id])
+  members LeagueMember[]
+
+  @@index([visibility, endsAt])
+  @@map("leagues")
+}
+
+model LeagueMember {
+  leagueId String     @map("league_id") @db.Uuid
+  userId   String     @map("user_id") @db.Uuid
+  role     LeagueRole @default(MEMBER)
+  joinedAt DateTime   @default(now()) @map("joined_at") @db.Timestamptz
+  leftAt   DateTime?  @map("left_at") @db.Timestamptz
+
+  league League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([leagueId, userId])
+  @@index([userId])
+  @@map("league_members")
 }
 
 // ───────────────────────────── Challenges ─────────────────────────────

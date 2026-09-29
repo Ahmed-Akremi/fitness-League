@@ -665,5 +665,42 @@
       }
     }
   },
-  "challengeDetail": "Challenge"
+  "challengeDetail": "Challenge",
+  "leaguesTab": "Leagues",
+  "newLeague": "New league",
+  "createLeague": "Create the league",
+  "leagueInviteCode": "Invite code",
+  "leagueJoin": "Join",
+  "myLeagues": "My leagues",
+  "publicLeagues": "Public leagues",
+  "noLeagues": "Create a league for your crew, or join one with its invite code.",
+  "leaguePresetStandard": "Overall",
+  "privateLeague": "League",
+  "leagueInviteHint": "Share this code so friends can join",
+  "leagueCopyCode": "Copy the code",
+  "leagueCodeCopied": "Code copied",
+  "leagueLeave": "Leave the league",
+  "leagueName": "League name",
+  "leaguePublic": "Public league",
+  "leaguePublicHint": "Anyone can find and join it",
+  "leagueRanking": "Ranked on",
+  "membersOf": "{count}/{max} members",
+  "@membersOf": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "weeksCount": "{count, plural, =1{1 week} other{{count} weeks}}",
+  "@weeksCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }

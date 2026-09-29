@@ -11,6 +11,7 @@ import '../../gyms/data/gyms_repository.dart';
 import '../../../core/widgets/common.dart';
 import '../../../core/widgets/error_text.dart';
 import '../../home/data/me_repository.dart';
+import '../../leagues/presentation/leagues_tab.dart';
 import '../data/league_repository.dart';
 
 /// League tabs (spec §19.2): Tunisia · Region · Gym · Friends. Cursor pagination + jump to my rank.
@@ -25,16 +26,19 @@ class LeagueScreen extends ConsumerWidget {
     final governorateId = (profile?['governorate'] as Map?)?['id'] as String?;
     final gymId = (profile?['gym'] as Map?)?['id'] as String?;
     return DefaultTabController(
-      length: 4,
+      length: 5,
       child: Scaffold(
         appBar: AppBar(
           title: Text(l.navLeague),
           bottom: TabBar(
+            isScrollable: true,
+            tabAlignment: TabAlignment.start,
             tabs: [
               Tab(text: l.leagueGlobal),
               Tab(text: l.leagueRegion),
               Tab(text: l.leagueGym),
               Tab(text: l.leagueFriends),
+              Tab(text: l.leaguesTab),
             ],
           ),
         ),
@@ -54,6 +58,7 @@ class LeagueScreen extends ConsumerWidget {
             else
               EmptyState(icon: Icons.fitness_center_rounded, message: l.noGym, actionLabel: l.findGym, onAction: () => context.push('/gyms')),
             LeaderboardList(scope: LeagueScope.friends, myId: me?['id'] as String?),
+            const LeaguesTab(),
           ],
         ),
       ),
