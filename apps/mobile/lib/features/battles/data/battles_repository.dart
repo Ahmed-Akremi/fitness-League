@@ -13,6 +13,11 @@ class BattlesRepository {
   Future<Map<String, dynamic>> create(String opponentId, int durationDays, List<String>? components) =>
       api.post<Map<String, dynamic>>('/battles', data: {'opponentId': opponentId, 'durationDays': durationDays, 'components': ?components});
   Future<void> act(String id, String action) => api.post<dynamic>('/battles/$id/$action');
+
+  // Weekly Duels: the queue; the duel itself is a battle (GET /battles/{id}).
+  Future<Map<String, dynamic>> duelStatus() => api.get<Map<String, dynamic>>('/duels/queue');
+  Future<Map<String, dynamic>> joinDuel() => api.post<Map<String, dynamic>>('/duels/queue');
+  Future<Map<String, dynamic>> leaveDuel() => api.delete<Map<String, dynamic>>('/duels/queue');
 }
 
 final battlesRepositoryProvider = Provider<BattlesRepository>((ref) => BattlesRepository(ref.watch(apiClientProvider)));

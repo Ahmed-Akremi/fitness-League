@@ -29,6 +29,8 @@ String notificationText(AppLocalizations l, Map<String, dynamic> n) {
     'BATTLE_STARTED' => l.notifBattleStarted,
     'BATTLE_DECLINED' => l.notifBattleDeclined,
     'BATTLE_RESULT' => l.notifBattleResult,
+    'DUEL_MATCHED' => l.notifDuelMatched,
+    'DUEL_GHOST' => l.notifDuelGhost,
     'GYM_WOD_SCORE_INVALIDATED' => l.notifWodInvalidated((p['wodTitle'] ?? '') as String, (p['reason'] ?? '') as String),
     _ => l.notifGeneric,
   };
@@ -39,7 +41,7 @@ String? notificationRoute(Map<String, dynamic> n) {
   final p = (n['payload'] as Map?)?.cast<String, dynamic>() ?? const {};
   return switch (n['type']) {
     'FRIEND_REQUEST' || 'FRIEND_ACCEPTED' => '/friends',
-    'BATTLE_INVITE' || 'BATTLE_STARTED' || 'BATTLE_DECLINED' || 'BATTLE_RESULT' => p['battleId'] == null ? '/battles' : '/battles/${p['battleId']}',
+    'BATTLE_INVITE' || 'BATTLE_STARTED' || 'BATTLE_DECLINED' || 'BATTLE_RESULT' || 'DUEL_MATCHED' || 'DUEL_GHOST' => p['battleId'] == null ? '/battles' : '/battles/${p['battleId']}',
     'GYM_WOD_SCORE_INVALIDATED' => '/gyms/${p['gymId']}/wods/${p['wodId']}',
     _ => null,
   };

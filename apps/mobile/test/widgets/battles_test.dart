@@ -1,4 +1,5 @@
 import 'package:fitness_league/features/battles/presentation/battle_screen.dart';
+import 'package:fitness_league/features/battles/presentation/battles_screen.dart';
 import 'package:fitness_league/features/battles/presentation/new_battle_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -59,5 +60,60 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, 'Send challenge'));
     await tester.pumpAndSettle();
     expect(b.calls('POST', '/battles').single.data, {'opponentId': 'u2', 'durationDays': 14});
+  });
+
+  group('weekly duel', () {
+    Map<String, dynamic> queue({bool open = true, String? entry, Map<String, dynamic>? duel}) => {
+          'queueOpen': open,
+          'entry': entry == null ? null : {'status': entry, 'joinedAt': '2026-09-25T10:00:00Z', 'battleId': null},
+          'rating': {'rating': 1500, 'rd': 350, 'games': 0},
+          'currentDuel': duel,
+        };
+    FakeBackend backend(Map<String, dynamic> status) => FakeBackend()
+      ..on('GET', '/duels/queue', (_) => (200, status))
+      ..on('GET', '/battles', (_) => (200, {'data': <Object>[], 'nextCursor': null}));
+
+    testWidgets('joins the open queue', (tester) async {
+      final b = backend(queue())..on('POST', '/duels/queue', (_) => (201, queue(entry: 'WAITING')));
+      await pumpScreen(tester, const BattlesScreen(), b);
+      expect(find.text('MMR 1500 · no duels yet'), findsOneWidget);
+      await tester.tap(find.widgetWithText(FilledButton, 'Join this week'));
+      await tester.pumpAndSettle();
+      expect(b.calls('POST', '/duels/queue'), hasLength(1));
+      expect(find.text("You're in: your opponent is found on Sunday"), findsOneWidget);
+      expect(find.widgetWithText(OutlinedButton, 'Leave the queue'), findsOneWidget);
+    });
+
+    testWidgets('says when the queue is closed', (tester) async {
+      await pumpScreen(tester, const BattlesScreen(), backend(queue(open: false)));
+      expect(find.text('Sign-ups open on Friday'), findsOneWidget);
+      expect(find.widgetWithText(FilledButton, 'Join this week'), findsNothing);
+    });
+
+    testWidgets('explains why joining is refused', (tester) async {
+      final b = backend(queue())
+        ..on('POST', '/duels/queue', (_) => (422, {
+              'code': 'VALIDATION_FAILED',
+              'errors': [
+                {'field': 'user', 'code': 'CALIBRATION'},
+              ],
+            }));
+      await pumpScreen(tester, const BattlesScreen(), b);
+      await tester.tap(find.widgetWithText(FilledButton, 'Join this week'));
+      await tester.pumpAndSettle();
+      expect(find.text('Finish your calibration before joining a duel'), findsOneWidget);
+    });
+
+    testWidgets('a ghost duel is against my own last week', (tester) async {
+      final ghost = battle('ACTIVE', myScore: 55)
+        ..['type'] = 'DUEL'
+        ..['isGhost'] = true
+        ..['ghostTarget'] = 48.5
+        ..['participants'] = [battle('ACTIVE', myScore: 55)['participants'][0]];
+      await pumpScreen(tester, const BattleScreen(id: 'bt1', myId: 'u1'), FakeBackend()..on('GET', '/battles/bt1', (_) => (200, ghost)));
+      expect(find.text('Weekly Duel'), findsOneWidget);
+      expect(find.text('You, last week'), findsOneWidget);
+      expect(find.text('48.5'), findsOneWidget);
+    });
   });
 }

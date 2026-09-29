@@ -308,5 +308,20 @@
   "retryPhoto": "Réessayer la photo",
   "wodUpcoming": "À venir",
   "wodDraftBadge": "Brouillon",
-  "removeMemberConfirm": "Retirer {name} de la salle ?"
+  "removeMemberConfirm": "Retirer {name} de la salle ?",
+  "weeklyDuel": "Duel de la semaine",
+  "duelIntro": "Affronte un inconnu de ton niveau pendant une semaine. Inscriptions du vendredi au lundi midi.",
+  "duelJoin": "Je participe",
+  "duelLeave": "Quitter la file",
+  "duelWaiting": "Inscrit : ton adversaire est trouvé dimanche",
+  "duelQueueClosed": "Inscriptions dès vendredi",
+  "duelSeeDuel": "Voir mon duel",
+  "duelGhost": "Duel fantôme : bats ta semaine dernière",
+  "duelGhostOpponent": "Toi, semaine dernière",
+  "errorDuelCalibration": "Termine ta calibration avant de rejoindre un duel",
+  "errorDuelInactive": "Entraîne-toi au moins une fois ces 14 derniers jours pour rejoindre un duel",
+  "errorDuelQueueClosed": "Les inscriptions aux duels ouvrent vendredi",
+  "notifDuelMatched": "Ton adversaire de la semaine est trouvé !",
+  "notifDuelGhost": "Pas d'adversaire cette semaine : duel contre ta semaine dernière",
+  "duelRating": "MMR {rating} · {games, plural, =0{aucun duel} =1{1 duel} other{{games} duels}}"
 }

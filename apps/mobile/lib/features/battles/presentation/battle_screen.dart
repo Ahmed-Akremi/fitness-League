@@ -75,7 +75,10 @@ class _BattleScreenState extends ConsumerState<BattleScreen> {
     final t = Theme.of(context);
     final parts = (b['participants'] as List).cast<Map<String, dynamic>>();
     final me = parts.firstWhere((p) => p['userId'] == widget.myId, orElse: () => parts.first);
-    final them = parts.firstWhere((p) => p['userId'] != me['userId']);
+    // A ghost duel has one participant: the opponent is the athlete's own previous week.
+    final them = b['isGhost'] == true
+        ? <String, dynamic>{'userId': null, 'fullName': l.duelGhostOpponent, 'score': b['ghostTarget']}
+        : parts.firstWhere((p) => p['userId'] != me['userId']);
     final status = b['status'] as String;
     final iCreated = b['createdById'] == widget.myId;
     num? score(Map<String, dynamic> p) => p['score'] as num?;
@@ -99,7 +102,7 @@ class _BattleScreenState extends ConsumerState<BattleScreen> {
 
     final outcome = me['outcome'] as String?;
     return Scaffold(
-      appBar: AppBar(title: Text(l.battles)),
+      appBar: AppBar(title: Text(b['type'] == 'DUEL' ? l.weeklyDuel : l.battles)),
       body: RefreshIndicator(
         onRefresh: _load,
         child: ListView(padding: const EdgeInsets.all(16), children: [

@@ -101,7 +101,17 @@ See [`apps/mobile/README.md`](apps/mobile/README.md) (`flutter pub get`, `build_
 | CrossFit & Hyrox: movements, benchmark WODs (Fran, Murph, Cindy…), Hyrox race and stations, `FINISH_TIME` records, timed anti-cheat bounds, rule set v2 | Done, tested |
 | Gym coaches and coach-made WODs (for time / AMRAP / max load, Rx/Scaled boards, invalidation reverses XP) | Done, tested |
 | Mobile app: all screens (gyms, WODs, CrossFit/Hyrox logging, friends, battles, notifications, records, body, settings), redesigned UI (Barlow Condensed + Inter), fr/en/ar RTL | Done, widget tested; web preview verified at 390×844 |
+| Weekly Duels: opt-in queue (Friday → Monday noon), Glicko-2 matchmaking, ghost duel when unmatched, MMR on close; mobile card and duel screen | Done, tested |
 | Docker images / compose, CI | Written, not yet run (no Docker locally; CI runs on the next push) |
+
+## Not done yet
+
+- Run Docker compose and CI once for real.
+- Phase 2: Gym Wars, private leagues, challenges, badge engine, activity feed (reactions, comments), push notifications (FCM), real-time WebSocket, phone verification by SMS, admin score recompute job.
+- Phase 3: workout proofs (photo/video) and verified scoring, behavioural anti-cheat, reports, sanctions and appeals, gym admin dashboard.
+- Phase 4: integrations (watches, apps), coach tools, billing.
+
+See `docs/ARCHITECTURE.md` §4.5 for the planned endpoints.
 
 ## Security notes
 

@@ -24,7 +24,12 @@ String errorMessage(BuildContext context, Object error) {
         'USERNAME_TAKEN' => l.errorUsernameTaken,
         'RATE_LIMITED' => l.errorRateLimited,
         'WORKOUT_REJECTED' => l.errorWorkoutRejected,
-        'VALIDATION_FAILED' => l.errorValidation,
+        'VALIDATION_FAILED' => switch (error.fieldErrors.firstOrNull?.code) {
+            'CALIBRATION' => l.errorDuelCalibration,
+            'NO_RECENT_ACTIVITY' => l.errorDuelInactive,
+            _ => l.errorValidation,
+          },
+        'CONFLICT' when error.extra['reason'] == 'QUEUE_CLOSED' => l.errorDuelQueueClosed,
         _ => l.errorGeneric,
       };
   }

@@ -500,5 +500,30 @@
         "type": "String"
       }
     }
+  },
+  "weeklyDuel": "Weekly Duel",
+  "duelIntro": "Face a stranger at your level for one week. Sign-ups from Friday to Monday noon.",
+  "duelJoin": "Join this week",
+  "duelLeave": "Leave the queue",
+  "duelWaiting": "You're in: your opponent is found on Sunday",
+  "duelQueueClosed": "Sign-ups open on Friday",
+  "duelSeeDuel": "See my duel",
+  "duelGhost": "Ghost duel: beat your last week",
+  "duelGhostOpponent": "You, last week",
+  "errorDuelCalibration": "Finish your calibration before joining a duel",
+  "errorDuelInactive": "Train at least once in the last 14 days to join a duel",
+  "errorDuelQueueClosed": "The duel queue opens on Friday",
+  "notifDuelMatched": "Your opponent of the week is here!",
+  "notifDuelGhost": "No opponent this week: a duel against your last week",
+  "duelRating": "MMR {rating} · {games, plural, =0{no duels yet} =1{1 duel} other{{games} duels}}",
+  "@duelRating": {
+    "placeholders": {
+      "rating": {
+        "type": "int"
+      },
+      "games": {
+        "type": "int"
+      }
+    }
   }
 }

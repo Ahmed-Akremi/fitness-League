@@ -308,5 +308,20 @@
   "retryPhoto": "أعد محاولة رفع الصورة",
   "wodUpcoming": "القادمة",
   "wodDraftBadge": "مسودة",
-  "removeMemberConfirm": "إزالة {name} من الصالة؟"
+  "removeMemberConfirm": "إزالة {name} من الصالة؟",
+  "weeklyDuel": "مبارزة الأسبوع",
+  "duelIntro": "واجه رياضيًا من مستواك لمدة أسبوع. التسجيل من الجمعة حتى ظهر الإثنين.",
+  "duelJoin": "أشارك",
+  "duelLeave": "مغادرة قائمة الانتظار",
+  "duelWaiting": "أنت مسجل: سنجد لك منافسًا يوم الأحد",
+  "duelQueueClosed": "التسجيل يفتح يوم الجمعة",
+  "duelSeeDuel": "عرض مبارزتي",
+  "duelGhost": "مبارزة الظل: تفوّق على أسبوعك الماضي",
+  "duelGhostOpponent": "أنت، الأسبوع الماضي",
+  "errorDuelCalibration": "أكمل المعايرة قبل الانضمام إلى مبارزة",
+  "errorDuelInactive": "تدرّب مرة واحدة على الأقل خلال آخر 14 يومًا للانضمام إلى مبارزة",
+  "errorDuelQueueClosed": "يفتح التسجيل في المبارزات يوم الجمعة",
+  "notifDuelMatched": "تم العثور على منافسك لهذا الأسبوع!",
+  "notifDuelGhost": "لا يوجد منافس هذا الأسبوع: مبارزة ضد أسبوعك الماضي",
+  "duelRating": "MMR {rating} · {games, plural, =0{لا مبارزات بعد} =1{مبارزة واحدة} other{{games} مبارزات}}"
 }

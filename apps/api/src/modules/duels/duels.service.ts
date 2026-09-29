@@ -83,7 +83,7 @@ export class DuelsService {
   async join(me: string) {
     const now = this.clock.now();
     const week = this.queueWeek(now);
-    if (!week) throw AppException.conflict(ErrorCode.CONFLICT, 'The duel queue opens on Friday.', { code: 'QUEUE_CLOSED' });
+    if (!week) throw AppException.conflict(ErrorCode.CONFLICT, 'The duel queue opens on Friday.', { reason: 'QUEUE_CLOSED' });
     const { config } = await this.ruleSets.getActive();
     const reason = await this.ineligibility(me, now, config);
     if (reason) throw AppException.validation([{ field: 'user', code: reason }]);
