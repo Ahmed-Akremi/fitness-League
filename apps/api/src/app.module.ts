@@ -21,6 +21,7 @@ import { AdminModule } from './modules/admin/admin.module';
 import { SocialModule } from './modules/social/social.module';
 import { BattlesModule } from './modules/battles/battles.module';
 import { DuelsModule } from './modules/duels/duels.module';
+import { GymWarsModule } from './modules/gym-wars/gym-wars.module';
 import { NotificationsModule } from './modules/notifications/notifications.service';
 import { ProgressModule } from './modules/progress/progress.module';
 import { SocialAccessModule } from './modules/social/social-access.module';
@@ -28,6 +29,6 @@ import { OutboxModule } from './common/outbox/outbox.service';
 import { StorageModule } from './common/storage/storage.module';
 
 @Module({
-  imports: [ConfigModule, LoggerModule, PrismaModule, CommonModule, StorageModule, AuditModule, MailModule, OutboxModule, SocialAccessModule, RuleSetModule, ScoringModule, AuthModule, UsersModule, ReferenceModule, WorkoutsModule, ProgressModule, GoalsModule, SeasonsModule, LeaderboardsModule, JobsModule, GymsModule, GymWodsModule, NotificationsModule, SocialModule, BattlesModule, DuelsModule, AdminModule],
+  imports: [ConfigModule, LoggerModule, PrismaModule, CommonModule, StorageModule, AuditModule, MailModule, OutboxModule, SocialAccessModule, RuleSetModule, ScoringModule, AuthModule, UsersModule, ReferenceModule, WorkoutsModule, ProgressModule, GoalsModule, SeasonsModule, LeaderboardsModule, JobsModule, GymsModule, GymWodsModule, NotificationsModule, SocialModule, BattlesModule, DuelsModule, GymWarsModule, AdminModule],
 })
 export class AppModule {}

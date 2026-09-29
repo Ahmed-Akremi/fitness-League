@@ -31,6 +31,8 @@ String notificationText(AppLocalizations l, Map<String, dynamic> n) {
     'BATTLE_RESULT' => l.notifBattleResult,
     'DUEL_MATCHED' => l.notifDuelMatched,
     'DUEL_GHOST' => l.notifDuelGhost,
+    'GYM_WAR_STARTED' => l.notifGymWarStarted((p['opponentName'] ?? '') as String),
+    'GYM_WAR_RESULT' => switch (p['outcome']) { 'WIN' => l.notifGymWarWon, 'LOSS' => l.notifGymWarLost, _ => l.notifGymWarDraw },
     'GYM_WOD_SCORE_INVALIDATED' => l.notifWodInvalidated((p['wodTitle'] ?? '') as String, (p['reason'] ?? '') as String),
     _ => l.notifGeneric,
   };
@@ -43,6 +45,7 @@ String? notificationRoute(Map<String, dynamic> n) {
     'FRIEND_REQUEST' || 'FRIEND_ACCEPTED' => '/friends',
     'BATTLE_INVITE' || 'BATTLE_STARTED' || 'BATTLE_DECLINED' || 'BATTLE_RESULT' || 'DUEL_MATCHED' || 'DUEL_GHOST' => p['battleId'] == null ? '/battles' : '/battles/${p['battleId']}',
     'GYM_WOD_SCORE_INVALIDATED' => '/gyms/${p['gymId']}/wods/${p['wodId']}',
+    'GYM_WAR_STARTED' || 'GYM_WAR_RESULT' => '/gym-wars/${p['warId']}',
     _ => null,
   };
 }

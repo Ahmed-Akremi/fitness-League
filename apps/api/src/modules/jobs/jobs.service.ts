@@ -6,6 +6,7 @@ import { uuidv7 } from '../../common/ids/uuid';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { BattlesService } from '../battles/battles.service';
 import { DuelsService } from '../duels/duels.service';
+import { GymWarsService } from '../gym-wars/gym-wars.service';
 import { LeaderboardsService } from '../leaderboards/leaderboards.service';
 import { divisionFor, levelRulesOf } from '../ledger/ledger.service';
 import { levelFromXp } from '../scoring/level';
@@ -31,6 +32,7 @@ export class JobsService {
     private readonly privacy: PrivacyService,
     private readonly battles: BattlesService,
     private readonly duels: DuelsService,
+    private readonly gymWars: GymWarsService,
     private readonly ruleSets: RuleSetService,
     private readonly clock: ClockService,
     private readonly calendar: BusinessCalendar,
@@ -49,6 +51,10 @@ export class JobsService {
     }
     const week = this.seasons.lastClosableWeek(now, config.week_grace_hours);
     out.weeklyClose = await this.once('weekly-close', this.calendar.localDate(week), () => this.seasons.closeWeek(week));
+    // Gym Wars: scored once the week's weekly scores are final, paired at the start of each week.
+    out.gymWarClose = await this.once('gym-war-close', this.calendar.localDate(week), () => this.gymWars.closeWeek(week));
+    const thisWeek = this.calendar.weekStart(now);
+    out.gymWarStart = await this.once('gym-war-start', this.calendar.localDate(thisWeek), () => this.gymWars.startWeek(thisWeek));
     // Weekly Duels: a pairing batch every hour from Sunday 12:00 to Monday 12:00, then the ghost fallback once.
     const pairing = this.duels.pairingWeek(now);
     if (pairing) {

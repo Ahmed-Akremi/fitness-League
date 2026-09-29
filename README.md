@@ -102,12 +102,13 @@ See [`apps/mobile/README.md`](apps/mobile/README.md) (`flutter pub get`, `build_
 | Gym coaches and coach-made WODs (for time / AMRAP / max load, Rx/Scaled boards, invalidation reverses XP) | Done, tested |
 | Mobile app: all screens (gyms, WODs, CrossFit/Hyrox logging, friends, battles, notifications, records, body, settings), redesigned UI (Barlow Condensed + Inter), fr/en/ar RTL | Done, widget tested; web preview verified at 390×844 |
 | Weekly Duels: opt-in queue (Friday → Monday noon), Glicko-2 matchmaking, ghost duel when unmatched, MMR on close; mobile card and duel screen | Done, tested |
+| Gym Wars: weekly auto-enrolment (gym admin can opt out), S/M/L brackets, Glicko-2 gym rating, size-neutral score (top-K, participation, progress, consistency), winners' XP; mobile war screen, gym record, battles card | Done, tested |
 | Docker images / compose, CI | Written, not yet run (no Docker locally; CI runs on the next push) |
 
 ## Not done yet
 
 - Run Docker compose and CI once for real.
-- Phase 2: Gym Wars, private leagues, challenges, badge engine, activity feed (reactions, comments), push notifications (FCM), real-time WebSocket, phone verification by SMS, admin score recompute job.
+- Phase 2: private leagues, challenges, badge engine, activity feed (reactions, comments), push notifications (FCM), real-time WebSocket, phone verification by SMS, admin score recompute job.
 - Phase 3: workout proofs (photo/video) and verified scoring, behavioural anti-cheat, reports, sanctions and appeals, gym admin dashboard.
 - Phase 4: integrations (watches, apps), coach tools, billing.
 

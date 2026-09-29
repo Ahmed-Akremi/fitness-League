@@ -15,6 +15,7 @@ import '../../../core/widgets/rank_row.dart';
 import '../../../core/widgets/section_header.dart';
 import '../../../core/widgets/skeleton.dart';
 import '../../../core/widgets/sport_chip.dart';
+import '../../gym_wars/presentation/gym_wars_section.dart';
 import '../../gym_wods/presentation/gym_wods_section.dart';
 import '../../home/data/me_repository.dart';
 import '../data/gyms_repository.dart';
@@ -179,6 +180,7 @@ class _GymProfileViewState extends ConsumerState<_GymProfileView> {
               ),
             ],
             GymWodsSection(gymId: widget.id, isMember: status == 'APPROVED', isCoach: membership['role'] == 'COACH' || canManage),
+            GymWarsSection(gymId: widget.id, canManage: canManage),
             if (top.isNotEmpty) ...[
               SectionHeader(title: l.gymTopAthletes),
               for (final (i, a) in top.indexed)

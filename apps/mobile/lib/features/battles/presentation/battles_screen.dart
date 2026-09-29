@@ -6,6 +6,7 @@ import '../../../core/l10n/l10n.dart';
 import '../../../core/widgets/common.dart';
 import '../../../core/widgets/countdown_text.dart';
 import '../../../core/widgets/error_text.dart';
+import '../../gym_wars/data/gym_wars_repository.dart';
 import '../data/battles_repository.dart';
 
 /// Battles by state: active, invites (pending), finished.
@@ -22,8 +23,36 @@ class BattlesScreen extends ConsumerWidget {
         floatingActionButton: FloatingActionButton.extended(onPressed: () => context.push('/battles/new'), icon: const Icon(Icons.sports_mma_rounded), label: Text(l.newBattle)),
         body: const Column(children: [
           _DuelCard(),
+          _GymWarCard(),
           Expanded(child: TabBarView(children: [_BattleList(status: 'ACTIVE'), _BattleList(status: 'PENDING'), _BattleList(status: 'COMPLETED')])),
         ]),
+      ),
+    );
+  }
+}
+
+/// This week's Gym War of my primary gym, when there is one.
+class _GymWarCard extends ConsumerWidget {
+  const _GymWarCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final war = (ref.watch(currentGymWarProvider).valueOrNull?['war'] as Map?)?.cast<String, dynamic>();
+    if (war == null || war['status'] == 'BYE') return const SizedBox.shrink();
+    final l = context.l10n;
+    final t = Theme.of(context);
+    final gyms = (war['gyms'] as List).cast<Map<String, dynamic>>();
+    final mine = gyms.firstWhere((g) => g['isMine'] == true, orElse: () => gyms.first);
+    final them = gyms.firstWhere((g) => !identical(g, mine));
+    String score(Map<String, dynamic> g) => (g['score'] as num?)?.toStringAsFixed(1) ?? '—';
+    return Card(
+      margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+      child: ListTile(
+        leading: Icon(Icons.shield_outlined, color: t.colorScheme.primary),
+        title: Text(l.gymWarThisWeek),
+        subtitle: Text('${mine['name']} ${score(mine)} – ${score(them)} ${them['name']}', maxLines: 1, overflow: TextOverflow.ellipsis),
+        trailing: const Icon(Icons.chevron_right_rounded),
+        onTap: () => context.push('/gym-wars/${war['id']}'),
       ),
     );
   }

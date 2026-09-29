@@ -16,6 +16,7 @@ import 'features/gym_wods/presentation/wod_screen.dart';
 import 'features/gyms/presentation/create_gym_screen.dart';
 import 'features/gyms/presentation/gym_members_screen.dart';
 import 'features/gyms/presentation/gym_profile_screen.dart';
+import 'features/gym_wars/presentation/gym_war_screen.dart';
 import 'features/gyms/presentation/gyms_screen.dart';
 import 'features/home/data/me_repository.dart';
 import 'features/home/presentation/home_screen.dart';
@@ -96,6 +97,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/u/:username', builder: (_, s) => PublicProfileScreen(username: s.pathParameters['username']!)),
       GoRoute(path: '/gyms/new', builder: (_, _) => const CreateGymScreen()),
       GoRoute(path: '/gyms/:id', builder: (_, s) => GymProfileScreen(id: s.pathParameters['id']!)),
+      GoRoute(path: '/gym-wars/:id', builder: (_, s) => GymWarScreen(id: s.pathParameters['id']!)),
       GoRoute(path: '/gyms/:id/members', builder: (_, s) => GymMembersScreen(id: s.pathParameters['id']!)),
       GoRoute(path: '/gyms/:id/wods/new', builder: (_, s) => CreateWodScreen(gymId: s.pathParameters['id']!)),
       GoRoute(

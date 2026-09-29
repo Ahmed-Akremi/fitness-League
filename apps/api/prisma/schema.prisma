@@ -323,6 +323,18 @@ enum BattleOutcome {
   DRAW
 }
 
+enum GymWarStatus {
+  ACTIVE
+  COMPLETED
+  BYE
+}
+
+enum GymWarBracket {
+  S
+  M
+  L
+}
+
 enum GymStatus {
   PENDING
   VERIFIED
@@ -1301,31 +1313,78 @@ model DuelQueueEntry {
   @@map("duel_queue_entries")
 }
 
+// ───────────────────────────── Gym Wars ─────────────────────────────
+
+/// One weekly war between two gyms of the same size bracket, or a bye (docs §6.2).
+model GymWar {
+  id             String        @id @db.Uuid
+  weekStart      DateTime      @map("week_start") @db.Date
+  status         GymWarStatus  @default(ACTIVE)
+  bracket        GymWarBracket
+  result         Json          @default("{}")
+  ruleSetVersion Int           @map("rule_set_version")
+  closedAt       DateTime?     @map("closed_at") @db.Timestamptz
+  createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime      @updatedAt @map("updated_at") @db.Timestamptz
+
+  participants GymWarParticipant[]
+
+  @@index([weekStart, status])
+  @@map("gym_wars")
+}
+
+model GymWarParticipant {
+  id                  String         @id @db.Uuid
+  gymWarId            String         @map("gym_war_id") @db.Uuid
+  gymId               String         @map("gym_id") @db.Uuid
+  weekStart           DateTime       @map("week_start") @db.Date
+  /// Members eligible when the war started (approved before it, primary gym, calibrated, verified email).
+  memberIds           String[]       @map("member_ids") @db.Uuid
+  eligibleMemberCount Int            @map("eligible_member_count")
+  activeMemberCount   Int            @default(0) @map("active_member_count")
+  score               Decimal?       @db.Decimal(5, 2)
+  breakdown           Json           @default("{}")
+  outcome             BattleOutcome?
+  ratingBefore        Decimal        @map("rating_before") @db.Decimal(7, 2)
+  ratingAfter         Decimal?       @map("rating_after") @db.Decimal(7, 2)
+
+  war GymWar @relation(fields: [gymWarId], references: [id], onDelete: Cascade)
+  gym Gym    @relation(fields: [gymId], references: [id])
+
+  @@unique([gymId, weekStart])
+  @@index([gymWarId])
+  @@map("gym_war_participants")
+}
+
 // ───────────────────────────── Gyms ─────────────────────────────
 
 model Gym {
-  id            String    @id @db.Uuid
-  name          String
-  slug          String    @unique
-  countryCode   String    @default("TN") @map("country_code") @db.Char(2)
-  governorateId String    @map("governorate_id") @db.Uuid
-  cityId        String    @map("city_id") @db.Uuid
-  addressLine   String?   @map("address_line")
-  contactPhone  String?   @map("contact_phone")
-  contactEmail  String?   @map("contact_email")
-  socialLinks   Json      @default("{}") @map("social_links")
-  status        GymStatus @default(PENDING)
-  ownerUserId   String?   @map("owner_user_id") @db.Uuid
-  verifiedAt    DateTime? @map("verified_at") @db.Timestamptz
-  verifiedById  String?   @map("verified_by") @db.Uuid
-  level         Int       @default(1)
-  rating        Decimal   @default(1500) @db.Decimal(7, 2)
-  ratingRd      Decimal   @default(350) @map("rating_rd") @db.Decimal(6, 2)
-  logoMediaId   String?   @map("logo_media_id") @db.Uuid
-  logo          Media?    @relation("GymLogo", fields: [logoMediaId], references: [id])
-  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz
-  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz
+  id               String    @id @db.Uuid
+  name             String
+  slug             String    @unique
+  countryCode      String    @default("TN") @map("country_code") @db.Char(2)
+  governorateId    String    @map("governorate_id") @db.Uuid
+  cityId           String    @map("city_id") @db.Uuid
+  addressLine      String?   @map("address_line")
+  contactPhone     String?   @map("contact_phone")
+  contactEmail     String?   @map("contact_email")
+  socialLinks      Json      @default("{}") @map("social_links")
+  status           GymStatus @default(PENDING)
+  ownerUserId      String?   @map("owner_user_id") @db.Uuid
+  verifiedAt       DateTime? @map("verified_at") @db.Timestamptz
+  verifiedById     String?   @map("verified_by") @db.Uuid
+  level            Int       @default(1)
+  rating           Decimal   @default(1500) @db.Decimal(7, 2)
+  ratingRd         Decimal   @default(350) @map("rating_rd") @db.Decimal(6, 2)
+  /// Glicko-2 volatility of the gym rating (Gym Wars, docs §6.2).
+  ratingVolatility Decimal   @default(0.06) @map("rating_volatility") @db.Decimal(6, 5)
+  /// Gyms are auto-enrolled in Gym Wars; the gym admin can opt out (Q-11).
+  warsOptOut       Boolean   @default(false) @map("wars_opt_out")
+  logoMediaId      String?   @map("logo_media_id") @db.Uuid
+  logo             Media?    @relation("GymLogo", fields: [logoMediaId], references: [id])
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt        DateTime? @map("deleted_at") @db.Timestamptz
 
   country              Country                  @relation(fields: [countryCode], references: [code])
   governorate          Governorate              @relation(fields: [governorateId], references: [id])
@@ -1336,6 +1395,7 @@ model Gym {
   primaryForProfiles   Profile[]
   sports               GymSport[]
   wods                 GymWod[]
+  warParticipations    GymWarParticipant[]
 
   @@index([governorateId, status])
   @@map("gyms")

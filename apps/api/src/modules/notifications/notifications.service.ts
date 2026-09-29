@@ -18,6 +18,8 @@ export type NotificationType =
   | 'BATTLE_RESULT'
   | 'DUEL_MATCHED'
   | 'DUEL_GHOST'
+  | 'GYM_WAR_STARTED'
+  | 'GYM_WAR_RESULT'
   | 'GYM_WOD_SCORE_INVALIDATED';
 
 /**

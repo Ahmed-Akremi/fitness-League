@@ -525,5 +525,60 @@
         "type": "int"
       }
     }
+  },
+  "gymWar": "Gym War",
+  "gymWars": "Gym Wars",
+  "gymWarWon": "Your gym won!",
+  "gymWarLost": "Your gym lost",
+  "gymWarBye": "No opponent of your size this week: your gym sits this war out.",
+  "gymWarByeShort": "Bye week",
+  "gymWarTopK": "Top 20",
+  "gymWarParticipation": "Participation",
+  "gymWarActiveMembers": "Active members",
+  "gymWarExplain": "A gym's score rewards its best athletes, how many members train, their progress and their regularity: a big gym can't win by size alone.",
+  "gymWarEnrolled": "Take part in Gym Wars",
+  "gymWarEnrolledHint": "Your gym is paired every Monday with a gym of its size.",
+  "gymWarLive": "Live",
+  "gymWarThisWeek": "This week's Gym War",
+  "notifGymWarWon": "Your gym won its Gym War!",
+  "notifGymWarLost": "Your gym lost its Gym War",
+  "notifGymWarDraw": "Your gym's Gym War ended in a draw",
+  "gymWarRecord": "{wins}W · {losses}L · {draws}D",
+  "@gymWarRecord": {
+    "placeholders": {
+      "wins": {
+        "type": "int"
+      },
+      "losses": {
+        "type": "int"
+      },
+      "draws": {
+        "type": "int"
+      }
+    }
+  },
+  "gymWarRating": "Rating {rating}",
+  "@gymWarRating": {
+    "placeholders": {
+      "rating": {
+        "type": "int"
+      }
+    }
+  },
+  "gymWarVs": "vs {name}",
+  "@gymWarVs": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "notifGymWarStarted": "Gym War this week: your gym faces {name}!",
+  "@notifGymWarStarted": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
   }
 }
