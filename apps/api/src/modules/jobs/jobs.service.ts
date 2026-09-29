@@ -4,6 +4,8 @@ import { BusinessCalendar } from '../../common/clock/business-calendar';
 import { ClockService } from '../../common/clock/clock.service';
 import { uuidv7 } from '../../common/ids/uuid';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { BadgesService } from '../badges/badges.service';
+import { ChallengesService } from '../challenges/challenges.service';
 import { BattlesService } from '../battles/battles.service';
 import { DuelsService } from '../duels/duels.service';
 import { GymWarsService } from '../gym-wars/gym-wars.service';
@@ -33,6 +35,8 @@ export class JobsService {
     private readonly battles: BattlesService,
     private readonly duels: DuelsService,
     private readonly gymWars: GymWarsService,
+    private readonly badges: BadgesService,
+    private readonly challenges: ChallengesService,
     private readonly ruleSets: RuleSetService,
     private readonly clock: ClockService,
     private readonly calendar: BusinessCalendar,
@@ -65,7 +69,9 @@ export class JobsService {
     }
     // Battles close continuously (every tick), not once a day.
     out.battles = await this.battles.closeDue();
+    out.challenges = await this.challenges.closeDue();
     out.calibration = await this.once('calibration-finalize', today, () => this.finalizeCalibrations());
+    out.badges = await this.once('badge-sweep', today, () => this.badges.sweep(new Date(now.getTime() - 26 * 3_600_000)));
     out.snapshot = await this.once('leaderboard-snapshot', today, () => this.leaderboards.snapshot(now));
     out.reconcile = await this.once('balance-reconcile', today, () => this.reconcileBalances());
     out.anonymise = await this.once('account-anonymise', today, () => this.privacy.processDueDeletions());

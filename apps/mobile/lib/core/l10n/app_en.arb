@@ -580,5 +580,90 @@
         "type": "String"
       }
     }
-  }
+  },
+  "badges": "Badges",
+  "badgeCategoryProgress": "Progress",
+  "badgeCategoryConsistency": "Consistency",
+  "badgeCategoryCompetition": "Competition",
+  "badgeCategorySocial": "Social",
+  "badgeCategoryGym": "Gym",
+  "badgeCategoryElite": "Elite",
+  "badgesEarned": "{earned} of {total} earned",
+  "@badgesEarned": {
+    "placeholders": {
+      "earned": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "notifBadgeAwarded": "New badge: {name}",
+  "@notifBadgeAwarded": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "challenges": "Challenges",
+  "newChallenge": "New challenge",
+  "createChallenge": "Create the challenge",
+  "challengesActive": "Ongoing",
+  "challengesEnded": "Ended",
+  "noChallenges": "No challenge here yet. Create one and invite your friends!",
+  "metricWorkouts": "workouts",
+  "metricTrainingDays": "training days",
+  "metricDurationMin": "minutes",
+  "metricDistanceKm": "km",
+  "metricVolumeKg": "kg lifted",
+  "scopePersonal": "Just me",
+  "scopeFriends": "Friends",
+  "scopeGym": "Gym",
+  "scopeCommunity": "Community",
+  "challengeCompleted": "Completed!",
+  "challengeJoin": "Join the challenge",
+  "challengeLeave": "Leave the challenge",
+  "leaderboard": "Leaderboard",
+  "challengeTitle": "Title",
+  "challengeWho": "Who can join",
+  "challengeWhat": "What to count",
+  "challengeTarget": "Target",
+  "participantsCount": "{count, plural, =0{no participant} =1{1 participant} other{{count} participants}}",
+  "@participantsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "challengeGoal": "Goal: {target} {metric}",
+  "@challengeGoal": {
+    "placeholders": {
+      "target": {
+        "type": "String"
+      },
+      "metric": {
+        "type": "String"
+      }
+    }
+  },
+  "challengeXp": "+{xp} XP when completed",
+  "@challengeXp": {
+    "placeholders": {
+      "xp": {
+        "type": "int"
+      }
+    }
+  },
+  "notifChallengeCompleted": "Challenge completed: {title}",
+  "@notifChallengeCompleted": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "challengeDetail": "Challenge"
 }

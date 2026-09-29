@@ -9,9 +9,10 @@ import '../../home/data/me_repository.dart';
 import '../../onboarding/data/reference_repository.dart';
 import '../data/goals_repository.dart';
 
-/// Goals tab (the "Challenges" slot of the bottom bar until challenges ship in Phase 2).
+/// Personal goals; `embedded` in the Challenges tab (no app bar of its own).
 class GoalsScreen extends ConsumerWidget {
-  const GoalsScreen({super.key});
+  const GoalsScreen({super.key, this.embedded = false});
+  final bool embedded;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -19,7 +20,7 @@ class GoalsScreen extends ConsumerWidget {
     final t = Theme.of(context);
     final locale = Localizations.localeOf(context).languageCode;
     return Scaffold(
-      appBar: AppBar(title: Text(l.goals)),
+      appBar: embedded ? null : AppBar(title: Text(l.goals)),
       floatingActionButton: FloatingActionButton.extended(
         key: const Key('goals-new'),
         onPressed: () => showModalBottomSheet(context: context, isScrollControlled: true, showDragHandle: true, builder: (_) => const NewGoalSheet()),

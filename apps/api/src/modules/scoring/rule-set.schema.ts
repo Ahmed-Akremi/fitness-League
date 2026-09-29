@@ -51,6 +51,8 @@ export const ruleSetConfigSchema = z
     goal_milestone_xp: nonNegInt,
     first_workout_quest_xp: nonNegInt,
     challenge_xp: nonNegInt,
+    /** Phase 2: count the challenge component in the weekly score (off keeps Phase 1 renormalised weights). */
+    challenge_component: z.boolean().default(false),
     weight_change_max_pct_per_week: z.number().positive().max(5),
 
     // Anti-sandbagging & fairness

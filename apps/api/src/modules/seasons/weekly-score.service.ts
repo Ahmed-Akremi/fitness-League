@@ -147,8 +147,8 @@ export class WeeklyScoreService {
       consistency: round(consistency, 2),
       // Verified-proof multiplier arrives with proof verification (Phase 3); factor 1 until then.
       performance: round(topNMean(performanceRatios, config.progress_top_n) * 100, 2),
-      // No challenges before Phase 2: weights are renormalised (ASSUMPTION Q-1).
-      challenge: null,
+      // Joined a challenge running this week and trained in it → 100 (docs §5); off → weights renormalised (Q-1).
+      challenge: config.challenge_component ? await this.challengeComponent(db, userId, weekStart, weekEnd, workouts.length > 0) : null,
     };
     const total = round(weightedTotal(components, weights), 2);
     const eligible = !!profile.calibrationEndsAt && profile.calibrationEndsAt <= weekStart;
@@ -212,6 +212,12 @@ export class WeeklyScoreService {
       );
     }
     return corrected;
+  }
+
+  private async challengeComponent(db: Prisma.TransactionClient, userId: string, weekStart: Date, weekEnd: Date, trained: boolean): Promise<number> {
+    if (!trained) return 0;
+    const joined = await db.challengeParticipant.count({ where: { userId, joinedAt: { lt: weekEnd }, challenge: { deletedAt: null, startsAt: { lt: weekEnd }, endsAt: { gt: weekStart } } } });
+    return joined > 0 ? 100 : 0;
   }
 }
 

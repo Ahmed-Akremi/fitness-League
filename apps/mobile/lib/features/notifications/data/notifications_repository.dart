@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/providers.dart';
+import '../../../core/utils/format.dart';
 
 /// In-app notifications (push arrives in Phase 2).
 class NotificationsRepository {
@@ -31,6 +32,8 @@ String notificationText(AppLocalizations l, Map<String, dynamic> n) {
     'BATTLE_RESULT' => l.notifBattleResult,
     'DUEL_MATCHED' => l.notifDuelMatched,
     'DUEL_GHOST' => l.notifDuelGhost,
+    'CHALLENGE_COMPLETED' => l.notifChallengeCompleted((p['title'] ?? '') as String),
+    'BADGE_AWARDED' => l.notifBadgeAwarded(localized(p['name'], l.localeName)),
     'GYM_WAR_STARTED' => l.notifGymWarStarted((p['opponentName'] ?? '') as String),
     'GYM_WAR_RESULT' => switch (p['outcome']) { 'WIN' => l.notifGymWarWon, 'LOSS' => l.notifGymWarLost, _ => l.notifGymWarDraw },
     'GYM_WOD_SCORE_INVALIDATED' => l.notifWodInvalidated((p['wodTitle'] ?? '') as String, (p['reason'] ?? '') as String),
@@ -46,6 +49,8 @@ String? notificationRoute(Map<String, dynamic> n) {
     'BATTLE_INVITE' || 'BATTLE_STARTED' || 'BATTLE_DECLINED' || 'BATTLE_RESULT' || 'DUEL_MATCHED' || 'DUEL_GHOST' => p['battleId'] == null ? '/battles' : '/battles/${p['battleId']}',
     'GYM_WOD_SCORE_INVALIDATED' => '/gyms/${p['gymId']}/wods/${p['wodId']}',
     'GYM_WAR_STARTED' || 'GYM_WAR_RESULT' => '/gym-wars/${p['warId']}',
+    'BADGE_AWARDED' => '/badges',
+    'CHALLENGE_COMPLETED' => '/challenges/${p['challengeId']}',
     _ => null,
   };
 }

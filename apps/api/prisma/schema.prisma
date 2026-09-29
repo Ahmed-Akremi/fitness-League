@@ -323,6 +323,27 @@ enum BattleOutcome {
   DRAW
 }
 
+enum ChallengeScope {
+  PERSONAL
+  FRIEND
+  COMMUNITY
+  GYM
+}
+
+enum ChallengeStatus {
+  ACTIVE
+  ENDED
+  CANCELLED
+}
+
+enum ChallengeMetric {
+  WORKOUTS
+  TRAINING_DAYS
+  DURATION_MIN
+  DISTANCE_KM
+  VOLUME_KG
+}
+
 enum GymWarStatus {
   ACTIVE
   COMPLETED
@@ -419,6 +440,8 @@ model User {
   battleParticipants BattleParticipant[]
   mmrRating          MmrRating?
   duelQueueEntries   DuelQueueEntry[]
+  challengesCreated  Challenge[]              @relation("ChallengeCreator")
+  challengeEntries   ChallengeParticipant[]
   battlesCreated     Battle[]                 @relation("BattleCreator")
   notifications      Notification[]
   userBadges         UserBadge[]
@@ -1313,6 +1336,51 @@ model DuelQueueEntry {
   @@map("duel_queue_entries")
 }
 
+// ───────────────────────────── Challenges ─────────────────────────────
+
+/// A challenge on a workout-level quantity over a window (docs §3.10).
+model Challenge {
+  id          String          @id @db.Uuid
+  scope       ChallengeScope
+  title       String
+  description String?
+  metric      ChallengeMetric
+  targetValue Decimal         @map("target_value") @db.Decimal(12, 1)
+  startsAt    DateTime        @map("starts_at") @db.Timestamptz
+  endsAt      DateTime        @map("ends_at") @db.Timestamptz
+  gymId       String?         @map("gym_id") @db.Uuid
+  createdById String          @map("created_by") @db.Uuid
+  xpReward    Int             @default(0) @map("xp_reward")
+  status      ChallengeStatus @default(ACTIVE)
+  createdAt   DateTime        @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime        @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt   DateTime?       @map("deleted_at") @db.Timestamptz
+
+  gym          Gym?                   @relation(fields: [gymId], references: [id])
+  createdBy    User                   @relation("ChallengeCreator", fields: [createdById], references: [id])
+  participants ChallengeParticipant[]
+
+  @@index([scope, endsAt])
+  @@index([gymId])
+  @@map("challenges")
+}
+
+model ChallengeParticipant {
+  challengeId     String    @map("challenge_id") @db.Uuid
+  userId          String    @map("user_id") @db.Uuid
+  joinedAt        DateTime  @default(now()) @map("joined_at") @db.Timestamptz
+  progressValue   Decimal   @default(0) @map("progress_value") @db.Decimal(12, 1)
+  completedAt     DateTime? @map("completed_at") @db.Timestamptz
+  xpTransactionId String?   @map("xp_transaction_id") @db.Uuid
+
+  challenge Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([challengeId, userId])
+  @@index([userId, completedAt])
+  @@map("challenge_participants")
+}
+
 // ───────────────────────────── Gym Wars ─────────────────────────────
 
 /// One weekly war between two gyms of the same size bracket, or a bye (docs §6.2).
@@ -1396,6 +1464,7 @@ model Gym {
   sports               GymSport[]
   wods                 GymWod[]
   warParticipations    GymWarParticipant[]
+  challenges           Challenge[]
 
   @@index([governorateId, status])
   @@map("gyms")

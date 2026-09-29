@@ -6,6 +6,7 @@ import { ClockService } from '../../common/clock/clock.service';
 import { AppException } from '../../common/errors/app-exception';
 import { uuidv7 } from '../../common/ids/uuid';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { BadgesService } from '../badges/badges.service';
 import { ratePeriod } from '../duels/glicko2';
 import { GymsService } from '../gyms/gyms.service';
 import { LedgerService } from '../ledger/ledger.service';
@@ -39,6 +40,7 @@ export class GymWarsService {
     private readonly ledger: LedgerService,
     private readonly notifications: NotificationsService,
     private readonly gyms: GymsService,
+    private readonly badges: BadgesService,
     private readonly clock: ClockService,
     private readonly calendar: BusinessCalendar,
   ) {}
@@ -181,6 +183,7 @@ export class GymWarsService {
             await this.ledger.appendXp(tx, { userId, amount, reason: 'GYM_WAR_WIN', sourceType: 'gym_war', sourceId: war.id, ruleSetVersion: version, effectiveAt: weekEnd, explanation: { formula: 'gym_war_win_xp', result: amount } }, config);
           }
           await tx.activityEvent.create({ data: { id: uuidv7(), userId, type: 'GYM_WAR_WIN', refType: 'gym_war', refId: war.id, visibility: 'FRIENDS', payload: { gymId: winner.gymId } } });
+          await this.badges.evaluate(tx, userId, war.id);
         }
       }
       await tx.gymWar.update({ where: { id }, data: { result: { winnerGymId: winner?.gymId ?? null, scores: { [a.gymId]: sa, [b.gymId]: sb } } } });

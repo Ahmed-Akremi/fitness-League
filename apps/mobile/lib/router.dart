@@ -10,12 +10,15 @@ import 'features/battles/presentation/new_battle_screen.dart';
 import 'features/auth/presentation/forgot_password_screen.dart';
 import 'features/auth/presentation/login_screen.dart';
 import 'features/auth/presentation/register_screen.dart';
-import 'features/goals/presentation/goals_screen.dart';
 import 'features/gym_wods/presentation/create_wod_screen.dart';
 import 'features/gym_wods/presentation/wod_screen.dart';
 import 'features/gyms/presentation/create_gym_screen.dart';
 import 'features/gyms/presentation/gym_members_screen.dart';
 import 'features/gyms/presentation/gym_profile_screen.dart';
+import 'features/badges/presentation/badges_screen.dart';
+import 'features/challenges/presentation/challenge_screen.dart';
+import 'features/challenges/presentation/challenges_screen.dart';
+import 'features/challenges/presentation/new_challenge_screen.dart';
 import 'features/gym_wars/presentation/gym_war_screen.dart';
 import 'features/gyms/presentation/gyms_screen.dart';
 import 'features/home/data/me_repository.dart';
@@ -80,6 +83,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
       GoRoute(path: '/register', builder: (_, _) => const RegisterScreen()),
       GoRoute(path: '/forgot-password', builder: (_, _) => const ForgotPasswordScreen()),
+      GoRoute(path: '/challenges/new', builder: (_, _) => const NewChallengeScreen()),
+      GoRoute(path: '/challenges/:id', builder: (_, s) => ChallengeScreen(id: s.pathParameters['id']!)),
+      GoRoute(path: '/badges', builder: (_, _) => const BadgesScreen()),
       GoRoute(path: '/records', builder: (_, _) => const RecordsScreen()),
       GoRoute(path: '/me/body', builder: (_, _) => const BodyScreen()),
       GoRoute(path: '/settings', builder: (_, _) => const SettingsScreen()),
@@ -110,7 +116,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           StatefulShellBranch(routes: [GoRoute(path: '/', builder: (_, _) => const HomeScreen())]),
           StatefulShellBranch(routes: [GoRoute(path: '/train', builder: (_, _) => const TrainScreen())]),
           StatefulShellBranch(routes: [GoRoute(path: '/league', builder: (_, _) => const LeagueScreen())]),
-          StatefulShellBranch(routes: [GoRoute(path: '/goals', builder: (_, _) => const GoalsScreen())]),
+          StatefulShellBranch(routes: [GoRoute(path: '/goals', builder: (_, _) => const ChallengesTabScreen())]),
           StatefulShellBranch(routes: [GoRoute(path: '/profile', builder: (_, _) => const ProfileScreen())]),
         ],
       ),

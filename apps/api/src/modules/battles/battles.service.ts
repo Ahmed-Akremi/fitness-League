@@ -9,6 +9,7 @@ import { CursorCodec } from '../../common/pagination/cursor';
 import { toPage } from '../../common/pagination/page';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { DuelsService } from '../duels/duels.service';
+import { BadgesService } from '../badges/badges.service';
 import { LedgerService } from '../ledger/ledger.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import type { RuleSetConfig } from '../scoring/rule-set.schema';
@@ -39,6 +40,7 @@ export class BattlesService {
     private readonly ledger: LedgerService,
     private readonly ruleSets: RuleSetService,
     private readonly notifications: NotificationsService,
+    private readonly badges: BadgesService,
     private readonly access: SocialAccess,
     private readonly audit: AuditService,
     private readonly cursors: CursorCodec,
@@ -247,6 +249,7 @@ export class BattlesService {
         });
         if (outcome === 'WIN') {
           await tx.activityEvent.create({ data: { id: uuidv7(), userId: p.userId, type: 'BATTLE_WIN', refType: 'battle', refId: b.id, visibility: 'FRIENDS', payload: { opponentId } } });
+          await this.badges.evaluate(tx, p.userId, b.id);
         }
         await this.notifications.notify(tx, p.userId, 'BATTLE_RESULT', { battleId: b.id, outcome, score: s.total, opponentScore: scores.get(opponentId)!.total });
       }

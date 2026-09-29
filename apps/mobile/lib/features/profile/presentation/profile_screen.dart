@@ -75,6 +75,7 @@ class ProfileScreen extends ConsumerWidget {
                   ],
                 ),
                 ListTile(leading: const Icon(Icons.emoji_events_outlined), title: Text(l.allRecords), onTap: () => context.push('/records')),
+                ListTile(leading: const Icon(Icons.military_tech_outlined), title: Text(l.badges), onTap: () => context.push('/badges')),
                 ListTile(leading: const Icon(Icons.group_outlined), title: Text(l.friends), onTap: () => context.push('/friends')),
                 ListTile(leading: const Icon(Icons.sports_mma_outlined), title: Text(l.battles), onTap: () => context.push('/battles')),
                 ListTile(leading: const Icon(Icons.monitor_weight_outlined), title: Text(l.body), onTap: () => context.push('/me/body')),
