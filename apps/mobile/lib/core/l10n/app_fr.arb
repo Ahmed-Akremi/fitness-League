@@ -415,5 +415,10 @@
   "feedBadge": "a obtenu le badge {badge}",
   "feedLevelUp": "a atteint le niveau {level}",
   "feedBattleWin": "a gagné une battle contre {name}",
-  "feedGymWarWin": "a gagné la guerre de salles avec {gym}"
+  "feedGymWarWin": "a gagné la guerre de salles avec {gym}",
+  "pushSocial": "Amis, réactions et commentaires",
+  "pushBattles": "Battles et duels",
+  "pushGym": "Ma salle",
+  "quietHours": "Heures calmes",
+  "quietHoursOff": "Désactivées"
 }

@@ -764,5 +764,10 @@
         "type": "String"
       }
     }
-  }
+  },
+  "pushSocial": "Friends, reactions and comments",
+  "pushBattles": "Battles and duels",
+  "pushGym": "My gym",
+  "quietHours": "Quiet hours",
+  "quietHoursOff": "Off"
 }

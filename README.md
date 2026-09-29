@@ -107,12 +107,13 @@ See [`apps/mobile/README.md`](apps/mobile/README.md) (`flutter pub get`, `build_
 | Challenges: personal / friends / gym (admin, coaches) / community (staff), 5 workout quantities, live progress from workouts, XP for gym and community ones, optional weekly-score challenge component (`challenge_component`); mobile tab, detail, leaderboard, creation | Done, tested |
 | Private and public leagues: invite code (rate-limited), member cap, ranking on summed weekly totals / consistency / progress over the period; mobile Leagues tab, detail, creation | Done, tested |
 | Activity feed: friends' activity (visibility, blocks, mutes, deleted workouts hidden), one reaction per athlete (👍 🔥 💪), comments (author or activity owner deletes), notifications; mobile feed with comments sheet | Done, tested |
+| Push notifications: every notification goes through the outbox to FCM HTTP v1 (`PUSH_DRIVER=fcm`, service account, no SDK) or a log driver; devices API, per-category switches, quiet hours (Africa/Tunis), dead tokens dropped; mobile settings section. The app does not register its FCM token yet (needs a Firebase project and `google-services.json`) | Done, tested (API) |
 | Docker images / compose, CI | Written, not yet run (no Docker locally; CI runs on the next push) |
 
 ## Not done yet
 
 - Run Docker compose and CI once for real.
-- Phase 2: push notifications (FCM), real-time WebSocket, phone verification by SMS, admin score recompute job.
+- Phase 2: mobile FCM token registration (needs a Firebase project), real-time WebSocket, phone verification by SMS, admin score recompute job.
 - Phase 3: workout proofs (photo/video) and verified scoring, behavioural anti-cheat, reports, sanctions and appeals, gym admin dashboard.
 - Phase 4: integrations (watches, apps), coach tools, billing.
 

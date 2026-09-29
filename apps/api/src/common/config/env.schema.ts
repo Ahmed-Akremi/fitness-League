@@ -86,6 +86,13 @@ export const envSchema = z.object({
   S3_ACCESS_KEY: z.string().optional(),
   S3_SECRET_KEY: z.string().optional(),
 
+  /** Push notifications: `log` (dev, nothing leaves the server) or `fcm` (Firebase HTTP v1 with a service account). */
+  PUSH_DRIVER: z.enum(['log', 'fcm']).default('log'),
+  FCM_PROJECT_ID: z.string().optional(),
+  FCM_CLIENT_EMAIL: z.string().email().optional(),
+  /** PEM private key of the service account; `\n` escapes are accepted. */
+  FCM_PRIVATE_KEY: z.string().optional(),
+
   /** Base for links in emails; the app handles them as deep links. */
   APP_LINK_BASE_URL: z.string().url().default('https://app.fitnessleague.app'),
 });
@@ -98,6 +105,9 @@ function assertSafeForEnvironment(env: Env): string[] {
   if (env.NODE_ENV === 'production' && env.DEV_STATIC_TOTP_CODE) problems.push('  - DEV_STATIC_TOTP_CODE: not allowed when NODE_ENV=production');
   if (env.STORAGE_DRIVER === 's3') {
     for (const k of ['S3_BUCKET', 'S3_ACCESS_KEY', 'S3_SECRET_KEY'] as const) if (!env[k]) problems.push(`  - ${k}: required when STORAGE_DRIVER=s3`);
+  }
+  if (env.PUSH_DRIVER === 'fcm') {
+    for (const k of ['FCM_PROJECT_ID', 'FCM_CLIENT_EMAIL', 'FCM_PRIVATE_KEY'] as const) if (!env[k]) problems.push(`  - ${k}: required when PUSH_DRIVER=fcm`);
   }
   return problems;
 }

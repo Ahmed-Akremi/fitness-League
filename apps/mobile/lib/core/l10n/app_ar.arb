@@ -415,5 +415,10 @@
   "feedBadge": "حصل على شارة {badge}",
   "feedLevelUp": "بلغ المستوى {level}",
   "feedBattleWin": "فاز في تحدٍ ضد {name}",
-  "feedGymWarWin": "فاز بحرب الصالات مع {gym}"
+  "feedGymWarWin": "فاز بحرب الصالات مع {gym}",
+  "pushSocial": "الأصدقاء والتفاعلات والتعليقات",
+  "pushBattles": "التحديات والمبارزات",
+  "pushGym": "صالتي",
+  "quietHours": "ساعات الهدوء",
+  "quietHoursOff": "معطلة"
 }

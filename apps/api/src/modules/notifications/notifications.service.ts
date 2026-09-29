@@ -5,6 +5,7 @@ import { ArrayMaxSize, IsArray, IsOptional, IsUUID } from 'class-validator';
 import type { AuthUser } from '../../common/auth/auth-user';
 import { CurrentUser } from '../../common/auth/decorators';
 import { uuidv7 } from '../../common/ids/uuid';
+import { OutboxService } from '../../common/outbox/outbox.service';
 import { CursorCodec } from '../../common/pagination/cursor';
 import { PageQueryDto, toPage } from '../../common/pagination/page';
 import { PrismaService } from '../../common/prisma/prisma.service';
@@ -35,10 +36,14 @@ export class NotificationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly cursors: CursorCodec,
+    private readonly outbox: OutboxService,
   ) {}
 
   async notify(tx: Prisma.TransactionClient, userId: string, type: NotificationType, payload: Prisma.InputJsonObject): Promise<void> {
-    await tx.notification.create({ data: { id: uuidv7(), userId, type, payload } });
+    const id = uuidv7();
+    await tx.notification.create({ data: { id, userId, type, payload } });
+    // Push goes out after commit, through the outbox (docs §2.3).
+    await this.outbox.enqueue(tx, 'NotificationCreated', { notificationId: id });
   }
 
   async list(userId: string, q: PageQueryDto) {

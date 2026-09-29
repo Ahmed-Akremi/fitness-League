@@ -7,6 +7,7 @@ import '../../../core/widgets/error_text.dart';
 import '../../../core/widgets/section_header.dart';
 import '../../auth/data/session_controller.dart';
 import '../../home/data/me_repository.dart';
+import 'notification_settings.dart';
 
 /// Settings: preferences (language, theme, training days), privacy, data export, account deletion, sign out.
 class SettingsScreen extends ConsumerWidget {
@@ -21,6 +22,8 @@ class SettingsScreen extends ConsumerWidget {
       body: ListView(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8), children: [
         SectionHeader(title: l.preferences),
         const PreferencesSection(),
+        SectionHeader(title: l.notifications),
+        const NotificationSettingsSection(),
         SectionHeader(title: l.privacy),
         const PrivacySection(),
         SectionHeader(title: l.account),
