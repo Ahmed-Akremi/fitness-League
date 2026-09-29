@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'config/app_config.dart';
 import 'network/api_client.dart';
+import 'network/realtime.dart';
 import 'offline/outbox.dart';
 import 'offline/workout_sync_service.dart';
 import 'storage/token_storage.dart';
@@ -24,6 +25,9 @@ final apiClientProvider = Provider<ApiClient>((ref) {
     onSessionExpired: () => ref.read(sessionExpiredProvider.notifier).state++,
   );
 });
+
+/// Live events; overridden with a socket client in main() (not in tests or the demo build).
+final realtimeProvider = Provider<Realtime>((_) => NoopRealtime());
 
 final workoutSyncProvider = Provider<WorkoutSyncService>((ref) => WorkoutSyncService(api: ref.watch(apiClientProvider), store: ref.watch(outboxStoreProvider)));
 

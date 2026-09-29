@@ -27,6 +27,7 @@ import { ChallengesModule } from './modules/challenges/challenges.module';
 import { LeaguesModule } from './modules/leagues/leagues.module';
 import { FeedModule } from './modules/feed/feed.module';
 import { PushModule } from './modules/push/push.module';
+import { RealtimeModule } from './modules/realtime/realtime.module';
 import { NotificationsModule } from './modules/notifications/notifications.service';
 import { ProgressModule } from './modules/progress/progress.module';
 import { SocialAccessModule } from './modules/social/social-access.module';
@@ -34,6 +35,6 @@ import { OutboxModule } from './common/outbox/outbox.service';
 import { StorageModule } from './common/storage/storage.module';
 
 @Module({
-  imports: [ConfigModule, LoggerModule, PrismaModule, CommonModule, StorageModule, AuditModule, MailModule, OutboxModule, SocialAccessModule, RuleSetModule, ScoringModule, AuthModule, UsersModule, ReferenceModule, WorkoutsModule, ProgressModule, GoalsModule, SeasonsModule, LeaderboardsModule, JobsModule, GymsModule, GymWodsModule, NotificationsModule, SocialModule, BattlesModule, DuelsModule, GymWarsModule, BadgesModule, ChallengesModule, LeaguesModule, FeedModule, PushModule, AdminModule],
+  imports: [ConfigModule, LoggerModule, PrismaModule, CommonModule, StorageModule, AuditModule, MailModule, OutboxModule, SocialAccessModule, RuleSetModule, ScoringModule, AuthModule, UsersModule, ReferenceModule, WorkoutsModule, ProgressModule, GoalsModule, SeasonsModule, LeaderboardsModule, JobsModule, GymsModule, GymWodsModule, NotificationsModule, SocialModule, BattlesModule, DuelsModule, GymWarsModule, BadgesModule, ChallengesModule, LeaguesModule, FeedModule, PushModule, RealtimeModule, AdminModule],
 })
 export class AppModule {}

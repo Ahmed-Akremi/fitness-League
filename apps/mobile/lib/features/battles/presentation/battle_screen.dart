@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/network/realtime.dart';
+import '../../../core/providers.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/avatar_badge.dart';
@@ -26,6 +28,8 @@ class _BattleScreenState extends ConsumerState<BattleScreen> {
   Object? _error;
   bool _busy = false;
   Timer? _poll;
+  StreamSubscription<String>? _live;
+  late final Realtime _rt = ref.read(realtimeProvider);
 
   BattlesRepository get _repo => ref.read(battlesRepositoryProvider);
 
@@ -36,11 +40,16 @@ class _BattleScreenState extends ConsumerState<BattleScreen> {
     _poll = Timer.periodic(const Duration(seconds: 30), (_) {
       if (_battle?['status'] == 'ACTIVE') _load();
     });
+    // Live score: the server says when a participant's workouts change; polling stays as the fallback.
+    _rt.subscribeBattle(widget.id);
+    _live = _rt.battleScores.where((id) => id == widget.id).listen((_) => _load());
   }
 
   @override
   void dispose() {
     _poll?.cancel();
+    _live?.cancel();
+    _rt.unsubscribeBattle(widget.id);
     super.dispose();
   }
 

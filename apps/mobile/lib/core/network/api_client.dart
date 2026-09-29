@@ -35,6 +35,7 @@ class ApiClient {
   Future<bool>? _refreshing;
 
   bool get hasAccessToken => _accessToken != null;
+  String? get accessToken => _accessToken;
 
   Future<void> setSession(Session s) async {
     _accessToken = s.accessToken;

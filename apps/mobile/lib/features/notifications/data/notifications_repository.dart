@@ -18,7 +18,12 @@ class NotificationsRepository {
 }
 
 final notificationsRepositoryProvider = Provider<NotificationsRepository>((ref) => NotificationsRepository(ref.watch(apiClientProvider)));
-final unreadCountProvider = FutureProvider.autoDispose<int>((ref) async => ((await ref.watch(notificationsRepositoryProvider).list())['unread'] as num?)?.toInt() ?? 0);
+final unreadCountProvider = FutureProvider.autoDispose<int>((ref) async {
+  // A live notification refreshes the count without waiting for the next screen change.
+  final sub = ref.watch(realtimeProvider).notifications.listen((_) => ref.invalidateSelf());
+  ref.onDispose(sub.cancel);
+  return ((await ref.watch(notificationsRepositoryProvider).list())['unread'] as num?)?.toInt() ?? 0;
+});
 
 /// Human text for a notification. Friend/battle payloads carry ids only, so texts stay generic.
 String notificationText(AppLocalizations l, Map<String, dynamic> n) {

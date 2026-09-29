@@ -1,3 +1,7 @@
+import 'dart:async';
+
+import 'package:fitness_league/core/network/realtime.dart';
+import 'package:fitness_league/core/providers.dart';
 import 'package:fitness_league/features/battles/presentation/battle_screen.dart';
 import 'package:fitness_league/features/battles/presentation/battles_screen.dart';
 import 'package:fitness_league/features/battles/presentation/new_battle_screen.dart';
@@ -116,4 +120,29 @@ void main() {
       expect(find.text('48.5'), findsOneWidget);
     });
   });
+
+  testWidgets('a live battle.score event reloads the scores', (tester) async {
+    final live = _FakeRealtime();
+    var score = 50.0;
+    final b = FakeBackend()..on('GET', '/battles/bt1', (_) => (200, battle('ACTIVE', myScore: score, theirScore: 40)));
+    await pumpScreen(tester, const BattleScreen(id: 'bt1', myId: 'u1'), b, overrides: [realtimeProvider.overrideWithValue(live)]);
+    expect(live.subscribed, {'bt1'});
+    expect(find.text('50.0'), findsOneWidget);
+    score = 62.5;
+    live.scores.add('bt1');
+    await tester.pumpAndSettle();
+    expect(find.text('62.5'), findsOneWidget);
+  });
+}
+
+class _FakeRealtime extends NoopRealtime {
+  final scores = StreamController<String>.broadcast();
+  final subscribed = <String>{};
+
+  @override
+  Stream<String> get battleScores => scores.stream;
+  @override
+  void subscribeBattle(String battleId) => subscribed.add(battleId);
+  @override
+  void unsubscribeBattle(String battleId) => subscribed.remove(battleId);
 }
