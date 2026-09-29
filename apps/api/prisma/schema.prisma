@@ -323,6 +323,12 @@ enum BattleOutcome {
   DRAW
 }
 
+enum ReactionType {
+  LIKE
+  FIRE
+  STRONG
+}
+
 enum LeagueVisibility {
   PUBLIC
   PRIVATE
@@ -460,6 +466,10 @@ model User {
   challengeEntries   ChallengeParticipant[]
   leaguesOwned       League[]                 @relation("LeagueOwner")
   leagueMemberships  LeagueMember[]
+  activityReactions  ActivityReaction[]
+  activityComments   ActivityComment[]
+  mutesMade          Mute[]                   @relation("Muter")
+  mutedBy            Mute[]                   @relation("Muted")
   battlesCreated     Battle[]                 @relation("BattleCreator")
   notifications      Notification[]
   userBadges         UserBadge[]
@@ -1003,18 +1013,62 @@ model Streak {
 }
 
 model ActivityEvent {
-  id         String       @id @db.Uuid
-  userId     String       @map("user_id") @db.Uuid
+  id         String             @id @db.Uuid
+  userId     String             @map("user_id") @db.Uuid
   type       ActivityType
-  refType    String       @map("ref_type")
-  refId      String       @map("ref_id") @db.Uuid
-  payload    Json         @default("{}")
+  refType    String             @map("ref_type")
+  refId      String             @map("ref_id") @db.Uuid
+  payload    Json               @default("{}")
   visibility Visibility
-  createdAt  DateTime     @default(now()) @map("created_at") @db.Timestamptz
-  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime           @default(now()) @map("created_at") @db.Timestamptz
+  user       User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reactions  ActivityReaction[]
+  comments   ActivityComment[]
 
   @@index([userId, createdAt(sort: Desc)])
   @@map("activity_events")
+}
+
+/// One reaction per athlete per activity (changing it replaces the type).
+model ActivityReaction {
+  activityEventId String       @map("activity_event_id") @db.Uuid
+  userId          String       @map("user_id") @db.Uuid
+  type            ReactionType
+  createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz
+
+  activityEvent ActivityEvent @relation(fields: [activityEventId], references: [id], onDelete: Cascade)
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([activityEventId, userId])
+  @@map("activity_reactions")
+}
+
+model ActivityComment {
+  id              String    @id @db.Uuid
+  activityEventId String    @map("activity_event_id") @db.Uuid
+  userId          String    @map("user_id") @db.Uuid
+  body            String
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  deletedAt       DateTime? @map("deleted_at") @db.Timestamptz
+
+  activityEvent ActivityEvent @relation(fields: [activityEventId], references: [id], onDelete: Cascade)
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([activityEventId, createdAt])
+  @@map("activity_comments")
+}
+
+/// Hides someone's activity from my feed without unfriending or blocking (docs §3.9).
+model Mute {
+  muterId   String   @map("muter_id") @db.Uuid
+  mutedId   String   @map("muted_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  muter User @relation("Muter", fields: [muterId], references: [id], onDelete: Cascade)
+  muted User @relation("Muted", fields: [mutedId], references: [id], onDelete: Cascade)
+
+  @@id([muterId, mutedId])
+  @@map("mutes")
 }
 
 // ───────────────────── Scoring & ledgers ─────────────────────

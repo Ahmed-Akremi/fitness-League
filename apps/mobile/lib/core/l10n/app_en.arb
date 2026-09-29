@@ -702,5 +702,67 @@
         "type": "int"
       }
     }
+  },
+  "feed": "Feed",
+  "feedEmpty": "Nothing here yet. Add friends to follow their training!",
+  "noComments": "No comment yet",
+  "writeComment": "Write a comment…",
+  "sendComment": "Send",
+  "feedGoalCompleted": "reached a goal 🎯",
+  "notifActivityReaction": "Someone reacted to your activity",
+  "notifActivityComment": "New comment on your activity",
+  "feedWorkout": "trained: {sport}, {minutes} min",
+  "@feedWorkout": {
+    "placeholders": {
+      "sport": {
+        "type": "String"
+      },
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "feedPr": "new record on {exercise}: {value}",
+  "@feedPr": {
+    "placeholders": {
+      "exercise": {
+        "type": "String"
+      },
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "feedBadge": "earned the badge {badge}",
+  "@feedBadge": {
+    "placeholders": {
+      "badge": {
+        "type": "String"
+      }
+    }
+  },
+  "feedLevelUp": "reached level {level}",
+  "@feedLevelUp": {
+    "placeholders": {
+      "level": {
+        "type": "String"
+      }
+    }
+  },
+  "feedBattleWin": "won a battle against {name}",
+  "@feedBattleWin": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "feedGymWarWin": "won the Gym War with {gym}",
+  "@feedGymWarWin": {
+    "placeholders": {
+      "gym": {
+        "type": "String"
+      }
+    }
   }
 }

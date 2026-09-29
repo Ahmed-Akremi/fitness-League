@@ -22,6 +22,8 @@ export type NotificationType =
   | 'GYM_WAR_RESULT'
   | 'BADGE_AWARDED'
   | 'CHALLENGE_COMPLETED'
+  | 'ACTIVITY_REACTION'
+  | 'ACTIVITY_COMMENT'
   | 'GYM_WOD_SCORE_INVALIDATED';
 
 /**

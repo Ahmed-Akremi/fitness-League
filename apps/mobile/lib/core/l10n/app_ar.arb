@@ -401,5 +401,19 @@
   "leaguePublicHint": "يمكن لأي شخص إيجاده والانضمام إليه",
   "leagueRanking": "الترتيب حسب",
   "membersOf": "{count}/{max} أعضاء",
-  "weeksCount": "{count, plural, =1{أسبوع واحد} other{{count} أسابيع}}"
+  "weeksCount": "{count, plural, =1{أسبوع واحد} other{{count} أسابيع}}",
+  "feed": "النشاط",
+  "feedEmpty": "لا شيء بعد. أضف أصدقاء لمتابعة تدريباتهم!",
+  "noComments": "لا تعليقات بعد",
+  "writeComment": "اكتب تعليقًا…",
+  "sendComment": "إرسال",
+  "feedGoalCompleted": "حقق هدفًا 🎯",
+  "notifActivityReaction": "تفاعل أحدهم مع نشاطك",
+  "notifActivityComment": "تعليق جديد على نشاطك",
+  "feedWorkout": "تدرّب: {sport}، {minutes} د",
+  "feedPr": "رقم قياسي جديد في {exercise}: {value}",
+  "feedBadge": "حصل على شارة {badge}",
+  "feedLevelUp": "بلغ المستوى {level}",
+  "feedBattleWin": "فاز في تحدٍ ضد {name}",
+  "feedGymWarWin": "فاز بحرب الصالات مع {gym}"
 }

@@ -184,6 +184,7 @@ class _HomeBody extends ConsumerWidget {
           (Icons.emoji_events_outlined, l.records, '/records'),
           (Icons.group_outlined, l.friends, '/friends'),
           (Icons.sports_mma_outlined, l.battles, '/battles'),
+          (Icons.dynamic_feed_outlined, l.feed, '/feed'),
         ])
           Expanded(
             child: Padding(

@@ -33,6 +33,8 @@ String notificationText(AppLocalizations l, Map<String, dynamic> n) {
     'DUEL_MATCHED' => l.notifDuelMatched,
     'DUEL_GHOST' => l.notifDuelGhost,
     'CHALLENGE_COMPLETED' => l.notifChallengeCompleted((p['title'] ?? '') as String),
+    'ACTIVITY_REACTION' => l.notifActivityReaction,
+    'ACTIVITY_COMMENT' => l.notifActivityComment,
     'BADGE_AWARDED' => l.notifBadgeAwarded(localized(p['name'], l.localeName)),
     'GYM_WAR_STARTED' => l.notifGymWarStarted((p['opponentName'] ?? '') as String),
     'GYM_WAR_RESULT' => switch (p['outcome']) { 'WIN' => l.notifGymWarWon, 'LOSS' => l.notifGymWarLost, _ => l.notifGymWarDraw },
@@ -50,6 +52,7 @@ String? notificationRoute(Map<String, dynamic> n) {
     'GYM_WOD_SCORE_INVALIDATED' => '/gyms/${p['gymId']}/wods/${p['wodId']}',
     'GYM_WAR_STARTED' || 'GYM_WAR_RESULT' => '/gym-wars/${p['warId']}',
     'BADGE_AWARDED' => '/badges',
+    'ACTIVITY_REACTION' || 'ACTIVITY_COMMENT' => '/feed',
     'CHALLENGE_COMPLETED' => '/challenges/${p['challengeId']}',
     _ => null,
   };

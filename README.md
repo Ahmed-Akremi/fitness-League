@@ -106,12 +106,13 @@ See [`apps/mobile/README.md`](apps/mobile/README.md) (`flutter pub get`, `build_
 | Badges: data-driven rules (counts, level, division, weekly streaks), awarded on events + daily sweep, 21-badge catalogue; mobile collection with progress | Done, tested |
 | Challenges: personal / friends / gym (admin, coaches) / community (staff), 5 workout quantities, live progress from workouts, XP for gym and community ones, optional weekly-score challenge component (`challenge_component`); mobile tab, detail, leaderboard, creation | Done, tested |
 | Private and public leagues: invite code (rate-limited), member cap, ranking on summed weekly totals / consistency / progress over the period; mobile Leagues tab, detail, creation | Done, tested |
+| Activity feed: friends' activity (visibility, blocks, mutes, deleted workouts hidden), one reaction per athlete (👍 🔥 💪), comments (author or activity owner deletes), notifications; mobile feed with comments sheet | Done, tested |
 | Docker images / compose, CI | Written, not yet run (no Docker locally; CI runs on the next push) |
 
 ## Not done yet
 
 - Run Docker compose and CI once for real.
-- Phase 2: activity feed (reactions, comments), push notifications (FCM), real-time WebSocket, phone verification by SMS, admin score recompute job.
+- Phase 2: push notifications (FCM), real-time WebSocket, phone verification by SMS, admin score recompute job.
 - Phase 3: workout proofs (photo/video) and verified scoring, behavioural anti-cheat, reports, sanctions and appeals, gym admin dashboard.
 - Phase 4: integrations (watches, apps), coach tools, billing.
 

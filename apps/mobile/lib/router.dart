@@ -16,6 +16,7 @@ import 'features/gyms/presentation/create_gym_screen.dart';
 import 'features/gyms/presentation/gym_members_screen.dart';
 import 'features/gyms/presentation/gym_profile_screen.dart';
 import 'features/badges/presentation/badges_screen.dart';
+import 'features/feed/presentation/feed_screen.dart';
 import 'features/leagues/presentation/league_detail_screen.dart';
 import 'features/leagues/presentation/new_league_screen.dart';
 import 'features/challenges/presentation/challenge_screen.dart';
@@ -89,6 +90,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/challenges/:id', builder: (_, s) => ChallengeScreen(id: s.pathParameters['id']!)),
       GoRoute(path: '/leagues/new', builder: (_, _) => const NewLeagueScreen()),
       GoRoute(path: '/leagues/:id', builder: (_, s) => LeagueDetailScreen(id: s.pathParameters['id']!)),
+      GoRoute(path: '/feed', builder: (_, _) => const FeedScreen()),
       GoRoute(path: '/badges', builder: (_, _) => const BadgesScreen()),
       GoRoute(path: '/records', builder: (_, _) => const RecordsScreen()),
       GoRoute(path: '/me/body', builder: (_, _) => const BodyScreen()),

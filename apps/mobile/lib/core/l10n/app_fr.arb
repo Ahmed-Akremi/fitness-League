@@ -401,5 +401,19 @@
   "leaguePublicHint": "Tout le monde peut la trouver et la rejoindre",
   "leagueRanking": "Classement sur",
   "membersOf": "{count}/{max} membres",
-  "weeksCount": "{count, plural, =1{1 semaine} other{{count} semaines}}"
+  "weeksCount": "{count, plural, =1{1 semaine} other{{count} semaines}}",
+  "feed": "Fil",
+  "feedEmpty": "Rien pour l'instant. Ajoute des amis pour suivre leurs entraînements !",
+  "noComments": "Aucun commentaire",
+  "writeComment": "Écrire un commentaire…",
+  "sendComment": "Envoyer",
+  "feedGoalCompleted": "a atteint un objectif 🎯",
+  "notifActivityReaction": "Quelqu'un a réagi à ton activité",
+  "notifActivityComment": "Nouveau commentaire sur ton activité",
+  "feedWorkout": "s'est entraîné : {sport}, {minutes} min",
+  "feedPr": "nouveau record en {exercise} : {value}",
+  "feedBadge": "a obtenu le badge {badge}",
+  "feedLevelUp": "a atteint le niveau {level}",
+  "feedBattleWin": "a gagné une battle contre {name}",
+  "feedGymWarWin": "a gagné la guerre de salles avec {gym}"
 }
