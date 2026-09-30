@@ -1,22 +1,29 @@
 {
   "expo": {
-    "name": "mobile-rn",
-    "slug": "mobile-rn",
-    "version": "1.0.0",
+    "name": "Fitness League",
+    "slug": "fitness-league",
+    "version": "0.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "tn.fitnessleague.app",
+      "infoPlist": {
+        "NSAppTransportSecurity": {
+          "NSAllowsLocalNetworking": true
+        }
+      }
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#0E0F12",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "tn.fitnessleague.app"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -28,6 +35,14 @@
       "expo-font",
       "expo-localization",
       "@react-native-community/datetimepicker"
-    ]
+    ],
+    "scheme": "fitnessleague",
+    "backgroundColor": "#0E0F12",
+    "experiments": {
+      "typedRoutes": false
+    },
+    "extra": {
+      "supportsRTL": true
+    }
   }
 }
