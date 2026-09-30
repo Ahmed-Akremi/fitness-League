@@ -789,5 +789,22 @@
   "reportSpam": "Spam",
   "reportInappropriate": "Inappropriate content",
   "reportImpersonation": "Impersonation",
-  "reportOther": "Something else"
+  "reportOther": "Something else",
+  "gymDashboard": "Dashboard",
+  "dashboardPending": "Requests",
+  "dashboardActive7": "Active 7 days",
+  "dashboardActive28": "Active 28 days",
+  "dashboardTrend": "Members scored per week",
+  "dashboardTopProgress": "Top progress last week",
+  "dashboardToNudge": "No workout for 14 days",
+  "dashboardNobodyToNudge": "Everyone trained recently 💪",
+  "dashboardNeverTrained": "No workout yet",
+  "dashboardScores": "{count, plural, =0{no score} =1{1 score} other{{count} scores}}",
+  "@dashboardScores": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }

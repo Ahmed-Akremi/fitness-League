@@ -440,5 +440,15 @@
   "reportSpam": "Spam",
   "reportInappropriate": "Contenu inapproprié",
   "reportImpersonation": "Usurpation d'identité",
-  "reportOther": "Autre chose"
+  "reportOther": "Autre chose",
+  "gymDashboard": "Tableau de bord",
+  "dashboardPending": "Demandes",
+  "dashboardActive7": "Actifs 7 jours",
+  "dashboardActive28": "Actifs 28 jours",
+  "dashboardTrend": "Membres classés par semaine",
+  "dashboardTopProgress": "Meilleurs progrès la semaine dernière",
+  "dashboardToNudge": "Pas de séance depuis 14 jours",
+  "dashboardNobodyToNudge": "Tout le monde s'est entraîné récemment 💪",
+  "dashboardNeverTrained": "Aucune séance",
+  "dashboardScores": "{count, plural, =0{aucun score} =1{1 score} other{{count} scores}}"
 }

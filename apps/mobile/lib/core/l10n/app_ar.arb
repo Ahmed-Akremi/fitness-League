@@ -440,5 +440,15 @@
   "reportSpam": "رسائل مزعجة",
   "reportInappropriate": "محتوى غير لائق",
   "reportImpersonation": "انتحال شخصية",
-  "reportOther": "شيء آخر"
+  "reportOther": "شيء آخر",
+  "gymDashboard": "لوحة التحكم",
+  "dashboardPending": "الطلبات",
+  "dashboardActive7": "نشطون 7 أيام",
+  "dashboardActive28": "نشطون 28 يومًا",
+  "dashboardTrend": "الأعضاء المصنفون أسبوعيًا",
+  "dashboardTopProgress": "أفضل تقدم الأسبوع الماضي",
+  "dashboardToNudge": "بلا حصة منذ 14 يومًا",
+  "dashboardNobodyToNudge": "الجميع تدرّب مؤخرًا 💪",
+  "dashboardNeverTrained": "لا حصص بعد",
+  "dashboardScores": "{count, plural, =0{لا نتائج} =1{نتيجة واحدة} other{{count} نتائج}}"
 }

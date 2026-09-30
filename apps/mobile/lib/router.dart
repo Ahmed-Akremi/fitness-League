@@ -16,6 +16,7 @@ import 'features/gyms/presentation/create_gym_screen.dart';
 import 'features/gyms/presentation/gym_members_screen.dart';
 import 'features/gyms/presentation/gym_profile_screen.dart';
 import 'features/badges/presentation/badges_screen.dart';
+import 'features/gyms/presentation/gym_dashboard_screen.dart';
 import 'features/feed/presentation/feed_screen.dart';
 import 'features/leagues/presentation/league_detail_screen.dart';
 import 'features/leagues/presentation/new_league_screen.dart';
@@ -110,6 +111,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/gyms/new', builder: (_, _) => const CreateGymScreen()),
       GoRoute(path: '/gyms/:id', builder: (_, s) => GymProfileScreen(id: s.pathParameters['id']!)),
       GoRoute(path: '/gym-wars/:id', builder: (_, s) => GymWarScreen(id: s.pathParameters['id']!)),
+      GoRoute(path: '/gyms/:id/dashboard', builder: (_, s) => GymDashboardScreen(id: s.pathParameters['id']!)),
       GoRoute(path: '/gyms/:id/members', builder: (_, s) => GymMembersScreen(id: s.pathParameters['id']!)),
       GoRoute(path: '/gyms/:id/wods/new', builder: (_, s) => CreateWodScreen(gymId: s.pathParameters['id']!)),
       GoRoute(

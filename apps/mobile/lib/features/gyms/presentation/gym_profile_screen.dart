@@ -195,6 +195,8 @@ class _GymProfileViewState extends ConsumerState<_GymProfileView> {
             if (canManage) ...[
               const SizedBox(height: 16),
               OutlinedButton.icon(onPressed: () => context.push('/gyms/${widget.id}/members'), icon: const Icon(Icons.group_outlined), label: Text(l.gymManageMembers)),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(onPressed: () => context.push('/gyms/${widget.id}/dashboard'), icon: const Icon(Icons.insights_outlined), label: Text(l.gymDashboard)),
             ],
           ]),
         ),
