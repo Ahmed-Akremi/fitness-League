@@ -420,5 +420,15 @@
   "pushBattles": "التحديات والمبارزات",
   "pushGym": "صالتي",
   "quietHours": "ساعات الهدوء",
-  "quietHoursOff": "معطلة"
+  "quietHoursOff": "معطلة",
+  "proofs": "الإثبات",
+  "proofVerified": "موثّق",
+  "proofPending": "قيد المراجعة",
+  "proofRejected": "مرفوض",
+  "proofNone": "لا يوجد",
+  "proofHint": "أضف صورة أو لقطة شاشة (ساعة، تطبيق): بعد توثيقها من مشرف، تُحتسب هذه الحصة أكثر.",
+  "addProof": "أضف إثباتًا",
+  "proofTooLarge": "8 ميغابايت كحد أقصى",
+  "notifProofVerified": "تم توثيق إثباتك: الحصة تُحتسب أكثر",
+  "notifProofRejected": "تم رفض إثباتك"
 }

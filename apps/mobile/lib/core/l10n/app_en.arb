@@ -769,5 +769,15 @@
   "pushBattles": "Battles and duels",
   "pushGym": "My gym",
   "quietHours": "Quiet hours",
-  "quietHoursOff": "Off"
+  "quietHoursOff": "Off",
+  "proofs": "Proof",
+  "proofVerified": "Verified",
+  "proofPending": "Under review",
+  "proofRejected": "Rejected",
+  "proofNone": "None",
+  "proofHint": "Add a photo or a screenshot (watch, app): once a moderator verifies it, this workout counts more.",
+  "addProof": "Add a proof",
+  "proofTooLarge": "8 MB maximum",
+  "notifProofVerified": "Your proof was verified: the workout counts more",
+  "notifProofRejected": "Your proof was rejected"
 }

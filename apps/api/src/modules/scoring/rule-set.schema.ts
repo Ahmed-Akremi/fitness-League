@@ -124,6 +124,8 @@ export const ruleSetConfigSchema = z
         bracket_m_min: posInt,
         bracket_l_min: posInt,
         no_rematch_weeks: nonNegInt,
+        /** Phase 3: count the share of verified workouts (w4); off spreads w4 over the other weights. */
+        use_verified_ratio: z.boolean().default(false),
       })
       .default({
         weights: { top_k: 0.35, participation: 0.2, progress: 0.2, verified: 0.1, consistency: 0.15 },
@@ -133,6 +135,7 @@ export const ruleSetConfigSchema = z
         bracket_m_min: 31,
         bracket_l_min: 81,
         no_rematch_weeks: 3,
+        use_verified_ratio: false,
       }),
 
     // Levels

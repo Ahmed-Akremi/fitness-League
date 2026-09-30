@@ -25,6 +25,8 @@ export type NotificationType =
   | 'CHALLENGE_COMPLETED'
   | 'ACTIVITY_REACTION'
   | 'ACTIVITY_COMMENT'
+  | 'PROOF_VERIFIED'
+  | 'PROOF_REJECTED'
   | 'GYM_WOD_SCORE_INVALIDATED';
 
 /**

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'proofs_section.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/l10n/l10n.dart';
@@ -51,6 +52,8 @@ class WorkoutDetailScreen extends ConsumerWidget {
                       ]),
                     ),
                   ),
+                if (w['status'] == 'ACCEPTED' || w['status'] == 'HELD_FOR_REVIEW') ProofsSection(workoutId: id),
+                const SizedBox(height: 12),
                 StatCard(
                   label: l.whyThesePoints,
                   trailing: Text(l.totalXp(points['totalXp'] as int), style: t.textTheme.titleMedium?.copyWith(color: t.colorScheme.primary)),

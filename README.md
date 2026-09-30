@@ -110,13 +110,14 @@ See [`apps/mobile/README.md`](apps/mobile/README.md) (`flutter pub get`, `build_
 | Push notifications: every notification goes through the outbox to FCM HTTP v1 (`PUSH_DRIVER=fcm`, service account, no SDK) or a log driver; devices API, per-category switches, quiet hours (Africa/Tunis), dead tokens dropped; mobile settings section. The app does not register its FCM token yet (needs a Firebase project and `google-services.json`) | Done, tested (API) |
 | Real time: Socket.IO `/ws` (access-token auth, session version checked), `notification.new` to the recipient, `battle.score` to battle participants; events relayed from the worker through PostgreSQL LISTEN/NOTIFY (no Redis); mobile bell and battle screen update live, polling kept as fallback | Done, tested |
 | Admin score recompute: SUPER_ADMIN re-scores closed weeks of the running season with the active rule set (dry run first, reversal + new ledger entries, audited); admin panel form with preview | Done, tested |
+| Workout proofs: up to 3 photos/screenshots per workout, re-encoded WebP without EXIF/GPS, private (athlete + moderators); moderator queue (admin panel) verifies or rejects with a note; verified workouts raise the performance component (`verified_weight_multiplier`); Gym War verified ratio behind `gym_war.use_verified_ratio`; mobile proof section on the workout | Done, tested |
 | Docker images / compose, CI | Written, not yet run (no Docker locally; CI runs on the next push) |
 
 ## Not done yet
 
 - Run Docker compose and CI once for real.
 - Phase 2: mobile FCM token registration (needs a Firebase project), live leaderboard moves, phone verification by SMS.
-- Phase 3: workout proofs (photo/video) and verified scoring, behavioural anti-cheat, reports, sanctions and appeals, gym admin dashboard.
+- Phase 3: video proofs, behavioural anti-cheat, reports, sanctions and appeals, gym admin dashboard.
 - Phase 4: integrations (watches, apps), coach tools, billing.
 
 See `docs/ARCHITECTURE.md` §4.5 for the planned endpoints.

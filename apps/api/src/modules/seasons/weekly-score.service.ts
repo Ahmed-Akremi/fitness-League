@@ -145,8 +145,8 @@ export class WeeklyScoreService {
     const components = {
       progress: round(topNMean(progressScores, config.progress_top_n), 2),
       consistency: round(consistency, 2),
-      // Verified-proof multiplier arrives with proof verification (Phase 3); factor 1 until then.
-      performance: round(topNMean(performanceRatios, config.progress_top_n) * 100, 2),
+      // Verified proofs (Phase 3): factor = 1 + (multiplier − 1) × share of verified workouts, capped at 100 (docs §5).
+      performance: round(Math.min(100, topNMean(performanceRatios, config.progress_top_n) * 100 * verificationFactor(workouts, config.verified_weight_multiplier)), 2),
       // Joined a challenge running this week and trained in it → 100 (docs §5); off → weights renormalised (Q-1).
       challenge: config.challenge_component ? await this.challengeComponent(db, userId, weekStart, weekEnd, workouts.length > 0) : null,
     };
@@ -224,4 +224,10 @@ export class WeeklyScoreService {
 function round(n: number, digits: number): number {
   const f = 10 ** digits;
   return Math.round(n * f) / f;
+}
+
+/** 1 when nothing is verified, `multiplier` when every counted workout of the week is. */
+export function verificationFactor(workouts: { isVerified: boolean }[], multiplier: number): number {
+  if (!workouts.length) return 1;
+  return 1 + (multiplier - 1) * (workouts.filter((w) => w.isVerified).length / workouts.length);
 }

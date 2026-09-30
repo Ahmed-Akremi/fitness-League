@@ -199,7 +199,7 @@ export class GymWarsService {
       const w = byUser.get(userId);
       return { total: Number(w?.total ?? 0), progress: Number(w?.progressC ?? 0), consistency: Number(w?.consistencyC ?? 0), active: active.has(userId) };
     });
-    return { score: gymScore(members, null, config.gym_war), active: [...active] };
+    return { score: gymScore(members, await this.verifiedRatio(db, memberIds, week, weekEnd, config), config.gym_war), active: [...active] };
   }
 
   /** Live score of an active war: weekly scores computed up to now. */
@@ -215,7 +215,15 @@ export class GymWarsService {
       const s = await this.weekly.computeWindow(userId, week, end, config, version);
       members.push({ total: s.total, progress: s.components.progress, consistency: s.components.consistency, active: true });
     }
-    return gymScore(members, null, config.gym_war);
+    return gymScore(members, await this.verifiedRatio(this.prisma, memberIds, week, end, config), config.gym_war);
+  }
+
+  /** Verified accepted workouts / accepted workouts × 100 (docs §6.2 w4), or null while the rule set keeps it off. */
+  private async verifiedRatio(db: Db, memberIds: string[], from: Date, to: Date, config: RuleSetConfig): Promise<number | null> {
+    if (!config.gym_war.use_verified_ratio) return null;
+    const where = { userId: { in: memberIds }, status: 'ACCEPTED' as const, deletedAt: null, performedAt: { gte: from, lt: to } };
+    const [all, verified] = await Promise.all([db.workout.count({ where }), db.workout.count({ where: { ...where, isVerified: true } })]);
+    return all ? (verified / all) * 100 : 0;
   }
 
   private async activeMembers(db: Db, memberIds: string[], from: Date, to: Date): Promise<Set<string>> {

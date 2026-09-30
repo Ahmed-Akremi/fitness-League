@@ -420,5 +420,15 @@
   "pushBattles": "Battles et duels",
   "pushGym": "Ma salle",
   "quietHours": "Heures calmes",
-  "quietHoursOff": "Désactivées"
+  "quietHoursOff": "Désactivées",
+  "proofs": "Preuve",
+  "proofVerified": "Vérifiée",
+  "proofPending": "En vérification",
+  "proofRejected": "Refusée",
+  "proofNone": "Aucune",
+  "proofHint": "Ajoute une photo ou une capture (montre, appli) : une fois vérifiée par un modérateur, cette séance compte davantage.",
+  "addProof": "Ajouter une preuve",
+  "proofTooLarge": "8 Mo maximum",
+  "notifProofVerified": "Ta preuve est vérifiée : la séance compte davantage",
+  "notifProofRejected": "Ta preuve a été refusée"
 }

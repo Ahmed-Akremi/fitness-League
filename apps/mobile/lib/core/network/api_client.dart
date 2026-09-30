@@ -59,8 +59,10 @@ class ApiClient {
   Future<T> put<T>(String path, {Object? data}) => _call(() => dio.put<T>(path, data: data));
 
   /// Multipart upload (field "file" by default).
-  Future<T> upload<T>(String path, {required List<int> bytes, required String filename, String field = 'file'}) =>
-      _call(() => dio.put<T>(path, data: FormData.fromMap({field: MultipartFile.fromBytes(bytes, filename: filename)})));
+  Future<T> upload<T>(String path, {required List<int> bytes, required String filename, String field = 'file', bool post = false, Map<String, dynamic>? query}) {
+    final form = FormData.fromMap({field: MultipartFile.fromBytes(bytes, filename: filename)});
+    return _call(() => post ? dio.post<T>(path, data: form, queryParameters: query) : dio.put<T>(path, data: form, queryParameters: query));
+  }
 
   Future<T> _call<T>(Future<Response<T>> Function() request) async {
     try {

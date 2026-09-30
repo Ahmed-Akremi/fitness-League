@@ -5,7 +5,7 @@ import { Layout } from './components/Layout';
 import { Audit } from './pages/Audit';
 import { Dashboard } from './pages/Dashboard';
 import { Login } from './pages/Login';
-import { GymVerification, HeldWorkouts } from './pages/Queues';
+import { GymVerification, HeldWorkouts, ProofQueue } from './pages/Queues';
 import { RuleSets } from './pages/RuleSets';
 import { Seasons } from './pages/Seasons';
 import { Users } from './pages/Users';
@@ -27,6 +27,7 @@ export function App() {
           <Route index element={<Dashboard />} />
           <Route path="users" element={<Users />} />
           <Route path="held" element={<HeldWorkouts />} />
+          <Route path="proofs" element={<ProofQueue />} />
           <Route path="gyms" element={<AdminOnly><GymVerification /></AdminOnly>} />
           <Route path="rule-sets" element={<AdminOnly><RuleSets /></AdminOnly>} />
           <Route path="seasons" element={<AdminOnly><Seasons /></AdminOnly>} />
