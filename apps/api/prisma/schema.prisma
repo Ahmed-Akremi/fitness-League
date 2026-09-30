@@ -323,6 +323,19 @@ enum BattleOutcome {
   DRAW
 }
 
+enum AnticheatFlagKind {
+  SCORE_SPIKE
+  FARMING
+  SHARED_DEVICE
+  BATTLE_COLLUSION
+}
+
+enum AnticheatFlagStatus {
+  OPEN
+  CLEARED
+  CONFIRMED
+}
+
 enum ReportTarget {
   USER
   WORKOUT
@@ -519,6 +532,7 @@ model User {
   mutedBy            Mute[]                   @relation("Muted")
   reportsMade        Report[]                 @relation("Reporter")
   sanctions          Sanction[]               @relation("Sanctioned")
+  anticheatFlags     AnticheatFlag[]
   battlesCreated     Battle[]                 @relation("BattleCreator")
   notifications      Notification[]
   userBadges         UserBadge[]
@@ -1463,6 +1477,28 @@ model DuelQueueEntry {
   @@unique([userId, weekStart])
   @@index([weekStart, status])
   @@map("duel_queue_entries")
+}
+
+// ───────────────────────────── Behavioural anti-cheat ─────────────────────────────
+
+/// A behavioural signal for a moderator to look at (docs §7.3). Never a sanction by itself.
+model AnticheatFlag {
+  id           String              @id @db.Uuid
+  userId       String              @map("user_id") @db.Uuid
+  kind         AnticheatFlagKind
+  weekStart    DateTime            @map("week_start") @db.Date
+  details      Json
+  status       AnticheatFlagStatus @default(OPEN)
+  reviewedById String?             @map("reviewed_by") @db.Uuid
+  reviewedAt   DateTime?           @map("reviewed_at") @db.Timestamptz
+  note         String?
+  createdAt    DateTime            @default(now()) @map("created_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, kind, weekStart])
+  @@index([status, createdAt])
+  @@map("anticheat_flags")
 }
 
 // ───────────────────────────── Moderation ─────────────────────────────

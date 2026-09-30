@@ -25,6 +25,17 @@ interface Appeal {
   appeal: { text: string | null };
 }
 
+interface Flag {
+  id: string;
+  username: string;
+  userStatus: string;
+  kind: string;
+  weekStart: string;
+  details: Record<string, unknown>;
+}
+
+const FLAG_KINDS: Record<string, string> = { SCORE_SPIKE: 'Pic de score', FARMING: 'Séances au minimum', SHARED_DEVICE: 'Appareil partagé', BATTLE_COLLUSION: 'Battles arrangées' };
+
 const REASONS: Record<string, string> = { CHEATING: 'Triche', HARASSMENT: 'Harcèlement', SPAM: 'Spam', INAPPROPRIATE: 'Contenu inapproprié', IMPERSONATION: 'Usurpation', OTHER: 'Autre' };
 
 /** Reports and appeals (Phase 3). Bans and ban appeals need an admin; nobody reviews an appeal of their own decision. */
@@ -32,6 +43,17 @@ export function Moderation() {
   const { api, me } = useAuth();
   const reports = useFetch(() => api.get<OpenReport[]>('/admin/reports'), [api]);
   const appeals = useFetch(() => api.get<Appeal[]>('/admin/appeals'), [api]);
+  const flags = useFetch(() => api.get<Flag[]>('/admin/anticheat/flags'), [api]);
+
+  async function reviewFlag(f: Flag, status: 'CLEARED' | 'CONFIRMED') {
+    try {
+      await api.post(`/admin/anticheat/flags/${f.id}/review`, { status, note: notes[f.id] });
+      setMessage(status === 'CLEARED' ? 'Alerte classée.' : 'Alerte confirmée : sanctionne via un signalement si besoin.');
+      await flags.reload();
+    } catch (e) {
+      setMessage(errorText(e));
+    }
+  }
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [days, setDays] = useState<Record<string, number>>({});
   const [message, setMessage] = useState<string | null>(null);
@@ -96,6 +118,27 @@ export function Moderation() {
                 Bannir
               </button>
             )}
+          </div>
+        </article>
+      ))}
+
+      <h2>Alertes anti-triche</h2>
+      {flags.data?.length === 0 && <p>Aucune alerte ouverte.</p>}
+      {flags.data?.map((f) => (
+        <article key={f.id} className="card">
+          <p>
+            <strong>{FLAG_KINDS[f.kind] ?? f.kind}</strong> · @{f.username} ({f.userStatus}) · semaine du {f.weekStart}
+          </p>
+          <pre>{JSON.stringify(f.details, null, 1)}</pre>
+          <label>
+            Note
+            <input value={notes[f.id] ?? ''} onChange={(e) => setNotes({ ...notes, [f.id]: e.target.value })} />
+          </label>
+          <div className="row">
+            <button disabled={(notes[f.id] ?? '').trim().length < 3} onClick={() => reviewFlag(f, 'CLEARED')}>Classer</button>
+            <button className="danger" disabled={(notes[f.id] ?? '').trim().length < 3} onClick={() => reviewFlag(f, 'CONFIRMED')}>
+              Confirmer
+            </button>
           </div>
         </article>
       ))}

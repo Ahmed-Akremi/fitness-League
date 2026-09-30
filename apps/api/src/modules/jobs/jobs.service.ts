@@ -4,6 +4,7 @@ import { BusinessCalendar } from '../../common/clock/business-calendar';
 import { ClockService } from '../../common/clock/clock.service';
 import { uuidv7 } from '../../common/ids/uuid';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { BehaviourService } from '../anticheat/behaviour.service';
 import { BadgesService } from '../badges/badges.service';
 import { ChallengesService } from '../challenges/challenges.service';
 import { BattlesService } from '../battles/battles.service';
@@ -36,6 +37,7 @@ export class JobsService {
     private readonly duels: DuelsService,
     private readonly gymWars: GymWarsService,
     private readonly badges: BadgesService,
+    private readonly behaviour: BehaviourService,
     private readonly challenges: ChallengesService,
     private readonly ruleSets: RuleSetService,
     private readonly clock: ClockService,
@@ -56,6 +58,7 @@ export class JobsService {
     const week = this.seasons.lastClosableWeek(now, config.week_grace_hours);
     out.weeklyClose = await this.once('weekly-close', this.calendar.localDate(week), () => this.seasons.closeWeek(week));
     // Gym Wars: scored once the week's weekly scores are final, paired at the start of each week.
+    out.behaviour = await this.once('anticheat-behaviour', this.calendar.localDate(week), () => this.behaviour.scanWeek(week));
     out.gymWarClose = await this.once('gym-war-close', this.calendar.localDate(week), () => this.gymWars.closeWeek(week));
     const thisWeek = this.calendar.weekStart(now);
     out.gymWarStart = await this.once('gym-war-start', this.calendar.localDate(thisWeek), () => this.gymWars.startWeek(thisWeek));

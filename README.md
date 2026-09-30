@@ -112,13 +112,14 @@ See [`apps/mobile/README.md`](apps/mobile/README.md) (`flutter pub get`, `build_
 | Admin score recompute: SUPER_ADMIN re-scores closed weeks of the running season with the active rule set (dry run first, reversal + new ledger entries, audited); admin panel form with preview | Done, tested |
 | Workout proofs: up to 3 photos/screenshots per workout, re-encoded WebP without EXIF/GPS, private (athlete + moderators); moderator queue (admin panel) verifies or rejects with a note; verified workouts raise the performance component (`verified_weight_multiplier`); Gym War verified ratio behind `gym_war.use_verified_ratio`; mobile proof section on the workout | Done, tested |
 | Moderation: reports on athletes, workouts, comments and gyms; moderator decisions (dismiss, warn, suspend N days; bans for admins) that sign the athlete out; appeals once, from the app for warnings or through a signed link emailed with a suspension/ban; a different moderator decides; public anonymised moderation log; admin panel queue; report sheet in the app | Done, tested |
+| Behavioural anti-cheat: weekly scan after the close (score > 3σ above own history, minimum-duration farming, accounts sharing an install that meet in battles, friends alternating battle wins) raising flags only; moderators clear or confirm them in the admin panel | Done, tested |
 | Docker images / compose, CI | Written, not yet run (no Docker locally; CI runs on the next push) |
 
 ## Not done yet
 
 - Run Docker compose and CI once for real.
 - Phase 2: mobile FCM token registration (needs a Firebase project), live leaderboard moves, phone verification by SMS.
-- Phase 3: video proofs, behavioural anti-cheat, gym admin dashboard.
+- Phase 3: video proofs, gym admin dashboard.
 - Phase 4: integrations (watches, apps), coach tools, billing.
 
 See `docs/ARCHITECTURE.md` §4.5 for the planned endpoints.
