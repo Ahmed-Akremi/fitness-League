@@ -233,6 +233,39 @@ export function Fab({ label, icon = 'add', onPress, testID }: { label?: string; 
   );
 }
 
+/** Overflow menu (Flutter PopupMenuButton): an icon that opens a list of actions. */
+export function Menu({ items, label, icon = 'more-vert', testID }: { items: { label: string; onPress: () => void; testID?: string }[]; label: string; icon?: IconName; testID?: string }) {
+  const { colors } = useTheme();
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <Pressable testID={testID} accessibilityRole="button" accessibilityLabel={label} onPress={() => setOpen(true)} hitSlop={8} style={{ padding: 8 }}>
+        <Icon name={icon} />
+      </Pressable>
+      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
+        <Pressable style={{ flex: 1, backgroundColor: '#00000066', justifyContent: 'flex-end' }} onPress={() => setOpen(false)}>
+          <SafeAreaView edges={['bottom']} style={{ backgroundColor: colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingVertical: 8 }}>
+            {items.map((it) => (
+              <Pressable
+                key={it.label}
+                testID={it.testID}
+                accessibilityRole="button"
+                onPress={() => {
+                  setOpen(false);
+                  it.onPress();
+                }}
+                style={{ paddingHorizontal: 20, paddingVertical: 16 }}
+              >
+                <Txt style={{ fontSize: 16 }}>{it.label}</Txt>
+              </Pressable>
+            ))}
+          </SafeAreaView>
+        </Pressable>
+      </Modal>
+    </>
+  );
+}
+
 /** Modal dialog (Flutter AlertDialog). `input` adds a text field whose value is passed to onConfirm. */
 export function Dialog({ visible, title, message, confirmLabel, cancelLabel, onConfirm, onCancel, input, destructive, confirmDisabled }: {
   visible: boolean;

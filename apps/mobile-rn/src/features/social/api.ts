@@ -6,7 +6,7 @@ import { useApi } from '../../core/services';
 /** Friends, follows, blocks, athlete search and public profiles. */
 export const socialApi = (api: ApiClient) => ({
   friends: () => api.get<Json[]>('/friends'),
-  requests: (direction: 'incoming' | 'outgoing') => api.get<Json[]>('/friends/requests', { direction }),
+  requests: (direction: 'in' | 'out') => api.get<Json[]>('/friends/requests', { direction }),
   sendRequest: (userId: string) => api.post('/friends/requests', { userId }),
   answer: (userId: string, accept: boolean) => api.post(`/friends/requests/${userId}/${accept ? 'accept' : 'decline'}`),
   unfriend: (userId: string) => api.delete(`/friends/${userId}`),
@@ -27,7 +27,7 @@ export function useFriends() {
   return useQuery({ queryKey: socialKeys.friends, queryFn: () => socialApi(api).friends() });
 }
 
-export function useFriendRequests(direction: 'incoming' | 'outgoing') {
+export function useFriendRequests(direction: 'in' | 'out') {
   const api = useApi();
   return useQuery({ queryKey: socialKeys.requests(direction), queryFn: () => socialApi(api).requests(direction) });
 }

@@ -105,6 +105,10 @@ export function AppRoot() {
           <Stack.Screen name="notifications" options={{ title: t('notifications') }} />
           <Stack.Screen name="challenges/new" options={{ title: t('newChallenge') }} />
           <Stack.Screen name="challenges/[id]" options={{ title: t('challengeDetail') }} />
+          <Stack.Screen name="friends" options={{ title: t('friends') }} />
+          <Stack.Screen name="search" options={{ title: t('findAthletes') }} />
+          <Stack.Screen name="u/[username]" options={{ title: '' }} />
+          <Stack.Screen name="feed" options={{ title: t('feed') }} />
         </Stack.Protected>
       </Stack>
       <ToastHost />
