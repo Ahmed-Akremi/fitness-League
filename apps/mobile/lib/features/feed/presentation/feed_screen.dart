@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../moderation/report_sheet.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -148,6 +149,12 @@ class FeedCard extends StatelessWidget {
                 ]),
               ),
             ),
+            if (item['isMine'] != true)
+              PopupMenuButton<String>(
+                tooltip: l.report,
+                onSelected: (_) => showReportSheet(context, targetType: 'USER', targetId: user['id'] as String),
+                itemBuilder: (_) => [PopupMenuItem(value: 'report', child: Text(l.report))],
+              ),
           ]),
           const SizedBox(height: 10),
           Text(activityText(l, locale, item), style: t.textTheme.bodyLarge),

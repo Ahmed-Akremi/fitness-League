@@ -430,5 +430,15 @@
   "addProof": "أضف إثباتًا",
   "proofTooLarge": "8 ميغابايت كحد أقصى",
   "notifProofVerified": "تم توثيق إثباتك: الحصة تُحتسب أكثر",
-  "notifProofRejected": "تم رفض إثباتك"
+  "notifProofRejected": "تم رفض إثباتك",
+  "report": "إبلاغ",
+  "reportSend": "أرسل البلاغ",
+  "reportSent": "شكرًا، سيراجع مشرف البلاغ",
+  "reportDetails": "ماذا حدث؟ (اختياري)",
+  "reportCheating": "غش",
+  "reportHarassment": "تحرش",
+  "reportSpam": "رسائل مزعجة",
+  "reportInappropriate": "محتوى غير لائق",
+  "reportImpersonation": "انتحال شخصية",
+  "reportOther": "شيء آخر"
 }

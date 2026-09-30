@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../moderation/report_sheet.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -80,6 +81,9 @@ class _PublicProfileScreenState extends ConsumerState<PublicProfileScreen> {
                   await _act(() => repo.follow(id, !_following));
                   setState(() => _following = !_following);
                 }
+                if (a == 'report') {
+                  if (context.mounted) await showReportSheet(context, targetType: 'USER', targetId: id);
+                }
                 if (a == 'block') {
                   if (!context.mounted) return;
                   final ok = await showDialog<bool>(
@@ -95,6 +99,7 @@ class _PublicProfileScreenState extends ConsumerState<PublicProfileScreen> {
               itemBuilder: (_) => [
                 PopupMenuItem(value: 'follow', child: Text(_following ? l.unfollow : l.follow)),
                 PopupMenuItem(value: 'block', child: Text(l.block)),
+                PopupMenuItem(value: 'report', child: Text(l.report)),
               ],
             ),
         ],

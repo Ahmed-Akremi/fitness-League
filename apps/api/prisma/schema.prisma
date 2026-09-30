@@ -323,6 +323,41 @@ enum BattleOutcome {
   DRAW
 }
 
+enum ReportTarget {
+  USER
+  WORKOUT
+  COMMENT
+  GYM
+}
+
+enum ReportReason {
+  CHEATING
+  HARASSMENT
+  SPAM
+  INAPPROPRIATE
+  IMPERSONATION
+  OTHER
+}
+
+enum ReportStatus {
+  OPEN
+  ACTIONED
+  DISMISSED
+}
+
+enum SanctionKind {
+  WARNING
+  SUSPENSION
+  BAN
+}
+
+enum AppealStatus {
+  NONE
+  PENDING
+  UPHELD
+  OVERTURNED
+}
+
 enum ProofKind {
   PHOTO
   SCREENSHOT
@@ -482,6 +517,8 @@ model User {
   activityComments   ActivityComment[]
   mutesMade          Mute[]                   @relation("Muter")
   mutedBy            Mute[]                   @relation("Muted")
+  reportsMade        Report[]                 @relation("Reporter")
+  sanctions          Sanction[]               @relation("Sanctioned")
   battlesCreated     Battle[]                 @relation("BattleCreator")
   notifications      Notification[]
   userBadges         UserBadge[]
@@ -1426,6 +1463,58 @@ model DuelQueueEntry {
   @@unique([userId, weekStart])
   @@index([weekStart, status])
   @@map("duel_queue_entries")
+}
+
+// ───────────────────────────── Moderation ─────────────────────────────
+
+/// A user report on an athlete, a workout, a comment or a gym (docs §3.12, Phase 3).
+model Report {
+  id           String       @id @db.Uuid
+  reporterId   String       @map("reporter_id") @db.Uuid
+  targetType   ReportTarget @map("target_type")
+  targetId     String       @map("target_id") @db.Uuid
+  /// Owner of the reported content (the athlete a sanction would apply to); null for gyms.
+  targetUserId String?      @map("target_user_id") @db.Uuid
+  reason       ReportReason
+  details      String?
+  status       ReportStatus @default(OPEN)
+  handledById  String?      @map("handled_by") @db.Uuid
+  handledAt    DateTime?    @map("handled_at") @db.Timestamptz
+  decisionNote String?      @map("decision_note")
+  sanctionId   String?      @map("sanction_id") @db.Uuid
+  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz
+
+  reporter User @relation("Reporter", fields: [reporterId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([targetType, targetId])
+  @@map("reports")
+}
+
+/// A moderation decision on an athlete; appealable once (docs §3.12).
+model Sanction {
+  id                String       @id @db.Uuid
+  userId            String       @map("user_id") @db.Uuid
+  kind              SanctionKind
+  reason            ReportReason
+  note              String
+  startsAt          DateTime     @map("starts_at") @db.Timestamptz
+  endsAt            DateTime?    @map("ends_at") @db.Timestamptz
+  createdById       String       @map("created_by") @db.Uuid
+  revokedAt         DateTime?    @map("revoked_at") @db.Timestamptz
+  appealStatus      AppealStatus @default(NONE) @map("appeal_status")
+  appealText        String?      @map("appeal_text")
+  appealedAt        DateTime?    @map("appealed_at") @db.Timestamptz
+  appealDecidedById String?      @map("appeal_decided_by") @db.Uuid
+  appealDecidedAt   DateTime?    @map("appeal_decided_at") @db.Timestamptz
+  appealNote        String?      @map("appeal_note")
+  createdAt         DateTime     @default(now()) @map("created_at") @db.Timestamptz
+
+  user User @relation("Sanctioned", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([appealStatus])
+  @@map("sanctions")
 }
 
 // ───────────────────────────── Proofs ─────────────────────────────

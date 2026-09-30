@@ -430,5 +430,15 @@
   "addProof": "Ajouter une preuve",
   "proofTooLarge": "8 Mo maximum",
   "notifProofVerified": "Ta preuve est vérifiée : la séance compte davantage",
-  "notifProofRejected": "Ta preuve a été refusée"
+  "notifProofRejected": "Ta preuve a été refusée",
+  "report": "Signaler",
+  "reportSend": "Envoyer le signalement",
+  "reportSent": "Merci, un modérateur va examiner le signalement",
+  "reportDetails": "Que s'est-il passé ? (facultatif)",
+  "reportCheating": "Triche",
+  "reportHarassment": "Harcèlement",
+  "reportSpam": "Spam",
+  "reportInappropriate": "Contenu inapproprié",
+  "reportImpersonation": "Usurpation d'identité",
+  "reportOther": "Autre chose"
 }

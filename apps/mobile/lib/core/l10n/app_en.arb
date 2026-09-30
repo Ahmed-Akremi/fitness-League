@@ -779,5 +779,15 @@
   "addProof": "Add a proof",
   "proofTooLarge": "8 MB maximum",
   "notifProofVerified": "Your proof was verified: the workout counts more",
-  "notifProofRejected": "Your proof was rejected"
+  "notifProofRejected": "Your proof was rejected",
+  "report": "Report",
+  "reportSend": "Send the report",
+  "reportSent": "Thanks, a moderator will look at it",
+  "reportDetails": "What happened? (optional)",
+  "reportCheating": "Cheating",
+  "reportHarassment": "Harassment",
+  "reportSpam": "Spam",
+  "reportInappropriate": "Inappropriate content",
+  "reportImpersonation": "Impersonation",
+  "reportOther": "Something else"
 }

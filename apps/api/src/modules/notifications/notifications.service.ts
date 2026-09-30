@@ -27,6 +27,9 @@ export type NotificationType =
   | 'ACTIVITY_COMMENT'
   | 'PROOF_VERIFIED'
   | 'PROOF_REJECTED'
+  | 'REPORT_HANDLED'
+  | 'SANCTION_WARNING'
+  | 'APPEAL_DECIDED'
   | 'GYM_WOD_SCORE_INVALIDATED';
 
 /**

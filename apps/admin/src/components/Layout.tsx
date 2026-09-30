@@ -14,6 +14,7 @@ export function Layout() {
         <NavLink to="/users">Utilisateurs</NavLink>
         <NavLink to="/held">Séances à vérifier</NavLink>
         <NavLink to="/proofs">Preuves</NavLink>
+        <NavLink to="/moderation">Signalements</NavLink>
         {admin && <NavLink to="/gyms">Salles à vérifier</NavLink>}
         {admin && <NavLink to="/rule-sets">Règles de scoring</NavLink>}
         {admin && <NavLink to="/seasons">Saisons</NavLink>}

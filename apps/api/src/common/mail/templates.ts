@@ -5,7 +5,17 @@
 type Locale = 'fr' | 'en' | 'ar';
 type Template = (p: { appName: string; link: string }) => { subject: string; text: string };
 
-const templates: Record<'EMAIL_VERIFY' | 'PASSWORD_RESET' | 'ACCOUNT_LOCKED', Record<Locale, Template>> = {
+const templates: Record<'EMAIL_VERIFY' | 'PASSWORD_RESET' | 'ACCOUNT_LOCKED' | 'ACCOUNT_SUSPENDED' | 'ACCOUNT_BANNED', Record<Locale, Template>> = {
+  ACCOUNT_SUSPENDED: {
+    fr: ({ appName, link }) => ({ subject: `${appName} : compte suspendu`, text: `Ton compte a été suspendu à la suite d'une décision de modération.\nConsulte le motif et la durée, et fais appel si tu n'es pas d'accord (lien valable 30 jours) :\n${link}\n` }),
+    en: ({ appName, link }) => ({ subject: `${appName}: account suspended`, text: `Your account was suspended by a moderation decision.\nSee the reason and length, and appeal if you disagree (link valid for 30 days):\n${link}\n` }),
+    ar: ({ appName, link }) => ({ subject: `${appName}: تم تعليق الحساب`, text: `تم تعليق حسابك بقرار من الإشراف.\nاطلع على السبب والمدة، وقدّم طعنًا إن لم توافق (الرابط صالح لمدة 30 يومًا):\n${link}\n` }),
+  },
+  ACCOUNT_BANNED: {
+    fr: ({ appName, link }) => ({ subject: `${appName} : compte banni`, text: `Ton compte a été banni à la suite d'une décision de modération.\nConsulte le motif et fais appel si tu n'es pas d'accord (lien valable 30 jours) :\n${link}\n` }),
+    en: ({ appName, link }) => ({ subject: `${appName}: account banned`, text: `Your account was banned by a moderation decision.\nSee the reason and appeal if you disagree (link valid for 30 days):\n${link}\n` }),
+    ar: ({ appName, link }) => ({ subject: `${appName}: تم حظر الحساب`, text: `تم حظر حسابك بقرار من الإشراف.\nاطلع على السبب وقدّم طعنًا إن لم توافق (الرابط صالح لمدة 30 يومًا):\n${link}\n` }),
+  },
   EMAIL_VERIFY: {
     fr: ({ appName, link }) => ({ subject: `${appName} : confirme ton adresse email`, text: `Bienvenue !\n\nConfirme ton adresse email (lien valable 24 h) :\n${link}\n` }),
     en: ({ appName, link }) => ({ subject: `${appName}: confirm your email`, text: `Welcome!\n\nConfirm your email address (link valid for 24 h):\n${link}\n` }),
