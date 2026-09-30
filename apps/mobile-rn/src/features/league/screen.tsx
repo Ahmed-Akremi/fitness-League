@@ -8,8 +8,11 @@ import { formatNumber, localized } from '../../core/utils/format';
 import { AvatarBadge, EmptyState, GymLogo, Loading, MovementBadge } from '../../core/widgets/common';
 import { ErrorView } from '../../core/widgets/error';
 import { Card, Icon, Segmented, Txt } from '../../core/widgets/kit';
+import { LeaguesTab } from '../leagues/screens';
 import { useMe } from '../me/api';
 import { leagueApi, type LeagueRow, type LeagueScope, type ScopeTarget } from './api';
+
+type Tab = LeagueScope | 'leagues';
 
 export function LeagueScreen() {
   const t = useT();
@@ -17,17 +20,19 @@ export function LeagueScreen() {
   const me = useMe().data;
   const governorateId = me?.profile?.governorate?.id ?? null;
   const gym = me?.profile?.gym ?? null;
-  const [scope, setScope] = useState<LeagueScope>('national');
+  const [scope, setScope] = useState<Tab>('national');
   // Tabs keep their list (and scroll position) once visited, like Flutter's keep-alive TabBarView.
-  const [visited, setVisited] = useState<Set<LeagueScope>>(() => new Set(['national']));
+  const [visited, setVisited] = useState<Set<Tab>>(() => new Set(['national']));
 
-  const select = (s: LeagueScope) => {
+  const select = (s: Tab) => {
     setScope(s);
     setVisited((v) => new Set(v).add(s));
   };
 
-  const content = (s: LeagueScope) => {
+  const content = (s: Tab) => {
     switch (s) {
+      case 'leagues':
+        return <LeaguesTab />;
       case 'region':
         return governorateId ? <LeaderboardList scope="region" target={{ governorateId }} myId={me?.id} /> : null;
       case 'gym':
@@ -49,7 +54,7 @@ export function LeagueScreen() {
     }
   };
 
-  const scopes: LeagueScope[] = ['national', 'region', 'gym', 'friends'];
+  const scopes: Tab[] = ['national', 'region', 'gym', 'friends', 'leagues'];
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <View>
@@ -61,6 +66,7 @@ export function LeagueScreen() {
             { key: 'region', label: t('leagueRegion') },
             { key: 'gym', label: t('leagueGym') },
             { key: 'friends', label: t('leagueFriends') },
+            { key: 'leagues', label: t('leaguesTab') },
           ]}
         />
       </View>

@@ -109,6 +109,11 @@ export function AppRoot() {
           <Stack.Screen name="search" options={{ title: t('findAthletes') }} />
           <Stack.Screen name="u/[username]" options={{ title: '' }} />
           <Stack.Screen name="feed" options={{ title: t('feed') }} />
+          <Stack.Screen name="battles/index" options={{ title: t('battles') }} />
+          <Stack.Screen name="battles/new" options={{ title: t('newBattle') }} />
+          <Stack.Screen name="battles/[id]" options={{ title: t('battles') }} />
+          <Stack.Screen name="leagues/new" options={{ title: t('newLeague') }} />
+          <Stack.Screen name="leagues/[id]" options={{ title: t('privateLeague') }} />
         </Stack.Protected>
       </Stack>
       <ToastHost />
