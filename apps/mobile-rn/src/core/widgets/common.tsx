@@ -149,7 +149,7 @@ export function AvatarBadge({ name, division, size = 44 }: { name: string; divis
 }
 
 /** Leaderboard row: rank (medal colours for the podium), optional avatar, name, value; "me" highlighted. */
-export function RankRow({ rank, name, value, highlight, leading, subtitle, trailing, onPress, testID }: { rank: number; name: string; value: string; highlight?: boolean; leading?: ReactNode; subtitle?: string; trailing?: ReactNode; onPress?: () => void; testID?: string }) {
+export function RankRow({ rank, name, value, highlight, leading, subtitle, trailing, onPress, onLongPress, testID }: { rank: number; name: string; value: string; highlight?: boolean; leading?: ReactNode; subtitle?: string; trailing?: ReactNode; onPress?: () => void; onLongPress?: () => void; testID?: string }) {
   const { colors } = useTheme();
   const medal = rank === 1 ? '#FFD166' : rank === 2 ? '#C0C4CC' : rank === 3 ? '#E09F6B' : colors.outline;
   return (
@@ -158,8 +158,9 @@ export function RankRow({ rank, name, value, highlight, leading, subtitle, trail
       accessible
       accessibilityLabel={`Rank ${rank}, ${name}, ${value}`}
       accessibilityRole={onPress ? 'button' : undefined}
-      disabled={!onPress}
+      disabled={!onPress && !onLongPress}
       onPress={onPress}
+      onLongPress={onLongPress}
       style={{ flexDirection: 'row', alignItems: 'center', minHeight: 56, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16, backgroundColor: highlight ? colors.primary + '24' : 'transparent' }}
     >
       <Txt style={[displayText(20), { width: 44, color: medal }]}>#{rank}</Txt>

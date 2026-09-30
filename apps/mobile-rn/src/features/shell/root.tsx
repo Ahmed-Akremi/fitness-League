@@ -114,6 +114,14 @@ export function AppRoot() {
           <Stack.Screen name="battles/[id]" options={{ title: t('battles') }} />
           <Stack.Screen name="leagues/new" options={{ title: t('newLeague') }} />
           <Stack.Screen name="leagues/[id]" options={{ title: t('privateLeague') }} />
+          <Stack.Screen name="gyms/index" options={{ title: t('gymsTitle') }} />
+          <Stack.Screen name="gyms/new" options={{ title: t('addMyGym') }} />
+          <Stack.Screen name="gyms/[id]/index" options={{ title: '' }} />
+          <Stack.Screen name="gyms/[id]/members" options={{ title: t('gymManageMembers') }} />
+          <Stack.Screen name="gyms/[id]/dashboard" options={{ title: t('gymDashboard') }} />
+          <Stack.Screen name="gyms/[id]/wods/new" options={{ title: t('wodCreate') }} />
+          <Stack.Screen name="gyms/[id]/wods/[wodId]" options={{ title: t('gymWods') }} />
+          <Stack.Screen name="gym-wars/[id]" options={{ title: t('gymWar') }} />
         </Stack.Protected>
       </Stack>
       <ToastHost />

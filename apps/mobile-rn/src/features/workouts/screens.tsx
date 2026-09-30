@@ -10,6 +10,7 @@ import { formatDate, formatDuration, formatMetric, formatNumber } from '../../co
 import { EmptyState, Loading, StatCard } from '../../core/widgets/common';
 import { ErrorView } from '../../core/widgets/error';
 import { Card, Icon, IconButton, Txt } from '../../core/widgets/kit';
+import { ProofsSection } from './proofs';
 import { explainPoints, usePendingWorkouts, useWorkoutDetail, useWorkouts, workoutKeys, type Workout } from './api';
 
 export function TrainScreen() {
@@ -144,6 +145,7 @@ export function WorkoutDetailScreen({ id }: { id: string }) {
           ))}
         </StatCard>
       ))}
+      {(w.status === 'ACCEPTED' || w.status === 'HELD_FOR_REVIEW') && <ProofsSection workoutId={id} />}
       <StatCard label={t('whyThesePoints')} trailing={<Txt variant="title" color={colors.primary}>{t('totalXp', { xp: points.totalXp })}</Txt>}>
         {points.entries.map((e, i) => (
           <View key={i} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 6 }}>
