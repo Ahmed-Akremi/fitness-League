@@ -1,1 +1,1 @@
-export { GoalsTabScreen as default } from '../../features/home/screen';
+export { ChallengesTabScreen as default } from '../../features/challenges/screens';

@@ -9,6 +9,14 @@ export interface Session {
 }
 
 export type Fetch = (url: string, init: RequestInit) => Promise<Response>;
+/** Loosely typed API payload, for screens that only display fields (the Flutter app used maps). */
+export type Json = Record<string, any>;
+/** A local file to upload (React Native FormData form). */
+export interface UploadFile {
+  uri: string;
+  name: string;
+  type: string;
+}
 export type Query = Record<string, string | number | boolean | null | undefined>;
 
 interface RequestOptions {
@@ -70,6 +78,13 @@ export class ApiClient {
   }
   delete<T>(path: string, body?: unknown) {
     return this.call<T>('DELETE', path, { body });
+  }
+
+  /** Multipart upload (field "file" by default); PUT unless `post`. */
+  upload<T>(path: string, file: UploadFile, opts: { field?: string; post?: boolean; query?: Query } = {}) {
+    const form = new FormData();
+    form.append(opts.field ?? 'file', file as unknown as Blob);
+    return this.call<T>(opts.post ? 'POST' : 'PUT', path, { body: form, query: opts.query });
   }
 
   private async call<T>(method: string, path: string, opts: RequestOptions, retried = false): Promise<T> {

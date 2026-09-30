@@ -1,6 +1,7 @@
 import { MaterialIcons } from '@expo/vector-icons';
-import { useEffect, type ComponentProps, type ReactNode } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type StyleProp, type TextInputProps, type ViewStyle } from 'react-native';
+import { useNavigation } from 'expo-router';
+import { useEffect, useLayoutEffect, useState, type ComponentProps, type ReactNode } from 'react';
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View, type StyleProp, type TextInputProps, type ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { create } from 'zustand';
 
@@ -158,6 +159,116 @@ export function Checkbox({ label, value, onChange, testID }: { label: string; va
   );
 }
 
+/** Sets the current screen's header (title, right-side actions) — Flutter AppBar. */
+export function useHeader(options: { title?: string; headerRight?: () => ReactNode }, deps: unknown[] = []) {
+  const navigation = useNavigation();
+  useLayoutEffect(() => {
+    navigation.setOptions(options);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navigation, options.title, ...deps]);
+}
+
+/** Flutter ListTile: leading icon/element, title, subtitle, trailing element, optional press. */
+export function ListRow({ icon, leading, title, subtitle, trailing, onPress, testID, danger, chevron }: { icon?: IconName; leading?: ReactNode; title: string; subtitle?: string | null; trailing?: ReactNode; onPress?: () => void; testID?: string; danger?: boolean; chevron?: boolean }) {
+  const { colors } = useTheme();
+  return (
+    <Pressable testID={testID} accessibilityRole={onPress ? 'button' : undefined} disabled={!onPress} onPress={onPress} style={({ pressed }) => [styles.row, pressed && { opacity: 0.7 }]}>
+      {leading ?? (icon ? <Icon name={icon} color={danger ? colors.error : colors.text} /> : null)}
+      <View style={{ flex: 1 }}>
+        <Txt color={danger ? colors.error : undefined} style={{ fontSize: 16 }}>{title}</Txt>
+        {subtitle ? <Txt variant="small" color={colors.outline}>{subtitle}</Txt> : null}
+      </View>
+      {trailing}
+      {chevron && <Icon name="chevron-right" color={colors.outline} />}
+    </Pressable>
+  );
+}
+
+export function SwitchRow({ title, value, onChange, testID }: { title: string; value: boolean; onChange: (v: boolean) => void; testID?: string }) {
+  const { colors } = useTheme();
+  return (
+    <View style={styles.row}>
+      <Txt style={{ flex: 1, fontSize: 16 }}>{title}</Txt>
+      <Switch testID={testID} accessibilityLabel={title} value={value} onValueChange={onChange} trackColor={{ true: colors.primary, false: colors.surfaceHigh }} thumbColor="#FFFFFF" />
+    </View>
+  );
+}
+
+/** Small count bubble (unread notifications). */
+export function CountBadge({ count }: { count: number }) {
+  const { colors } = useTheme();
+  if (count <= 0) return null;
+  return (
+    <View style={{ position: 'absolute', top: 2, end: 2, minWidth: 18, height: 18, borderRadius: 9, backgroundColor: colors.error, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 }}>
+      <Text style={{ color: '#FFFFFF', fontSize: 11, fontWeight: '800' }}>{count > 99 ? '99+' : String(count)}</Text>
+    </View>
+  );
+}
+
+/** Flutter ExpansionTile. */
+export function Expander({ icon, title, children }: { icon?: IconName; title: string; children: ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <View>
+      <ListRow icon={icon} title={title} onPress={() => setOpen(!open)} trailing={<Icon name={open ? 'expand-less' : 'expand-more'} />} />
+      {open && <View style={{ paddingStart: 12 }}>{children}</View>}
+    </View>
+  );
+}
+
+/** Extended floating action button, bottom-end. */
+export function Fab({ label, icon = 'add', onPress, testID }: { label?: string; icon?: IconName; onPress: () => void; testID?: string }) {
+  const { colors } = useTheme();
+  return (
+    <Pressable
+      testID={testID}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={onPress}
+      style={{ position: 'absolute', end: 16, bottom: 16, flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.primary, borderRadius: 18, paddingHorizontal: label ? 20 : 16, paddingVertical: 16, elevation: 4 }}
+    >
+      <Icon name={icon} color={colors.onPrimary} />
+      {label ? <Text style={{ color: colors.onPrimary, fontWeight: '700' }}>{label}</Text> : null}
+    </Pressable>
+  );
+}
+
+/** Modal dialog (Flutter AlertDialog). `input` adds a text field whose value is passed to onConfirm. */
+export function Dialog({ visible, title, message, confirmLabel, cancelLabel, onConfirm, onCancel, input, destructive, confirmDisabled }: {
+  visible: boolean;
+  title: string;
+  message?: string;
+  confirmLabel: string;
+  cancelLabel: string;
+  onConfirm: (text: string) => void;
+  onCancel: () => void;
+  input?: { label: string; secure?: boolean; keyboardType?: TextInputProps['keyboardType']; testID?: string; initial?: string; valid?: (text: string) => boolean };
+  destructive?: boolean;
+  confirmDisabled?: boolean;
+}) {
+  const { colors } = useTheme();
+  const [text, setText] = useState(input?.initial ?? '');
+  useEffect(() => {
+    if (visible) setText(input?.initial ?? '');
+  }, [visible, input?.initial]);
+  const ok = !confirmDisabled && (!input?.valid || input.valid(text));
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
+      <View style={{ flex: 1, backgroundColor: '#000000AA', justifyContent: 'center', padding: 24 }}>
+        <View style={{ backgroundColor: colors.surface, borderRadius: 24, padding: 20, gap: 12 }}>
+          <Txt variant="title" style={{ fontSize: 20 }}>{title}</Txt>
+          {message ? <Txt>{message}</Txt> : null}
+          {input && <TextField testID={input.testID} label={input.label} value={text} onChangeText={setText} secureTextEntry={input.secure} keyboardType={input.keyboardType} autoFocus />}
+          <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 8 }}>
+            <Button kind="text" label={cancelLabel} onPress={onCancel} />
+            <Button testID="dialog-confirm" label={confirmLabel} disabled={!ok} onPress={() => onConfirm(text)} style={destructive ? { backgroundColor: colors.error } : undefined} />
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 // ───────────── Toasts (Flutter SnackBar) ─────────────
 
 const useToastStore = create<{ message: string | null; id: number }>(() => ({ message: null, id: 0 }));
@@ -188,4 +299,5 @@ const styles = StyleSheet.create({
   button: { minHeight: 50, borderRadius: radius.pill, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   field: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: radius.field, borderWidth: 1, paddingHorizontal: 12 },
   chip: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 8 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 16, paddingVertical: 12, paddingHorizontal: 8, minHeight: 52 },
 });

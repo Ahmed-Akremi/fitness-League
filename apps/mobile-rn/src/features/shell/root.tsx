@@ -97,6 +97,14 @@ export function AppRoot() {
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="workouts/new" options={{ title: t('logWorkout') }} />
           <Stack.Screen name="workouts/[id]" options={{ title: '' }} />
+          <Stack.Screen name="settings" options={{ title: t('settings') }} />
+          <Stack.Screen name="progress" options={{ title: t('myProgress') }} />
+          <Stack.Screen name="records" options={{ title: t('records') }} />
+          <Stack.Screen name="me/body" options={{ title: t('body') }} />
+          <Stack.Screen name="badges" options={{ title: t('badges') }} />
+          <Stack.Screen name="notifications" options={{ title: t('notifications') }} />
+          <Stack.Screen name="challenges/new" options={{ title: t('newChallenge') }} />
+          <Stack.Screen name="challenges/[id]" options={{ title: t('challengeDetail') }} />
         </Stack.Protected>
       </Stack>
       <ToastHost />

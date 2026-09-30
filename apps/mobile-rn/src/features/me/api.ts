@@ -20,10 +20,10 @@ export interface Me {
     plannedTrainingDaysPerWeek?: number | null;
     governorate?: { id: string; name: unknown } | null;
     gym?: { id: string; name: string } | null;
-    [k: string]: unknown;
+    [k: string]: any;
   };
   sports?: { sportId: string; isPrimary?: boolean; sport?: { id: string; code: string; name: unknown } }[];
-  [k: string]: unknown;
+  [k: string]: any;
 }
 
 export const meKey = ['me'] as const;
@@ -47,4 +47,17 @@ export function useMe() {
   const api = useApi();
   const signedIn = useSession((s) => s.status === 'signedIn');
   return useQuery({ queryKey: meKey, queryFn: () => meApi(api).me(), enabled: signedIn, staleTime: 60_000 });
+}
+
+/** Home dashboard: ranks, LP and this week's provisional score, loaded together (each may fail alone). */
+export function useHomeDashboard() {
+  const api = useApi();
+  return useQuery({
+    queryKey: ['home-dashboard'],
+    queryFn: async () => {
+      const repo = meApi(api);
+      const [ranks, lp, week] = await Promise.all([repo.ranks().catch(() => ({})), repo.lp().catch(() => ({})), repo.currentWeek().catch(() => ({}))]);
+      return { ranks: ranks as Record<string, any>, lp: lp as Record<string, any>, week: week as Record<string, any> };
+    },
+  });
 }
