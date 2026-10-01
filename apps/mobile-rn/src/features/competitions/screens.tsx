@@ -10,6 +10,7 @@ import { useApi } from '../../core/services';
 import { displayText, useTheme } from '../../core/theme';
 import { formatDate } from '../../core/utils/format';
 import { newClientId } from '../../core/utils/ids';
+import { pickVideo } from '../../core/utils/pick-image';
 import { EmptyState, Loading, SectionHeader, SkeletonList, StatCard, TimeField } from '../../core/widgets/common';
 import { ErrorText, ErrorView, errorMessage } from '../../core/widgets/error';
 import { Button, Card, Chip, Icon, ListRow, Screen, Segmented, TextField, Txt, toast } from '../../core/widgets/kit';
@@ -380,6 +381,8 @@ export function SubmitScreen({ id, wodId }: { id: string; wodId: string }) {
   const [value, setValue] = useState('');
   const [capped, setCapped] = useState(false);
   const [video, setVideo] = useState('');
+  const [upload, setUpload] = useState<{ mediaId: string; name: string } | null>(null);
+  const [uploading, setUploading] = useState(false);
   const [notes, setNotes] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
@@ -402,11 +405,29 @@ export function SubmitScreen({ id, wodId }: { id: string; wodId: string }) {
   const videoOk = video.trim() === '' || youtubeId(video) != null;
   const thumb = youtubeId(video);
 
+  async function chooseVideo() {
+    setError(null);
+    const picked = await pickVideo(50 * 1024 * 1024);
+    if (!picked) return;
+    if ('tooLarge' in picked) return setError(new Error(t('compVideoTooLarge')));
+    setUploading(true);
+    try {
+      const r = await competitionsApi(api).uploadVideo(id, picked.file);
+      setUpload({ mediaId: r.mediaId, name: picked.file.name });
+      setVideo('');
+      toast(t('compVideoUploaded'));
+    } catch (e) {
+      setError(e);
+    } finally {
+      setUploading(false);
+    }
+  }
+
   async function send(submit: boolean) {
     setBusy(true);
     setError(null);
     try {
-      await competitionsApi(api).submit(id, wodId, { clientId, raw, notes: notes.trim() || undefined, videoUrl: video.trim() || undefined, submit });
+      await competitionsApi(api).submit(id, wodId, { clientId, raw, notes: notes.trim() || undefined, videoUrl: video.trim() || undefined, videoMediaId: upload?.mediaId, submit });
       await qc.invalidateQueries({ queryKey: compKeys.mine(id) });
       toast(submit ? t('compSubmitted') : t('compSaveDraft'));
       if (router.canGoBack()) router.back();
@@ -425,18 +446,18 @@ export function SubmitScreen({ id, wodId }: { id: string; wodId: string }) {
       {type === 'TIME' ? (
         <>
           {!capped && <TimeField testID="sub-time" label={t('compScore')} onChange={setTimeS} />}
-          <Chip testID="sub-capped" icon="timer-off" label="Time cap" selected={capped} onPress={() => setCapped(!capped)} />
+          <Chip testID="sub-capped" icon="timer-off" label={t('compTimeCap')} selected={capped} onPress={() => setCapped(!capped)} />
           {capped && (
             <>
               <TextField testID="sub-reps" label={t('compReps')} keyboardType="number-pad" value={reps} onChangeText={setReps} />
-              <TextField label="Total reps" keyboardType="number-pad" value={value} onChangeText={setValue} />
+              <TextField label={t('compTotalReps')} keyboardType="number-pad" value={value} onChangeText={setValue} />
             </>
           )}
         </>
       ) : type === 'ROUNDS_REPS' ? (
         <>
           <TextField testID="sub-rounds" label={t('compRounds')} keyboardType="number-pad" value={rounds} onChangeText={setRounds} />
-          <TextField label={`${t('compReps')} / round`} keyboardType="number-pad" value={value} onChangeText={setValue} />
+          <TextField label={t('compRepsPerRound')} keyboardType="number-pad" value={value} onChangeText={setValue} />
           <TextField testID="sub-reps" label={`+ ${t('compReps')}`} keyboardType="number-pad" value={reps} onChangeText={setReps} />
         </>
       ) : type === 'REPS' ? (
@@ -444,16 +465,22 @@ export function SubmitScreen({ id, wodId }: { id: string; wodId: string }) {
       ) : (
         <TextField testID="sub-value" label={`${t('compValue')} (${type})`} keyboardType="decimal-pad" value={value} onChangeText={setValue} />
       )}
-      <TextField testID="sub-video" label={t('compVideoUrl')} placeholder="https://youtu.be/…" value={video} onChangeText={setVideo} autoCapitalize="none" keyboardType="url" error={videoOk ? null : t('compVideoInvalid')} />
+      <TextField testID="sub-video" editable={!upload} label={t('compVideoUrl')} placeholder="https://youtu.be/…" value={video} onChangeText={setVideo} autoCapitalize="none" keyboardType="url" error={videoOk ? null : t('compVideoInvalid')} />
       {thumb && (
         <Pressable onPress={() => Linking.openURL(video.trim())}>
           <Image accessibilityLabel={t('judgeWatchVideo')} source={{ uri: `https://i.ytimg.com/vi/${thumb}/hqdefault.jpg` }} style={{ width: '100%', aspectRatio: 16 / 9, borderRadius: 12 }} />
         </Pressable>
       )}
+      <Txt variant="small" color={colors.outline} style={{ textAlign: 'center' }}>{t('compOr')}</Txt>
+      {upload ? (
+        <Chip testID="sub-upload-done" icon="movie" label={`${t('compVideoUploaded')} · ${upload.name}`} selected onPress={() => setUpload(null)} />
+      ) : (
+        <Button testID="sub-upload" kind="outlined" icon="upload" label={t('compUploadVideo')} busy={uploading} disabled={video.trim() !== ''} onPress={chooseVideo} />
+      )}
       <TextField label={t('notes')} value={notes} onChangeText={setNotes} multiline maxLength={2000} />
       <ErrorText error={error} />
-      <Button testID="sub-send" label={t('compSubmitScore')} busy={busy} disabled={!filled || !videoOk} onPress={() => send(true)} />
-      <Button kind="text" label={t('compSaveDraft')} disabled={busy || !filled || !videoOk} onPress={() => send(false)} />
+      <Button testID="sub-send" label={t('compSubmitScore')} busy={busy} disabled={!filled || !videoOk || uploading} onPress={() => send(true)} />
+      <Button kind="text" label={t('compSaveDraft')} disabled={busy || uploading || !filled || !videoOk} onPress={() => send(false)} />
     </Screen>
   );
 }

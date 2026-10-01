@@ -1,4 +1,5 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Patch, Post, Put, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Patch, Post, Put, Query, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { AuthUser } from '../../common/auth/auth-user';
 import { AdminApi, CurrentUser, RequiresVerifiedEmail, Roles } from '../../common/auth/decorators';
@@ -28,6 +29,7 @@ import {
   WorkoutDto,
 } from './competitions.dto';
 import { CompetitionsService } from './competitions.service';
+import { VIDEO_MAX_BYTES } from './domain';
 import { JudgingService } from './judging.service';
 
 const id = (name = 'id') => Param(name, ParseUUIDPipe);
@@ -152,6 +154,13 @@ export class CompetitionsController {
   @RateLimit({ name: 'competition-submit', limit: 60, windowS: 3600, by: 'user' })
   submit(@CurrentUser() user: AuthUser, @id() competitionId: string, @id('wodId') wodId: string, @Body() dto: SubmissionDto) {
     return this.competitions.submit(user, competitionId, wodId, dto);
+  }
+
+  @Post(':id/videos')
+  @RateLimit({ name: 'competition-video', limit: 20, windowS: 3600, by: 'user' })
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: VIDEO_MAX_BYTES + 1, files: 1 } }))
+  uploadVideo(@CurrentUser() user: AuthUser, @id() competitionId: string, @UploadedFile() file?: Express.Multer.File) {
+    return this.competitions.uploadVideo(user, competitionId, file);
   }
 
   @Get(':id/my-submissions')

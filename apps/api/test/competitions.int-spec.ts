@@ -219,4 +219,16 @@ describe('Competitions (integration)', () => {
     const dash = await api().get(`/api/v1/admin/competitions/${competitionId}/dashboard`).set(panel).expect(200);
     expect(dash.body).toMatchObject({ participants: 2, paidRegistrations: 1, freeRegistrations: 1, revenue: 40_000 });
   });
+
+  it('ATHLETE uploads an MP4 score video, checked by content and stored as competition media (§24)', async () => {
+    const base = `/api/v1/competitions/${competitionId}`;
+    const mp4 = Buffer.concat([Buffer.from([0, 0, 0, 0x18]), Buffer.from('ftypisom'), Buffer.alloc(64)]);
+    await api().post(`${base}/videos`).set(bearer(ahmed.token)).attach('file', Buffer.from('not a video at all'), 'fake.mp4').expect(415);
+    const outsider = await actor();
+    await api().post(`${base}/videos`).set(bearer(outsider.token)).attach('file', mp4, 'wod.mp4').expect(403);
+    const up = await api().post(`${base}/videos`).set(bearer(ahmed.token)).attach('file', mp4, 'wod.mp4').expect(201);
+    expect(up.body).toMatchObject({ mime: 'video/mp4' });
+    const media = await prisma.media.findUniqueOrThrow({ where: { id: up.body.mediaId } });
+    expect(media).toMatchObject({ purpose: 'COMPETITION_VIDEO', ownerId: ahmed.id, mime: 'video/mp4' });
+  });
 });

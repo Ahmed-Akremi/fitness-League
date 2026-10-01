@@ -309,3 +309,13 @@ export function youtubeId(url: string): string | null {
 }
 
 export const youtubeThumbnail = (id: string) => `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
+
+/** MP4 / MOV by content (ISO BMFF "ftyp" box), never by file name. "qt  " brand → QuickTime. */
+export function sniffVideo(bytes: Uint8Array): 'video/mp4' | 'video/quicktime' | null {
+  if (bytes.length < 12) return null;
+  const ascii = (from: number, to: number) => String.fromCharCode(...bytes.subarray(from, to));
+  if (ascii(4, 8) !== 'ftyp') return null;
+  return ascii(8, 12) === 'qt  ' ? 'video/quicktime' : 'video/mp4';
+}
+
+export const VIDEO_MAX_BYTES = 50 * 1024 * 1024;

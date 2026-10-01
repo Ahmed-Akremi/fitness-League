@@ -62,6 +62,25 @@ export function notificationText(t: T, locale: string, n: Json): string {
       return p.outcome === 'WIN' ? t('notifGymWarWon') : p.outcome === 'LOSS' ? t('notifGymWarLost') : t('notifGymWarDraw');
     case 'GYM_WOD_SCORE_INVALIDATED':
       return t('notifWodInvalidated', { wod: p.wodTitle ?? '', reason: p.reason ?? '' });
+    case 'COMPETITION_REGISTRATION_CONFIRMED':
+      return t('notifCompetitionRegistered');
+    case 'COMPETITION_WOD_AVAILABLE':
+      return t('notifCompetitionWod');
+    case 'COMPETITION_SCORE_SUBMITTED':
+    case 'COMPETITION_SCORE_UNDER_REVIEW':
+      return t('notifCompetitionSubmitted');
+    case 'COMPETITION_SCORE_APPROVED':
+      return t('notifCompetitionApproved');
+    case 'COMPETITION_SCORE_MODIFIED':
+      return t('notifCompetitionModified');
+    case 'COMPETITION_SCORE_NEEDS_CORRECTION':
+      return t('notifCompetitionCorrection');
+    case 'COMPETITION_SCORE_REJECTED':
+      return t('notifCompetitionRejected');
+    case 'COMPETITION_APPEAL_DECIDED':
+      return t('notifCompetitionAppeal');
+    case 'COMPETITION_LEADERBOARD_FINAL':
+      return t('notifCompetitionFinal');
     default:
       return t('notifGeneric');
   }
@@ -97,12 +116,13 @@ export function notificationRoute(n: Json): string | null {
     case 'CHALLENGE_COMPLETED':
       return `/challenges/${p.challengeId}`;
     default:
-      return null;
+      return typeof n.type === 'string' && n.type.startsWith('COMPETITION_') && p.competitionId ? `/competitions/${p.competitionId}` : null;
   }
 }
 
 export function notificationIcon(type?: string): IconName {
   if (type === 'FRIEND_REQUEST' || type === 'FRIEND_ACCEPTED') return 'person-add-alt-1';
   if (type === 'GYM_WOD_SCORE_INVALIDATED') return 'report-gmailerrorred';
+  if (type?.startsWith('COMPETITION_')) return 'military-tech';
   return 'sports-mma';
 }

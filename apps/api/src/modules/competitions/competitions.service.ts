@@ -6,6 +6,8 @@ import { ClockService } from '../../common/clock/clock.service';
 import { AppException, ErrorCode } from '../../common/errors/app-exception';
 import { uuidv7 } from '../../common/ids/uuid';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { StorageService } from '../../common/storage/storage.service';
+import { createHash } from 'node:crypto';
 import { NotificationsService } from '../notifications/notifications.service';
 import {
   AnnouncementDto,
@@ -24,7 +26,7 @@ import {
   UpdateCompetitionDto,
   WorkoutDto,
 } from './competitions.dto';
-import { canRegister, canSubmit, checkCoupon, checkEligibility, quote, rawValue, youtubeId, type CouponRule, type ScoreType } from './domain';
+import { canRegister, canSubmit, checkCoupon, checkEligibility, quote, rawValue, sniffVideo, VIDEO_MAX_BYTES, youtubeId, type CouponRule, type ScoreType } from './domain';
 import { JudgingService } from './judging.service';
 
 type Tx = Prisma.TransactionClient;
@@ -74,6 +76,7 @@ export class CompetitionsService {
     private readonly clock: ClockService,
     private readonly notifications: NotificationsService,
     private readonly judging: JudgingService,
+    private readonly storage: StorageService,
   ) {}
 
   // ───────────── Competitions ─────────────
@@ -547,6 +550,23 @@ export class CompetitionsService {
       if (status === 'SUBMITTED') await this.notifications.notify(tx, user.id, 'COMPETITION_SCORE_SUBMITTED', { competitionId, submissionId: s.id, workoutName: w.name });
       return s;
     });
+  }
+
+  /** Score video upload (MP4/MOV, 50 MB): stored like other user media, then referenced by a submission. */
+  async uploadVideo(user: AuthUser, competitionId: string, file: { buffer: Buffer; size: number } | undefined) {
+    const reg = await this.prisma.competitionRegistration.findFirst({ where: { competitionId, userId: user.id, registrationStatus: 'CONFIRMED' } });
+    if (!reg) throw AppException.forbidden('Registered athletes only');
+    if (!file) throw AppException.validation([{ field: 'file', code: 'REQUIRED' }]);
+    if (file.size > VIDEO_MAX_BYTES) throw new AppException(HttpStatus.PAYLOAD_TOO_LARGE, ErrorCode.PAYLOAD_TOO_LARGE, 'A video must be 50 MB or less.');
+    const mime = sniffVideo(file.buffer);
+    if (!mime) throw new AppException(HttpStatus.UNSUPPORTED_MEDIA_TYPE, ErrorCode.UNSUPPORTED_MEDIA_TYPE, 'A video must be MP4 or MOV.');
+    const id = uuidv7();
+    const key = `competitions/${competitionId}/${user.id}/${id}.${mime === 'video/mp4' ? 'mp4' : 'mov'}`;
+    await this.storage.put(key, file.buffer, mime);
+    await this.prisma.media.create({
+      data: { id, ownerId: user.id, bucket: 'competitions', objectKey: key, mime, sizeBytes: file.size, sha256: createHash('sha256').update(file.buffer).digest(), status: 'READY', purpose: 'COMPETITION_VIDEO' },
+    });
+    return { mediaId: id, url: this.storage.url(key), mime };
   }
 
   async mySubmissions(user: AuthUser, competitionId: string) {

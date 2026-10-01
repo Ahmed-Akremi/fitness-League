@@ -1,4 +1,5 @@
 import {
+  sniffVideo,
   ageOn,
   applyPenalty,
   canRegister,
@@ -177,5 +178,16 @@ describe('deadlines (§43) and video (§24)', () => {
     expect(youtubeId('https://vimeo.com/123')).toBeNull();
     expect(youtubeId('not a url')).toBeNull();
     expect(youtubeId('https://youtube.com/watch?v=short')).toBeNull();
+  });
+});
+
+describe('uploaded video type (§24)', () => {
+  const box = (brand: string) => Uint8Array.from([0, 0, 0, 0x18, ...Buffer.from('ftyp' + brand)]);
+  it('recognises MP4 and MOV by content, not by name', () => {
+    expect(sniffVideo(box('isom'))).toBe('video/mp4');
+    expect(sniffVideo(box('mp42'))).toBe('video/mp4');
+    expect(sniffVideo(box('qt  '))).toBe('video/quicktime');
+    expect(sniffVideo(Buffer.from('\x89PNG\r\n\x1a\n0000'))).toBeNull();
+    expect(sniffVideo(Uint8Array.from([1, 2, 3]))).toBeNull();
   });
 });

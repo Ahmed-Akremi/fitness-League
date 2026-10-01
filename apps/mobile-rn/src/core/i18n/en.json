@@ -533,5 +533,12 @@
   "notifCompetitionCorrection": "Your submission needs correction.",
   "notifCompetitionRejected": "Your submission was rejected.",
   "notifCompetitionFinal": "Final leaderboard is now available.",
-  "notifCompetitionAppeal": "Your review request has been decided."
+  "notifCompetitionAppeal": "Your review request has been decided.",
+  "compTimeCap": "Time cap reached",
+  "compTotalReps": "Total reps in the WOD",
+  "compRepsPerRound": "Reps per round",
+  "compUploadVideo": "Upload a video (MP4/MOV)",
+  "compVideoUploaded": "Video uploaded",
+  "compVideoTooLarge": "The video must be 50 MB or less.",
+  "compOr": "or"
 }

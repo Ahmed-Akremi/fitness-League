@@ -185,6 +185,7 @@ enum MediaPurpose {
   GYM_PROOF
   EXPORT
   GYM_LOGO
+  COMPETITION_VIDEO
 }
 
 enum BaselineStatus {

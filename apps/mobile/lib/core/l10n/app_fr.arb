@@ -534,5 +534,12 @@
   "notifCompetitionCorrection": "Ta soumission doit être corrigée.",
   "notifCompetitionRejected": "Ta soumission a été refusée.",
   "notifCompetitionFinal": "Le classement final est disponible.",
-  "notifCompetitionAppeal": "Ta demande de révision a été traitée."
+  "notifCompetitionAppeal": "Ta demande de révision a été traitée.",
+  "compTimeCap": "Time cap atteint",
+  "compTotalReps": "Répétitions totales du WOD",
+  "compRepsPerRound": "Répétitions par round",
+  "compUploadVideo": "Envoyer une vidéo (MP4/MOV)",
+  "compVideoUploaded": "Vidéo envoyée",
+  "compVideoTooLarge": "La vidéo doit faire 50 Mo maximum.",
+  "compOr": "ou"
 }

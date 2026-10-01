@@ -110,6 +110,9 @@ export function JudgeReviewScreen({ id }: { id: string }) {
           <Txt color={colors.primary} style={{ marginTop: 6, fontWeight: '700' }}>{`▶ ${t('judgeWatchVideo')}`}</Txt>
         </Pressable>
       )}
+      {s.videoFileUrl && (
+        <Button testID="watch-upload" kind="outlined" icon="movie" label={t('judgeWatchVideo')} onPress={() => Linking.openURL(s.videoFileUrl)} />
+      )}
       <View style={{ gap: 8 }}>
         <Button testID="judge-approve" icon="check" label={t('judgeApprove')} busy={busy} onPress={() => act('approve')} />
         <View style={{ flexDirection: 'row', gap: 8 }}>

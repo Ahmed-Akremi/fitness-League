@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 
-import type { ApiClient, Json } from '../../core/api/client';
+import type { ApiClient, Json, UploadFile } from '../../core/api/client';
 import { useApi } from '../../core/services';
 
 export type CompFilter = 'ALL' | 'REGISTRATION_OPEN' | 'UPCOMING' | 'ACTIVE' | 'FINISHED';
@@ -11,6 +11,7 @@ export const competitionsApi = (api: ApiClient) => ({
   get: (id: string) => api.get<Json>(`/competitions/${id}`),
   checkCoupon: (id: string, categoryId: string, code: string) => api.post<Json>(`/competitions/${id}/coupon/validate`, { categoryId, code }),
   register: (id: string, categoryId: string, couponCode?: string) => api.post<Json>(`/competitions/${id}/register`, { categoryId, ...(couponCode ? { couponCode } : {}) }),
+  uploadVideo: (id: string, file: UploadFile) => api.upload<Json>(`/competitions/${id}/videos`, file, { post: true }),
   submit: (id: string, wodId: string, body: Json) => api.post<Json>(`/competitions/${id}/wods/${wodId}/submissions`, body),
   mySubmissions: (id: string) => api.get<Json[]>(`/competitions/${id}/my-submissions`),
   leaderboard: (id: string, categoryId?: string, workoutId?: string) => api.get<Json>(`/competitions/${id}/leaderboard`, { categoryId, workoutId }),

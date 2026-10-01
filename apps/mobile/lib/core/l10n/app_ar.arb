@@ -534,5 +534,12 @@
   "notifCompetitionCorrection": "يجب تصحيح إرسالك.",
   "notifCompetitionRejected": "تم رفض إرسالك.",
   "notifCompetitionFinal": "الترتيب النهائي متاح الآن.",
-  "notifCompetitionAppeal": "تم البت في طلب المراجعة."
+  "notifCompetitionAppeal": "تم البت في طلب المراجعة.",
+  "compTimeCap": "تم بلوغ الحد الزمني",
+  "compTotalReps": "مجموع التكرارات في التمرين",
+  "compRepsPerRound": "التكرارات في كل جولة",
+  "compUploadVideo": "رفع فيديو (MP4/MOV)",
+  "compVideoUploaded": "تم رفع الفيديو",
+  "compVideoTooLarge": "يجب ألا يتجاوز حجم الفيديو 50 ميغابايت.",
+  "compOr": "أو"
 }

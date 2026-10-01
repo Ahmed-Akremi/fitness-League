@@ -1,9 +1,13 @@
 import { fireEvent, waitFor } from 'expo-router/testing-library';
 
 import { JudgeReviewScreen } from '../../src/features/competitions/judge';
-import { RegisterScreen } from '../../src/features/competitions/screens';
+import { RegisterScreen, SubmitScreen } from '../../src/features/competitions/screens';
 import { FakeBackend } from '../fake-api';
 import { renderScreen } from '../harness';
+
+jest.mock('../../src/core/utils/pick-image', () => ({
+  pickVideo: jest.fn(async () => ({ file: { uri: 'file:///wod1.mp4', name: 'wod1.mp4', type: 'video/mp4' } })),
+}));
 
 const competition = {
   id: 'c1',
@@ -62,5 +66,21 @@ describe('judge review', () => {
     expect(screen.getByTestId('watch-video')).toBeTruthy();
     await fireEvent.press(screen.getByTestId('judge-approve'));
     await waitFor(() => expect(backend.calls('POST', '/judge/submissions/s1/approve')).toHaveLength(1));
+  });
+});
+
+describe('score submission', () => {
+  it('uploads a video file and sends its id with the score', async () => {
+    const backend = new FakeBackend()
+      .on('GET', '/competitions/c1', [200, { ...competition, myRegistration: { registrationStatus: 'CONFIRMED' }, workouts: [{ id: 'w1', number: 1, name: 'WOD 1', description: 'Max burpees', scoreType: 'REPS', maximumPoints: 100 }] }])
+      .on('POST', '/competitions/c1/videos', [201, { mediaId: 'm1', url: 'http://x/m1.mp4', mime: 'video/mp4' }])
+      .on('POST', '/competitions/c1/wods/w1/submissions', [201, { id: 's1', status: 'SUBMITTED' }]);
+    const screen = await renderScreen(() => <SubmitScreen id="c1" wodId="w1" />, backend);
+    await fireEvent.changeText(await screen.findByTestId('sub-reps'), '87');
+    await fireEvent.press(screen.getByTestId('sub-upload'));
+    expect(await screen.findByTestId('sub-upload-done')).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('sub-send'));
+    await waitFor(() => expect(backend.calls('POST', '/competitions/c1/wods/w1/submissions')).toHaveLength(1));
+    expect(backend.calls('POST', '/competitions/c1/wods/w1/submissions')[0].body).toMatchObject({ raw: { reps: 87 }, videoMediaId: 'm1', submit: true });
   });
 });

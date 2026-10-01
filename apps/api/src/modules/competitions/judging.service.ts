@@ -6,6 +6,7 @@ import { ClockService } from '../../common/clock/clock.service';
 import { AppException, ErrorCode } from '../../common/errors/app-exception';
 import { uuidv7 } from '../../common/ids/uuid';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { StorageService } from '../../common/storage/storage.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { AdjustScoreDto, AppealDecisionDto, JudgeQueueQueryDto, PenaltyDto, ReasonDto } from './competitions.dto';
 import { applyPenalty, clampPoints, leaderboard, placementPoints, placements, podium, type AthleteScores, type ScoreType, type TieBreakRule } from './domain';
@@ -26,6 +27,7 @@ export class JudgingService {
     private readonly audit: AuditService,
     private readonly clock: ClockService,
     private readonly notifications: NotificationsService,
+    private readonly storage: StorageService,
   ) {}
 
   // ───────────── Access ─────────────
@@ -194,7 +196,10 @@ export class JudgingService {
     const names = await this.names([s.userId]);
     // Version history is for head judges, organizers and admins (§30); the athlete sees the official result.
     const history = roles && (roles.has('HEAD_JUDGE') || roles.has('ORGANIZER'));
+    const video = s.videoMediaId ? await this.prisma.media.findUnique({ where: { id: s.videoMediaId }, select: { objectKey: true, mime: true } }) : null;
     return {
+      videoFileUrl: video ? this.storage.url(video.objectKey) : null,
+      videoFileMime: video?.mime ?? null,
       ...this.view(s, names.get(s.userId), reg?.category),
       workout: s.workout,
       raw: s.raw,
@@ -318,7 +323,7 @@ export class JudgingService {
     return this.prisma.$transaction(async (tx) => {
       const updated = await tx.competitionAppeal.update({ where: { id: appealId }, data: { status: dto.status, response: dto.response, reviewedById: user.id, reviewedAt: this.clock.now() } });
       await this.audit.log({ actorId: user.id, actorRole: user.role, action: 'competition.appeal.decided', entityType: 'CompetitionAppeal', entityId: appealId, after: { status: dto.status, response: dto.response } }, tx);
-      await this.notifications.notify(tx, appeal.userId, 'COMPETITION_APPEAL_DECIDED', { submissionId: appeal.submissionId, status: dto.status });
+      await this.notifications.notify(tx, appeal.userId, 'COMPETITION_APPEAL_DECIDED', { competitionId: appeal.submission.workout.competitionId, submissionId: appeal.submissionId, status: dto.status });
       return updated;
     });
   }
