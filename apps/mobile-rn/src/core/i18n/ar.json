@@ -540,5 +540,8 @@
   "compUploadVideo": "رفع فيديو (MP4/MOV)",
   "compVideoUploaded": "تم رفع الفيديو",
   "compVideoTooLarge": "يجب ألا يتجاوز حجم الفيديو 50 ميغابايت.",
-  "compOr": "أو"
+  "compOr": "أو",
+  "compHeats": "الدفعات",
+  "compMyHeat": "دفعتك",
+  "compLane": "الممر {lane}"
 }

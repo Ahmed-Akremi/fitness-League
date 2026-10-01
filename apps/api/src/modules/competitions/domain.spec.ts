@@ -1,4 +1,5 @@
 import {
+  seedHeats,
   sniffVideo,
   ageOn,
   applyPenalty,
@@ -189,5 +190,18 @@ describe('uploaded video type (§24)', () => {
     expect(sniffVideo(box('qt  '))).toBe('video/quicktime');
     expect(sniffVideo(Buffer.from('\x89PNG\r\n\x1a\n0000'))).toBeNull();
     expect(sniffVideo(Uint8Array.from([1, 2, 3]))).toBeNull();
+  });
+});
+
+describe('heat seeding (§45)', () => {
+  it('runs the leaders last and keeps every heat but the first full', () => {
+    const bestFirst = ['a1', 'a2', 'a3', 'a4', 'a5', 'a6', 'a7'];
+    expect(seedHeats(bestFirst, 3)).toEqual([['a7'], ['a4', 'a5', 'a6'], ['a1', 'a2', 'a3']]);
+    expect(seedHeats(bestFirst, 7)).toEqual([bestFirst]);
+    expect(seedHeats(['a1', 'a2', 'a3', 'a4'], 2)).toEqual([['a3', 'a4'], ['a1', 'a2']]);
+  });
+  it('handles nobody and refuses zero lanes', () => {
+    expect(seedHeats([], 8)).toEqual([]);
+    expect(() => seedHeats(['a1'], 0)).toThrow();
   });
 });

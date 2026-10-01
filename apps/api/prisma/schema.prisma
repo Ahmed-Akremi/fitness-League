@@ -2108,6 +2108,7 @@ model Competition {
   coupons       CompetitionCoupon[]
   entries       CompetitionLeaderboardEntry[]
   announcements CompetitionAnnouncement[]
+  heats         CompetitionHeat[]
 
   @@index([status, eventStart])
   @@map("competitions")
@@ -2133,6 +2134,7 @@ model CompetitionCategory {
   variants      CompetitionWorkoutVariant[]
   prizes        CompetitionPrize[]
   entries       CompetitionLeaderboardEntry[]
+  heats         CompetitionHeat[]
 
   @@index([competitionId, sortOrder])
   @@map("competition_categories")
@@ -2173,6 +2175,7 @@ model CompetitionRegistration {
   category    CompetitionCategory          @relation(fields: [categoryId], references: [id])
   user        User                         @relation("CompetitionAthlete", fields: [userId], references: [id])
   payments    CompetitionPayment[]
+  heatLanes   CompetitionHeatLane[]
   redemption  CompetitionCouponRedemption?
 
   @@unique([competitionId, userId])
@@ -2209,6 +2212,7 @@ model CompetitionWorkout {
   variants    CompetitionWorkoutVariant[]
   submissions CompetitionSubmission[]
   assignments CompetitionJudgeAssignment[]
+  heats       CompetitionHeat[]
 
   @@unique([competitionId, number])
   @@map("competition_workouts")
@@ -2431,4 +2435,43 @@ model CompetitionAnnouncement {
 
   @@index([competitionId, createdAt])
   @@map("competition_announcements")
+}
+
+/// On-site heats (§45): a timed slot of a WOD with athletes in lanes.
+model CompetitionHeat {
+  id            String    @id @db.Uuid
+  competitionId String    @map("competition_id") @db.Uuid
+  workoutId     String?   @map("workout_id") @db.Uuid
+  categoryId    String?   @map("category_id") @db.Uuid
+  number        Int
+  name          String
+  startsAt      DateTime? @map("starts_at") @db.Timestamptz
+  durationMin   Int?      @map("duration_min")
+  laneCount     Int       @default(8) @map("lane_count")
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  competition Competition          @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  workout     CompetitionWorkout?  @relation(fields: [workoutId], references: [id], onDelete: Cascade)
+  category    CompetitionCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  lanes       CompetitionHeatLane[]
+
+  @@unique([competitionId, workoutId, number])
+  @@index([competitionId, startsAt])
+  @@map("competition_heats")
+}
+
+model CompetitionHeatLane {
+  id             String @id @db.Uuid
+  heatId         String @map("heat_id") @db.Uuid
+  lane           Int
+  registrationId String @map("registration_id") @db.Uuid
+
+  heat         CompetitionHeat         @relation(fields: [heatId], references: [id], onDelete: Cascade)
+  registration CompetitionRegistration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+
+  @@unique([heatId, lane])
+  @@unique([heatId, registrationId])
+  @@index([registrationId])
+  @@map("competition_heat_lanes")
 }

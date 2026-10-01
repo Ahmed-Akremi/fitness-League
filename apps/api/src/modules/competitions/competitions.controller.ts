@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Patch, Post, Put, Query, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseIntPipe, ParseUUIDPipe, Patch, Post, Put, Query, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { AuthUser } from '../../common/auth/auth-user';
@@ -9,11 +9,14 @@ import {
   AnnouncementDto,
   AppealDecisionDto,
   AssignmentDto,
+  AutoHeatsDto,
   CategoryDto,
   CompetitionDto,
   CouponCheckDto,
   CouponDto,
+  HeatDto,
   JudgeQueueQueryDto,
+  LaneDto,
   LeaderboardQueryDto,
   ListCompetitionsQueryDto,
   PenaltyDto,
@@ -30,6 +33,7 @@ import {
 } from './competitions.dto';
 import { CompetitionsService } from './competitions.service';
 import { VIDEO_MAX_BYTES } from './domain';
+import { HeatsService } from './heats.service';
 import { JudgingService } from './judging.service';
 
 const id = (name = 'id') => Param(name, ParseUUIDPipe);
@@ -42,6 +46,7 @@ export class CompetitionsController {
   constructor(
     private readonly competitions: CompetitionsService,
     private readonly judging: JudgingService,
+    private readonly heats: HeatsService,
   ) {}
 
   @Get()
@@ -154,6 +159,45 @@ export class CompetitionsController {
   @RateLimit({ name: 'competition-submit', limit: 60, windowS: 3600, by: 'user' })
   submit(@CurrentUser() user: AuthUser, @id() competitionId: string, @id('wodId') wodId: string, @Body() dto: SubmissionDto) {
     return this.competitions.submit(user, competitionId, wodId, dto);
+  }
+
+  // ───────────── Heats (§45) ─────────────
+
+  @Get(':id/heats')
+  heatList(@CurrentUser() user: AuthUser, @id() competitionId: string) {
+    return this.heats.list(user, competitionId);
+  }
+
+  @Post(':id/heats')
+  createHeat(@CurrentUser() user: AuthUser, @id() competitionId: string, @Body() dto: HeatDto) {
+    return this.heats.create(user, competitionId, dto);
+  }
+
+  @Post(':id/heats/auto')
+  autoHeats(@CurrentUser() user: AuthUser, @id() competitionId: string, @Body() dto: AutoHeatsDto) {
+    return this.heats.auto(user, competitionId, dto);
+  }
+
+  @Put(':id/heats/:heatId')
+  updateHeat(@CurrentUser() user: AuthUser, @id() competitionId: string, @id('heatId') heatId: string, @Body() dto: HeatDto) {
+    return this.heats.update(user, competitionId, heatId, dto);
+  }
+
+  @Delete(':id/heats/:heatId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  removeHeat(@CurrentUser() user: AuthUser, @id() competitionId: string, @id('heatId') heatId: string): Promise<void> {
+    return this.heats.remove(user, competitionId, heatId);
+  }
+
+  @Post(':id/heats/:heatId/lanes')
+  assignLane(@CurrentUser() user: AuthUser, @id() competitionId: string, @id('heatId') heatId: string, @Body() dto: LaneDto) {
+    return this.heats.assign(user, competitionId, heatId, dto);
+  }
+
+  @Delete(':id/heats/:heatId/lanes/:lane')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  freeLane(@CurrentUser() user: AuthUser, @id() competitionId: string, @id('heatId') heatId: string, @Param('lane', ParseIntPipe) lane: number): Promise<void> {
+    return this.heats.unassign(user, competitionId, heatId, lane);
   }
 
   @Post(':id/videos')
@@ -331,6 +375,7 @@ export class AdminCompetitionsController {
   constructor(
     private readonly competitions: CompetitionsService,
     private readonly judging: JudgingService,
+    private readonly heats: HeatsService,
   ) {}
 
   @Get() list() {
@@ -398,6 +443,24 @@ export class AdminCompetitionsController {
   }
   @Get(':id/submissions') submissions(@CurrentUser() u: AuthUser, @id() cid: string, @Query() q: JudgeQueueQueryDto) {
     return this.judging.queue(u, { ...q, competitionId: cid });
+  }
+  @Get(':id/heats') heatList(@CurrentUser() u: AuthUser, @id() cid: string) {
+    return this.heats.list(u, cid);
+  }
+  @Post(':id/heats') createHeat(@CurrentUser() u: AuthUser, @id() cid: string, @Body() dto: HeatDto) {
+    return this.heats.create(u, cid, dto);
+  }
+  @Post(':id/heats/auto') autoHeats(@CurrentUser() u: AuthUser, @id() cid: string, @Body() dto: AutoHeatsDto) {
+    return this.heats.auto(u, cid, dto);
+  }
+  @Delete(':id/heats/:heatId') @HttpCode(HttpStatus.NO_CONTENT) removeHeat(@CurrentUser() u: AuthUser, @id() cid: string, @id('heatId') heatId: string): Promise<void> {
+    return this.heats.remove(u, cid, heatId);
+  }
+  @Post(':id/heats/:heatId/lanes') assignLane(@CurrentUser() u: AuthUser, @id() cid: string, @id('heatId') heatId: string, @Body() dto: LaneDto) {
+    return this.heats.assign(u, cid, heatId, dto);
+  }
+  @Delete(':id/heats/:heatId/lanes/:lane') @HttpCode(HttpStatus.NO_CONTENT) freeLane(@CurrentUser() u: AuthUser, @id() cid: string, @id('heatId') heatId: string, @Param('lane', ParseIntPipe) lane: number): Promise<void> {
+    return this.heats.unassign(u, cid, heatId, lane);
   }
   @Get(':id/appeals') appeals(@CurrentUser() u: AuthUser, @id() cid: string) {
     return this.judging.appeals(u, cid);

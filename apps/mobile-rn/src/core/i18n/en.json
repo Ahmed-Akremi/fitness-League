@@ -540,5 +540,8 @@
   "compUploadVideo": "Upload a video (MP4/MOV)",
   "compVideoUploaded": "Video uploaded",
   "compVideoTooLarge": "The video must be 50 MB or less.",
-  "compOr": "or"
+  "compOr": "or",
+  "compHeats": "Heats",
+  "compMyHeat": "Your heat",
+  "compLane": "Lane {lane}"
 }

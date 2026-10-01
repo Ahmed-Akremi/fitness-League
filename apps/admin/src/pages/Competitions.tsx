@@ -121,6 +121,7 @@ export function CompetitionDetail() {
   const regs = useFetch(() => api.get<J[]>(`${base}/registrations`), [api, id]);
   const coupons = useFetch(() => api.get<J[]>(`${base}/coupons`), [api, id]);
   const staff = useFetch(() => api.get<J[]>(`${base}/staff`), [api, id]);
+  const heats = useFetch(() => api.get<J[]>(`${base}/heats`), [api, id]);
   const [categoryId, setCategoryId] = useState('');
   const board = useFetch(() => (categoryId ? api.get<J>(`${base}/leaderboard?categoryId=${categoryId}`) : Promise.resolve(null)), [api, id, categoryId]);
   const [message, setMessage] = useState<string | null>(null);
@@ -129,12 +130,14 @@ export function CompetitionDetail() {
   const [prize, setPrize] = useState({ position: '1', type: 'CASH', amount: '', description: '' });
   const [coupon, setCoupon] = useState({ code: '', type: 'FREE', value: '', maxUses: '' });
   const [judge, setJudge] = useState({ userId: '', role: 'JUDGE' });
+  const [auto, setAuto] = useState({ categoryId: '', workoutId: '', laneCount: '8', startsAt: '', intervalMin: '15' });
+  const [lane, setLane] = useState<Record<string, { registrationId: string; lane: string }>>({});
 
   async function run(label: string, fn: () => Promise<unknown>) {
     try {
       await fn();
       setMessage(label);
-      await Promise.all([comp.reload(), dash.reload(), regs.reload(), coupons.reload(), staff.reload(), board.reload()]);
+      await Promise.all([comp.reload(), dash.reload(), regs.reload(), coupons.reload(), staff.reload(), heats.reload(), board.reload()]);
     } catch (err) {
       setMessage(errorText(err));
     }
@@ -381,6 +384,91 @@ export function CompetitionDetail() {
             ))}
           </tbody>
         </table>
+      </Panel>
+
+      <Panel title="Heats">
+        {(heats.data ?? []).map((h) => {
+          const draft = lane[h.id] ?? { registrationId: '', lane: '' };
+          const used = new Set((h.lanes as J[]).map((l) => l.registrationId));
+          return (
+            <div key={h.id}>
+              <h3>
+                {h.name} · {h.workout?.name ?? 'tous WODs'} · {h.startsAt ? new Date(h.startsAt).toLocaleString('fr-FR') : 'horaire à définir'} · {h.lanes.length}/{h.laneCount} couloirs{' '}
+                <button type="button" onClick={() => window.confirm(`Supprimer ${h.name} ?`) && run('Heat supprimé.', () => api.delete(`${base}/heats/${h.id}`))}>
+                  Supprimer
+                </button>
+              </h3>
+              <ul>
+                {(h.lanes as J[]).map((l) => (
+                  <li key={l.lane}>
+                    Couloir {l.lane} : {l.athlete.fullName ?? l.athlete.username}{' '}
+                    <button type="button" onClick={() => run('Couloir libéré.', () => api.delete(`${base}/heats/${h.id}/lanes/${l.lane}`))}>
+                      Libérer
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  void run('Athlète placé.', () => api.post(`${base}/heats/${h.id}/lanes`, { registrationId: draft.registrationId, lane: Number(draft.lane) }));
+                }}
+              >
+                <select required value={draft.registrationId} onChange={(e) => setLane({ ...lane, [h.id]: { ...draft, registrationId: e.target.value } })}>
+                  <option value="">— Athlète —</option>
+                  {(regs.data ?? [])
+                    .filter((r) => r.registrationStatus === 'CONFIRMED' && !used.has(r.id) && (!h.category || r.categoryId === h.category.id))
+                    .map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.user?.profile?.fullName ?? r.user?.username} ({r.category?.name})
+                      </option>
+                    ))}
+                </select>
+                <input required placeholder="Couloir" inputMode="numeric" value={draft.lane} onChange={(e) => setLane({ ...lane, [h.id]: { ...draft, lane: e.target.value } })} />
+                <button type="submit">Placer</button>
+              </form>
+            </div>
+          );
+        })}
+        <h3>Générer les heats d’une catégorie</h3>
+        <p>Les athlètes confirmés sont répartis selon le classement actuel : les premiers courent dans le dernier heat.</p>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            void run('Heats générés.', () =>
+              api.post(`${base}/heats/auto`, {
+                categoryId: auto.categoryId,
+                ...(auto.workoutId ? { workoutId: auto.workoutId } : {}),
+                laneCount: Number(auto.laneCount),
+                ...(auto.startsAt ? { startsAt: iso(auto.startsAt), intervalMin: Number(auto.intervalMin) } : {}),
+              }),
+            );
+          }}
+        >
+          <select required value={auto.categoryId} onChange={(e) => setAuto({ ...auto, categoryId: e.target.value })}>
+            <option value="">— Catégorie —</option>
+            {c.categories.map((x: J) => (
+              <option key={x.id} value={x.id}>
+                {x.name}
+              </option>
+            ))}
+          </select>
+          <select value={auto.workoutId} onChange={(e) => setAuto({ ...auto, workoutId: e.target.value })}>
+            <option value="">Tous les WODs</option>
+            {c.workouts.map((w: J) => (
+              <option key={w.id} value={w.id}>
+                {w.name}
+              </option>
+            ))}
+          </select>
+          <label>Couloirs par heat <input required inputMode="numeric" value={auto.laneCount} onChange={(e) => setAuto({ ...auto, laneCount: e.target.value })} /></label>
+          <label>Premier départ <input type="datetime-local" value={auto.startsAt} onChange={(e) => setAuto({ ...auto, startsAt: e.target.value })} /></label>
+          <label>Minutes entre deux heats <input inputMode="numeric" value={auto.intervalMin} onChange={(e) => setAuto({ ...auto, intervalMin: e.target.value })} /></label>
+          <button type="submit">Générer</button>
+        </form>
+        <button type="button" onClick={() => run('Heat créé.', () => api.post(`${base}/heats`, {}))}>
+          Ajouter un heat vide
+        </button>
       </Panel>
 
       <Panel title="Classement">

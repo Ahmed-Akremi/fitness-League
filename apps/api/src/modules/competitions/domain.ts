@@ -319,3 +319,17 @@ export function sniffVideo(bytes: Uint8Array): 'video/mp4' | 'video/quicktime' |
 }
 
 export const VIDEO_MAX_BYTES = 50 * 1024 * 1024;
+
+/**
+ * Heat seeding (§45): athletes best-first in, heats in running order out. Lower-ranked athletes run in
+ * the early heats and the leaders in the last one; every heat but the first is full.
+ */
+export function seedHeats<T>(bestFirst: readonly T[], laneCount: number): T[][] {
+  if (laneCount < 1) throw new Error('laneCount must be at least 1');
+  const worstFirst = [...bestFirst].reverse();
+  const heats: T[][] = [];
+  const firstSize = worstFirst.length % laneCount || laneCount;
+  if (worstFirst.length > 0) heats.push(worstFirst.slice(0, firstSize).reverse());
+  for (let i = firstSize; i < worstFirst.length; i += laneCount) heats.push(worstFirst.slice(i, i + laneCount).reverse());
+  return heats;
+}

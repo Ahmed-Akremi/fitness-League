@@ -13,6 +13,7 @@ export const competitionsApi = (api: ApiClient) => ({
   register: (id: string, categoryId: string, couponCode?: string) => api.post<Json>(`/competitions/${id}/register`, { categoryId, ...(couponCode ? { couponCode } : {}) }),
   uploadVideo: (id: string, file: UploadFile) => api.upload<Json>(`/competitions/${id}/videos`, file, { post: true }),
   submit: (id: string, wodId: string, body: Json) => api.post<Json>(`/competitions/${id}/wods/${wodId}/submissions`, body),
+  heats: (id: string) => api.get<Json[]>(`/competitions/${id}/heats`),
   mySubmissions: (id: string) => api.get<Json[]>(`/competitions/${id}/my-submissions`),
   leaderboard: (id: string, categoryId?: string, workoutId?: string) => api.get<Json>(`/competitions/${id}/leaderboard`, { categoryId, workoutId }),
   appeal: (id: string, submissionId: string, reason: string) => api.post<Json>(`/competitions/${id}/submissions/${submissionId}/appeals`, { reason }),
@@ -26,6 +27,7 @@ export const compKeys = {
   detail: (id: string) => ['competitions', 'detail', id] as const,
   mine: (id: string) => ['competitions', id, 'my-submissions'] as const,
   board: (id: string, categoryId?: string, workoutId?: string) => ['competitions', id, 'board', categoryId ?? '', workoutId ?? ''] as const,
+  heats: (id: string) => ['competitions', id, 'heats'] as const,
   judge: (status: string) => ['judge', status] as const,
   judgeDetail: (id: string) => ['judge', 'detail', id] as const,
 };
@@ -61,4 +63,9 @@ export function formatMoney(amount: number, currency: string, locale: string): s
 export function youtubeId(url: string): string | null {
   const m = url.trim().match(/^(?:https?:\/\/)?(?:www\.|m\.)?(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/|live\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/);
   return m ? m[1] : null;
+}
+
+export function useHeats(id: string) {
+  const api = useApi();
+  return useQuery({ queryKey: compKeys.heats(id), queryFn: () => competitionsApi(api).heats(id) });
 }

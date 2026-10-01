@@ -218,6 +218,8 @@ describe('Competitions (integration)', () => {
     expect(list.body.some((c: { id: string }) => c.id === competitionId)).toBe(true);
     const dash = await api().get(`/api/v1/admin/competitions/${competitionId}/dashboard`).set(panel).expect(200);
     expect(dash.body).toMatchObject({ participants: 2, paidRegistrations: 1, freeRegistrations: 1, revenue: 40_000 });
+    await api().get(`/api/v1/admin/competitions/${competitionId}/heats`).set(panel).expect(200);
+    await api().get(`/api/v1/admin/competitions/${competitionId}/heats`).set(bearer(admin.token)).expect(401);
   });
 
   it('ATHLETE uploads an MP4 score video, checked by content and stored as competition media (§24)', async () => {
@@ -230,5 +232,35 @@ describe('Competitions (integration)', () => {
     expect(up.body).toMatchObject({ mime: 'video/mp4' });
     const media = await prisma.media.findUniqueOrThrow({ where: { id: up.body.mediaId } });
     expect(media).toMatchObject({ purpose: 'COMPETITION_VIDEO', ownerId: ahmed.id, mime: 'video/mp4' });
+  });
+
+  it('ORGANIZER schedules heats with lanes; athletes see their heat (§45)', async () => {
+    const base = `/api/v1/competitions/${competitionId}`;
+    const regs = (await api().get(`${base}/registrations`).set(bearer(organizer.token)).expect(200)).body as { id: string; userId: string; registrationStatus: string }[];
+    const regOf = (u: Actor) => regs.find((r) => r.userId === u.id)!.id;
+    const board = await api().get(`${base}/leaderboard?categoryId=${rxMale}`).set(bearer(ahmed.token)).expect(200);
+    const leader = board.body.rows[0].athlete.id as string;
+
+    // Manual heat: lanes are unique, athletes too, and only organizers write.
+    await api().post(`${base}/heats`).set(bearer(ahmed.token)).send({ name: 'Heat X' }).expect(403);
+    const heat = (await api().post(`${base}/heats`).set(bearer(organizer.token)).send({ categoryId: rxMale, laneCount: 4, startsAt: h(24) }).expect(201)).body;
+    expect(heat).toMatchObject({ number: 1, name: 'Heat 1', laneCount: 4 });
+    await api().post(`${base}/heats/${heat.id}/lanes`).set(bearer(organizer.token)).send({ registrationId: regOf(ahmed), lane: 2 }).expect(201);
+    await api().post(`${base}/heats/${heat.id}/lanes`).set(bearer(organizer.token)).send({ registrationId: regOf(ali), lane: 2 }).expect(409);
+    await api().post(`${base}/heats/${heat.id}/lanes`).set(bearer(organizer.token)).send({ registrationId: regOf(ahmed), lane: 3 }).expect(409);
+    await api().post(`${base}/heats/${heat.id}/lanes`).set(bearer(organizer.token)).send({ registrationId: regOf(ali), lane: 5 }).expect(422);
+    const mine = await api().get(`${base}/heats`).set(bearer(ahmed.token)).expect(200);
+    expect(mine.body[0].lanes).toEqual([expect.objectContaining({ lane: 2, mine: true, athlete: expect.objectContaining({ id: ahmed.id }) })]);
+    await api().delete(`${base}/heats/${heat.id}/lanes/2`).set(bearer(organizer.token)).expect(204);
+    await api().delete(`${base}/heats/${heat.id}`).set(bearer(organizer.token)).expect(204);
+
+    // Auto: one lane per heat → the leader runs in the last heat; a second run is refused.
+    const auto = await api().post(`${base}/heats/auto`).set(bearer(organizer.token)).send({ categoryId: rxMale, laneCount: 1, startsAt: h(48), intervalMin: 15 }).expect(201);
+    expect(auto.body).toEqual({ heats: 2, athletes: 2 });
+    const heats = (await api().get(`${base}/heats`).set(bearer(ali.token)).expect(200)).body;
+    expect(heats).toHaveLength(2);
+    expect(heats[1].lanes[0].athlete.id).toBe(leader);
+    expect(new Date(heats[1].startsAt).getTime() - new Date(heats[0].startsAt).getTime()).toBe(15 * 60_000);
+    await api().post(`${base}/heats/auto`).set(bearer(organizer.token)).send({ categoryId: rxMale, laneCount: 1 }).expect(409);
   });
 });

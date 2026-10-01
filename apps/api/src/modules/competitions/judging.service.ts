@@ -352,7 +352,7 @@ export class JudgingService {
 
   // ───────────── helpers ─────────────
 
-  private async names(userIds: string[]) {
+  async names(userIds: string[]) {
     const profiles = await this.prisma.profile.findMany({ where: { userId: { in: userIds } }, select: { userId: true, fullName: true, user: { select: { username: true } } } });
     return new Map(profiles.map((p) => [p.userId, { fullName: p.fullName, username: p.user.username }]));
   }

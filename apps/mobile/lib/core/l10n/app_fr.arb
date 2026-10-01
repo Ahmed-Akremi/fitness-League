@@ -541,5 +541,8 @@
   "compUploadVideo": "Envoyer une vidéo (MP4/MOV)",
   "compVideoUploaded": "Vidéo envoyée",
   "compVideoTooLarge": "La vidéo doit faire 50 Mo maximum.",
-  "compOr": "ou"
+  "compOr": "ou",
+  "compHeats": "Heats",
+  "compMyHeat": "Votre heat",
+  "compLane": "Couloir {lane}"
 }

@@ -245,3 +245,25 @@ export class AnnouncementDto {
   @IsString() @Length(3, 120) title!: string;
   @IsString() @Length(1, 5000) body!: string;
 }
+
+export class HeatDto {
+  @IsOptional() @IsString() @Length(1, 80) name?: string;
+  @IsOptional() @IsUUID() workoutId?: string;
+  @IsOptional() @IsUUID() categoryId?: string;
+  @IsOptional() @IsISO8601() startsAt?: string;
+  @IsOptional() @IsInt() @Min(1) @Max(600) durationMin?: number;
+  @IsOptional() @IsInt() @Min(1) @Max(40) laneCount?: number;
+}
+
+export class LaneDto {
+  @IsUUID() registrationId!: string;
+  @IsInt() @Min(1) @Max(40) lane!: number;
+}
+
+export class AutoHeatsDto {
+  @IsUUID() categoryId!: string;
+  @IsOptional() @IsUUID() workoutId?: string;
+  @IsInt() @Min(1) @Max(40) laneCount!: number;
+  @IsOptional() @IsISO8601() startsAt?: string;
+  @ApiPropertyOptional({ description: 'Minutes between heat starts.' }) @IsOptional() @IsInt() @Min(1) @Max(600) intervalMin?: number;
+}

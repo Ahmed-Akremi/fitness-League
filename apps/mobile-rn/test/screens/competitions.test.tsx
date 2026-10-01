@@ -1,7 +1,7 @@
 import { fireEvent, waitFor } from 'expo-router/testing-library';
 
 import { JudgeReviewScreen } from '../../src/features/competitions/judge';
-import { RegisterScreen, SubmitScreen } from '../../src/features/competitions/screens';
+import { CompetitionScreen, RegisterScreen, SubmitScreen } from '../../src/features/competitions/screens';
 import { FakeBackend } from '../fake-api';
 import { renderScreen } from '../harness';
 
@@ -82,5 +82,24 @@ describe('score submission', () => {
     await fireEvent.press(screen.getByTestId('sub-send'));
     await waitFor(() => expect(backend.calls('POST', '/competitions/c1/wods/w1/submissions')).toHaveLength(1));
     expect(backend.calls('POST', '/competitions/c1/wods/w1/submissions')[0].body).toMatchObject({ raw: { reps: 87 }, videoMediaId: 'm1', submit: true });
+  });
+});
+
+describe('heats', () => {
+  it('shows the athlete their heat and lane on the competition page', async () => {
+    const backend = new FakeBackend()
+      .on('GET', '/competitions/c1', [200, { ...competition, format: 'ONSITE', description: 'Finals', eventStart: '2026-10-20T08:00:00Z', participants: 2, organizer: { fullName: 'Org' }, myRegistration: { registrationStatus: 'CONFIRMED' } }])
+      .on('GET', '/competitions/c1/my-submissions', [200, []])
+      .on('GET', '/competitions/c1/heats', [
+        200,
+        [
+          { id: 'h1', number: 1, name: 'RX Male · Heat 1', startsAt: '2026-10-20T09:00:00Z', workout: { id: 'w1', name: 'WOD 1' }, category: { id: 'rxm', name: 'RX Male' }, lanes: [{ lane: 1, mine: false, athlete: { id: 'u2' } }] },
+          { id: 'h2', number: 2, name: 'RX Male · Heat 2', startsAt: '2026-10-20T09:15:00Z', workout: { id: 'w1', name: 'WOD 1' }, category: { id: 'rxm', name: 'RX Male' }, lanes: [{ lane: 3, mine: true, athlete: { id: 'u1' } }] },
+        ],
+      ]);
+    const screen = await renderScreen(() => <CompetitionScreen id="c1" />, backend);
+    expect(await screen.findByTestId('my-heat')).toBeTruthy();
+    expect(screen.getAllByText('RX Male · Heat 2 · Lane 3')).toHaveLength(1);
+    expect(screen.getByText('RX Male · Heat 1')).toBeTruthy();
   });
 });

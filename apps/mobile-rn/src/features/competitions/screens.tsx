@@ -14,7 +14,7 @@ import { pickVideo } from '../../core/utils/pick-image';
 import { EmptyState, Loading, SectionHeader, SkeletonList, StatCard, TimeField } from '../../core/widgets/common';
 import { ErrorText, ErrorView, errorMessage } from '../../core/widgets/error';
 import { Button, Card, Chip, Icon, ListRow, Screen, Segmented, TextField, Txt, toast } from '../../core/widgets/kit';
-import { compKeys, competitionsApi, formatMoney, useCompetition, useCompetitions, useCompLeaderboard, useMySubmissions, youtubeId, type CompFilter } from './api';
+import { compKeys, competitionsApi, formatMoney, useCompetition, useCompetitions, useCompLeaderboard, useHeats, useMySubmissions, youtubeId, type CompFilter } from './api';
 
 const statusLabel = (t: T, s: string) => (t as (k: string) => string)(`compStatus${s}`);
 
@@ -133,6 +133,7 @@ export function CompetitionScreen({ id }: { id: string }) {
               {c.deadlines.leaderboardPublicationAt && <ListRow icon="leaderboard" title={t('compLeaderboardDate')} subtitle={formatDate(c.deadlines.leaderboardPublicationAt, locale)} />}
               <ListRow icon="groups" title={t('compAthletes', { count: c.participants })} />
             </Card>
+            <HeatSchedule id={id} />
           </>
         )}
         {tab === 'categories' &&
@@ -186,6 +187,42 @@ export function CompetitionScreen({ id }: { id: string }) {
         ) : null}
       </View>
     </View>
+  );
+}
+
+// ───────────── Heats ─────────────
+
+/** Heat schedule (§45): the athlete's own heat first, then the running order. Hidden when there are none. */
+function HeatSchedule({ id }: { id: string }) {
+  const t = useT();
+  const locale = useLocale();
+  const { colors } = useTheme();
+  const heats = useHeats(id);
+  if (!heats.data || heats.data.length === 0) return null;
+  const when = (h: Json) => (h.startsAt ? formatDate(h.startsAt, locale, { weekday: 'short', hour: '2-digit', minute: '2-digit' }) : '—');
+  const mine = heats.data.flatMap((h) => h.lanes.filter((l: Json) => l.mine).map((l: Json) => ({ heat: h, lane: l.lane })));
+  return (
+    <>
+      {mine.map(({ heat, lane }) => (
+        <Card key={heat.id} testID="my-heat" style={{ backgroundColor: colors.primary + '22', gap: 4 }}>
+          <Txt variant="label">{t('compMyHeat')}</Txt>
+          <Txt style={displayText(24)}>{`${heat.name} · ${t('compLane', { lane })}`}</Txt>
+          <Txt>{[heat.workout?.name, when(heat)].filter(Boolean).join(' · ')}</Txt>
+        </Card>
+      ))}
+      <SectionHeader title={t('compHeats')} />
+      <Card style={{ paddingVertical: 4 }}>
+        {heats.data.map((h) => (
+          <ListRow
+            key={h.id}
+            icon="schedule"
+            title={h.name}
+            subtitle={[h.workout?.name, h.category?.name, t('compAthletes', { count: h.lanes.length })].filter(Boolean).join(' · ')}
+            trailing={<Txt>{when(h)}</Txt>}
+          />
+        ))}
+      </Card>
+    </>
   );
 }
 
