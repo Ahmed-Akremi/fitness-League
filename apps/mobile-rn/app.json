@@ -34,7 +34,8 @@
       "expo-secure-store",
       "expo-font",
       "expo-localization",
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      "expo-build-properties"
     ],
     "scheme": "fitnessleague",
     "backgroundColor": "#0E0F12",
