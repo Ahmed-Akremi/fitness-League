@@ -31,6 +31,26 @@ export function TrainScreen() {
   }
 
   const queued = pending.data ?? [];
+  // Workouts waiting in the outbox stay visible offline, even when the server list cannot load.
+  const queuedCards = queued.map((q) => (
+    <Card key={q.clientId} testID={`queued-${q.clientId}`} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+      <Icon name={q.status === 'pending' ? 'cloud-upload' : 'error-outline'} />
+      <View style={{ flex: 1 }}>
+        <Txt variant="title">{formatDate(String(q.payload.performedAt), locale)}</Txt>
+        <Txt variant="small" color={colors.outline}>{q.status === 'pending' ? t('pendingSync') : q.status === 'rejected' ? t('statusRejected') : t('errorGeneric')}</Txt>
+      </View>
+      {q.status !== 'pending' && (
+        <IconButton
+          icon="delete-outline"
+          label={t('delete')}
+          onPress={async () => {
+            await sync.discard(q.clientId);
+            await qc.invalidateQueries({ queryKey: workoutKeys.outbox });
+          }}
+        />
+      )}
+    </Card>
+  ));
   let body;
   if (workouts.isError) body = <ErrorView error={workouts.error} onRetry={() => workouts.refetch()} />;
   else if (!workouts.data) body = <Loading />;
@@ -41,36 +61,12 @@ export function TrainScreen() {
       </View>
     );
   else
-    body = (
-      <View style={{ gap: 10 }}>
-        {queued.map((q) => (
-          <Card key={q.clientId} testID={`queued-${q.clientId}`} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-            <Icon name={q.status === 'pending' ? 'cloud-upload' : 'error-outline'} />
-            <View style={{ flex: 1 }}>
-              <Txt variant="title">{formatDate(String(q.payload.performedAt), locale)}</Txt>
-              <Txt variant="small" color={colors.outline}>{q.status === 'pending' ? t('pendingSync') : q.status === 'rejected' ? t('statusRejected') : t('errorGeneric')}</Txt>
-            </View>
-            {q.status !== 'pending' && (
-              <IconButton
-                icon="delete-outline"
-                label={t('delete')}
-                onPress={async () => {
-                  await sync.discard(q.clientId);
-                  await qc.invalidateQueries({ queryKey: workoutKeys.outbox });
-                }}
-              />
-            )}
-          </Card>
-        ))}
-        {workouts.data.data.map((w) => (
-          <WorkoutTile key={w.id} workout={w} />
-        ))}
-      </View>
-    );
+    body = workouts.data.data.map((w) => <WorkoutTile key={w.id} workout={w} />);
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 96 }} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.primary} />}>
+      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 96, gap: 10 }} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.primary} />}>
+        {queuedCards}
         {body}
       </ScrollView>
       <Pressable

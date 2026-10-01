@@ -2,6 +2,7 @@ import { fireEvent, waitFor } from 'expo-router/testing-library';
 
 import { MemoryOutboxStore } from '../../src/core/offline/outbox';
 import { LogWorkoutScreen } from '../../src/features/workouts/log-workout';
+import { TrainScreen } from '../../src/features/workouts/screens';
 import { FakeBackend } from '../fake-api';
 import { page, renderScreen, sports, squat } from '../harness';
 
@@ -63,5 +64,17 @@ describe('LogWorkoutScreen', () => {
     const screen = await renderScreen(LogWorkoutScreen, backendWithCatalog());
     const save = await screen.findByTestId('log-save');
     expect(save.props.accessibilityState.disabled).toBe(true);
+  });
+});
+
+describe('Train offline', () => {
+  it('still lists the workouts waiting to sync when the history cannot load', async () => {
+    const backend = new FakeBackend();
+    backend.offline = true; // first launch after sign-in, no connection: the history was never fetched
+    const store = new MemoryOutboxStore();
+    await store.put({ clientId: 'c-1', payload: { performedAt: '2026-10-01T08:00:00Z' }, status: 'pending', attempts: 0, createdAt: '2026-10-01T08:00:00Z' });
+    const screen = await renderScreen(TrainScreen, backend, { store });
+    expect(await screen.findByTestId('queued-c-1')).toBeTruthy();
+    expect(screen.getByText('Pending sync')).toBeTruthy();
   });
 });
