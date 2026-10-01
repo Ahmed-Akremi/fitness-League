@@ -1,6 +1,7 @@
 # React Native port of the mobile app — design
 
-Date: 2026-09-30 · Status: approved in chat
+Date: 2026-09-30 · Status: implemented — sub-project 1 plus slices 2–5 (every Flutter screen ported,
+photo proofs included; push notifications, EAS release config and removing Flutter remain out of scope)
 
 ## Intent
 
