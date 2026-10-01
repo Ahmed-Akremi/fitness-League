@@ -9,7 +9,7 @@ export type PushCategory = (typeof PUSH_CATEGORIES)[number];
 export function categoryOf(type: string): PushCategory {
   if (type.startsWith('FRIEND_') || type.startsWith('ACTIVITY_')) return 'SOCIAL';
   if (type.startsWith('BATTLE_') || type.startsWith('DUEL_')) return 'BATTLES';
-  if (type.startsWith('GYM_WAR_')) return 'COMPETITION';
+  if (type.startsWith('GYM_WAR_') || type.startsWith('COMPETITION_')) return 'COMPETITION';
   if (type.startsWith('CHALLENGE_')) return 'CHALLENGES';
   if (type.startsWith('BADGE_')) return 'BADGES';
   return 'GYM';
