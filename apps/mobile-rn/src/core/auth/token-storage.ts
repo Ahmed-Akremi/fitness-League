@@ -19,6 +19,18 @@ export class SecureTokenStorage implements TokenStorage {
   }
 }
 
+/** Web preview target: no secure store in browsers, the refresh token lives in localStorage. */
+export class WebTokenStorage implements TokenStorage {
+  async readRefreshToken() {
+    return globalThis.localStorage?.getItem(KEY) ?? null;
+  }
+
+  async writeRefreshToken(token: string | null) {
+    if (token == null) globalThis.localStorage?.removeItem(KEY);
+    else globalThis.localStorage?.setItem(KEY, token);
+  }
+}
+
 export class MemoryTokenStorage implements TokenStorage {
   constructor(private token: string | null = null) {}
 

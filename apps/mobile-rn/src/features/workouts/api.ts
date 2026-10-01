@@ -59,7 +59,8 @@ export function useWorkoutDetail(id: string) {
 /** Workouts waiting in the offline outbox (pending, conflict or rejected). */
 export function usePendingWorkouts() {
   const { sync } = useServices();
-  return useQuery({ queryKey: workoutKeys.outbox, queryFn: () => sync.pending(), staleTime: 0 });
+  // Local storage only: must also run offline (TanStack pauses network queries while offline).
+  return useQuery({ queryKey: workoutKeys.outbox, queryFn: () => sync.pending(), staleTime: 0, networkMode: 'always' });
 }
 
 /** Renders the server's explanation steps compactly (e.g. "base 10 · duration_bonus 20 · diminishing ×1"). */

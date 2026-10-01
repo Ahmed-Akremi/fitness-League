@@ -27,7 +27,7 @@ export default function TabsLayout() {
         sceneStyle: { backgroundColor: colors.background },
       }}
     >
-      <Tabs.Screen name="index" options={{ title: t('navHome'), tabBarIcon: icon('home', 'home') }} />
+      <Tabs.Screen name="index" options={{ title: t('navHome'), headerShown: false, tabBarIcon: icon('home', 'home') }} />
       <Tabs.Screen name="train" options={{ title: t('navTrain'), tabBarIcon: icon('fitness-center', 'fitness-center') }} />
       <Tabs.Screen name="league" options={{ title: t('navLeague'), tabBarIcon: icon('emoji-events', 'emoji-events') }} />
       <Tabs.Screen name="goals" options={{ title: t('navChallenges'), tabBarIcon: icon('outlined-flag', 'flag') }} />

@@ -1,8 +1,9 @@
+import { onlineManager } from '@tanstack/react-query';
 import NetInfo from '@react-native-community/netinfo';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import { DevSettings, I18nManager, View } from 'react-native';
+import { DevSettings, I18nManager, Platform, View } from 'react-native';
 
 import { useSession } from '../../core/auth/session';
 import { config } from '../../core/config';
@@ -30,11 +31,12 @@ export function useGate(): Gate {
 /** Arabic lays out right-to-left; React Native applies a direction change after a reload. */
 function useRtl(rtl: boolean) {
   useEffect(() => {
-    if (I18nManager.isRTL === rtl) return;
+    // The web build follows the document direction; there is nothing to reload.
+    if (Platform.OS === 'web' || Boolean(I18nManager.isRTL) === rtl) return;
     I18nManager.allowRTL(rtl);
     I18nManager.forceRTL(rtl);
     if (process.env.NODE_ENV === 'test') return;
-    import('expo-updates').then((u) => u.reloadAsync()).catch(() => DevSettings.reload());
+    import('expo-updates').then((u) => u.reloadAsync()).catch(() => DevSettings?.reload());
   }, [rtl]);
 }
 
@@ -61,14 +63,20 @@ export function AppRoot() {
     else realtime.disconnect();
   }, [status, realtime]);
 
-  // Offline workouts are sent as soon as connectivity comes back (spec §7).
-  useEffect(
-    () =>
-      NetInfo.addEventListener((s) => {
-        if (s.isConnected && useSession.getState().status === 'signedIn') sync.flush().catch(() => 0);
-      }),
-    [sync],
-  );
+  // Offline workouts are sent as soon as connectivity comes back (spec §7). NetInfo covers native; in browsers
+  // that expose navigator.connection NetInfo only hears its "change" event, so TanStack's online manager (window
+  // online/offline events) is a second trigger. Concurrent flushes share one request.
+  useEffect(() => {
+    const flush = () => {
+      if (useSession.getState().status === 'signedIn') sync.flush().catch(() => 0);
+    };
+    const offNetInfo = NetInfo.addEventListener((s) => s.isConnected && flush());
+    const offOnline = onlineManager.subscribe((online) => online && flush());
+    return () => {
+      offNetInfo();
+      offOnline();
+    };
+  }, [sync]);
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
