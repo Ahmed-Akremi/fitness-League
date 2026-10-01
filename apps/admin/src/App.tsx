@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { canAdmin, useAuth } from './auth';
 import { Layout } from './components/Layout';
 import { Audit } from './pages/Audit';
+import { CompetitionDetail, Competitions } from './pages/Competitions';
 import { Dashboard } from './pages/Dashboard';
 import { Login } from './pages/Login';
 import { Moderation } from './pages/Moderation';
@@ -34,6 +35,8 @@ export function App() {
           <Route path="rule-sets" element={<AdminOnly><RuleSets /></AdminOnly>} />
           <Route path="seasons" element={<AdminOnly><Seasons /></AdminOnly>} />
           <Route path="audit" element={<AdminOnly><Audit /></AdminOnly>} />
+          <Route path="competitions" element={<AdminOnly><Competitions /></AdminOnly>} />
+          <Route path="competitions/:id" element={<AdminOnly><CompetitionDetail /></AdminOnly>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

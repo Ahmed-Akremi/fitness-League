@@ -109,6 +109,17 @@ export class CompetitionsService {
     return rows.map((c) => this.card(c, c._count.registrations));
   }
 
+  /** Admin panel: every competition, drafts included. */
+  async listAll() {
+    const rows = await this.prisma.competition.findMany({
+      where: { deletedAt: null },
+      orderBy: { eventStart: 'desc' },
+      take: 200,
+      include: { _count: { select: { registrations: { where: { registrationStatus: 'CONFIRMED' } } } } },
+    });
+    return rows.map((c) => this.card(c, c._count.registrations));
+  }
+
   async get(user: AuthUser, id: string) {
     const c = await this.prisma.competition.findFirst({
       where: { id, deletedAt: null },

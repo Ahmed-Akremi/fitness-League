@@ -1,7 +1,7 @@
 import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Patch, Post, Put, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { AuthUser } from '../../common/auth/auth-user';
-import { CurrentUser, RequiresVerifiedEmail } from '../../common/auth/decorators';
+import { AdminApi, CurrentUser, RequiresVerifiedEmail, Roles } from '../../common/auth/decorators';
 import { RateLimit } from '../../common/rate-limit/rate-limit';
 import {
   AdjustScoreDto,
@@ -305,5 +305,95 @@ export class JudgeController {
   @HttpCode(HttpStatus.OK)
   decideAppeal(@CurrentUser() user: AuthUser, @id() appealId: string, @Body() dto: AppealDecisionDto) {
     return this.judging.decideAppeal(user, appealId, dto);
+  }
+}
+
+/**
+ * Admin panel → Competitions (§55): the same services behind admin-audience tokens (password + TOTP), so the
+ * existing web dashboard manages competitions without a second dashboard. Platform admins hold every
+ * competition role, the rules stay in the services.
+ */
+@ApiTags('admin')
+@ApiBearerAuth()
+@AdminApi()
+@Roles('ADMIN', 'SUPER_ADMIN')
+@Controller('admin/competitions')
+export class AdminCompetitionsController {
+  constructor(
+    private readonly competitions: CompetitionsService,
+    private readonly judging: JudgingService,
+  ) {}
+
+  @Get() list() {
+    return this.competitions.listAll();
+  }
+  @Post() create(@CurrentUser() u: AuthUser, @Body() dto: CompetitionDto) {
+    return this.competitions.create(u, dto);
+  }
+  @Get(':id') get(@CurrentUser() u: AuthUser, @id() cid: string) {
+    return this.competitions.get(u, cid);
+  }
+  @Put(':id') update(@CurrentUser() u: AuthUser, @id() cid: string, @Body() dto: UpdateCompetitionDto) {
+    return this.competitions.update(u, cid, dto);
+  }
+  @Patch(':id/status') status(@CurrentUser() u: AuthUser, @id() cid: string, @Body() dto: StatusDto) {
+    return this.competitions.setStatus(u, cid, dto.status);
+  }
+  @Get(':id/dashboard') dashboard(@CurrentUser() u: AuthUser, @id() cid: string) {
+    return this.competitions.dashboard(u, cid);
+  }
+  @Post(':id/categories') addCategory(@CurrentUser() u: AuthUser, @id() cid: string, @Body() dto: CategoryDto) {
+    return this.competitions.addCategory(u, cid, dto);
+  }
+  @Post(':id/categories/templates') templates(@CurrentUser() u: AuthUser, @id() cid: string) {
+    return this.competitions.addTemplateCategories(u, cid);
+  }
+  @Put(':id/categories/:categoryId') updateCategory(@CurrentUser() u: AuthUser, @id() cid: string, @id('categoryId') catId: string, @Body() dto: UpdateCategoryDto) {
+    return this.competitions.updateCategory(u, cid, catId, dto);
+  }
+  @Post(':id/wods') addWod(@CurrentUser() u: AuthUser, @id() cid: string, @Body() dto: WorkoutDto) {
+    return this.competitions.addWorkout(u, cid, dto);
+  }
+  @Put(':id/wods/:wodId') updateWod(@CurrentUser() u: AuthUser, @id() cid: string, @id('wodId') wodId: string, @Body() dto: WorkoutDto) {
+    return this.competitions.updateWorkout(u, cid, wodId, dto);
+  }
+  @Post(':id/prizes') addPrize(@CurrentUser() u: AuthUser, @id() cid: string, @Body() dto: PrizeDto) {
+    return this.competitions.addPrize(u, cid, dto);
+  }
+  @Get(':id/coupons') coupons(@CurrentUser() u: AuthUser, @id() cid: string) {
+    return this.competitions.listCoupons(u, cid);
+  }
+  @Post(':id/coupons') addCoupon(@CurrentUser() u: AuthUser, @id() cid: string, @Body() dto: CouponDto) {
+    return this.competitions.addCoupon(u, cid, dto);
+  }
+  @Post(':id/coupons/:couponId/:action') @HttpCode(HttpStatus.OK) toggleCoupon(@CurrentUser() u: AuthUser, @id() cid: string, @id('couponId') couponId: string, @Param('action') action: string) {
+    return this.competitions.setCouponActive(u, cid, couponId, action === 'activate');
+  }
+  @Get(':id/staff') staff(@CurrentUser() u: AuthUser, @id() cid: string) {
+    return this.competitions.listStaff(u, cid);
+  }
+  @Post(':id/staff') addStaff(@CurrentUser() u: AuthUser, @id() cid: string, @Body() dto: StaffDto) {
+    return this.competitions.addStaff(u, cid, dto);
+  }
+  @Post(':id/judge-assignments') assign(@CurrentUser() u: AuthUser, @id() cid: string, @Body() dto: AssignmentDto) {
+    return this.competitions.assign(u, cid, dto);
+  }
+  @Get(':id/registrations') registrations(@CurrentUser() u: AuthUser, @id() cid: string) {
+    return this.competitions.registrations(u, cid);
+  }
+  @Post(':id/registrations/:registrationId/mark-paid') @HttpCode(HttpStatus.OK) markPaid(@CurrentUser() u: AuthUser, @id() cid: string, @id('registrationId') rid: string) {
+    return this.competitions.markPaid(u, cid, rid);
+  }
+  @Get(':id/leaderboard') leaderboard(@id() cid: string, @Query() q: LeaderboardQueryDto) {
+    return q.categoryId ? this.judging.leaderboard(cid, q.categoryId, q.workoutId) : { rows: [] };
+  }
+  @Get(':id/submissions') submissions(@CurrentUser() u: AuthUser, @id() cid: string, @Query() q: JudgeQueueQueryDto) {
+    return this.judging.queue(u, { ...q, competitionId: cid });
+  }
+  @Get(':id/appeals') appeals(@CurrentUser() u: AuthUser, @id() cid: string) {
+    return this.judging.appeals(u, cid);
+  }
+  @Post(':id/publish-leaderboard') @HttpCode(HttpStatus.OK) publish(@CurrentUser() u: AuthUser, @id() cid: string) {
+    return this.judging.publish(u, cid);
   }
 }

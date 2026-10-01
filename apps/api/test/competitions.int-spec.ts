@@ -2,7 +2,7 @@ import { INestApplication } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import request from 'supertest';
 import { randomUUID } from 'node:crypto';
-import { registerUser, setupTestApp } from './helpers';
+import { adminBearer, registerUser, setupTestApp } from './helpers';
 
 /** The §57 scenario end to end: admin → athlete → judge → system → head judge. */
 describe('Competitions (integration)', () => {
@@ -207,5 +207,16 @@ describe('Competitions (integration)', () => {
     const cats = await api().post(`/api/v1/competitions/${c.body.id}/categories/templates`).set(bearer(organizer.token)).expect(201);
     expect(cats.body).toHaveLength(18);
     expect(cats.body.find((x: { name: string }) => x.name === 'Scaled Master Male Division 40-45')).toMatchObject({ gender: 'MALE', minAge: 40, maxAge: 45 });
+  });
+
+  it('ADMIN panel manages competitions through admin-audience tokens only (§55)', async () => {
+    const admin = await actor();
+    await prisma.user.update({ where: { id: admin.id }, data: { role: 'ADMIN' } });
+    const panel = await adminBearer(app, prisma, admin.id);
+    await api().get('/api/v1/admin/competitions').set(bearer(admin.token)).expect(401); // app token refused
+    const list = await api().get('/api/v1/admin/competitions').set(panel).expect(200);
+    expect(list.body.some((c: { id: string }) => c.id === competitionId)).toBe(true);
+    const dash = await api().get(`/api/v1/admin/competitions/${competitionId}/dashboard`).set(panel).expect(200);
+    expect(dash.body).toMatchObject({ participants: 2, paidRegistrations: 1, freeRegistrations: 1, revenue: 40_000 });
   });
 });
