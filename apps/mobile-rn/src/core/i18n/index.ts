@@ -44,6 +44,26 @@ function matchingBrace(s: string, open: number): number {
   throw new Error(`Unbalanced message: ${s}`);
 }
 
+/**
+ * CLDR plural category. Hermes (the Android/iOS engine) has no Intl.PluralRules, so the rules of the three
+ * app locales are written out; Intl is used only where it exists and is never required.
+ */
+export function pluralCategory(locale: Locale, n: number): Intl.LDMLPluralRule {
+  if (typeof Intl !== 'undefined' && typeof Intl.PluralRules === 'function') return new Intl.PluralRules(locale).select(n);
+  const int = Number.isInteger(n);
+  if (locale === 'ar') {
+    if (n === 0) return 'zero';
+    if (n === 1) return 'one';
+    if (n === 2) return 'two';
+    const mod = n % 100;
+    if (int && mod >= 3 && mod <= 10) return 'few';
+    if (int && mod >= 11 && mod <= 99) return 'many';
+    return 'other';
+  }
+  if (locale === 'fr') return n >= 0 && n < 2 ? 'one' : int && n !== 0 && n % 1_000_000 === 0 ? 'many' : 'other';
+  return n === 1 ? 'one' : 'other';
+}
+
 function formatArgument(body: string, args: Args, locale: Locale): string {
   const [name, type] = body.split(',', 2).map((p) => p.trim());
   if (type !== 'plural') return String(args[name] ?? `{${name}}`);
@@ -58,7 +78,7 @@ function formatArgument(body: string, args: Args, locale: Locale): string {
     cases[rest.slice(i, open).trim()] = rest.slice(open + 1, close);
     i = close + 1;
   }
-  const chosen = cases[`=${n}`] ?? cases[new Intl.PluralRules(locale).select(n)] ?? cases.other ?? '';
+  const chosen = cases[`=${n}`] ?? cases[pluralCategory(locale, n)] ?? cases.other ?? '';
   return format(chosen, args, locale);
 }
 

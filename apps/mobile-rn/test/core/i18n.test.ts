@@ -1,4 +1,4 @@
-import { format, translate } from '../../src/core/i18n';
+import { format, pluralCategory, translate } from '../../src/core/i18n';
 
 describe('i18n (ARB/ICU messages)', () => {
   it('substitutes placeholders', () => {
@@ -20,5 +20,25 @@ describe('i18n (ARB/ICU messages)', () => {
     expect(translate('en', 'navHome')).toBe('Home');
     expect(translate('fr', 'navHome')).not.toBe('navHome');
     expect(translate('ar', 'navHome')).not.toBe('navHome');
+  });
+});
+
+describe('plurals without Intl.PluralRules (Hermes on devices)', () => {
+  const real = Intl.PluralRules;
+  const numbers = [0, 1, 2, 3, 5, 10, 11, 12, 50, 99, 100, 101, 102, 103, 111, 1.5, 1_000_000, 2_000_000];
+  const expected = Object.fromEntries((['en', 'fr', 'ar'] as const).map((l) => [l, numbers.map((n) => new real(l).select(n))]));
+  const intl = Intl as unknown as { PluralRules: unknown };
+  afterEach(() => {
+    intl.PluralRules = real;
+  });
+
+  it('gives the same category as the CLDR rules for every app locale', () => {
+    intl.PluralRules = undefined; // the engine without PluralRules
+    for (const l of ['en', 'fr', 'ar'] as const) expect(numbers.map((n) => pluralCategory(l, n))).toEqual(expected[l]);
+  });
+
+  it('formats plural messages instead of throwing', () => {
+    intl.PluralRules = undefined; // the engine without PluralRules
+    expect(translate('en', 'compAthletes', { count: 1 })).not.toBe(translate('en', 'compAthletes', { count: 2 }));
   });
 });
