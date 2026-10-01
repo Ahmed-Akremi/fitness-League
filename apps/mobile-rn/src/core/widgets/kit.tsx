@@ -125,7 +125,8 @@ export function Chip({ label, selected, onPress, icon, testID }: { label: string
 /** Segmented tabs (league scopes, filters). */
 export function Segmented<K extends string>({ options, value, onChange }: { options: { key: K; label: string }[]; value: K; onChange: (k: K) => void }) {
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: 16, paddingVertical: 8 }}>
+    // flexGrow 0: a horizontal ScrollView in a column would otherwise take all the leftover height.
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={{ gap: 8, paddingHorizontal: 16, paddingVertical: 8 }}>
       {options.map((o) => (
         <Chip key={o.key} testID={`tab-${o.key}`} label={o.label} selected={o.key === value} onPress={() => onChange(o.key)} />
       ))}

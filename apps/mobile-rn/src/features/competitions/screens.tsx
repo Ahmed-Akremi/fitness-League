@@ -278,8 +278,8 @@ export function CompLeaderboard({ id, categories, workouts }: { id: string; cate
               <View style={{ flexDirection: 'row', paddingVertical: 6 }}>
                 <Txt variant="label" style={{ width: 44 }}>#</Txt>
                 <View style={{ width: 140 }} />
-                {!workoutId && data.workouts.map((w: Json) => <Txt key={w.id} variant="label" style={{ width: 64, textAlign: 'right' }}>{`W${w.number}`}</Txt>)}
                 <Txt variant="label" style={{ width: 72, textAlign: 'right' }}>{t('compTotal')}</Txt>
+                {!workoutId && data.workouts.map((w: Json) => <Txt key={w.id} variant="label" style={{ width: 64, textAlign: 'right' }}>{`W${w.number}`}</Txt>)}
               </View>
               {data.rows.map((r: Json) => (
                 <View key={r.athlete.id} testID={`board-row-${r.athlete.id}`} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 8, borderTopWidth: 1, borderTopColor: colors.surfaceHigh }}>
@@ -288,8 +288,9 @@ export function CompLeaderboard({ id, categories, workouts }: { id: string; cate
                     <Txt numberOfLines={1} style={{ fontWeight: '600' }}>{r.athlete.fullName ?? r.athlete.username}</Txt>
                     {r.pending > 0 && <Txt variant="small" color={colors.outline}>{t('compPending')}</Txt>}
                   </View>
+                  {/* Total first: it decides the rank and must be visible without scrolling. */}
+                  <Txt style={[displayText(20), { width: 72, textAlign: 'right', color: colors.primary }]}>{String((workoutId ? r.wodPoints[workoutId] : r.totalPoints) ?? '—')}</Txt>
                   {!workoutId && data.workouts.map((w: Json) => <Txt key={w.id} style={{ width: 64, textAlign: 'right' }}>{r.wodPoints[w.id] != null ? String(r.wodPoints[w.id]) : '—'}</Txt>)}
-                  <Txt style={[displayText(20), { width: 72, textAlign: 'right' }]}>{String(workoutId ? r.wodPoints[workoutId] : r.totalPoints)}</Txt>
                 </View>
               ))}
             </View>
