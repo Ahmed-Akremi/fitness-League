@@ -146,6 +146,7 @@ function HomeBody({ me }: { me: Me }) {
             ['group', t('friends'), '/friends'],
             ['sports-mma', t('battles'), '/battles'],
             ['dynamic-feed', t('feed'), '/feed'],
+            ['military-tech', t('competitions'), '/competitions'],
           ] as [IconName, string, string][]
         ).map(([icon, label, route]) => (
           <Pressable key={route} accessibilityRole="button" onPress={() => router.push(route as never)} style={{ flex: 1, alignItems: 'center', gap: 4, paddingVertical: 14, borderRadius: 16, borderWidth: 1, borderColor: colors.surfaceHigh }}>
@@ -263,6 +264,8 @@ export function ProfileScreen() {
       <ListRow icon="military-tech" title={t('badges')} onPress={() => router.push('/badges')} />
       <ListRow icon="group" title={t('friends')} onPress={() => router.push('/friends')} />
       <ListRow icon="sports-mma" title={t('battles')} onPress={() => router.push('/battles')} />
+      <ListRow icon="military-tech" title={t('competitions')} onPress={() => router.push('/competitions')} />
+      <ListRow icon="gavel" title={t('judgeSpace')} onPress={() => router.push('/judge')} />
       <ListRow icon="monitor-weight" title={t('body')} onPress={() => router.push('/me/body')} />
       <ListRow icon="settings" title={t('settings')} onPress={() => router.push('/settings')} />
     </Screen>
