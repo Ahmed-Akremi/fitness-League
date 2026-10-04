@@ -13,7 +13,7 @@ The name is configurable (`APP_NAME`).
 ```
 apps/api       NestJS API + worker (Prisma, PostgreSQL 16)
 apps/admin     React admin panel (Vite + TypeScript)
-apps/mobile    Flutter app (Android, iOS; web build for previews)
+apps/mobile-rn React Native app (Expo: Android, iOS; web build for previews)
 infra/         docker-compose + seed data (Tunisia, sports, exercises, rule set v1)
 docs/          architecture document
 ```
@@ -80,7 +80,7 @@ With the API running: `cd apps/api && pnpm demo-data` (idempotent). Athletes `ah
 
 ## Mobile app
 
-See [`apps/mobile/README.md`](apps/mobile/README.md) (`flutter pub get`, `build_runner`, `gen-l10n`, `flutter run`).
+See [`apps/mobile-rn/README.md`](apps/mobile-rn/README.md) (`npx expo run:android`, or `pnpm web` for a browser preview).
 
 ## What exists today
 

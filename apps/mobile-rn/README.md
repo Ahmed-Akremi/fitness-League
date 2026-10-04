@@ -1,13 +1,13 @@
 # Fitness League — React Native (Expo)
 
-React Native port of the Flutter app in `apps/mobile` (design: `docs/superpowers/specs/2026-09-30-react-native-port-design.md`).
+The mobile app (it replaced the earlier Flutter app; design: `docs/superpowers/specs/2026-09-30-react-native-port-design.md`).
 Expo SDK 57, expo-router, TanStack Query, Zustand, expo-sqlite (offline outbox), socket.io.
 
 ## Run
 
 ```bash
 pnpm install                      # from the repo root
-pnpm infra:up && pnpm --filter @fitness-league/api dev   # the API, as for the Flutter app
+pnpm infra:up && pnpm --filter @fitness-league/api dev   # the API
 cd apps/mobile-rn
 npx expo run:android              # development build (native modules: sqlite, secure-store, datetimepicker)
 ```
@@ -31,5 +31,5 @@ npx expo-doctor
 
 ## Translations
 
-`src/core/i18n/{en,fr,ar}.json` are generated from the Flutter ARB files (ICU syntax kept):
-`pnpm i18n` after editing `apps/mobile/lib/core/l10n/*.arb`. Arabic switches the layout to right-to-left (reload).
+`src/core/i18n/{en,fr,ar}.json` hold every text (ICU message syntax); add a key to all three files.
+Arabic switches the layout to right-to-left (reload).

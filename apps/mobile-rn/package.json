@@ -50,8 +50,7 @@
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
     "lint": "tsc --noEmit",
-    "test": "jest",
-    "i18n": "node scripts/arb-to-json.mjs"
+    "test": "jest"
   },
   "private": true,
   "jest": {
