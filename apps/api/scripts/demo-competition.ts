@@ -51,6 +51,8 @@ async function main() {
     console.log(`Competition "${SLUG}" already exists: nothing to do.`);
     return prisma.$disconnect();
   }
+  // This throw-away in-process API registers 15 demo accounts from one IP: the sign-up limit would stop it.
+  process.env.RATE_LIMIT_ENABLED = 'false';
   const app: INestApplication = await createApp();
   await app.init();
   await app.listen(0);
@@ -63,11 +65,13 @@ async function main() {
   };
 
   try {
+    const crossfit = (await prisma.sport.findUniqueOrThrow({ where: { code: 'CROSSFIT' } })).id;
     const gov = await prisma.governorate.findUniqueOrThrow({ where: { code: 'TN-11' }, include: { cities: { take: 1 } } });
     /** Registers (or reuses) a demo account, verifies it, sets gender/role, and returns a fresh token. */
     const account = async (username: string, fullName: string, extra: { gender?: string; dob?: string; role?: 'GYM_ADMIN' } = {}) => {
       const email = `${username}@demo.fitnessleague.test`;
-      if (!(await prisma.user.findUnique({ where: { email } }))) {
+      const created = !(await prisma.user.findUnique({ where: { email } }));
+      if (created) {
         await call('POST', '/auth/register', undefined, {
           username,
           fullName,
@@ -83,6 +87,11 @@ async function main() {
       const user = await prisma.user.update({ where: { email }, data: { emailVerifiedAt: new Date(), ...(extra.role ? { role: extra.role } : {}) } });
       if (extra.gender) await prisma.profile.update({ where: { userId: user.id }, data: { gender: extra.gender as 'MALE' | 'FEMALE' } });
       const s = await call<{ accessToken: string }>('POST', '/auth/login', undefined, { email, password: PASSWORD });
+      // Onboarded like the app's demo athletes, so signing in opens the app instead of the onboarding flow.
+      if (created) {
+        await call('POST', '/me/onboarding/sports', s.accessToken, { sportIds: [crossfit], primarySportId: crossfit });
+        await call('POST', '/me/onboarding/complete', s.accessToken);
+      }
       return { id: user.id, token: s.accessToken };
     };
 
