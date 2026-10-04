@@ -20,6 +20,18 @@ describe('demo backend (offline build)', () => {
     expect(Array.isArray(board.data)).toBe(true);
   });
 
+  it('includes a competition, its leaderboard and the judge view by athlete', async () => {
+    const list = await api().get<{ id: string }[]>('/competitions', { filter: 'REGISTRATION_OPEN' });
+    expect(list.length).toBeGreaterThan(0);
+    const c = await api().get<{ categories: { id: string }[] }>(`/competitions/${list[0].id}`);
+    const board = await api().get<{ rows: unknown[] }>(`/competitions/${list[0].id}/leaderboard`, { categoryId: c.categories[0].id });
+    expect(Array.isArray(board.rows)).toBe(true);
+    const groups = await api().get<{ athletes: { submissions: { id: string; videoUrl: string }[] }[] }[]>('/judge/athletes');
+    const sub = groups[0].athletes[0].submissions[0];
+    expect(sub.videoUrl).toContain('youtube.com');
+    await expect(api().get(`/judge/submissions/${sub.id}`)).resolves.toMatchObject({ id: sub.id });
+  });
+
   it('accepts writes without storing them and 404s the unknown', async () => {
     await expect(api().post('/workouts/sync', { items: [] })).resolves.toEqual({ results: [] });
     await expect(api().get('/nowhere')).rejects.toMatchObject({ status: 404 });
