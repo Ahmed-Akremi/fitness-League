@@ -119,8 +119,7 @@ export class AdminApi {
 export function errorText(e: unknown): string {
   if (!(e instanceof ApiError)) return 'Erreur réseau : vérifiez la connexion à l’API.';
   const messages: Record<string, string> = {
-    INVALID_CREDENTIALS: 'Email, mot de passe ou code incorrect.',
-    TOTP_REQUIRED: 'Code de l’application d’authentification requis.',
+    INVALID_CREDENTIALS: 'Email ou mot de passe incorrect.',
     ACCOUNT_LOCKED: 'Compte temporairement verrouillé (trop de tentatives).',
     FORBIDDEN: 'Action non autorisée pour votre rôle.',
     VALIDATION_FAILED: 'Données invalides.',

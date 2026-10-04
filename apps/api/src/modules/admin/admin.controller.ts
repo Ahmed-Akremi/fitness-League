@@ -8,7 +8,7 @@ import { AuthService } from '../auth/auth.service';
 import { RefreshDto } from '../auth/dto/auth.dto';
 import { AdminAuthService } from './admin-auth.service';
 import { AdminService } from './admin.service';
-import { AdminLoginDto, TotpConfirmDto } from './dto/admin-auth.dto';
+import { AdminLoginDto } from './dto/admin-auth.dto';
 import {
   AuditQueryDto,
   CreateDraftDto,
@@ -35,19 +35,12 @@ export class AdminAuthController {
     private readonly auth: AuthService,
   ) {}
 
-  /** Step 1: password (+ code). First time: returns a TOTP enrolment instead of a session. */
+  /** Email + password; staff only. */
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @RateLimit({ name: 'admin-login-ip', limit: 10, windowS: 60, by: 'ip' }, { name: 'admin-login-account', limit: 5, windowS: 900, by: 'body.email' })
   login(@Body() dto: AdminLoginDto, @Req() req: Request) {
-    return this.adminAuth.login(dto.email, dto.password, dto.code, ctx(req));
-  }
-
-  @Post('totp/confirm')
-  @HttpCode(HttpStatus.OK)
-  @RateLimit({ name: 'admin-totp', limit: 10, windowS: 900, by: 'ip' })
-  confirm(@Body() dto: TotpConfirmDto, @Req() req: Request) {
-    return this.adminAuth.confirmTotp(dto.setupToken, dto.code, ctx(req));
+    return this.adminAuth.login(dto.email, dto.password, ctx(req));
   }
 
   @Post('refresh')

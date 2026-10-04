@@ -126,7 +126,7 @@ async function main(): Promise<void> {
     }
     await call('POST', '/goals', ahmed.token, { type: 'HABIT', metricCode: 'WORKOUTS_PER_WEEK', targetValue: 3 });
 
-    // Staff account for the admin panel (TOTP is enrolled at first sign-in).
+    // Staff account for the admin panel (email + password).
     const admin = await call<{ userId: string }>('POST', '/auth/register', undefined, {
       username: 'admin',
       fullName: 'Admin Demo',

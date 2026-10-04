@@ -486,7 +486,6 @@ model User {
   lockedUntil      DateTime?  @map("locked_until") @db.Timestamptz
   suspendedUntil   DateTime?  @map("suspended_until") @db.Timestamptz
   sessionVersion   Int        @default(1) @map("session_version")
-  totpSecretEnc    Bytes?     @map("totp_secret_enc")
   lastLoginAt      DateTime?  @map("last_login_at") @db.Timestamptz
   createdAt        DateTime   @default(now()) @map("created_at") @db.Timestamptz
   updatedAt        DateTime   @updatedAt @map("updated_at") @db.Timestamptz

@@ -8,15 +8,11 @@ export interface Me {
   role: 'MODERATOR' | 'ADMIN' | 'SUPER_ADMIN';
 }
 
-type LoginResult = { session: Session } | { totpSetup: { secret: string; otpauthUrl: string; setupToken: string } };
-
 interface AuthState {
   api: AdminApi;
   me: Me | null;
   ready: boolean;
-  /** Returns the TOTP enrolment data when the account has no authenticator yet. */
-  login(email: string, password: string, code?: string): Promise<LoginResult>;
-  confirmTotp(setupToken: string, code: string): Promise<void>;
+  login(email: string, password: string): Promise<void>;
   logout(): Promise<void>;
 }
 
@@ -42,16 +38,8 @@ export function AuthProvider({ children, api = defaultApi }: { children: ReactNo
       api,
       me,
       ready,
-      async login(email, password, code) {
-        const res = await api.post<LoginResult>('/admin/auth/login', { email, password, ...(code && { code }) });
-        if ('session' in res) {
-          api.setSession(res.session);
-          await loadMe();
-        }
-        return res;
-      },
-      async confirmTotp(setupToken, code) {
-        const res = await api.post<{ session: Session }>('/admin/auth/totp/confirm', { setupToken, code });
+      async login(email, password) {
+        const res = await api.post<{ session: Session }>('/admin/auth/login', { email, password });
         api.setSession(res.session);
         await loadMe();
       },

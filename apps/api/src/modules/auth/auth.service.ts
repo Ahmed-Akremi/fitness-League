@@ -265,11 +265,6 @@ export class AuthService {
     return user;
   }
 
-  /** Records a failed second factor like a failed password (same lockout). */
-  async recordFailedSecondFactor(user: User, ctx: RequestContext): Promise<void> {
-    await this.recordFailedLogin(user, undefined, ctx);
-  }
-
   async startSession(user: User, audience: TokenAudience): Promise<SessionDto> {
     const now = this.clock.now();
     return this.prisma.$transaction(async (tx) => {

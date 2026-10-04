@@ -10,7 +10,7 @@ export const ADMIN_API = 'adminApi';
 /** Routes are authenticated by default; this opts a route out. */
 export const Public = () => SetMetadata(IS_PUBLIC, true);
 export const Roles = (...roles: Role[]) => SetMetadata(REQUIRED_ROLES, roles);
-/** Admin-panel routes: only accept admin-audience tokens (issued after password + TOTP), never app tokens. */
+/** Admin-panel routes: only accept admin-audience tokens (issued by the admin sign-in), never app tokens. */
 export const AdminApi = () => SetMetadata(ADMIN_API, true);
 /** Competitive features (leaderboards, battles, gym creation) need a verified email (docs §9.1). */
 export const RequiresVerifiedEmail = () => SetMetadata(REQUIRES_VERIFIED_EMAIL, true);

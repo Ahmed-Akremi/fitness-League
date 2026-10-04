@@ -66,15 +66,6 @@ export const envSchema = z.object({
       return keys;
     }),
 
-  /**
-   * DEV ONLY: a fixed 6-digit code accepted as the admin second factor (and skipping authenticator enrolment).
-   * Refused at boot when NODE_ENV=production.
-   */
-  DEV_STATIC_TOTP_CODE: z
-    .string()
-    .regex(/^\d{6}$/, 'must be 6 digits')
-    .optional(),
-
   /** Media storage: `local` (dev, files served by /media) or `s3` (MinIO/S3 + CDN). */
   STORAGE_DRIVER: z.enum(['local', 's3']).default('local'),
   STORAGE_LOCAL_DIR: z.string().optional(),
@@ -102,7 +93,6 @@ export type Env = z.infer<typeof envSchema>;
 /** Settings that must never reach production. */
 function assertSafeForEnvironment(env: Env): string[] {
   const problems: string[] = [];
-  if (env.NODE_ENV === 'production' && env.DEV_STATIC_TOTP_CODE) problems.push('  - DEV_STATIC_TOTP_CODE: not allowed when NODE_ENV=production');
   if (env.STORAGE_DRIVER === 's3') {
     for (const k of ['S3_BUCKET', 'S3_ACCESS_KEY', 'S3_SECRET_KEY'] as const) if (!env[k]) problems.push(`  - ${k}: required when STORAGE_DRIVER=s3`);
   }

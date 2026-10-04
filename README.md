@@ -64,7 +64,7 @@ cd apps/api && pnpm promote-admin you@example.com SUPER_ADMIN   # after register
 cd apps/admin && pnpm dev                                        # http://localhost:5173 (proxies /api to :3000)
 ```
 
-First sign-in enrols an authenticator app (TOTP is mandatory for staff).
+Staff sign in with email and password (no second factor).
 
 ### Media storage
 
@@ -95,7 +95,7 @@ See [`apps/mobile-rn/README.md`](apps/mobile-rn/README.md) (`npx expo run:androi
 | Weekly LP, divisions, seasons (soft reset), leaderboards (national/region/gym/friends), scheduled jobs | Done, tested |
 | Gyms: directory, verification, memberships | Done, tested |
 | Friends, blocks, search, public profiles, Friend Battles, in-app notifications | Done, tested |
-| Admin API (2FA, RBAC, rule sets with dry run, seasons, catalog, audit, ledger adjustments) + React panel | Done, tested |
+| Admin API (email + password sign-in, RBAC, rule sets with dry run, seasons, catalog, audit, ledger adjustments) + React panel | Done, tested |
 | Media storage (local disk in dev, S3/MinIO in prod), gym logos (PNG/JPEG/WebP ≤ 2 MB → 512×512 WebP) | Done, tested |
 | Gym directory: sports offered, accent-insensitive search, sort by members; owners submit a gym with a photo, staff approve it | Done, tested |
 | CrossFit & Hyrox: movements, benchmark WODs (Fran, Murph, Cindy…), Hyrox race and stations, `FINISH_TIME` records, timed anti-cheat bounds, rule set v2 | Done, tested |

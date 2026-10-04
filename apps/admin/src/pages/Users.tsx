@@ -19,7 +19,6 @@ interface Page<T> {
   page: { nextCursor: string | null };
 }
 interface UserDetail extends UserRow {
-  twoFactor: boolean;
   suspendedUntil: string | null;
   governorate?: string;
   gym: string | null;
@@ -107,7 +106,7 @@ function UserPanel({ id, onChanged }: { id: string; onChanged: () => void }) {
       </h3>
       <p>
         {data.role} · {data.status}
-        {data.suspendedUntil ? ` jusqu’au ${new Date(data.suspendedUntil).toLocaleString('fr-FR')}` : ''} · 2FA {data.twoFactor ? 'oui' : 'non'} · email{' '}
+        {data.suspendedUntil ? ` jusqu’au ${new Date(data.suspendedUntil).toLocaleString('fr-FR')}` : ''} · email{' '}
         {data.emailVerified ? 'vérifié' : 'non vérifié'}
       </p>
       <p>

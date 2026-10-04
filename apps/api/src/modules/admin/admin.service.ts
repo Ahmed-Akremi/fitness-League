@@ -122,7 +122,6 @@ export class AdminService {
       status: u.status,
       suspendedUntil: u.suspendedUntil?.toISOString() ?? null,
       emailVerified: u.emailVerifiedAt !== null,
-      twoFactor: u.totpSecretEnc !== null,
       governorate: u.profile?.governorate.code,
       gym: u.profile?.primaryGym?.name ?? null,
       level: u.stats?.level ?? 1,

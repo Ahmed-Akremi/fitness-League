@@ -907,7 +907,7 @@ All jobs run in the **worker** process (BullMQ), are **idempotent** (keyed by bu
 - **Email verification** required for competitive features (U✓): leaderboards, battles, gym creation. Token 24 h, single use.
 - **Lockout**: 5 failed logins → 15 min lock (doubling up to 24 h), notification email. Generic error messages (no enumeration).
 - **Age gate**: `age(dob) < min_age_years` → `UNDER_AGE`, no account created, nothing stored except a hashed-email throttle entry for 24 h.
-- **Admin panel**: separate `aud=admin`, only roles MODERATOR+; **TOTP 2FA mandatory** for MODERATOR/ADMIN/SUPER_ADMIN (proposed, Q-10); admin logins audited; IP allow-list optional via env.
+- **Admin panel**: separate `aud=admin`, only roles MODERATOR+; email + password sign-in, **no second factor** (2FA removed 2026-10 at the owner's request; Q-10); admin logins audited; IP allow-list optional via env.
 
 ### 9.2 RBAC matrix
 
@@ -1032,7 +1032,7 @@ Reference data: `ETag` + `updatedSince` delta. Read models: stale-while-revalida
 | Security | Jest integration suite | authorization bypass (IDOR on every `/{id}` route), privilege escalation (role change paths), **client-sent points ignored** (`xp`/`lp`/`points` fields rejected), rate limits, invalid uploads (spoofed MIME, oversize, polyglot), JWT tampering / `aud` confusion (app token on admin API) |
 | Contract | OpenAPI diff in CI | generated clients up to date; breaking changes flagged |
 | Mobile | `flutter test` (unit + widget, golden tests for key cards), `integration_test` on emulator | onboarding, log workout (incl. offline → sync), battle flow, leaderboard; RTL goldens (Arabic) and large-font goldens |
-| Admin | Vitest + Testing Library, Playwright smoke | login + 2FA, rule-set edit/validate/activate, user suspend, season create |
+| Admin | Vitest + Testing Library, Playwright smoke | login, rule-set edit/validate/activate, user suspend, season create |
 | Load (before launch) | k6 | workout ingestion 50 rps, leaderboard reads 500 rps, weekly close on 100k users < 10 min |
 
 Clock is injected (`ClockService`) everywhere so weeks/seasons/battles are testable. Coverage target: ≥ 90 % lines on `scoring`, `ledger`, `anticheat`, `progress`; ≥ 80 % elsewhere.
@@ -1069,7 +1069,7 @@ Clock is injected (`ClockService`) everywhere so weeks/seasons/battles are testa
 | **Q-7** | Gender is optional, but strength standards differ strongly by sex and body weight is private/optional. How to derive level and plausibility when they are missing? | Use them server-side when given (never displayed); otherwise conservative unisex absolute tables. |
 | **Q-8** | Streak: daily streak (with planned rest days/freezes) or weekly streak (weeks meeting the plan)? A daily streak pushes daily training, which conflicts with §5 safety. | **Weekly streak** as the headline ("12-week streak"), plus a daily streak where planned rest days never break it. |
 | **Q-9** | One gym per user, or several (e.g. a CrossFit box + a regular gym)? | One primary gym (counts for Gym Wars and gym leaderboard). |
-| **Q-10** | Rule-set activation: super admin only, or admin + four-eyes approval? Mandatory 2FA for staff? | Super admin only in P1; TOTP 2FA mandatory for moderators and above. |
+| **Q-10** | Rule-set activation: super admin only, or admin + four-eyes approval? Mandatory 2FA for staff? | Super admin only in P1; no 2FA for staff (removed 2026-10 at the owner's request). |
 | **Q-11** | Gym Wars: gyms opt in weekly (gym admin) or auto-enrolled if eligible? | Auto-enrolled, gym admin can opt out. |
 | **Q-12** | Arabic: Modern Standard Arabic or Tunisian Derja for UI copy? Default language? | MSA for UI, French as default locale for Tunisia. |
 | **Q-13** | Real-time in Phase 1: needed for Friend Battle scores, or is polling (30 s on the battle screen) enough until the WebSocket gateway lands with notifications in Phase 2? | Polling in P1, Socket.IO in P2. |

@@ -3,7 +3,6 @@ import { PrismaClient } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import request from 'supertest';
 import { OutboxDispatcher } from '../src/common/outbox/outbox-dispatcher';
-import { totp } from '../src/modules/admin/totp';
 import { adminBearer, registerUser, setupTestApp } from './helpers';
 
 describe('Admin API: 2FA sign-in, users, rule sets, seasons, ledger (integration)', () => {
@@ -26,27 +25,20 @@ describe('Admin API: 2FA sign-in, users, rule sets, seasons, ledger (integration
     await prisma?.$disconnect();
   });
 
-  it('signs staff in with password + mandatory TOTP, in a session separate from the app', async () => {
+  it('signs staff in with email + password only, in a session separate from the app', async () => {
     const { body, session } = await registerUser(app, prisma);
     const creds = { email: body.email, password: body.password };
     // A regular athlete can't use the admin panel at all.
     expect((await api().post('/api/v1/admin/auth/login').send(creds).expect(403)).body.code).toBe('FORBIDDEN');
 
     await prisma.user.update({ where: { id: session.userId }, data: { role: 'ADMIN' } });
+    await api().post('/api/v1/admin/auth/login').send({ ...creds, password: 'wrong password!' }).expect(401);
     const first = await api().post('/api/v1/admin/auth/login').send(creds).expect(200);
-    expect(first.body.totpSetup.otpauthUrl).toMatch(/^otpauth:\/\/totp\//);
-    const secret = first.body.totpSetup.secret as string;
-
-    await api().post('/api/v1/admin/auth/totp/confirm').send({ setupToken: first.body.totpSetup.setupToken, code: '000000' }).expect(422);
-    const confirmed = await api().post('/api/v1/admin/auth/totp/confirm').send({ setupToken: first.body.totpSetup.setupToken, code: totp(secret, new Date()) }).expect(200);
-    const adminAccess = confirmed.body.session.accessToken as string;
-    expect((await prisma.user.findUniqueOrThrow({ where: { id: session.userId } })).totpSecretEnc).not.toBeNull();
-
-    // From now on the code is required.
-    expect((await api().post('/api/v1/admin/auth/login').send(creds).expect(401)).body.code).toBe('TOTP_REQUIRED');
-    await api().post('/api/v1/admin/auth/login').send({ ...creds, code: '123456' }).expect(401);
-    const second = await api().post('/api/v1/admin/auth/login').send({ ...creds, code: totp(secret, new Date()) }).expect(200);
-    expect(second.body.session.accessToken).toBeDefined();
+    expect(first.body.totpSetup).toBeUndefined();
+    const adminAccess = first.body.session.accessToken as string;
+    // No second step: the former enrolment route is gone.
+    await api().post('/api/v1/admin/auth/totp/confirm').send({ setupToken: 'x'.repeat(30), code: '000000' }).expect(404);
+    const second = await api().post('/api/v1/admin/auth/login').send(creds).expect(200);
 
     // Audiences never mix.
     await api().get('/api/v1/admin/stats/overview').set({ authorization: `Bearer ${adminAccess}` }).expect(200);
@@ -57,27 +49,6 @@ describe('Admin API: 2FA sign-in, users, rule sets, seasons, ledger (integration
     expect(await prisma.auditLog.count({ where: { actorId: session.userId, action: 'ADMIN_LOGIN' } })).toBe(2);
   });
 
-  it('accepts a static dev 2FA code only when DEV_STATIC_TOTP_CODE is configured', async () => {
-    const { body, session } = await registerUser(app, prisma);
-    await prisma.user.update({ where: { id: session.userId }, data: { role: 'ADMIN' } });
-    const creds = { email: body.email, password: body.password, code: '000000' };
-
-    // Default app (no static code): 000000 is just a wrong code, and enrolment is still required.
-    const normal = await api().post('/api/v1/admin/auth/login').send(creds).expect(200);
-    expect(normal.body.totpSetup).toBeDefined();
-
-    const { app: devApp } = await setupTestApp({ DEV_STATIC_TOTP_CODE: '000000' });
-    try {
-      const dev = await request(devApp.getHttpServer()).post('/api/v1/admin/auth/login').send(creds).expect(200);
-      expect(dev.body.session.accessToken).toBeDefined();
-      await request(devApp.getHttpServer()).get('/api/v1/admin/stats/overview').set({ authorization: `Bearer ${dev.body.session.accessToken}` }).expect(200);
-      // The password is still checked, and other codes still fail.
-      await request(devApp.getHttpServer()).post('/api/v1/admin/auth/login').send({ ...creds, password: 'wrong password!' }).expect(401);
-      await request(devApp.getHttpServer()).post('/api/v1/admin/auth/login').send({ ...creds, code: '111111' }).expect(200); // no secret yet → enrolment offered
-    } finally {
-      await devApp.close();
-    }
-  });
 
   it('enforces the RBAC matrix on user sanctions and roles', async () => {
     const mod = await staff('MODERATOR');
