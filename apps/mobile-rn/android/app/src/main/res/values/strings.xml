@@ -1,0 +1,4 @@
+<resources>
+  <string name="app_name">Fitness League</string>
+  <string name="ExpoLocalization_supportsRTL" translatable="false">true</string>
+</resources>
