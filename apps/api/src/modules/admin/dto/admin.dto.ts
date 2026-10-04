@@ -5,6 +5,7 @@ import {
   ArrayMaxSize,
   IsArray,
   IsBoolean,
+  IsEmail,
   IsEnum,
   IsIn,
   IsInt,
@@ -249,4 +250,18 @@ export class RecomputeDto {
   @IsString()
   @Length(5, 300)
   reason!: string;
+}
+
+export class CreateJudgeDto {
+  @ApiProperty({ example: 'judge.sousse@example.com' })
+  @IsEmail()
+  email!: string;
+
+  @ApiProperty({ example: 'judge_sousse' })
+  @Matches(/^[a-z0-9_.]{3,20}$/)
+  username!: string;
+
+  @ApiProperty({ enum: ['JUDGE', 'HEAD_JUDGE'] })
+  @IsIn(['JUDGE', 'HEAD_JUDGE'])
+  role!: 'JUDGE' | 'HEAD_JUDGE';
 }

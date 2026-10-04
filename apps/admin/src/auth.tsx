@@ -5,7 +5,7 @@ export interface Me {
   id: string;
   email: string;
   username: string;
-  role: 'MODERATOR' | 'ADMIN' | 'SUPER_ADMIN';
+  role: 'MODERATOR' | 'ADMIN' | 'SUPER_ADMIN' | 'JUDGE' | 'HEAD_JUDGE';
 }
 
 interface AuthState {
@@ -60,3 +60,5 @@ export function useAuth(): AuthState {
 }
 
 export const canAdmin = (me: Me | null) => me?.role === 'ADMIN' || me?.role === 'SUPER_ADMIN';
+/** Judge accounts only see the judge space. */
+export const isJudge = (me: Me | null) => me?.role === 'JUDGE' || me?.role === 'HEAD_JUDGE';

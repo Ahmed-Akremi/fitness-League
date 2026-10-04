@@ -1,7 +1,7 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { CompetitionStatus, Prisma } from '@prisma/client';
 import { AuditService } from '../../common/audit/audit.service';
-import type { AuthUser } from '../../common/auth/auth-user';
+import { AuthUser, JUDGE_ROLES } from '../../common/auth/auth-user';
 import { ClockService } from '../../common/clock/clock.service';
 import { AppException, ErrorCode } from '../../common/errors/app-exception';
 import { uuidv7 } from '../../common/ids/uuid';
@@ -328,8 +328,19 @@ export class CompetitionsService {
 
   // ───────────── Staff, prizes, coupons, announcements ─────────────
 
+  /**
+   * Organizers manage the whole staff; head judges manage the judges and head judges. Judges and head judges
+   * must be judge accounts (created by admins), which never compete.
+   */
   async addStaff(user: AuthUser, competitionId: string, dto: StaffDto) {
-    await this.judging.requireRole(user, competitionId, ['ORGANIZER']);
+    await this.judging.requireRole(user, competitionId, dto.role === 'ORGANIZER' ? ['ORGANIZER'] : ['ORGANIZER', 'HEAD_JUDGE']);
+    if (dto.role !== 'ORGANIZER') {
+      const target = await this.prisma.user.findUnique({ where: { id: dto.userId }, select: { role: true } });
+      if (!target) throw AppException.notFound('User');
+      if (dto.role === 'HEAD_JUDGE' ? target.role !== 'HEAD_JUDGE' : !JUDGE_ROLES.includes(target.role)) {
+        throw AppException.forbidden(dto.role === 'HEAD_JUDGE' ? 'Head judge accounts only' : 'Judge accounts only');
+      }
+    }
     const staff = await this.prisma.competitionStaff.upsert({
       where: { competitionId_userId_role: { competitionId, userId: dto.userId, role: dto.role } },
       create: { id: uuidv7(), competitionId, userId: dto.userId, role: dto.role },
@@ -345,7 +356,9 @@ export class CompetitionsService {
   }
 
   async removeStaff(user: AuthUser, competitionId: string, staffId: string) {
-    await this.judging.requireRole(user, competitionId, ['ORGANIZER']);
+    const staff = await this.prisma.competitionStaff.findFirst({ where: { id: staffId, competitionId } });
+    if (!staff) throw AppException.notFound('Staff');
+    await this.judging.requireRole(user, competitionId, staff.role === 'ORGANIZER' ? ['ORGANIZER'] : ['ORGANIZER', 'HEAD_JUDGE']);
     await this.prisma.competitionStaff.delete({ where: { id: staffId, competitionId } });
     await this.audit.log({ actorId: user.id, actorRole: user.role, action: 'competition.staff.removed', entityType: 'CompetitionStaff', entityId: staffId });
   }

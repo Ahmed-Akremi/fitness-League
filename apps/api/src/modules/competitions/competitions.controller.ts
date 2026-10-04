@@ -304,7 +304,7 @@ export class CompetitionsController {
 @ApiBearerAuth()
 @Controller('judge')
 export class JudgeController {
-  constructor(private readonly judging: JudgingService) {}
+  constructor(protected readonly judging: JudgingService) {}
 
   @Get('athletes')
   athletes(@CurrentUser() user: AuthUser, @Query() q: JudgeAthletesQueryDto) {
@@ -359,7 +359,62 @@ export class JudgeController {
 }
 
 /**
- * Admin panel → Competitions (§55): the same services behind admin-audience tokens (password + TOTP), so the
+ * The judge space of the web admin panel (judge accounts never use the app): the same routes behind
+ * admin-audience tokens, plus what head judges need to run their team (§26-§30, §44). The services check the
+ * competition roles.
+ */
+@ApiTags('judge')
+@ApiBearerAuth()
+@AdminApi()
+@Controller('admin/judge')
+export class AdminJudgeController extends JudgeController {
+  constructor(
+    judging: JudgingService,
+    private readonly competitions: CompetitionsService,
+  ) {
+    super(judging);
+  }
+
+  @Get('competitions')
+  myCompetitions(@CurrentUser() user: AuthUser) {
+    return this.judging.myCompetitions(user);
+  }
+
+  @Get('competitions/:id/staff')
+  staff(@CurrentUser() user: AuthUser, @id() competitionId: string) {
+    return this.competitions.listStaff(user, competitionId);
+  }
+
+  @Post('competitions/:id/staff')
+  addStaff(@CurrentUser() user: AuthUser, @id() competitionId: string, @Body() dto: StaffDto) {
+    return this.competitions.addStaff(user, competitionId, dto);
+  }
+
+  @Delete('competitions/:id/staff/:staffId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  removeStaff(@CurrentUser() user: AuthUser, @id() competitionId: string, @id('staffId') staffId: string): Promise<void> {
+    return this.competitions.removeStaff(user, competitionId, staffId);
+  }
+
+  @Post('competitions/:id/judge-assignments')
+  assign(@CurrentUser() user: AuthUser, @id() competitionId: string, @Body() dto: AssignmentDto) {
+    return this.competitions.assign(user, competitionId, dto);
+  }
+
+  @Get('competitions/:id/appeals')
+  appeals(@CurrentUser() user: AuthUser, @id() competitionId: string) {
+    return this.judging.appeals(user, competitionId);
+  }
+
+  @Post('competitions/:id/publish-leaderboard')
+  @HttpCode(HttpStatus.OK)
+  publish(@CurrentUser() user: AuthUser, @id() competitionId: string) {
+    return this.judging.publish(user, competitionId);
+  }
+}
+
+/**
+ * Admin panel → Competitions (§55): the same services behind admin-audience tokens (email + password), so the
  * existing web dashboard manages competitions without a second dashboard. Platform admins hold every
  * competition role, the rules stay in the services.
  */

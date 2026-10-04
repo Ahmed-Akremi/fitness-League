@@ -21,6 +21,9 @@ enum Role {
   MODERATOR
   GYM_ADMIN
   USER
+  /// Judge-only accounts, created by admins: admin panel judge space only, never the app.
+  JUDGE
+  HEAD_JUDGE
 }
 
 enum UserStatus {

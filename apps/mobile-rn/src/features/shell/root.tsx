@@ -134,8 +134,6 @@ export function AppRoot() {
           <Stack.Screen name="competitions/[id]/index" options={{ title: t('competitions') }} />
           <Stack.Screen name="competitions/[id]/register" options={{ title: t('compRegister') }} />
           <Stack.Screen name="competitions/[id]/wods/[wodId]/submit" options={{ title: t('compSubmitScore') }} />
-          <Stack.Screen name="judge/index" options={{ title: t('judgeSpace') }} />
-          <Stack.Screen name="judge/[id]" options={{ title: t('judgeSpace') }} />
         </Stack.Protected>
       </Stack>
       <ToastHost />

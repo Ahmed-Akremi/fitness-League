@@ -265,7 +265,6 @@ export function ProfileScreen() {
       <ListRow icon="group" title={t('friends')} onPress={() => router.push('/friends')} />
       <ListRow icon="sports-mma" title={t('battles')} onPress={() => router.push('/battles')} />
       <ListRow icon="military-tech" title={t('competitions')} onPress={() => router.push('/competitions')} />
-      <ListRow icon="gavel" title={t('judgeSpace')} onPress={() => router.push('/judge')} />
       <ListRow icon="monitor-weight" title={t('body')} onPress={() => router.push('/me/body')} />
       <ListRow icon="settings" title={t('settings')} onPress={() => router.push('/settings')} />
     </Screen>

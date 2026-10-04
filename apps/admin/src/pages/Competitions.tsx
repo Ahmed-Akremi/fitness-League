@@ -121,6 +121,7 @@ export function CompetitionDetail() {
   const regs = useFetch(() => api.get<J[]>(`${base}/registrations`), [api, id]);
   const coupons = useFetch(() => api.get<J[]>(`${base}/coupons`), [api, id]);
   const staff = useFetch(() => api.get<J[]>(`${base}/staff`), [api, id]);
+  const judgeAccounts = useFetch(() => api.get<J[]>('/admin/judges'), [api]);
   const heats = useFetch(() => api.get<J[]>(`${base}/heats`), [api, id]);
   const athletes = useFetch(() => api.get<J>(`${base}/athletes`), [api, id]);
   const [categoryId, setCategoryId] = useState('');
@@ -355,8 +356,22 @@ export function CompetitionDetail() {
             void run('Membre du staff ajouté.', () => api.post(`${base}/staff`, judge));
           }}
         >
-          <input required placeholder="Identifiant utilisateur (UUID)" value={judge.userId} onChange={(e) => setJudge({ ...judge, userId: e.target.value })} />
-          <select value={judge.role} onChange={(e) => setJudge({ ...judge, role: e.target.value })}>
+          {judge.role === 'ORGANIZER' ? (
+            <input required placeholder="Identifiant utilisateur (UUID)" value={judge.userId} onChange={(e) => setJudge({ ...judge, userId: e.target.value })} />
+          ) : (
+            // Judges and head judges are judge accounts (menu « Comptes juges »), never athletes.
+            <select required aria-label="Compte juge" value={judge.userId} onChange={(e) => setJudge({ ...judge, userId: e.target.value })}>
+              <option value="">— Compte juge —</option>
+              {(judgeAccounts.data ?? [])
+                .filter((a) => judge.role === 'JUDGE' || a.role === 'HEAD_JUDGE')
+                .map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.username} ({a.role})
+                  </option>
+                ))}
+            </select>
+          )}
+          <select value={judge.role} onChange={(e) => setJudge({ userId: '', role: e.target.value })}>
             <option>JUDGE</option>
             <option>HEAD_JUDGE</option>
             <option>ORGANIZER</option>

@@ -1,7 +1,7 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { CompetitionStaffRole, CompetitionSubmission, CompetitionWorkout, Prisma } from '@prisma/client';
 import { AuditService } from '../../common/audit/audit.service';
-import type { AuthUser } from '../../common/auth/auth-user';
+import { AuthUser, JUDGE_ROLES } from '../../common/auth/auth-user';
 import { ClockService } from '../../common/clock/clock.service';
 import { AppException, ErrorCode } from '../../common/errors/app-exception';
 import { uuidv7 } from '../../common/ids/uuid';
@@ -45,6 +45,24 @@ export class JudgingService {
     const mine = await this.roles(competitionId, user.id, tx);
     if (!allowed.some((r) => mine.has(r))) throw AppException.forbidden('Competition staff only');
     return mine;
+  }
+
+  /** Competitions I judge (every one for platform admins), with my roles, the WODs and the categories. */
+  async myCompetitions(user: AuthUser) {
+    const staff = this.isPlatformAdmin(user) ? null : await this.prisma.competitionStaff.findMany({ where: { userId: user.id }, select: { competitionId: true, role: true } });
+    const rows = await this.prisma.competition.findMany({
+      where: { deletedAt: null, ...(staff ? { id: { in: staff.map((s) => s.competitionId) } } : {}) },
+      select: {
+        id: true,
+        title: true,
+        status: true,
+        leaderboardLockedAt: true,
+        workouts: { where: { active: true }, select: { id: true, number: true, name: true }, orderBy: { number: 'asc' } },
+        categories: { select: { id: true, name: true } },
+      },
+      orderBy: { eventStart: 'desc' },
+    });
+    return rows.map((c) => ({ ...c, myRoles: staff ? staff.filter((s) => s.competitionId === c.id).map((s) => s.role) : ['HEAD_JUDGE'] }));
   }
 
   // ───────────── Leaderboard ─────────────
@@ -161,7 +179,10 @@ export class JudgingService {
     if (q.competitionId) where.workout = { competitionId: q.competitionId };
     if (!this.isPlatformAdmin(user)) {
       const staff = await this.prisma.competitionStaff.findMany({ where: { userId: user.id, role: { in: ['JUDGE', 'HEAD_JUDGE', 'ORGANIZER'] } }, include: { assignments: true } });
-      if (!staff.length) throw AppException.forbidden('Judges only');
+      if (!staff.length) {
+        if (JUDGE_ROLES.includes(user.role)) return []; // a judge account not yet on any competition
+        throw AppException.forbidden('Judges only');
+      }
       // Head judges and organizers see their whole competition; judges with assignments see only those.
       where.OR = staff.flatMap((s) =>
         s.role !== 'JUDGE' || s.assignments.length === 0
@@ -199,7 +220,10 @@ export class JudgingService {
         where: { userId: user.id, role: { in: ['JUDGE', 'HEAD_JUDGE', 'ORGANIZER'] }, ...(q.competitionId ? { competitionId: q.competitionId } : {}) },
         include: { assignments: true },
       });
-      if (!staff.length) throw AppException.forbidden('Judges only');
+      if (!staff.length) {
+        if (JUDGE_ROLES.includes(user.role)) return []; // a judge account not yet on any competition
+        throw AppException.forbidden('Judges only');
+      }
       for (const s of staff) {
         const all = s.role !== 'JUDGE' || s.assignments.length === 0 || s.assignments.some((a) => !a.workoutId);
         const current = scopes.get(s.competitionId);

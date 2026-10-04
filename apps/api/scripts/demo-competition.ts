@@ -11,6 +11,8 @@ import { PrismaClient } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import type { AddressInfo } from 'node:net';
 import { createApp } from '../src/bootstrap';
+import { uuidv7 } from '../src/common/ids/uuid';
+import { PasswordService } from '../src/modules/auth/password.service';
 
 const PASSWORD = 'demo-password-2026';
 const SLUG = 'tunisia-functional-fitness-championship';
@@ -94,9 +96,21 @@ async function main() {
       }
       return { id: user.id, token: s.accessToken };
     };
+    /** Judge-only account (admin panel, no app): created as an admin would, signed in to the admin panel. */
+    const judgeAccount = async (username: string, role: 'JUDGE' | 'HEAD_JUDGE') => {
+      const email = `${username}@demo.fitnessleague.test`;
+      const passwordHash = await app.get(PasswordService).hash(PASSWORD);
+      await prisma.user.upsert({
+        where: { email },
+        create: { id: uuidv7(), email, username, role, passwordHash, emailVerifiedAt: new Date(), dateOfBirth: new Date('1970-01-01') },
+        update: { role },
+      });
+      const s = await call<{ session: { accessToken: string; userId: string } }>('POST', '/admin/auth/login', undefined, { email, password: PASSWORD });
+      return { id: s.session.userId, token: s.session.accessToken };
+    };
 
     const people: Record<string, { id: string; token: string }> = {};
-    for (const s of staff) people[s.u] = await account(s.u, s.name, s.role === 'ORGANIZER' ? { role: 'GYM_ADMIN' } : {});
+    for (const s of staff) people[s.u] = s.role === 'ORGANIZER' ? await account(s.u, s.name, { role: 'GYM_ADMIN' }) : await judgeAccount(s.u, s.role);
     for (const a of athletes) people[a.u] = await account(a.u, a.name, { gender: a.g, dob: a.dob });
     const org = people.organizer_demo.token;
     const h = (n: number) => new Date(Date.now() + n * 3_600_000).toISOString();
@@ -164,20 +178,20 @@ async function main() {
         });
         // Most scores approved; one penalty and one left pending to show both states.
         const judge = people[judges[k++ % judges.length]].token;
-        if (a.u === 'mehdi_rx' && i === 3) await call('POST', `/judge/submissions/${s.id}/penalty`, judge, { type: 'NO_REP', points: 10, reason: 'Two no-reps on the bike' });
-        else if (!(a.u === 'hedi_sc' && i === 3)) await call('POST', `/judge/submissions/${s.id}/approve`, judge);
+        if (a.u === 'mehdi_rx' && i === 3) await call('POST', `/admin/judge/submissions/${s.id}/penalty`, judge, { type: 'NO_REP', points: 10, reason: 'Two no-reps on the bike' });
+        else if (!(a.u === 'hedi_sc' && i === 3)) await call('POST', `/admin/judge/submissions/${s.id}/approve`, judge);
       }
     }
     if (process.argv.includes('--publish')) {
-      await call('POST', `/judge/submissions/${(await prisma.competitionSubmission.findFirstOrThrow({ where: { user: { username: 'hedi_sc' }, workoutId: wodIds[3] } })).id}/approve`, people.judge_one.token);
+      await call('POST', `/admin/judge/submissions/${(await prisma.competitionSubmission.findFirstOrThrow({ where: { user: { username: 'hedi_sc' }, workoutId: wodIds[3] } })).id}/approve`, people.judge_one.token);
       await call('PATCH', `/competitions/${cid}/status`, org, { status: 'JUDGING' });
       await call('PATCH', `/competitions/${cid}/status`, org, { status: 'PROVISIONAL_LEADERBOARD' });
-      await call('POST', `/competitions/${cid}/publish-leaderboard`, people.head_judge.token);
+      await call('POST', `/admin/judge/competitions/${cid}/publish-leaderboard`, people.head_judge.token);
     }
     const board = await call<{ rows: { rank: number; athlete: { fullName: string }; totalPoints: number }[] }>('GET', `/competitions/${cid}/leaderboard?categoryId=${catIds['RX Male']}`, org);
     console.log(`Competition ${cid} created (${process.argv.includes('--publish') ? 'final' : 'provisional'} leaderboard). RX Male:`);
     for (const r of board.rows) console.log(`  #${r.rank} ${r.athlete.fullName} — ${r.totalPoints} pts`);
-    console.log(`Accounts: <username>@demo.fitnessleague.test / ${PASSWORD} (organizer_demo, judge_one…three, head_judge, ahmed_rx…)`);
+    console.log(`Accounts: <username>@demo.fitnessleague.test / ${PASSWORD} (app: organizer_demo, ahmed_rx…; admin panel: judge_one…three, head_judge)`);
   } finally {
     await app.close();
     await prisma.$disconnect();

@@ -6,12 +6,13 @@ import { AdminApi, CurrentUser, Public, Roles } from '../../common/auth/decorato
 import { RateLimit } from '../../common/rate-limit/rate-limit';
 import { AuthService } from '../auth/auth.service';
 import { RefreshDto } from '../auth/dto/auth.dto';
-import { AdminAuthService } from './admin-auth.service';
+import { AdminAuthService, PANEL_ROLES } from './admin-auth.service';
 import { AdminService } from './admin.service';
 import { AdminLoginDto } from './dto/admin-auth.dto';
 import {
   AuditQueryDto,
   CreateDraftDto,
+  CreateJudgeDto,
   CreateSeasonDto,
   ExerciseDto,
   LedgerAdjustmentDto,
@@ -61,15 +62,31 @@ export class AdminController {
     private readonly auth: AuthService,
   ) {}
 
+  // Judges sign in to the panel too (judge space only), so these two accept every panel role.
   @Post('auth/logout')
+  @Roles(...PANEL_ROLES)
   @HttpCode(HttpStatus.NO_CONTENT)
   logout(@CurrentUser() user: AuthUser, @Body() dto: RefreshDto): Promise<void> {
     return this.auth.logout(user.id, dto.refreshToken);
   }
 
   @Get('me')
+  @Roles(...PANEL_ROLES)
   me(@CurrentUser() user: AuthUser) {
     return this.admin.user(user.id);
+  }
+
+  // Judge accounts: admins create them; head judges list them to build their judging team.
+  @Get('judges')
+  @Roles('ADMIN', 'SUPER_ADMIN', 'HEAD_JUDGE')
+  judges() {
+    return this.admin.judges();
+  }
+
+  @Post('judges')
+  @Roles('ADMIN', 'SUPER_ADMIN')
+  createJudge(@CurrentUser() user: AuthUser, @Body() dto: CreateJudgeDto) {
+    return this.admin.createJudge(user, dto);
   }
 
   @Get('stats/overview')

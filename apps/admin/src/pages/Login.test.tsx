@@ -56,4 +56,37 @@ describe('staff sign-in', () => {
     await user.click(screen.getByRole('button', { name: 'Se connecter' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Email ou mot de passe incorrect.');
   });
+
+  it('a head judge account opens the judge space only: athletes with their YouTube links, and the team', async () => {
+    const fetchFn = vi.fn(async (url: RequestInfo | URL) => {
+      const path = String(url).replace('/api/v1', '');
+      if (path === '/admin/auth/login') return json(200, { session: { accessToken: 'a', refreshToken: 'r', userId: 'j' } });
+      if (path === '/admin/me') return json(200, { id: 'j', email: 'hj@b.c', username: 'head_judge', role: 'HEAD_JUDGE' });
+      if (path === '/admin/judge/athletes') {
+        return json(200, [
+          {
+            competition: { id: 'c', title: 'Online Throwdown' },
+            wodCount: 4,
+            athletes: [{ athlete: { id: 'a', fullName: 'Ahmed Ben Ali' }, category: { name: 'RX Male' }, submissions: [{ id: 's', status: 'SUBMITTED', workout: { number: 1, name: 'WOD 1' }, points: null, rawValue: 95, videoUrl: 'https://youtu.be/dQw4w9WgXcQ' }] }],
+          },
+        ]);
+      }
+      return json(404, { code: 'NOT_FOUND' });
+    });
+    render(
+      <AuthProvider api={new AdminApi('/api/v1', fetchFn as typeof fetch, memoryStorage())}>
+        <App />
+      </AuthProvider>,
+    );
+    const user = userEvent.setup();
+    await user.type(await screen.findByLabelText('Email'), 'hj@b.c');
+    await user.type(screen.getByLabelText('Mot de passe'), 'long password!');
+    await user.click(screen.getByRole('button', { name: 'Se connecter' }));
+
+    expect(await screen.findByText('Ahmed Ben Ali')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /youtu\.be\/dQw4w9WgXcQ/ })).toHaveAttribute('href', 'https://youtu.be/dQw4w9WgXcQ');
+    expect(screen.getByText('Équipe des juges')).toBeInTheDocument();
+    expect(screen.queryByText('Utilisateurs')).toBeNull(); // no staff pages
+    expect(screen.queryByText('Tableau de bord')).toBeNull();
+  });
 });

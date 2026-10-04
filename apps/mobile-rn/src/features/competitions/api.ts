@@ -16,10 +16,6 @@ export const competitionsApi = (api: ApiClient) => ({
   mySubmissions: (id: string) => api.get<Json[]>(`/competitions/${id}/my-submissions`),
   leaderboard: (id: string, categoryId?: string, workoutId?: string) => api.get<Json>(`/competitions/${id}/leaderboard`, { categoryId, workoutId }),
   appeal: (id: string, submissionId: string, reason: string) => api.post<Json>(`/competitions/${id}/submissions/${submissionId}/appeals`, { reason }),
-  judgeAthletes: (competitionId?: string) => api.get<Json[]>('/judge/athletes', { competitionId }),
-  judgeQueue: (status: string, competitionId?: string) => api.get<Json[]>('/judge/submissions', { status, competitionId }),
-  judgeDetail: (id: string) => api.get<Json>(`/judge/submissions/${id}`),
-  judgeAct: (id: string, action: 'approve' | 'reject' | 'needs-correction' | 'penalty' | 'adjust-score', body: Json = {}) => api.post<Json>(`/judge/submissions/${id}/${action}`, body),
 });
 
 export const compKeys = {
@@ -28,9 +24,6 @@ export const compKeys = {
   mine: (id: string) => ['competitions', id, 'my-submissions'] as const,
   board: (id: string, categoryId?: string, workoutId?: string) => ['competitions', id, 'board', categoryId ?? '', workoutId ?? ''] as const,
   heats: (id: string) => ['competitions', id, 'heats'] as const,
-  judge: (status: string) => ['judge', status] as const,
-  judgeAthletes: ['judge', 'athletes'] as const,
-  judgeDetail: (id: string) => ['judge', 'detail', id] as const,
 };
 
 export function useCompetitions(filter: CompFilter, mine: boolean) {

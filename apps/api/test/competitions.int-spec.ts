@@ -12,7 +12,7 @@ describe('Competitions (integration)', () => {
   const bearer = (t: string) => ({ authorization: `Bearer ${t}` });
   const h = (n: number) => new Date(Date.now() + n * 3_600_000).toISOString();
 
-  type Actor = { id: string; token: string };
+  type Actor = { id: string; token: string; email: string; password: string };
   let organizer: Actor, ahmed: Actor, ali: Actor, sara: Actor, judge: Actor, headJudge: Actor;
   let competitionId: string;
   let rxMale: string, rxFemale: string;
@@ -24,7 +24,15 @@ describe('Competitions (integration)', () => {
     if (opts.gender) await prisma.profile.update({ where: { userId: u.session.userId }, data: { gender: opts.gender } });
     // Fresh token so the new role and verified email are in it.
     const login = await api().post('/api/v1/auth/login').send({ email: u.body.email, password: u.body.password }).expect(200);
-    return { id: u.session.userId, token: login.body.accessToken };
+    return { id: u.session.userId, token: login.body.accessToken, email: u.body.email, password: u.body.password };
+  }
+
+  /** Judge-only account (created by admins in production): admin-panel token, no app access. */
+  async function judgeAccount(role: 'JUDGE' | 'HEAD_JUDGE'): Promise<Actor> {
+    const u = await registerUser(app, prisma);
+    await prisma.user.update({ where: { id: u.session.userId }, data: { role } });
+    const { authorization } = await adminBearer(app, prisma, u.session.userId);
+    return { id: u.session.userId, token: authorization.slice(7), email: u.body.email, password: u.body.password };
   }
 
   beforeAll(async () => {
@@ -33,8 +41,8 @@ describe('Competitions (integration)', () => {
     ahmed = await actor({ gender: 'MALE', dateOfBirth: '1998-04-12' });
     ali = await actor({ gender: 'MALE', dateOfBirth: '1995-06-01' });
     sara = await actor({ gender: 'FEMALE', dateOfBirth: '1999-01-20' });
-    judge = await actor();
-    headJudge = await actor();
+    judge = await judgeAccount('JUDGE');
+    headJudge = await judgeAccount('HEAD_JUDGE');
   });
   afterAll(async () => {
     await app?.close();
@@ -149,12 +157,12 @@ describe('Competitions (integration)', () => {
     expect(board.body.provisional).toBe(true);
     expect(board.body.rows.every((r: { totalPoints: number }) => r.totalPoints === 0)).toBe(true);
 
-    const queue = await api().get(`/api/v1/judge/submissions?competitionId=${competitionId}`).set(bearer(judge.token)).expect(200);
+    const queue = await api().get(`/api/v1/admin/judge/submissions?competitionId=${competitionId}`).set(bearer(judge.token)).expect(200);
     expect(queue.body).toHaveLength(8);
     await api().get('/api/v1/judge/submissions').set(bearer(ahmed.token)).expect(403);
 
     // Judge view by athlete: each athlete with the WODs they completed and the YouTube link of each.
-    const byAthlete = await api().get(`/api/v1/judge/athletes?competitionId=${competitionId}`).set(bearer(judge.token)).expect(200);
+    const byAthlete = await api().get(`/api/v1/admin/judge/athletes?competitionId=${competitionId}`).set(bearer(judge.token)).expect(200);
     expect(byAthlete.body).toHaveLength(1);
     expect(byAthlete.body[0]).toMatchObject({ competition: { id: competitionId }, wodCount: 4 });
     const athletes = byAthlete.body[0].athletes as { athlete: { id: string }; category: { id: string }; submissions: { workout: { id: string }; videoUrl: string; youtubeId: string; status: string }[] }[];
@@ -167,7 +175,7 @@ describe('Competitions (integration)', () => {
     await api().get(`/api/v1/judge/athletes?competitionId=${competitionId}`).set(bearer(ahmed.token)).expect(403);
     await api().post(`/api/v1/judge/submissions/${subs[ali.id][0]}/approve`).set(bearer(ahmed.token)).expect(403);
 
-    for (const id of [...subs[ahmed.id], ...subs[ali.id]]) await api().post(`/api/v1/judge/submissions/${id}/approve`).set(bearer(judge.token)).expect(200);
+    for (const id of [...subs[ahmed.id], ...subs[ali.id]]) await api().post(`/api/v1/admin/judge/submissions/${id}/approve`).set(bearer(judge.token)).expect(200);
 
     board = await api().get(`${base}/leaderboard?categoryId=${rxMale}`).set(bearer(ali.token)).expect(200);
     expect(board.body.maximumPoints).toBe(550);
@@ -177,14 +185,14 @@ describe('Competitions (integration)', () => {
     ]);
 
     // Judge corrects WOD 3: 140 → 125 (no rep); the total and the rank follow, history is kept.
-    const adjusted = await api().post(`/api/v1/judge/submissions/${subs[ahmed.id][2]}/adjust-score`).set(bearer(judge.token)).send({ points: 125, reason: 'No rep detected' }).expect(200);
+    const adjusted = await api().post(`/api/v1/admin/judge/submissions/${subs[ahmed.id][2]}/adjust-score`).set(bearer(judge.token)).send({ points: 125, reason: 'No rep detected' }).expect(200);
     expect(adjusted.body.points).toBe(125);
     // Penalty on Ali's WOD 4: 160 − 10.
-    await api().post(`/api/v1/judge/submissions/${subs[ali.id][3]}/penalty`).set(bearer(judge.token)).send({ type: 'POINT_PENALTY', points: 10, reason: 'Short range of motion' }).expect(200);
+    await api().post(`/api/v1/admin/judge/submissions/${subs[ali.id][3]}/penalty`).set(bearer(judge.token)).send({ type: 'POINT_PENALTY', points: 10, reason: 'Short range of motion' }).expect(200);
     board = await api().get(`${base}/leaderboard?categoryId=${rxMale}`).set(bearer(ali.token)).expect(200);
     expect(board.body.rows.map((r: { totalPoints: number }) => r.totalPoints)).toEqual([485, 460]);
 
-    const detail = await api().get(`/api/v1/judge/submissions/${subs[ahmed.id][2]}`).set(bearer(headJudge.token)).expect(200);
+    const detail = await api().get(`/api/v1/admin/judge/submissions/${subs[ahmed.id][2]}`).set(bearer(headJudge.token)).expect(200);
     expect(detail.body.versions.map((v: { points: number; reason: string }) => [v.points, v.reason])).toEqual([
       [0, 'Submitted by athlete'],
       [140, 'Approved'],
@@ -199,8 +207,8 @@ describe('Competitions (integration)', () => {
 
   it('HEAD JUDGE publishes the final leaderboard: locked, podium and prizes shown', async () => {
     const base = `/api/v1/competitions/${competitionId}`;
-    await api().post(`${base}/publish-leaderboard`).set(bearer(judge.token)).expect(403);
-    await api().post(`${base}/publish-leaderboard`).set(bearer(headJudge.token)).expect(200);
+    await api().post(`/api/v1/admin/judge/competitions/${competitionId}/publish-leaderboard`).set(bearer(judge.token)).expect(403);
+    await api().post(`/api/v1/admin/judge/competitions/${competitionId}/publish-leaderboard`).set(bearer(headJudge.token)).expect(200);
 
     const board = await api().get(`${base}/leaderboard?categoryId=${rxMale}`).set(bearer(ali.token)).expect(200);
     expect(board.body.provisional).toBe(false);
@@ -210,8 +218,8 @@ describe('Competitions (integration)', () => {
 
     // Locked: a judge can no longer change scores; the head judge can, and it is audited.
     const sub = await prisma.competitionSubmission.findFirstOrThrow({ where: { userId: ali.id, workoutId: wods[0] } });
-    await api().post(`/api/v1/judge/submissions/${sub.id}/adjust-score`).set(bearer(judge.token)).send({ points: 99, reason: 'Late change' }).expect(403);
-    await api().post(`/api/v1/judge/submissions/${sub.id}/adjust-score`).set(bearer(headJudge.token)).send({ points: 92, reason: 'Video review' }).expect(200);
+    await api().post(`/api/v1/admin/judge/submissions/${sub.id}/adjust-score`).set(bearer(judge.token)).send({ points: 99, reason: 'Late change' }).expect(403);
+    await api().post(`/api/v1/admin/judge/submissions/${sub.id}/adjust-score`).set(bearer(headJudge.token)).send({ points: 92, reason: 'Video review' }).expect(200);
     expect(await prisma.auditLog.count({ where: { action: 'competition.leaderboard.published', entityId: competitionId } })).toBe(1);
     expect(await prisma.notification.count({ where: { userId: ali.id, type: 'COMPETITION_LEADERBOARD_FINAL' } })).toBe(1);
   });
@@ -243,12 +251,63 @@ describe('Competitions (integration)', () => {
     await api().get(`/api/v1/admin/competitions/${competitionId}/heats`).set(bearer(admin.token)).expect(401);
   });
 
+  it('JUDGE accounts: created by admins, admin panel only, never the app', async () => {
+    const admin = await actor();
+    await prisma.user.update({ where: { id: admin.id }, data: { role: 'ADMIN' } });
+    const panel = await adminBearer(app, prisma, admin.id);
+    await api().post('/api/v1/admin/judges').set(bearer(headJudge.token)).send({ email: 'new.judge@example.test', username: 'new_judge', role: 'JUDGE' }).expect(403);
+    const created = await api().post('/api/v1/admin/judges').set(panel).send({ email: 'New.Judge@example.test', username: 'new_judge', role: 'JUDGE' }).expect(201);
+    expect(created.body).toMatchObject({ email: 'new.judge@example.test', username: 'new_judge', role: 'JUDGE' });
+    expect(created.body.password).toMatch(/^[\w-]{12}$/);
+    await api().post('/api/v1/admin/judges').set(panel).send({ email: 'new.judge@example.test', username: 'other_judge', role: 'JUDGE' }).expect(409);
+
+    // The generated password opens the admin panel (judge space only), not the app.
+    const creds = { email: 'new.judge@example.test', password: created.body.password };
+    await api().post('/api/v1/auth/login').send(creds).expect(403);
+    const login = await api().post('/api/v1/admin/auth/login').send(creds).expect(200);
+    const judgePanel = bearer(login.body.session.accessToken);
+    expect((await api().get('/api/v1/admin/me').set(judgePanel).expect(200)).body).toMatchObject({ id: created.body.id, role: 'JUDGE' });
+    expect((await api().get('/api/v1/admin/judge/athletes').set(judgePanel).expect(200)).body).toEqual([]); // on no competition yet
+    await api().get('/api/v1/admin/users').set(judgePanel).expect(403);
+    await api().get('/api/v1/admin/competitions').set(judgePanel).expect(403);
+    await api().get('/api/v1/admin/judges').set(judgePanel).expect(403);
+    await api().get('/api/v1/judge/athletes').set(judgePanel).expect(401); // admin token refused by app routes
+    // Athletes still cannot open the panel.
+    await api().post('/api/v1/admin/auth/login').send({ email: ahmed.email, password: ahmed.password }).expect(403);
+  });
+
+  it('HEAD JUDGE manages the judges and head judges of their competition', async () => {
+    const base = `/api/v1/admin/judge/competitions/${competitionId}`;
+    const mine = await api().get('/api/v1/admin/judge/competitions').set(bearer(headJudge.token)).expect(200);
+    expect(mine.body.find((c: { id: string }) => c.id === competitionId)).toMatchObject({ myRoles: ['HEAD_JUDGE'], workouts: expect.any(Array) });
+    const accounts = await api().get('/api/v1/admin/judges').set(bearer(headJudge.token)).expect(200);
+    expect(accounts.body.map((a: { id: string }) => a.id)).toEqual(expect.arrayContaining([judge.id, headJudge.id]));
+
+    const extra = await judgeAccount('JUDGE');
+    const second = await judgeAccount('HEAD_JUDGE');
+    const added = await api().post(`${base}/staff`).set(bearer(headJudge.token)).send({ userId: extra.id, role: 'JUDGE' }).expect(201);
+    await api().post(`${base}/staff`).set(bearer(headJudge.token)).send({ userId: second.id, role: 'HEAD_JUDGE' }).expect(201);
+    await api().post(`${base}/judge-assignments`).set(bearer(headJudge.token)).send({ staffId: added.body.id, workoutId: wods[0] }).expect(201);
+    // Only judge accounts judge (athletes never do), a JUDGE cannot be made head judge, organizers stay the organizer's call.
+    await api().post(`${base}/staff`).set(bearer(headJudge.token)).send({ userId: ahmed.id, role: 'JUDGE' }).expect(403);
+    await api().post(`${base}/staff`).set(bearer(headJudge.token)).send({ userId: extra.id, role: 'HEAD_JUDGE' }).expect(403);
+    await api().post(`${base}/staff`).set(bearer(headJudge.token)).send({ userId: extra.id, role: 'ORGANIZER' }).expect(403);
+    // A plain judge manages nobody.
+    await api().post(`${base}/staff`).set(bearer(judge.token)).send({ userId: second.id, role: 'JUDGE' }).expect(403);
+
+    const staff = await api().get(`${base}/staff`).set(bearer(headJudge.token)).expect(200);
+    const organizerRow = staff.body.find((r: { role: string }) => r.role === 'ORGANIZER');
+    await api().delete(`${base}/staff/${organizerRow.id}`).set(bearer(headJudge.token)).expect(403);
+    await api().delete(`${base}/staff/${added.body.id}`).set(bearer(headJudge.token)).expect(204);
+    await api().delete(`${base}/staff/${staff.body.find((r: { userId: string }) => r.userId === second.id).id}`).set(bearer(headJudge.token)).expect(204);
+  });
+
   it('a JUDGE assigned to one WOD sees only that WOD under each athlete', async () => {
     const base = `/api/v1/competitions/${competitionId}`;
-    const wod2Judge = await actor();
+    const wod2Judge = await judgeAccount('JUDGE');
     const staff = await api().post(`${base}/staff`).set(bearer(organizer.token)).send({ userId: wod2Judge.id, role: 'JUDGE' }).expect(201);
     await api().post(`${base}/judge-assignments`).set(bearer(organizer.token)).send({ staffId: staff.body.id, workoutId: wods[1] }).expect(201);
-    const res = await api().get('/api/v1/judge/athletes').set(bearer(wod2Judge.token)).expect(200);
+    const res = await api().get('/api/v1/admin/judge/athletes').set(bearer(wod2Judge.token)).expect(200);
     expect(res.body).toHaveLength(1);
     expect(res.body[0].wodCount).toBe(1);
     for (const a of res.body[0].athletes) expect(a.submissions.map((x: { workout: { id: string } }) => x.workout.id)).toEqual([wods[1]]);
