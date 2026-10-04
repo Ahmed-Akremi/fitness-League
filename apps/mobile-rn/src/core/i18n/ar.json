@@ -537,11 +537,13 @@
   "compTimeCap": "تم بلوغ الحد الزمني",
   "compTotalReps": "مجموع التكرارات في التمرين",
   "compRepsPerRound": "التكرارات في كل جولة",
-  "compUploadVideo": "رفع فيديو (MP4/MOV)",
-  "compVideoUploaded": "تم رفع الفيديو",
-  "compVideoTooLarge": "يجب ألا يتجاوز حجم الفيديو 50 ميغابايت.",
-  "compOr": "أو",
   "compHeats": "الدفعات",
   "compMyHeat": "دفعتك",
-  "compLane": "الممر {lane}"
+  "compLane": "الممر {lane}",
+  "compVideoRequired": "أضف رابط يوتيوب لفيديو أدائك لإرسال نتيجتك.",
+  "judgeByAthlete": "الرياضيون",
+  "judgeBySubmission": "النتائج المرسلة",
+  "judgeWodsDone": "{done} / {total} تمارين",
+  "judgeNoVideo": "لا يوجد رابط فيديو",
+  "judgeNoAthletes": "لا يوجد رياضيون مسجلون بعد."
 }

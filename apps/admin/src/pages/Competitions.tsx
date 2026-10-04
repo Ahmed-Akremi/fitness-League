@@ -122,6 +122,7 @@ export function CompetitionDetail() {
   const coupons = useFetch(() => api.get<J[]>(`${base}/coupons`), [api, id]);
   const staff = useFetch(() => api.get<J[]>(`${base}/staff`), [api, id]);
   const heats = useFetch(() => api.get<J[]>(`${base}/heats`), [api, id]);
+  const athletes = useFetch(() => api.get<J>(`${base}/athletes`), [api, id]);
   const [categoryId, setCategoryId] = useState('');
   const board = useFetch(() => (categoryId ? api.get<J>(`${base}/leaderboard?categoryId=${categoryId}`) : Promise.resolve(null)), [api, id, categoryId]);
   const [message, setMessage] = useState<string | null>(null);
@@ -137,7 +138,7 @@ export function CompetitionDetail() {
     try {
       await fn();
       setMessage(label);
-      await Promise.all([comp.reload(), dash.reload(), regs.reload(), coupons.reload(), staff.reload(), heats.reload(), board.reload()]);
+      await Promise.all([comp.reload(), dash.reload(), regs.reload(), coupons.reload(), staff.reload(), heats.reload(), athletes.reload(), board.reload()]);
     } catch (err) {
       setMessage(errorText(err));
     }
@@ -384,6 +385,36 @@ export function CompetitionDetail() {
             ))}
           </tbody>
         </table>
+      </Panel>
+
+      <Panel title="Athlètes et vidéos">
+        {athletes.error ? <p className="error">{errorText(athletes.error)}</p> : null}
+        {athletes.data && athletes.data.athletes.length === 0 ? <p>Aucun athlète inscrit.</p> : null}
+        {athletes.data?.athletes.map((a: J) => (
+          <div key={a.athlete.id} style={{ marginBottom: 12 }}>
+            <strong>{a.athlete.fullName ?? a.athlete.username}</strong> · {a.category?.name} · {a.submissions.length} / {athletes.data!.wodCount} WODs
+            <table>
+              <tbody>
+                {a.submissions.map((s: J) => (
+                  <tr key={s.id}>
+                    <td>WOD {s.workout.number} · {s.workout.name}</td>
+                    <td>{s.status}</td>
+                    <td>{s.points ?? s.rawValue ?? '—'}</td>
+                    <td>
+                      {s.videoUrl ? (
+                        <a href={s.videoUrl} target="_blank" rel="noreferrer noopener">
+                          {s.videoUrl}
+                        </a>
+                      ) : (
+                        <span className="error">Pas de lien vidéo</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ))}
       </Panel>
 
       <Panel title="Heats">

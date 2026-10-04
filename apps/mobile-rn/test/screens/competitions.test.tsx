@@ -1,13 +1,9 @@
 import { fireEvent, waitFor } from 'expo-router/testing-library';
 
-import { JudgeReviewScreen } from '../../src/features/competitions/judge';
+import { JudgeReviewScreen, JudgeScreen } from '../../src/features/competitions/judge';
 import { CompetitionScreen, RegisterScreen, SubmitScreen } from '../../src/features/competitions/screens';
 import { FakeBackend } from '../fake-api';
 import { renderScreen } from '../harness';
-
-jest.mock('../../src/core/utils/pick-image', () => ({
-  pickVideo: jest.fn(async () => ({ file: { uri: 'file:///wod1.mp4', name: 'wod1.mp4', type: 'video/mp4' } })),
-}));
 
 const competition = {
   id: 'c1',
@@ -70,18 +66,47 @@ describe('judge review', () => {
 });
 
 describe('score submission', () => {
-  it('uploads a video file and sends its id with the score', async () => {
+  it('needs the YouTube link to submit, then sends it with the score', async () => {
     const backend = new FakeBackend()
       .on('GET', '/competitions/c1', [200, { ...competition, myRegistration: { registrationStatus: 'CONFIRMED' }, workouts: [{ id: 'w1', number: 1, name: 'WOD 1', description: 'Max burpees', scoreType: 'REPS', maximumPoints: 100 }] }])
-      .on('POST', '/competitions/c1/videos', [201, { mediaId: 'm1', url: 'http://x/m1.mp4', mime: 'video/mp4' }])
       .on('POST', '/competitions/c1/wods/w1/submissions', [201, { id: 's1', status: 'SUBMITTED' }]);
     const screen = await renderScreen(() => <SubmitScreen id="c1" wodId="w1" />, backend);
     await fireEvent.changeText(await screen.findByTestId('sub-reps'), '87');
-    await fireEvent.press(screen.getByTestId('sub-upload'));
-    expect(await screen.findByTestId('sub-upload-done')).toBeTruthy();
+    expect(screen.getByText('Add the YouTube link of your video to submit your score.')).toBeTruthy();
+    expect(screen.queryByTestId('sub-upload')).toBeNull();
+    await fireEvent.press(screen.getByTestId('sub-send'));
+    expect(backend.calls('POST', '/competitions/c1/wods/w1/submissions')).toHaveLength(0);
+    await fireEvent.changeText(screen.getByTestId('sub-video'), 'https://youtu.be/dQw4w9WgXcQ');
     await fireEvent.press(screen.getByTestId('sub-send'));
     await waitFor(() => expect(backend.calls('POST', '/competitions/c1/wods/w1/submissions')).toHaveLength(1));
-    expect(backend.calls('POST', '/competitions/c1/wods/w1/submissions')[0].body).toMatchObject({ raw: { reps: 87 }, videoMediaId: 'm1', submit: true });
+    expect(backend.calls('POST', '/competitions/c1/wods/w1/submissions')[0].body).toMatchObject({ raw: { reps: 87 }, videoUrl: 'https://youtu.be/dQw4w9WgXcQ', submit: true });
+  });
+});
+
+describe('judge space by athlete', () => {
+  it('lists each athlete with their completed WODs and the YouTube link of each', async () => {
+    const sub = (id: string, n: number, url: string | null) => ({ id, status: 'SUBMITTED', workout: { id: `w${n}`, number: n, name: `WOD ${n}` }, rawValue: 90 + n, points: null, videoUrl: url, youtubeId: url ? 'dQw4w9WgXcQ' : null });
+    const backend = new FakeBackend().on('GET', '/judge/athletes', [
+      200,
+      [
+        {
+          competition: { id: 'c1', title: 'Tunisia Functional Fitness Championship' },
+          wodCount: 3,
+          athletes: [
+            { athlete: { id: 'u1', fullName: 'Ahmed Ben Salah' }, category: { id: 'rxm', name: 'RX Male' }, submissions: [sub('s1', 1, 'https://youtu.be/dQw4w9WgXcQ'), sub('s2', 2, 'https://youtu.be/abcdefghijk')] },
+            { athlete: { id: 'u2', fullName: 'Ali Trabelsi' }, category: { id: 'rxm', name: 'RX Male' }, submissions: [sub('s3', 1, null)] },
+          ],
+        },
+      ],
+    ]);
+    const screen = await renderScreen(() => <JudgeScreen />, backend);
+    expect(await screen.findByText('Ahmed Ben Salah')).toBeTruthy();
+    expect(screen.getByText('2 / 3 WODs')).toBeTruthy();
+    expect(screen.getByText('1 / 3 WODs')).toBeTruthy();
+    expect(screen.getByText('▶ https://youtu.be/dQw4w9WgXcQ')).toBeTruthy();
+    expect(screen.getByText('▶ https://youtu.be/abcdefghijk')).toBeTruthy();
+    expect(screen.getByText('No video link')).toBeTruthy();
+    expect(screen.getAllByText('WOD 1')).toHaveLength(2);
   });
 });
 

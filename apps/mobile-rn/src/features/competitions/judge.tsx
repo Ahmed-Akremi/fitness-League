@@ -15,8 +15,91 @@ import { compKeys, competitionsApi } from './api';
 
 type Queue = 'PENDING' | 'APPROVED' | 'REJECTED' | 'PENALIZED';
 
-/** Judge space (§26): submissions to review, by status. */
+/** Judge space (§26): by athlete (each athlete's WODs with their YouTube links) or the review queue by status. */
 export function JudgeScreen() {
+  const t = useT();
+  const { colors } = useTheme();
+  const [view, setView] = useState<'ATHLETES' | 'QUEUE'>('ATHLETES');
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <Segmented
+        value={view}
+        onChange={setView}
+        options={[
+          { key: 'ATHLETES', label: t('judgeByAthlete') },
+          { key: 'QUEUE', label: t('judgeBySubmission') },
+        ]}
+      />
+      {view === 'ATHLETES' ? <JudgeAthletes /> : <JudgeQueue />}
+    </View>
+  );
+}
+
+/** Every athlete of the competitions I judge, with the WODs they completed and the YouTube link of each. */
+function JudgeAthletes() {
+  const t = useT();
+  const { colors } = useTheme();
+  const api = useApi();
+  const groups = useQuery({ queryKey: compKeys.judgeAthletes, queryFn: () => competitionsApi(api).judgeAthletes() });
+  return (
+    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, gap: 8 }} refreshControl={<RefreshControl refreshing={false} onRefresh={() => groups.refetch()} tintColor={colors.primary} />}>
+      {groups.isError ? (
+        <ErrorView error={groups.error} onRetry={() => groups.refetch()} />
+      ) : !groups.data ? (
+        <Loading />
+      ) : groups.data.every((g) => g.athletes.length === 0) ? (
+        <EmptyState icon="groups" message={t('judgeNoAthletes')} />
+      ) : (
+        groups.data.map((g) => (
+          <View key={g.competition.id} style={{ gap: 8 }}>
+            {groups.data.length > 1 && <SectionHeader title={g.competition.title} />}
+            {g.athletes.map((a: Json) => (
+              <AthleteCard key={a.athlete.id} athlete={a} wodCount={g.wodCount} />
+            ))}
+          </View>
+        ))
+      )}
+    </ScrollView>
+  );
+}
+
+function AthleteCard({ athlete: a, wodCount }: { athlete: Json; wodCount: number }) {
+  const t = useT();
+  const { colors } = useTheme();
+  return (
+    <Card testID={`athlete-${a.athlete.id}`} style={{ gap: 6 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <View style={{ flex: 1 }}>
+          <Txt variant="title">{a.athlete.fullName ?? a.athlete.username}</Txt>
+          <Txt variant="small" color={colors.outline}>{a.category?.name ?? ''}</Txt>
+        </View>
+        <Txt style={{ fontWeight: '700' }}>{t('judgeWodsDone', { done: a.submissions.length, total: wodCount })}</Txt>
+      </View>
+      {a.submissions.map((s: Json) => (
+        <View key={s.id} style={{ borderTopWidth: 1, borderTopColor: colors.surfaceHigh, paddingTop: 6, gap: 2 }}>
+          <Pressable testID={`review-${s.id}`} accessibilityRole="button" onPress={() => router.push(`/judge/${s.id}`)} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Txt style={{ flex: 1, fontWeight: '600' }}>{wodLabel(s.workout)}</Txt>
+            <Txt variant="small" color={colors.outline}>{(t as (k: string) => string)(`compStatus${s.status}`)}</Txt>
+            <Txt style={displayText(18)}>{String(s.points ?? s.rawValue ?? '—')}</Txt>
+          </Pressable>
+          {s.videoUrl ? (
+            <Pressable testID={`video-${s.id}`} accessibilityRole="link" accessibilityLabel={t('judgeWatchVideo')} onPress={() => Linking.openURL(s.videoUrl)}>
+              <Txt variant="small" color={colors.primary} numberOfLines={1}>{`▶ ${s.videoUrl}`}</Txt>
+            </Pressable>
+          ) : (
+            <Txt variant="small" color={colors.error}>{t('judgeNoVideo')}</Txt>
+          )}
+        </View>
+      ))}
+    </Card>
+  );
+}
+
+/** "WOD 2 · Fran", or just "WOD 2" when the WOD is named after its number. */
+const wodLabel = (w: Json) => (w.name === `WOD ${w.number}` ? w.name : `WOD ${w.number} · ${w.name}`);
+
+/** Submissions to review, by status. */
+function JudgeQueue() {
   const t = useT();
   const locale = useLocale();
   const { colors } = useTheme();
@@ -24,7 +107,7 @@ export function JudgeScreen() {
   const [status, setStatus] = useState<Queue>('PENDING');
   const queue = useQuery({ queryKey: compKeys.judge(status), queryFn: () => competitionsApi(api).judgeQueue(status) });
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
+    <View style={{ flex: 1 }}>
       <Segmented
         value={status}
         onChange={setStatus}
@@ -109,9 +192,6 @@ export function JudgeReviewScreen({ id }: { id: string }) {
           <Image source={{ uri: `https://i.ytimg.com/vi/${s.youtubeId}/hqdefault.jpg` }} style={{ width: '100%', aspectRatio: 16 / 9, borderRadius: 12 }} />
           <Txt color={colors.primary} style={{ marginTop: 6, fontWeight: '700' }}>{`▶ ${t('judgeWatchVideo')}`}</Txt>
         </Pressable>
-      )}
-      {s.videoFileUrl && (
-        <Button testID="watch-upload" kind="outlined" icon="movie" label={t('judgeWatchVideo')} onPress={() => Linking.openURL(s.videoFileUrl)} />
       )}
       <View style={{ gap: 8 }}>
         <Button testID="judge-approve" icon="check" label={t('judgeApprove')} busy={busy} onPress={() => act('approve')} />

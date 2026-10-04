@@ -6,9 +6,8 @@ import { ClockService } from '../../common/clock/clock.service';
 import { AppException, ErrorCode } from '../../common/errors/app-exception';
 import { uuidv7 } from '../../common/ids/uuid';
 import { PrismaService } from '../../common/prisma/prisma.service';
-import { StorageService } from '../../common/storage/storage.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import { AdjustScoreDto, AppealDecisionDto, JudgeQueueQueryDto, PenaltyDto, ReasonDto } from './competitions.dto';
+import { AdjustScoreDto, AppealDecisionDto, JudgeAthletesQueryDto, JudgeQueueQueryDto, PenaltyDto, ReasonDto } from './competitions.dto';
 import { applyPenalty, clampPoints, leaderboard, placementPoints, placements, podium, type AthleteScores, type ScoreType, type TieBreakRule } from './domain';
 
 type Tx = Prisma.TransactionClient;
@@ -27,7 +26,6 @@ export class JudgingService {
     private readonly audit: AuditService,
     private readonly clock: ClockService,
     private readonly notifications: NotificationsService,
-    private readonly storage: StorageService,
   ) {}
 
   // ───────────── Access ─────────────
@@ -184,6 +182,75 @@ export class JudgingService {
     return rows.map((s) => this.view(s, names.get(s.userId), cat.get(s.registrationId)));
   }
 
+  /**
+   * Judge view by athlete: for each competition the user judges, every confirmed athlete with the WODs they
+   * submitted (drafts excluded) and each YouTube link. Same visibility as the queue: head judges, organizers
+   * and judges without WOD assignments see every WOD; assigned judges see their WODs only.
+   */
+  async athletes(user: AuthUser, q: JudgeAthletesQueryDto) {
+    const scopes = new Map<string, Set<string> | null>(); // competition → WOD ids (null = every WOD)
+    if (this.isPlatformAdmin(user)) {
+      const ids = q.competitionId
+        ? [q.competitionId]
+        : (await this.prisma.competitionWorkout.findMany({ where: { submissions: { some: { status: { not: 'DRAFT' } } } }, select: { competitionId: true }, distinct: ['competitionId'] })).map((w) => w.competitionId);
+      for (const id of ids) scopes.set(id, null);
+    } else {
+      const staff = await this.prisma.competitionStaff.findMany({
+        where: { userId: user.id, role: { in: ['JUDGE', 'HEAD_JUDGE', 'ORGANIZER'] }, ...(q.competitionId ? { competitionId: q.competitionId } : {}) },
+        include: { assignments: true },
+      });
+      if (!staff.length) throw AppException.forbidden('Judges only');
+      for (const s of staff) {
+        const all = s.role !== 'JUDGE' || s.assignments.length === 0 || s.assignments.some((a) => !a.workoutId);
+        const current = scopes.get(s.competitionId);
+        if (all || current === null) scopes.set(s.competitionId, null);
+        else scopes.set(s.competitionId, new Set([...(current ?? []), ...s.assignments.map((a) => a.workoutId!)]));
+      }
+    }
+    const competitions = await this.prisma.competition.findMany({
+      where: { id: { in: [...scopes.keys()] }, deletedAt: null },
+      select: { id: true, title: true, workouts: { where: { active: true }, select: { id: true } } },
+      orderBy: { eventStart: 'desc' },
+    });
+    const regs = await this.prisma.competitionRegistration.findMany({
+      where: { competitionId: { in: competitions.map((c) => c.id) }, registrationStatus: 'CONFIRMED', ...(q.categoryId ? { categoryId: q.categoryId } : {}) },
+      include: { category: { select: { id: true, name: true } } },
+    });
+    const subs = await this.prisma.competitionSubmission.findMany({
+      where: { registrationId: { in: regs.map((r) => r.id) }, status: { not: 'DRAFT' } },
+      include: { workout: { select: { id: true, name: true, number: true, competitionId: true, scoreType: true } } },
+      orderBy: { workout: { number: 'asc' } },
+    });
+    const byRegistration = new Map<string, typeof subs>();
+    for (const s of subs) {
+      const allowed = scopes.get(s.workout.competitionId);
+      if (allowed && !allowed.has(s.workoutId)) continue;
+      byRegistration.set(s.registrationId, [...(byRegistration.get(s.registrationId) ?? []), s]);
+    }
+    const names = await this.names(regs.map((r) => r.userId));
+    return competitions.map((c) => ({
+      competition: { id: c.id, title: c.title },
+      wodCount: c.workouts.filter((w) => scopes.get(c.id)?.has(w.id) ?? true).length,
+      athletes: regs
+        .filter((r) => r.competitionId === c.id)
+        .map((r) => ({
+          athlete: { id: r.userId, ...names.get(r.userId) },
+          category: r.category,
+          submissions: (byRegistration.get(r.id) ?? []).map((s) => ({
+            id: s.id,
+            status: s.status,
+            workout: { id: s.workout.id, name: s.workout.name, number: s.workout.number, scoreType: s.workout.scoreType },
+            rawValue: n(s.rawValue),
+            points: n(s.points),
+            videoUrl: s.videoUrl,
+            youtubeId: s.youtubeId,
+            submittedAt: s.submittedAt,
+          })),
+        }))
+        .sort((a, b) => a.category.name.localeCompare(b.category.name) || (a.athlete.fullName ?? a.athlete.username ?? '').localeCompare(b.athlete.fullName ?? b.athlete.username ?? '')),
+    }));
+  }
+
   async detail(user: AuthUser, submissionId: string) {
     const s = await this.prisma.competitionSubmission.findUnique({
       where: { id: submissionId },
@@ -196,10 +263,7 @@ export class JudgingService {
     const names = await this.names([s.userId]);
     // Version history is for head judges, organizers and admins (§30); the athlete sees the official result.
     const history = roles && (roles.has('HEAD_JUDGE') || roles.has('ORGANIZER'));
-    const video = s.videoMediaId ? await this.prisma.media.findUnique({ where: { id: s.videoMediaId }, select: { objectKey: true, mime: true } }) : null;
     return {
-      videoFileUrl: video ? this.storage.url(video.objectKey) : null,
-      videoFileMime: video?.mime ?? null,
       ...this.view(s, names.get(s.userId), reg?.category),
       workout: s.workout,
       raw: s.raw,
@@ -368,7 +432,6 @@ export class JudgingService {
       points: n(s.points),
       videoUrl: s.videoUrl,
       youtubeId: s.youtubeId,
-      videoMediaId: s.videoMediaId,
       submittedAt: s.submittedAt,
     };
   }

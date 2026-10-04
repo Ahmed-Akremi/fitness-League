@@ -201,8 +201,7 @@ export class SubmissionDto {
   @ApiProperty({ description: 'Client id; a retry with the same id is answered with the stored submission.' }) @IsUUID() clientId!: string;
   @ApiProperty({ description: 'timeS, rounds, reps, value (load/distance/calories/points), remainingTimeS, capped.' }) @IsObject() raw!: Record<string, unknown>;
   @ApiPropertyOptional() @IsOptional() @IsString() @Length(0, 2000) notes?: string;
-  @ApiPropertyOptional({ description: 'YouTube URL' }) @IsOptional() @IsString() @Length(0, 500) videoUrl?: string;
-  @ApiPropertyOptional({ description: 'Uploaded MP4/MOV through the storage module' }) @IsOptional() @IsUUID() videoMediaId?: string;
+  @ApiPropertyOptional({ description: 'YouTube URL, required to submit (not for a draft)' }) @IsOptional() @IsString() @Length(0, 500) videoUrl?: string;
   @ApiPropertyOptional({ description: 'false keeps it as a DRAFT' }) @IsOptional() @IsBoolean() submit?: boolean;
 }
 
@@ -227,6 +226,11 @@ export class JudgeQueueQueryDto {
   @IsOptional() @IsUUID() categoryId?: string;
   @IsOptional() @IsUUID() workoutId?: string;
   @IsOptional() @IsIn(['PENDING', 'APPROVED', 'REJECTED', 'PENALIZED', 'ALL']) status?: 'PENDING' | 'APPROVED' | 'REJECTED' | 'PENALIZED' | 'ALL';
+}
+
+export class JudgeAthletesQueryDto {
+  @IsOptional() @IsUUID() competitionId?: string;
+  @IsOptional() @IsUUID() categoryId?: string;
 }
 
 export class AppealDecisionDto {

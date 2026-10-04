@@ -1,5 +1,4 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseIntPipe, ParseUUIDPipe, Patch, Post, Put, Query, UploadedFile, UseInterceptors } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseIntPipe, ParseUUIDPipe, Patch, Post, Put, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { AuthUser } from '../../common/auth/auth-user';
 import { AdminApi, CurrentUser, RequiresVerifiedEmail, Roles } from '../../common/auth/decorators';
@@ -15,6 +14,7 @@ import {
   CouponCheckDto,
   CouponDto,
   HeatDto,
+  JudgeAthletesQueryDto,
   JudgeQueueQueryDto,
   LaneDto,
   LeaderboardQueryDto,
@@ -32,7 +32,6 @@ import {
   WorkoutDto,
 } from './competitions.dto';
 import { CompetitionsService } from './competitions.service';
-import { VIDEO_MAX_BYTES } from './domain';
 import { HeatsService } from './heats.service';
 import { JudgingService } from './judging.service';
 
@@ -200,13 +199,6 @@ export class CompetitionsController {
     return this.heats.unassign(user, competitionId, heatId, lane);
   }
 
-  @Post(':id/videos')
-  @RateLimit({ name: 'competition-video', limit: 20, windowS: 3600, by: 'user' })
-  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: VIDEO_MAX_BYTES + 1, files: 1 } }))
-  uploadVideo(@CurrentUser() user: AuthUser, @id() competitionId: string, @UploadedFile() file?: Express.Multer.File) {
-    return this.competitions.uploadVideo(user, competitionId, file);
-  }
-
   @Get(':id/my-submissions')
   mySubmissions(@CurrentUser() user: AuthUser, @id() competitionId: string) {
     return this.competitions.mySubmissions(user, competitionId);
@@ -313,6 +305,11 @@ export class CompetitionsController {
 @Controller('judge')
 export class JudgeController {
   constructor(private readonly judging: JudgingService) {}
+
+  @Get('athletes')
+  athletes(@CurrentUser() user: AuthUser, @Query() q: JudgeAthletesQueryDto) {
+    return this.judging.athletes(user, q);
+  }
 
   @Get('submissions')
   queue(@CurrentUser() user: AuthUser, @Query() q: JudgeQueueQueryDto) {
@@ -440,6 +437,10 @@ export class AdminCompetitionsController {
   }
   @Get(':id/leaderboard') leaderboard(@id() cid: string, @Query() q: LeaderboardQueryDto) {
     return q.categoryId ? this.judging.leaderboard(cid, q.categoryId, q.workoutId) : { rows: [] };
+  }
+  @Get(':id/athletes') async athletes(@CurrentUser() u: AuthUser, @id() cid: string) {
+    const [group] = await this.judging.athletes(u, { competitionId: cid });
+    return group ?? { wodCount: 0, athletes: [] };
   }
   @Get(':id/submissions') submissions(@CurrentUser() u: AuthUser, @id() cid: string, @Query() q: JudgeQueueQueryDto) {
     return this.judging.queue(u, { ...q, competitionId: cid });

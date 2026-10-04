@@ -12,12 +12,3 @@ export async function pickImage(maxBytes: number): Promise<PickResult> {
   if (asset.fileSize != null && asset.fileSize > maxBytes) return { tooLarge: true };
   return { file: { uri: asset.uri, name: asset.fileName ?? asset.uri.split('/').pop() ?? 'image.jpg', type: asset.mimeType ?? 'image/jpeg' } };
 }
-
-/** Gallery video (MP4/MOV) for an upload; the server checks the real type. */
-export async function pickVideo(maxBytes: number): Promise<PickResult> {
-  const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['videos'] });
-  const asset = res.canceled ? null : res.assets[0];
-  if (!asset) return null;
-  if (asset.fileSize != null && asset.fileSize > maxBytes) return { tooLarge: true };
-  return { file: { uri: asset.uri, name: asset.fileName ?? asset.uri.split('/').pop() ?? 'video.mp4', type: asset.mimeType ?? 'video/mp4' } };
-}

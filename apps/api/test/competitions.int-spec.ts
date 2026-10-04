@@ -124,6 +124,11 @@ describe('Competitions (integration)', () => {
     const bad = await api().post(`${base}/wods/${wods[0]}/submissions`).set(bearer(ahmed.token)).send({ clientId: randomUUID(), raw: { value: 95 }, videoUrl: 'https://vimeo.com/1' }).expect(422);
     expect(bad.body.errors[0].code).toBe('NOT_A_YOUTUBE_URL');
     await api().post(`${base}/wods/${wods[0]}/submissions`).set(bearer(ahmed.token)).send({ clientId: randomUUID(), raw: { value: 120 } }).expect(422);
+    // The YouTube link is the proof: required to submit, not to save a draft.
+    const noVideo = await api().post(`${base}/wods/${wods[0]}/submissions`).set(bearer(ahmed.token)).send({ clientId: randomUUID(), raw: { value: 95 } }).expect(422);
+    expect(noVideo.body.errors[0]).toMatchObject({ field: 'videoUrl', code: 'REQUIRED' });
+    const draft = await api().post(`${base}/wods/${wods[0]}/submissions`).set(bearer(ahmed.token)).send({ clientId: randomUUID(), raw: { value: 95 }, submit: false }).expect(201);
+    expect(draft.body.status).toBe('DRAFT');
 
     const scores: Record<string, number[]> = { [ahmed.id]: [95, 90, 140, 175], [ali.id]: [90, 100, 120, 160] };
     const subs: Record<string, string[]> = { [ahmed.id]: [], [ali.id]: [] };
@@ -147,6 +152,19 @@ describe('Competitions (integration)', () => {
     const queue = await api().get(`/api/v1/judge/submissions?competitionId=${competitionId}`).set(bearer(judge.token)).expect(200);
     expect(queue.body).toHaveLength(8);
     await api().get('/api/v1/judge/submissions').set(bearer(ahmed.token)).expect(403);
+
+    // Judge view by athlete: each athlete with the WODs they completed and the YouTube link of each.
+    const byAthlete = await api().get(`/api/v1/judge/athletes?competitionId=${competitionId}`).set(bearer(judge.token)).expect(200);
+    expect(byAthlete.body).toHaveLength(1);
+    expect(byAthlete.body[0]).toMatchObject({ competition: { id: competitionId }, wodCount: 4 });
+    const athletes = byAthlete.body[0].athletes as { athlete: { id: string }; category: { id: string }; submissions: { workout: { id: string }; videoUrl: string; youtubeId: string; status: string }[] }[];
+    expect(athletes.map((a) => a.athlete.id).sort()).toEqual([ahmed.id, ali.id].sort());
+    for (const a of athletes) {
+      expect(a.category.id).toBe(rxMale);
+      expect(a.submissions.map((x) => x.workout.id)).toEqual(wods);
+      expect(a.submissions.every((x) => x.status === 'SUBMITTED' && x.youtubeId === 'dQw4w9WgXcQ' && x.videoUrl === 'https://youtu.be/dQw4w9WgXcQ')).toBe(true);
+    }
+    await api().get(`/api/v1/judge/athletes?competitionId=${competitionId}`).set(bearer(ahmed.token)).expect(403);
     await api().post(`/api/v1/judge/submissions/${subs[ali.id][0]}/approve`).set(bearer(ahmed.token)).expect(403);
 
     for (const id of [...subs[ahmed.id], ...subs[ali.id]]) await api().post(`/api/v1/judge/submissions/${id}/approve`).set(bearer(judge.token)).expect(200);
@@ -219,20 +237,23 @@ describe('Competitions (integration)', () => {
     const dash = await api().get(`/api/v1/admin/competitions/${competitionId}/dashboard`).set(panel).expect(200);
     expect(dash.body).toMatchObject({ participants: 2, paidRegistrations: 1, freeRegistrations: 1, revenue: 40_000 });
     await api().get(`/api/v1/admin/competitions/${competitionId}/heats`).set(panel).expect(200);
+    const byAthlete = await api().get(`/api/v1/admin/competitions/${competitionId}/athletes`).set(panel).expect(200);
+    expect(byAthlete.body).toMatchObject({ wodCount: 4 });
+    expect(byAthlete.body.athletes.map((a: { submissions: unknown[] }) => a.submissions.length)).toEqual([4, 4]);
     await api().get(`/api/v1/admin/competitions/${competitionId}/heats`).set(bearer(admin.token)).expect(401);
   });
 
-  it('ATHLETE uploads an MP4 score video, checked by content and stored as competition media (§24)', async () => {
+  it('a JUDGE assigned to one WOD sees only that WOD under each athlete', async () => {
     const base = `/api/v1/competitions/${competitionId}`;
-    const mp4 = Buffer.concat([Buffer.from([0, 0, 0, 0x18]), Buffer.from('ftypisom'), Buffer.alloc(64)]);
-    await api().post(`${base}/videos`).set(bearer(ahmed.token)).attach('file', Buffer.from('not a video at all'), 'fake.mp4').expect(415);
-    const outsider = await actor();
-    await api().post(`${base}/videos`).set(bearer(outsider.token)).attach('file', mp4, 'wod.mp4').expect(403);
-    const up = await api().post(`${base}/videos`).set(bearer(ahmed.token)).attach('file', mp4, 'wod.mp4').expect(201);
-    expect(up.body).toMatchObject({ mime: 'video/mp4' });
-    const media = await prisma.media.findUniqueOrThrow({ where: { id: up.body.mediaId } });
-    expect(media).toMatchObject({ purpose: 'COMPETITION_VIDEO', ownerId: ahmed.id, mime: 'video/mp4' });
+    const wod2Judge = await actor();
+    const staff = await api().post(`${base}/staff`).set(bearer(organizer.token)).send({ userId: wod2Judge.id, role: 'JUDGE' }).expect(201);
+    await api().post(`${base}/judge-assignments`).set(bearer(organizer.token)).send({ staffId: staff.body.id, workoutId: wods[1] }).expect(201);
+    const res = await api().get('/api/v1/judge/athletes').set(bearer(wod2Judge.token)).expect(200);
+    expect(res.body).toHaveLength(1);
+    expect(res.body[0].wodCount).toBe(1);
+    for (const a of res.body[0].athletes) expect(a.submissions.map((x: { workout: { id: string } }) => x.workout.id)).toEqual([wods[1]]);
   });
+
 
   it('ORGANIZER schedules heats with lanes; athletes see their heat (§45)', async () => {
     const base = `/api/v1/competitions/${competitionId}`;

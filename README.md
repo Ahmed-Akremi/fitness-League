@@ -114,11 +114,13 @@ See [`apps/mobile-rn/README.md`](apps/mobile-rn/README.md) (`npx expo run:androi
 | Moderation: reports on athletes, workouts, comments and gyms; moderator decisions (dismiss, warn, suspend N days; bans for admins) that sign the athlete out; appeals once, from the app for warnings or through a signed link emailed with a suspension/ban; a different moderator decides; public anonymised moderation log; admin panel queue; report sheet in the app | Done, tested |
 | Behavioural anti-cheat: weekly scan after the close (score > 3σ above own history, minimum-duration farming, accounts sharing an install that meet in battles, friends alternating battle wins) raising flags only; moderators clear or confirm them in the admin panel | Done, tested |
 | Gym admin dashboard: members and requests, active 7/28 days, 8-week trend, top progress, members to nudge (14 days without a workout), WOD participation, war record; mobile screen from the gym profile | Done, tested |
+| Competitions: organizers create events (price, per-category price, the 18 category templates, coupons FREE / % / fixed), WODs with direct or placement points, prizes, judges and heats; athletes register (eligibility, capacity, deadlines checked by the server) and submit each score with the **YouTube link** of their video (required to submit); judge space by athlete (each athlete's completed WODs with their links) or by status (approve, reject, penalty, adjust, versioned history); TOTAL = sum of the WOD points, leaderboard recomputed on every change, tie-breaks, final lock, podium; organizer section in the admin panel. No online payment provider yet: organizers mark paid registrations by hand | Done, tested |
 | Docker images / compose, CI | Written, not yet run (no Docker locally; CI runs on the next push) |
 
 ## Not done yet
 
 - Run Docker compose and CI once for real.
+- Competitions: online payment (no provider connected; organizers mark registrations as paid).
 - Phase 2: mobile FCM token registration (needs a Firebase project), live leaderboard moves, phone verification by SMS.
 - Phase 3: video proofs (needs a transcoding pipeline: ffprobe/ffmpeg).
 - Phase 4: integrations (watches, apps), coach tools, billing.

@@ -537,11 +537,13 @@
   "compTimeCap": "Time cap reached",
   "compTotalReps": "Total reps in the WOD",
   "compRepsPerRound": "Reps per round",
-  "compUploadVideo": "Upload a video (MP4/MOV)",
-  "compVideoUploaded": "Video uploaded",
-  "compVideoTooLarge": "The video must be 50 MB or less.",
-  "compOr": "or",
   "compHeats": "Heats",
   "compMyHeat": "Your heat",
-  "compLane": "Lane {lane}"
+  "compLane": "Lane {lane}",
+  "compVideoRequired": "Add the YouTube link of your video to submit your score.",
+  "judgeByAthlete": "Athletes",
+  "judgeBySubmission": "Submissions",
+  "judgeWodsDone": "{done} / {total} WODs",
+  "judgeNoVideo": "No video link",
+  "judgeNoAthletes": "No athletes registered yet."
 }
