@@ -1,4 +1,4 @@
-# Handoff — fitness-league (2026-10-05, updated late evening)
+# Handoff — fitness-league (2026-10-06)
 
 ## 1. Goal
 
@@ -9,6 +9,7 @@
 - Open the interfaces in a window so the owner can see them.
 - **Remove admin two-factor authentication everywhere** (owner's explicit choice, production included).
 - **Judges work only in the web admin panel, never in the app** (owner's request): judge accounts only judge (no participation, no score); admins generate judge and head judge accounts; head judges manage the judges and head judges of their competitions.
+- **Judge accounts follow-ups** (owner's request, 2026-10-06, done): reset a judge's password, remove a single WOD assignment, clear message in the app when a judge tries to sign in.
 - **Editable banner** (owner's request, 2026-10-05): a new banner for each new competition or final, uploaded from the admin panel.
 - **Score computed by the app** (owner's request, 2026-10-05): the athlete enters the reps of each movement of the WOD, never the score; owner's choices: reps per movement (not sets or rounds) × points per rep set by the organizer, capped at the WOD maximum.
 - **Tutorial video** (owner's request): 9:16 tutorial of the competition flow, on the Desktop.
@@ -16,15 +17,15 @@
 
 ## 2. Current state
 
-- **Everything is merged into `main`** (2026-10-05, by the owner in the GitHub UI): PR #1 `feat/gyms-sports-mobile` (`6e6dcc6`) and PR #2 `feat/competitions` (`29fd30d`). Local `main` fast-forwarded to `29fd30d`; `feat/competitions` has no commit that `main` lacks. Start new work from `main`. `dfca86f` (made by the owner, message "dis a claude pour lire fishier handoff") contains the whole judge-accounts change below.
+- **Everything is merged into `main`** (2026-10-05, by the owner in the GitHub UI): PR #1 `feat/gyms-sports-mobile` (`6e6dcc6`) and PR #2 `feat/competitions` (`29fd30d`). Local `main` fast-forwarded to `29fd30d`; `feat/competitions` has no commit that `main` lacks. Work now happens directly on `main` (owner's request, 2026-10-06: "commit et push sur main"); `main` = `origin/main` after the judge follow-ups (`6dd4781`) and the handoff commits. `dfca86f` (made by the owner, message "dis a claude pour lire fishier handoff") contains the whole judge-accounts change below.
 - `gh` is still not installed in WSL and the GitHub MCP server fails to connect ("Authorization header is badly formatted"): PRs are opened by the owner from the browser.
-- `brag-output/script-tutoriel-competition.md` is **staged but not committed** (meant to stay outside git; unstage with `git restore --staged` or commit it if the owner wants it in the repo).
-- All checks green at the last run:
-  - API: 164 unit tests, 128 integration tests (33 files), lint clean, typecheck clean.
-  - RN app: 72 tests (15 suites), typecheck clean.
+- `brag-output/` (tutorial video script) is **untracked** on purpose (outside git).
+- All checks green at the last run (2026-10-06, after the judge follow-ups):
+  - API: 164 unit tests, lint clean, typecheck clean; integration: competitions + admin + auth (36 tests) re-run green — the full suite (128 tests, 33 files) was last run on 2026-10-05.
+  - RN app: 73 tests (15 suites), typecheck clean.
   - Admin panel: 7 tests, typecheck clean.
 - Local servers: after the PC restart (2026-10-05) only the RN web preview runs, in **offline demo mode** (`EXPO_PUBLIC_DEMO=true CI=1 npx expo start --web --port 8081`, no API needed; sign in as `ahmed_rx@…`).
-- **Phone + browser server (late evening)**: `EXPO_PUBLIC_DEMO=true npx expo start --tunnel --port 8082` in `apps/mobile-rn` (offline demo, current code). WSL2 is in NAT mode (`172.31.x`), so a phone on the Wi-Fi cannot reach Metro directly → tunnel (`@expo/ngrok` installed globally under `~/.local/node`). Tunnel URL `https://gwllusk-anonymous-8082.exp.direct` (changes on every restart; read it from `curl -s http://127.0.0.1:4040/api/tunnels`). Expo prints no QR in a non-TTY shell: the QR was generated with the `qrcode` npm package to `Desktop/expo-qr.png`, content `exp+fitness-league://expo-development-client/?url=<encoded tunnel URL>` (opens in the **dev-client build**, not Expo Go). Android bundle pre-built once (200, 9 MB, 94 s). Also opened in the Windows browser at http://localhost:8082.
+- **Phone + browser server (2026-10-05 late evening, still running on 2026-10-06)**: `EXPO_PUBLIC_DEMO=true npx expo start --tunnel --port 8082` in `apps/mobile-rn` (offline demo, current code). WSL2 is in NAT mode (`172.31.x`), so a phone on the Wi-Fi cannot reach Metro directly → tunnel (`@expo/ngrok` installed globally under `~/.local/node`). Tunnel URL `https://gwllusk-anonymous-8082.exp.direct` (changes on every restart; read it from `curl -s http://127.0.0.1:4040/api/tunnels`). Expo prints no QR in a non-TTY shell: the QR was generated with the `qrcode` npm package to `Desktop/expo-qr.png`, content `exp+fitness-league://expo-development-client/?url=<encoded tunnel URL>` (opens in the **dev-client build**, not Expo Go). Android bundle pre-built once (200, 9 MB, 94 s). Also opened in the Windows browser at http://localhost:8082.
 - The API / Postgres / admin servers below are **not** running; restart them as described when needed:
   - Embedded Postgres on `localhost:55432` (`pnpm db:embedded`, throw-away data dir in `/tmp`).
   - API `node --enable-source-maps dist/main.js` on `:3000`, restarted on 2026-10-05 with the judge-accounts build (with `RATE_LIMIT_ENABLED=false`, `CORS_ORIGINS=http://localhost:5173,http://localhost:8081`), worker `node dist/worker.js`.
@@ -32,7 +33,7 @@
   - Admin panel `npx vite --port 5173`.
 - Demo data loaded (`pnpm demo-data`, `pnpm demo-competition`); password for every demo account: `demo-password-2026`.
   - Admin panel (http://localhost:5173): `head_judge@…` (HEAD_JUDGE: Athlètes, Soumissions, Équipe des juges), `judge_one|two|three@…` (JUDGE: Athlètes, Soumissions), `admin@demo.fitnessleague.test` (everything + "Comptes juges"). All `@demo.fitnessleague.test`.
-  - App: `ahmed_rx@demo.fitnessleague.test` → Profil → Compétitions. Judge accounts are refused by the app (403 "Judge accounts sign in to the admin panel.").
+  - App: `ahmed_rx@demo.fitnessleague.test` → Profil → Compétitions. Judge accounts are refused by the app (403 `JUDGE_ACCOUNT`, the login screen shows `errorJudgeAccount`). Note: the local API build predates this code; rebuild (`pnpm build` in `apps/api`) before restarting it.
   - Local DB: migrations `20261005120000_competition_cover` and `20261005130000_movement_reps_score` are **not applied yet** to the local database (run `pnpm prisma migrate deploy` in `apps/api` before restarting the API); migration `20261004150000_judge_roles` applied; the 4 demo judges were converted to `JUDGE` / `HEAD_JUDGE` by hand (a fresh `pnpm demo-competition` now creates them that way).
 - A `git stash` on `feat/gyms-sports-mobile` holds 58 files that differed only by CRLF line endings (no content change).
 
@@ -63,6 +64,12 @@ Admin panel (`apps/admin`)
 - `src/pages/Login.tsx`, `src/auth.tsx`, `src/pages/Login.test.tsx`, `src/pages/Users.tsx`, `src/api.ts`.
 - Judge accounts (2026-10-05): `src/pages/Judge.tsx` (`JudgeAthletes`, `JudgeQueue`, `JudgeReview` with embedded YouTube, `JudgeTeam`); `src/pages/Judges.tsx` (admins generate accounts, password shown once); `src/App.tsx` (judge-only routes); `src/components/Layout.tsx` (judge nav); `src/auth.tsx` (`isJudge`); `src/pages/Competitions.tsx` (judge account picker); `src/styles.css` (`button.secondary`).
 
+Judge accounts follow-ups (2026-10-06, commit `6dd4781` on `main`)
+- API: `src/common/errors/app-exception.ts` (`ErrorCode.JUDGE_ACCOUNT`); `src/modules/auth/auth.service.ts` (`assertAppAccount` throws 403 `JUDGE_ACCOUNT`); `src/modules/admin/admin.service.ts` (`resetJudgePassword`: judge accounts only, new `randomBytes(9)` password, lockout cleared, `sessionVersion` + refresh tokens revoked, audit `JUDGE_PASSWORD_RESET`) + `admin.controller.ts` (`POST /admin/judges/:id/reset-password`, ADMIN/SUPER_ADMIN); `src/modules/competitions/competitions.service.ts` (`unassign`, audit `competition.judge.unassigned`) + `competitions.controller.ts` (`DELETE :id/judge-assignments/:assignmentId` on `/competitions`, `/admin/judge/competitions`, `/admin/competitions`); `test/competitions.int-spec.ts`.
+- Admin: `src/pages/Judges.tsx` (button "Nouveau mot de passe", password shown once); `src/pages/Judge.tsx` (`JudgeTeam`: each WOD as a `.chip` with a × button); `src/styles.css` (`.chip`).
+- RN: `src/core/widgets/error.tsx` (`JUDGE_ACCOUNT` → `errorJudgeAccount`); i18n en/fr/ar; `test/screens/login.test.tsx`.
+- Docs: `docs/ARCHITECTURE.md` (error code list).
+
 Banner + computed score (2026-10-05)
 - API: `prisma/migrations/20261005120000_competition_cover` (enum `COMPETITION_COVER`, FK `competitions.cover_media_id` → `media`); `src/modules/competitions/competition-cover.service.ts` (PNG/JPEG/WebP ≤ 5 MB → 1440×596 WebP, content-hashed key, old file deleted, audit); `PUT/DELETE /competitions/:id/cover` and `/admin/competitions/:id/cover`; `coverUrl` in list/detail (`card()`); `coverMediaId` removed from the competition DTOs. `prisma/migrations/20261005130000_movement_reps_score` (score type `MOVEMENT_REPS`); `domain.ts` (`ScoredMovement`, `scoredMovements`, `movementPoints`, `rawValue` case); `competitions.dto.ts` (`MovementDto`, WOD `movements` = `{ name, pointsPerRep }[]`); `competitions.service.ts` (`checkWorkout`: `POINTS_PER_REP_REQUIRED`; `submit`: raw `{ movementReps: number[] }`, computed value not refused above the max, capped by the leaderboard); tests `test/competition-cover.int-spec.ts`, `test/competition-movement-score.int-spec.ts`, `domain.spec.ts`; demo WOD 2 = MOVEMENT_REPS (burpees 1 pt, wall balls 0.5 pt).
 - Admin: `src/api.ts` (`upload()`, multipart PUT); `src/pages/Competitions.tsx` (panel "Bannière": preview, replace, delete; WOD form default type "Reps par mouvement" + textarea `Nom = points` per line, `parseMovements` + `Competitions.test.ts`); `src/pages/Judge.tsx` (per-movement breakdown in the review).
@@ -92,7 +99,7 @@ Commits on `feat/competitions` (this session):
 11. `333da44` WOD score computed from the reps of each movement (`MOVEMENT_REPS`).
 12. docs: README + this handoff; branch pushed.
 13. Owner merged PR #1 and PR #2 into `main` on GitHub; local `main` fast-forwarded.
-14. On `main` (2026-10-06): judge accounts follow-ups (password reset, single WOD assignment removal, clear app message for judges). Checks: API 164 unit + competitions/admin/auth integration (36) green, lint clean; admin 7 tests + typecheck; RN 73 tests + typecheck.
+14. `6dd4781` on `main` (2026-10-06): judge accounts follow-ups (password reset, single WOD assignment removal, clear app message for judges). Checks: API 164 unit + competitions/admin/auth integration (36) green, lint clean; admin 7 tests + typecheck; RN 73 tests + typecheck.
 
 Outside git: `DEV_STATIC_TOTP_CODE` line removed from the local `apps/api/.env`.
 
