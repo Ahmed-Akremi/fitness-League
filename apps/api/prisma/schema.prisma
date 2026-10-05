@@ -2022,6 +2022,7 @@ enum CompetitionScoreType {
   POINTS
   MAX_WEIGHT
   COMPLEX
+  MOVEMENT_REPS
 }
 
 enum CompetitionScoringMethod {

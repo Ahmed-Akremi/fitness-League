@@ -25,7 +25,7 @@ import {
   UpdateCompetitionDto,
   WorkoutDto,
 } from './competitions.dto';
-import { canRegister, canSubmit, checkCoupon, checkEligibility, quote, rawValue, youtubeId, type CouponRule, type ScoreType } from './domain';
+import { canRegister, canSubmit, checkCoupon, checkEligibility, quote, rawValue, scoredMovements, youtubeId, type CouponRule, type ScoreType } from './domain';
 import { JudgingService } from './judging.service';
 
 type Tx = Prisma.TransactionClient;
@@ -307,7 +307,7 @@ export class CompetitionsService {
       }
       // Points rules may have changed: every category's official totals follow.
       for (const c of await tx.competitionCategory.findMany({ where: { competitionId }, select: { id: true } })) await this.judging.recompute(tx, competitionId, c.id);
-      await this.audit.log({ actorId: user.id, actorRole: user.role, action: 'competition.wod.modified', entityType: 'CompetitionWorkout', entityId: workoutId, before: { name: before.name, maximumPoints: before.maximumPoints, scoringMethod: before.scoringMethod }, after: { ...fields } }, tx);
+      await this.audit.log({ actorId: user.id, actorRole: user.role, action: 'competition.wod.modified', entityType: 'CompetitionWorkout', entityId: workoutId, before: { name: before.name, maximumPoints: before.maximumPoints, scoringMethod: before.scoringMethod }, after: { ...fields, movements: fields.movements?.map((m) => ({ ...m })) } }, tx);
       return w;
     });
   }
@@ -540,10 +540,11 @@ export class CompetitionsService {
       if (canSubmit(w, w.competition, now)) throw new AppException(HttpStatus.CONFLICT, ErrorCode.WOD_CLOSED, 'Submissions are closed for this WOD');
 
       const raw = dto.raw as Record<string, number | boolean | null>;
-      const value = rawValue(w.scoreType as ScoreType, { ...(raw as object), capS: w.timeCapS } as Parameters<typeof rawValue>[1]);
+      const value = rawValue(w.scoreType as ScoreType, { ...(raw as object), capS: w.timeCapS, movements: scoredMovements(w.movements) } as Parameters<typeof rawValue>[1]);
       if (value == null || !Number.isFinite(value) || value < 0) throw AppException.validation([{ field: 'raw', code: 'SCORE_REQUIRED' }]);
       if (w.scoreType === 'TIME' && !raw.capped && w.timeCapS != null && value > w.timeCapS) throw AppException.validation([{ field: 'raw.timeS', code: 'OVER_TIME_CAP' }]);
-      if (w.scoringMethod === 'DIRECT_POINTS' && value > w.maximumPoints) throw AppException.validation([{ field: 'raw.value', code: 'OVER_MAXIMUM_POINTS' }]);
+      // A typed score above the maximum is a typo; a computed one (MOVEMENT_REPS) is capped by the leaderboard instead.
+      if (w.scoringMethod === 'DIRECT_POINTS' && w.scoreType !== 'MOVEMENT_REPS' && value > w.maximumPoints) throw AppException.validation([{ field: 'raw.value', code: 'OVER_MAXIMUM_POINTS' }]);
       // The proof is a YouTube link only; drafts may be saved before the video is online.
       const yt = dto.videoUrl ? youtubeId(dto.videoUrl) : null;
       if (dto.videoUrl && !yt) throw AppException.validation([{ field: 'videoUrl', code: 'NOT_A_YOUTUBE_URL' }]);
@@ -657,13 +658,15 @@ export class CompetitionsService {
       if (!table.length) errors.push({ field: 'placementTable', code: 'REQUIRED' });
       if (table.some((p, i) => p > dto.maximumPoints || (i > 0 && p > table[i - 1]))) errors.push({ field: 'placementTable', code: 'MUST_DECREASE_WITHIN_MAXIMUM' });
     }
+    // The athlete gives reps per movement and the app computes the score: every movement must be worth something.
+    if (dto.scoreType === 'MOVEMENT_REPS' && (!dto.movements?.length || dto.movements.some((m) => m.pointsPerRep <= 0))) errors.push({ field: 'movements', code: 'POINTS_PER_REP_REQUIRED' });
     if (errors.length) throw AppException.validation(errors);
   }
 
   private workoutData(fields: Omit<WorkoutDto, 'variants'>) {
     return {
       ...fields,
-      movements: (fields.movements ?? []) as Prisma.InputJsonArray,
+      movements: (fields.movements ?? []).map((m) => ({ name: m.name, pointsPerRep: m.pointsPerRep })),
       placementTable: (fields.placementTable ?? []) as Prisma.InputJsonArray,
       releaseAt: date(fields.releaseAt),
       submissionStart: date(fields.submissionStart),

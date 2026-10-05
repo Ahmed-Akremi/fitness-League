@@ -128,12 +128,18 @@ export class VariantDto {
   @IsOptional() @IsInt() @Min(60) timeCapS?: number;
 }
 
+/** A WOD movement and its value per rep; MOVEMENT_REPS WODs score Σ reps × pointsPerRep. */
+export class MovementDto {
+  @ApiProperty({ example: 'Burpees' }) @IsString() @Length(1, 80) name!: string;
+  @ApiProperty({ example: 1 }) @IsNumber({ maxDecimalPlaces: 2 }) @Min(0) @Max(1000) pointsPerRep!: number;
+}
+
 export class WorkoutDto {
   @ApiProperty({ example: 1 }) @IsInt() @Min(1) @Max(100) number!: number;
   @ApiProperty({ example: 'WOD 1' }) @IsString() @Length(1, 80) name!: string;
   @ApiProperty() @IsString() @Length(1, 5000) description!: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @Length(0, 5000) standards?: string;
-  @ApiPropertyOptional() @IsOptional() @IsArray() @IsString({ each: true }) movements?: string[];
+  @ApiPropertyOptional({ type: [MovementDto] }) @IsOptional() @IsArray() @ValidateNested({ each: true }) @Type(() => MovementDto) movements?: MovementDto[];
   @ApiPropertyOptional() @IsOptional() @IsString() @Length(0, 500) videoUrl?: string;
   @ApiPropertyOptional() @IsOptional() @IsUUID() imageMediaId?: string;
   @ApiPropertyOptional() @IsOptional() @IsInt() @Min(60) timeCapS?: number;
@@ -197,7 +203,7 @@ export class CouponCheckDto {
 
 export class SubmissionDto {
   @ApiProperty({ description: 'Client id; a retry with the same id is answered with the stored submission.' }) @IsUUID() clientId!: string;
-  @ApiProperty({ description: 'timeS, rounds, reps, value (load/distance/calories/points), remainingTimeS, capped.' }) @IsObject() raw!: Record<string, unknown>;
+  @ApiProperty({ description: 'timeS, rounds, reps, value (load/distance/calories/points), remainingTimeS, capped; movementReps (one count per WOD movement) for MOVEMENT_REPS.' }) @IsObject() raw!: Record<string, unknown>;
   @ApiPropertyOptional() @IsOptional() @IsString() @Length(0, 2000) notes?: string;
   @ApiPropertyOptional({ description: 'YouTube URL, required to submit (not for a draft)' }) @IsOptional() @IsString() @Length(0, 500) videoUrl?: string;
   @ApiPropertyOptional({ description: 'false keeps it as a DRAFT' }) @IsOptional() @IsBoolean() submit?: boolean;

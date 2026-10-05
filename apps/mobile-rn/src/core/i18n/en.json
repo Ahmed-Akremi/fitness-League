@@ -534,5 +534,8 @@
   "compHeats": "Heats",
   "compMyHeat": "Your heat",
   "compLane": "Lane {lane}",
-  "compVideoRequired": "Add the YouTube link of your video to submit your score."
+  "compVideoRequired": "Add the YouTube link of your video to submit your score.",
+  "compPointsPerRep": "{points} pt/rep",
+  "compComputedScore": "Calculated score",
+  "compComputedHint": "Reps × points per rep, computed by the app."
 }

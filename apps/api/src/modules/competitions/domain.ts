@@ -111,7 +111,7 @@ export function checkEligibility(
 
 // ───────────── WOD points ─────────────
 
-export type ScoreType = 'TIME' | 'REPS' | 'ROUNDS_REPS' | 'DISTANCE' | 'LOAD' | 'CALORIES' | 'POINTS' | 'MAX_WEIGHT' | 'COMPLEX';
+export type ScoreType = 'TIME' | 'REPS' | 'ROUNDS_REPS' | 'DISTANCE' | 'LOAD' | 'CALORIES' | 'POINTS' | 'MAX_WEIGHT' | 'COMPLEX' | 'MOVEMENT_REPS';
 
 /** DIRECT_POINTS: the official score already is the points. PLACEMENT_POINTS: points from the rank in the category. */
 export type ScoringMethod = 'DIRECT_POINTS' | 'PLACEMENT_POINTS';
@@ -119,13 +119,37 @@ export type ScoringMethod = 'DIRECT_POINTS' | 'PLACEMENT_POINTS';
 /** Lower is better only for TIME; every other score type ranks higher-first. */
 export const lowerIsBetter = (t: ScoreType) => t === 'TIME';
 
+/** A WOD movement and what each rep of it is worth (MOVEMENT_REPS WODs). */
+export interface ScoredMovement {
+  name: string;
+  pointsPerRep: number;
+}
+
+const MAX_REPS = 100_000;
+
+/** WOD movements as stored; older rows may hold plain names, worth 0 points. */
+export function scoredMovements(json: unknown): ScoredMovement[] {
+  if (!Array.isArray(json)) return [];
+  return json.map((m) => (typeof m === 'string' ? { name: m, pointsPerRep: 0 } : { name: String(m?.name ?? ''), pointsPerRep: Number(m?.pointsPerRep ?? 0) }));
+}
+
+/**
+ * MOVEMENT_REPS: the athlete gives the reps done on each movement and the score is computed, never typed:
+ * Σ reps × points per rep, rounded to the cent. Null unless there is one whole, non-negative count per movement.
+ */
+export function movementPoints(movements: ScoredMovement[], reps: unknown): number | null {
+  if (movements.length === 0 || !Array.isArray(reps) || reps.length !== movements.length) return null;
+  if (!reps.every((r) => Number.isInteger(r) && r >= 0 && r <= MAX_REPS)) return null;
+  return Math.round(movements.reduce((sum, m, i) => sum + m.pointsPerRep * (reps[i] as number), 0) * 100) / 100;
+}
+
 /**
  * The comparable value of a raw result. ROUNDS_REPS uses rounds × repsPerRound + reps; a capped TIME result
  * (not finished) ranks after every finisher, by reps done: capS + (maxReps − reps).
  */
 export function rawValue(
   type: ScoreType,
-  r: { timeS?: number | null; rounds?: number | null; reps?: number | null; repsPerRound?: number | null; value?: number | null; capped?: boolean; capS?: number | null; maxReps?: number | null },
+  r: { timeS?: number | null; rounds?: number | null; reps?: number | null; repsPerRound?: number | null; value?: number | null; capped?: boolean; capS?: number | null; maxReps?: number | null; movements?: ScoredMovement[]; movementReps?: unknown },
 ): number | null {
   switch (type) {
     case 'TIME':
@@ -135,6 +159,8 @@ export function rawValue(
       return r.rounds == null ? null : r.rounds * (r.repsPerRound ?? 0) + (r.reps ?? 0);
     case 'REPS':
       return r.reps ?? r.value ?? null;
+    case 'MOVEMENT_REPS':
+      return movementPoints(r.movements ?? [], r.movementReps);
     default:
       return r.value ?? null;
   }

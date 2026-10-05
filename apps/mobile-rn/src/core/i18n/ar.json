@@ -534,5 +534,8 @@
   "compHeats": "الدفعات",
   "compMyHeat": "دفعتك",
   "compLane": "الممر {lane}",
-  "compVideoRequired": "أضف رابط يوتيوب لفيديو أدائك لإرسال نتيجتك."
+  "compVideoRequired": "أضف رابط يوتيوب لفيديو أدائك لإرسال نتيجتك.",
+  "compPointsPerRep": "{points} نقطة/تكرار",
+  "compComputedScore": "النتيجة المحسوبة",
+  "compComputedHint": "التكرارات × نقاط كل تكرار، يحسبها التطبيق."
 }

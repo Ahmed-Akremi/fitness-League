@@ -228,6 +228,9 @@ export function CompetitionScreen({ id }: { id: string }) {
                     </View>
                     <Txt>{w.description}</Txt>
                     {w.standards ? <Txt variant="small" color={colors.outline}>{w.standards}</Txt> : null}
+                    {w.scoreType === 'MOVEMENT_REPS' && (w.movements ?? []).length > 0 ? (
+                      <Txt variant="small" color={colors.outline}>{w.movements.map((m: Json) => `${m.name} · ${t('compPointsPerRep', { points: m.pointsPerRep })}`).join('  ·  ')}</Txt>
+                    ) : null}
                     {s && <Txt variant="small">{`${statusLabel(t, s.status)}${s.points != null && s.status === 'FINAL' ? ` · ${t('compPoints', { points: Number(s.points) })}` : ''}`}</Txt>}
                     {registered && (!s || ['DRAFT', 'SUBMITTED', 'NEEDS_CORRECTION'].includes(s.status)) && (
                       <Button testID={`submit-${w.number}`} kind="tonal" icon="edit-note" label={t('compSubmitScore')} onPress={() => router.push(`/competitions/${id}/wods/${w.id}/submit`)} />
@@ -515,6 +518,7 @@ export function SubmitScreen({ id, wodId }: { id: string; wodId: string }) {
   const [rounds, setRounds] = useState('');
   const [reps, setReps] = useState('');
   const [value, setValue] = useState('');
+  const [moveReps, setMoveReps] = useState<Record<number, string>>({});
   const [capped, setCapped] = useState(false);
   const [video, setVideo] = useState('');
   const [notes, setNotes] = useState('');
@@ -525,8 +529,14 @@ export function SubmitScreen({ id, wodId }: { id: string; wodId: string }) {
   if (!w) return <ErrorView error={new ApiError('client', 404, 'NOT_FOUND')} />;
   const type: string = w.scoreType;
   const num = (s: string) => (s.trim() === '' ? null : Number(s.replace(',', '.')));
+  const movements: { name: string; pointsPerRep: number }[] = (w.movements ?? []).filter((m: Json) => typeof m === 'object');
+  const counts = movements.map((_, i) => num(moveReps[i] ?? ''));
+  // Same formula as the server (Σ reps × points per rep); the athlete never types the score.
+  const computed = counts.every((c) => c != null && Number.isInteger(c) && c >= 0) ? Math.round(movements.reduce((sum, m, i) => sum + m.pointsPerRep * (counts[i] as number), 0) * 100) / 100 : null;
   const raw: Json =
-    type === 'TIME'
+    type === 'MOVEMENT_REPS'
+      ? { movementReps: counts }
+      : type === 'TIME'
       ? capped
         ? { capped: true, reps: num(reps), maxReps: num(value) }
         : { timeS }
@@ -535,7 +545,7 @@ export function SubmitScreen({ id, wodId }: { id: string; wodId: string }) {
         : type === 'REPS'
           ? { reps: num(reps) }
           : { value: num(value) };
-  const filled = Object.values(raw).every((v) => v === true || (typeof v === 'number' && Number.isFinite(v)));
+  const filled = type === 'MOVEMENT_REPS' ? computed != null && movements.length > 0 : Object.values(raw).every((v) => v === true || (typeof v === 'number' && Number.isFinite(v)));
   const videoOk = video.trim() === '' || youtubeId(video) != null;
   const thumb = youtubeId(video);
 
@@ -559,7 +569,20 @@ export function SubmitScreen({ id, wodId }: { id: string; wodId: string }) {
       <Txt style={displayText(28)}>{w.name}</Txt>
       <Txt>{w.description}</Txt>
       <Txt color={colors.primary} style={{ fontWeight: '700' }}>{t('compMaxPoints', { points: w.maximumPoints })}</Txt>
-      {type === 'TIME' ? (
+      {type === 'MOVEMENT_REPS' ? (
+        <>
+          {movements.map((m, i) => (
+            <TextField key={i} testID={`sub-move-${i}`} label={`${m.name} · ${t('compPointsPerRep', { points: m.pointsPerRep })}`} placeholder={t('compReps')} keyboardType="number-pad" value={moveReps[i] ?? ''} onChangeText={(v) => setMoveReps({ ...moveReps, [i]: v })} />
+          ))}
+          <Card testID="sub-computed" style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <View style={{ flex: 1 }}>
+              <Txt variant="title">{t('compComputedScore')}</Txt>
+              <Txt variant="small" color={colors.outline}>{t('compComputedHint')}</Txt>
+            </View>
+            <Txt style={displayText(28)} color={colors.primary}>{computed == null ? '—' : t('compPoints', { points: Math.min(computed, w.maximumPoints) })}</Txt>
+          </Card>
+        </>
+      ) : type === 'TIME' ? (
         <>
           {!capped && <TimeField testID="sub-time" label={t('compScore')} onChange={setTimeS} />}
           <Chip testID="sub-capped" icon="timer-off" label={t('compTimeCap')} selected={capped} onPress={() => setCapped(!capped)} />

@@ -100,6 +100,15 @@ export function Competitions() {
   );
 }
 
+/** "Burpees = 1" per line → [{ name: 'Burpees', pointsPerRep: 1 }]; the athlete then gives reps per movement and the app computes the score. */
+export function parseMovements(text: string): { name: string; pointsPerRep: number }[] {
+  return text
+    .split('\n')
+    .map((line) => line.split('='))
+    .filter(([name]) => name?.trim())
+    .map(([name, points]) => ({ name: name.trim(), pointsPerRep: Number((points ?? '').trim().replace(',', '.')) }));
+}
+
 function Panel({ title, children }: { title: string; children: ReactNode }) {
   return (
     <details open>
@@ -128,7 +137,7 @@ export function CompetitionDetail() {
   const board = useFetch(() => (categoryId ? api.get<J>(`${base}/leaderboard?categoryId=${categoryId}`) : Promise.resolve(null)), [api, id, categoryId]);
   const [message, setMessage] = useState<string | null>(null);
   const [cat, setCat] = useState({ name: '', gender: 'MALE', minAge: '', maxAge: '', price: '' });
-  const [wod, setWod] = useState({ name: '', description: '', points: '100', start: '', end: '', method: 'DIRECT_POINTS', table: '100,95,90,85,80', scoreType: 'POINTS' });
+  const [wod, setWod] = useState({ name: '', description: '', points: '100', start: '', end: '', method: 'DIRECT_POINTS', table: '100,95,90,85,80', scoreType: 'MOVEMENT_REPS', movements: '' });
   const [prize, setPrize] = useState({ position: '1', type: 'CASH', amount: '', description: '' });
   const [coupon, setCoupon] = useState({ code: '', type: 'FREE', value: '', maxUses: '' });
   const [judge, setJudge] = useState({ userId: '', role: 'JUDGE' });
@@ -256,7 +265,10 @@ export function CompetitionDetail() {
               <tr key={w.id}>
                 <td>#{w.number}</td>
                 <td>{w.name}</td>
-                <td>{w.scoreType}</td>
+                <td>
+                  {w.scoreType}
+                  {w.scoreType === 'MOVEMENT_REPS' ? ` — ${(w.movements ?? []).map((m: J) => `${m.name} ${m.pointsPerRep} pt/rép.`).join(', ')}` : ''}
+                </td>
                 <td>{w.scoringMethod}</td>
                 <td>{w.maximumPoints} pts max</td>
               </tr>
@@ -275,6 +287,7 @@ export function CompetitionDetail() {
                 scoringMethod: wod.method,
                 maximumPoints: Number(wod.points),
                 ...(wod.method === 'PLACEMENT_POINTS' ? { placementTable: wod.table.split(',').map((x) => Number(x.trim())) } : {}),
+                ...(wod.scoreType === 'MOVEMENT_REPS' ? { movements: parseMovements(wod.movements) } : {}),
                 submissionStart: iso(wod.start),
                 submissionDeadline: iso(wod.end),
               }),
@@ -284,10 +297,19 @@ export function CompetitionDetail() {
           <input placeholder={`WOD ${nextWod}`} value={wod.name} onChange={(e) => setWod({ ...wod, name: e.target.value })} />
           <textarea required placeholder="Description / standards" value={wod.description} onChange={(e) => setWod({ ...wod, description: e.target.value })} />
           <select value={wod.scoreType} onChange={(e) => setWod({ ...wod, scoreType: e.target.value })}>
+            <option value="MOVEMENT_REPS">Reps par mouvement (score calculé par l’app)</option>
             {['TIME', 'REPS', 'ROUNDS_REPS', 'DISTANCE', 'LOAD', 'CALORIES', 'POINTS', 'MAX_WEIGHT', 'COMPLEX'].map((s) => (
               <option key={s}>{s}</option>
             ))}
           </select>
+          {wod.scoreType === 'MOVEMENT_REPS' && (
+            <textarea
+              required
+              placeholder={'Un mouvement par ligne : nom = points par rép.\nBurpees = 1\nWall balls = 0.5'}
+              value={wod.movements}
+              onChange={(e) => setWod({ ...wod, movements: e.target.value })}
+            />
+          )}
           <select value={wod.method} onChange={(e) => setWod({ ...wod, method: e.target.value })}>
             <option>DIRECT_POINTS</option>
             <option>PLACEMENT_POINTS</option>

@@ -8,12 +8,14 @@ import {
   checkEligibility,
   clampPoints,
   leaderboard,
+  movementPoints,
   nextVersion,
   placementPoints,
   placements,
   podium,
   quote,
   rawValue,
+  scoredMovements,
   totalPoints,
   youtubeId,
   type AthleteScores,
@@ -86,6 +88,25 @@ describe('WOD points (§18, §20, §21)', () => {
     expect(rawValue('ROUNDS_REPS', { rounds: 12, repsPerRound: 30, reps: 7 })).toBe(367);
     expect(rawValue('TIME', { capped: true, capS: 900, maxReps: 150, reps: 140 })).toBe(910);
     expect(rawValue('LOAD', { value: 120 })).toBe(120);
+  });
+
+  it('MOVEMENT_REPS: the app computes the score from the reps of each movement × its points per rep', () => {
+    const movements = [{ name: 'Burpees', pointsPerRep: 1 }, { name: 'Wall balls', pointsPerRep: 0.5 }];
+    expect(movementPoints(movements, [60, 75])).toBe(97.5);
+    expect(rawValue('MOVEMENT_REPS', { movements, movementReps: [60, 75] })).toBe(97.5);
+    expect(movementPoints(movements, [0, 0])).toBe(0);
+    // One whole, non-negative count per movement, nothing else.
+    expect(movementPoints(movements, [60])).toBeNull();
+    expect(movementPoints(movements, [60, -1])).toBeNull();
+    expect(movementPoints(movements, [60, 7.5])).toBeNull();
+    expect(movementPoints(movements, '60,75')).toBeNull();
+    expect(movementPoints([], [])).toBeNull();
+    expect(movementPoints([{ name: 'Row', pointsPerRep: 0.1 }], [3])).toBe(0.3); // no float noise
+  });
+
+  it('reads stored WOD movements, older plain names being worth 0 points', () => {
+    expect(scoredMovements([{ name: 'Burpees', pointsPerRep: 1 }, 'Rope climb'])).toEqual([{ name: 'Burpees', pointsPerRep: 1 }, { name: 'Rope climb', pointsPerRep: 0 }]);
+    expect(scoredMovements(null)).toEqual([]);
   });
 
   it('places results (ties share) — lower time wins, higher load wins', () => {

@@ -1,5 +1,5 @@
 /**
- * Competition demo data (§65): 1 competition, 6 categories, 4 WODs (100/100/150/200 pts), 10 athletes,
+ * Competition demo data (§65): 1 competition, 6 categories, 4 WODs (100/100/150/200 pts; WOD 2 scored from reps per movement), 10 athletes,
  * 3 judges + 1 head judge, 3 prizes, 3 coupons (FREE2026, DISCOUNT10, DISCOUNT20), scores judged so the
  * leaderboard is populated. Runs the real API in-process (same rules as production), so the database only
  * needs the migrations + `pnpm seed`. Idempotent on the competition slug. `--publish` also publishes it.
@@ -139,7 +139,8 @@ async function main() {
         number: i + 1,
         name: `WOD ${i + 1}`,
         description: ['21-15-9 thrusters / pull-ups', '12 min AMRAP: 10 burpees, 15 wall balls', '1RM clean & jerk', '2 km row + 50 cal bike'][i],
-        scoreType: 'POINTS',
+        // WOD 2 is scored by the app from the reps of each movement (burpee 1 pt, wall ball 0.5 pt).
+        ...(i === 1 ? { scoreType: 'MOVEMENT_REPS', movements: [{ name: 'Burpees', pointsPerRep: 1 }, { name: 'Wall balls', pointsPerRep: 0.5 }] } : { scoreType: 'POINTS' }),
         scoringMethod: 'DIRECT_POINTS',
         maximumPoints: max,
         submissionStart: h(-1),
@@ -173,7 +174,7 @@ async function main() {
       for (const [i, wodId] of wodIds.entries()) {
         const s = await call<{ id: string }>('POST', `/competitions/${cid}/wods/${wodId}/submissions`, people[a.u].token, {
           clientId: randomUUID(),
-          raw: { value: a.pts[i] },
+          raw: i === 1 ? { movementReps: [a.pts[i] - 30, 60] } : { value: a.pts[i] }, // 60 wall balls = 30 pts, the rest in burpees
           videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
         });
         // Most scores approved; one penalty and one left pending to show both states.

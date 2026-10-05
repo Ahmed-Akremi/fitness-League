@@ -53,6 +53,24 @@ describe('score submission', () => {
   });
 });
 
+describe('score from reps per movement', () => {
+  it('the athlete gives reps per movement and the app computes the score', async () => {
+    const wod = { id: 'w2', number: 2, name: 'WOD 2', description: '12 min AMRAP', scoreType: 'MOVEMENT_REPS', maximumPoints: 100, movements: [{ name: 'Burpees', pointsPerRep: 1 }, { name: 'Wall balls', pointsPerRep: 0.5 }] };
+    const backend = new FakeBackend()
+      .on('GET', '/competitions/c1', [200, { ...competition, myRegistration: { registrationStatus: 'CONFIRMED' }, workouts: [wod] }])
+      .on('POST', '/competitions/c1/wods/w2/submissions', [201, { id: 's2', status: 'SUBMITTED' }]);
+    const screen = await renderScreen(() => <SubmitScreen id="c1" wodId="w2" />, backend);
+    await fireEvent.changeText(await screen.findByTestId('sub-move-0'), '60');
+    await fireEvent.changeText(screen.getByTestId('sub-move-1'), '75');
+    expect(screen.getByText('97.5 pts')).toBeTruthy(); // 60×1 + 75×0.5
+    expect(screen.queryByTestId('sub-value')).toBeNull(); // no score field to type
+    await fireEvent.changeText(screen.getByTestId('sub-video'), 'https://youtu.be/dQw4w9WgXcQ');
+    await fireEvent.press(screen.getByTestId('sub-send'));
+    await waitFor(() => expect(backend.calls('POST', '/competitions/c1/wods/w2/submissions')).toHaveLength(1));
+    expect(backend.calls('POST', '/competitions/c1/wods/w2/submissions')[0].body).toMatchObject({ raw: { movementReps: [60, 75] }, submit: true });
+  });
+});
+
 describe('banner', () => {
   const page = { ...competition, eventStart: '2026-10-20T08:00:00Z', organizer: { fullName: 'Org' } };
 

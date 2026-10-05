@@ -155,6 +155,15 @@ export function JudgeReview() {
           Score déclaré : <strong>{s.rawValue ?? '—'}</strong>
           {s.points != null ? ` · ${s.points} pts` : ''}
         </p>
+        {s.workout.scoreType === 'MOVEMENT_REPS' && Array.isArray(s.raw?.movementReps) ? (
+          <ul>
+            {(s.workout.movements ?? []).map((m: J, i: number) => (
+              <li key={i}>
+                {m.name} : {s.raw.movementReps[i]} rép. × {m.pointsPerRep} = {Math.round(s.raw.movementReps[i] * m.pointsPerRep * 100) / 100} pts
+              </li>
+            ))}
+          </ul>
+        ) : null}
         {s.notes ? <p>{s.notes}</p> : null}
         {s.submittedAt ? <p>Envoyé le {new Date(s.submittedAt).toLocaleString('fr-FR')}</p> : null}
         {s.youtubeId ? (
