@@ -1,4 +1,4 @@
-# Handoff — fitness-league (2026-10-05, updated in the evening)
+# Handoff — fitness-league (2026-10-05, updated late evening)
 
 ## 1. Goal
 
@@ -16,12 +16,16 @@
 
 ## 2. Current state
 
-- Branch **`feat/competitions`**, pushed to GitHub on 2026-10-05 (owner's request). `dfca86f` (made by the owner, message "dis a claude pour lire fishier handoff") contains the whole judge-accounts change below. **No PR opened yet** (`gh` is not installed in WSL).
+- **Everything is merged into `main`** (2026-10-05, by the owner in the GitHub UI): PR #1 `feat/gyms-sports-mobile` (`6e6dcc6`) and PR #2 `feat/competitions` (`29fd30d`). Local `main` fast-forwarded to `29fd30d`; `feat/competitions` has no commit that `main` lacks. Start new work from `main`. `dfca86f` (made by the owner, message "dis a claude pour lire fishier handoff") contains the whole judge-accounts change below.
+- `gh` is still not installed in WSL and the GitHub MCP server fails to connect ("Authorization header is badly formatted"): PRs are opened by the owner from the browser.
+- `brag-output/script-tutoriel-competition.md` is **staged but not committed** (meant to stay outside git; unstage with `git restore --staged` or commit it if the owner wants it in the repo).
 - All checks green at the last run:
   - API: 164 unit tests, 128 integration tests (33 files), lint clean, typecheck clean.
   - RN app: 72 tests (15 suites), typecheck clean.
   - Admin panel: 7 tests, typecheck clean.
-- Local servers: after the PC restart (2026-10-05) only the RN web preview runs, in **offline demo mode** (`EXPO_PUBLIC_DEMO=true CI=1 npx expo start --web --port 8081`, no API needed; sign in as `ahmed_rx@…`). The API / Postgres / admin servers below are **not** running; restart them as described when needed:
+- Local servers: after the PC restart (2026-10-05) only the RN web preview runs, in **offline demo mode** (`EXPO_PUBLIC_DEMO=true CI=1 npx expo start --web --port 8081`, no API needed; sign in as `ahmed_rx@…`).
+- **Phone + browser server (late evening)**: `EXPO_PUBLIC_DEMO=true npx expo start --tunnel --port 8082` in `apps/mobile-rn` (offline demo, current code). WSL2 is in NAT mode (`172.31.x`), so a phone on the Wi-Fi cannot reach Metro directly → tunnel (`@expo/ngrok` installed globally under `~/.local/node`). Tunnel URL `https://gwllusk-anonymous-8082.exp.direct` (changes on every restart; read it from `curl -s http://127.0.0.1:4040/api/tunnels`). Expo prints no QR in a non-TTY shell: the QR was generated with the `qrcode` npm package to `Desktop/expo-qr.png`, content `exp+fitness-league://expo-development-client/?url=<encoded tunnel URL>` (opens in the **dev-client build**, not Expo Go). Android bundle pre-built once (200, 9 MB, 94 s). Also opened in the Windows browser at http://localhost:8082.
+- The API / Postgres / admin servers below are **not** running; restart them as described when needed:
   - Embedded Postgres on `localhost:55432` (`pnpm db:embedded`, throw-away data dir in `/tmp`).
   - API `node --enable-source-maps dist/main.js` on `:3000`, restarted on 2026-10-05 with the judge-accounts build (with `RATE_LIMIT_ENABLED=false`, `CORS_ORIGINS=http://localhost:5173,http://localhost:8081`), worker `node dist/worker.js`.
   - RN web preview `npx expo start --web --port 8081` (CI mode: no hot reload, restart after edits).
@@ -87,12 +91,16 @@ Commits on `feat/competitions` (this session):
 10. `06c6e51` editable banner per competition (API, admin panel, app).
 11. `333da44` WOD score computed from the reps of each movement (`MOVEMENT_REPS`).
 12. docs: README + this handoff; branch pushed.
+13. Owner merged PR #1 and PR #2 into `main` on GitHub; local `main` fast-forwarded.
+14. On `main` (2026-10-06): judge accounts follow-ups (password reset, single WOD assignment removal, clear app message for judges). Checks: API 164 unit + competitions/admin/auth integration (36) green, lint clean; admin 7 tests + typecheck; RN 73 tests + typecheck.
 
 Outside git: `DEV_STATIC_TOTP_CODE` line removed from the local `apps/api/.env`.
 
 ## 5. Failed attempts
 
 - **Deleting `sniffVideo` by truncating `domain.ts` / `domain.spec.ts` to end of file** also removed `seedHeats` and its tests (added after it). Fixed by rebuilding both files from `HEAD` and cutting only the video block.
+- **Expo on the owner's other PC** (`C:\Users\moham\OneDrive\Desktop\fitness-League`) showed on the phone "Metro has encountered an error: Cannot read properties of undefined (reading 'transformFile')" (500 on `entry.bundle`). Not the real error: in `metro/src/Bundler.js` (0.84.5) `_transformer` is only set after the file crawl (`DependencyGraph.ready()`) succeeds; when it fails Metro logs `Failed to construct transformer: …` in the terminal and every bundle request then crashes. Likely causes there: project inside **OneDrive** (files-on-demand / locks) and **`npm install` run inside `apps/mobile-rn`** (metro sits in `apps\mobile-rn\node_modules`, while the repo is a pnpm workspace). Advised fix: move out of OneDrive, delete `node_modules` (root + app) and `package-lock.json`, `pnpm install`, `npx expo start --clear`. Owner has not sent back the terminal line yet. On this PC the same bundle builds fine.
+- **`expo start` in WSL** logs "An unknown error occurred while installing React Native DevTools … libnspr4.so: cannot open shared object file": harmless (only the DevTools window), Metro keeps working.
 - **`git checkout -- <file>`** is blocked by the GateGuard hook; restore files with `git show HEAD:<path>` instead.
 - **`pnpm demo-data` without the worker running** failed on `POST /goals` (422 `NO_CURRENT_VALUE`: workouts not scored yet). On the re-run it skipped everything ("Demo users already present"), leaving a partial demo → the database had to be recreated. Always start the worker before `demo-data`.
 - **`pnpm demo-competition`** hit 429 (sign-up limit 5/hour/IP for 15 accounts) — fixed in the script.
@@ -111,11 +119,13 @@ Outside git: `DEV_STATIC_TOTP_CODE` line removed from the local `apps/api/.env`.
 0d. Offline demo `assets/demo/api.json` was recorded before WOD 2 became `MOVEMENT_REPS`: re-record it against a fresh `pnpm demo-competition` to show the per-movement form offline.
 0e. Tutorial video: the voice-off is synthetic (Windows TTS); the owner can record their own voice from the script. The video still shows the "alamy" watermarks of the default banner and says "lien dans la bio" (no store link yet).
 
-1. Open the PR `feat/competitions` → `main`: https://github.com/Ahmed-Akremi/fitness-League/pull/new/feat/competitions (needs the owner or `gh`).
+0f. Owner's other PC: get the `Failed to construct transformer:` line from its Expo terminal if the fix above (out of OneDrive + `pnpm install`) is not enough.
+
+1. ~~Open the PR `feat/competitions` → `main`~~ — done, merged as PR #2. Optionally delete the merged branches `feat/competitions` and `feat/gyms-sports-mobile` (local + remote) once the owner agrees.
 2. Regenerate the local dev JWT keys: `cd apps/api && pnpm keys:generate`.
 3. Online payment for competitions: no provider connected (organizers mark registrations paid by hand) — owner must choose a provider (Konnect, Stripe…) and provide keys.
 4. RN push notifications (FCM token registration needs a Firebase project + `google-services.json`) and EAS build/release config (needs an Expo account).
-5. Judge accounts follow-ups (not done): password reset / regeneration for a judge from the "Comptes juges" page; removing a single WOD assignment (only "remove the judge" exists); the app shows a generic error for a judge who tries to sign in (could map the 403 to a clear message).
-6. Stop the local servers when the owner is done (kill by PID: ports 3000, 8081, 5173, 55432, plus the worker).
+5. ~~Judge accounts follow-ups~~ — done 2026-10-06 on `main`: `POST /admin/judges/:id/reset-password` (admins; new generated password shown once, old password + sessions revoked; button "Nouveau mot de passe" on "Comptes juges"); `DELETE …/judge-assignments/:assignmentId` on `/competitions/:id`, `/admin/judge/competitions/:id` and `/admin/competitions/:id` (organizer / head judge; × on each WOD in "Équipe des juges"); app sign-in of a judge now returns 403 `JUDGE_ACCOUNT` and the RN login shows `errorJudgeAccount` (en/fr/ar).
+6. Stop the local servers when the owner is done (kill by PID: ports 3000, 8081, 8082 + its ngrok tunnel, 5173, 55432, plus the worker).
 7. Optional: drop the now-unused `competition_submissions.video_media_id` column and the `COMPETITION_VIDEO` media purpose in a later migration (kept for now, additive-only policy).
 8. Optional: rename `apps/mobile-rn` to `apps/mobile` now that Flutter is gone (touches CI, docs, scripts).
