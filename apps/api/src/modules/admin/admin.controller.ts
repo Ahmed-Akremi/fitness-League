@@ -6,15 +6,17 @@ import { AdminApi, CurrentUser, Public, Roles } from '../../common/auth/decorato
 import { RateLimit } from '../../common/rate-limit/rate-limit';
 import { AuthService } from '../auth/auth.service';
 import { RefreshDto } from '../auth/dto/auth.dto';
-import { AdminAuthService } from './admin-auth.service';
+import { AdminAuthService, PANEL_ROLES } from './admin-auth.service';
 import { AdminService } from './admin.service';
-import { AdminLoginDto, TotpConfirmDto } from './dto/admin-auth.dto';
+import { AdminLoginDto } from './dto/admin-auth.dto';
 import {
   AuditQueryDto,
   CreateDraftDto,
+  CreateJudgeDto,
   CreateSeasonDto,
   ExerciseDto,
   LedgerAdjustmentDto,
+  RecomputeDto,
   ListUsersQueryDto,
   ReplaceExpectedProgressionDto,
   SportDto,
@@ -34,19 +36,12 @@ export class AdminAuthController {
     private readonly auth: AuthService,
   ) {}
 
-  /** Step 1: password (+ code). First time: returns a TOTP enrolment instead of a session. */
+  /** Email + password; staff only. */
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @RateLimit({ name: 'admin-login-ip', limit: 10, windowS: 60, by: 'ip' }, { name: 'admin-login-account', limit: 5, windowS: 900, by: 'body.email' })
   login(@Body() dto: AdminLoginDto, @Req() req: Request) {
-    return this.adminAuth.login(dto.email, dto.password, dto.code, ctx(req));
-  }
-
-  @Post('totp/confirm')
-  @HttpCode(HttpStatus.OK)
-  @RateLimit({ name: 'admin-totp', limit: 10, windowS: 900, by: 'ip' })
-  confirm(@Body() dto: TotpConfirmDto, @Req() req: Request) {
-    return this.adminAuth.confirmTotp(dto.setupToken, dto.code, ctx(req));
+    return this.adminAuth.login(dto.email, dto.password, ctx(req));
   }
 
   @Post('refresh')
@@ -67,15 +62,31 @@ export class AdminController {
     private readonly auth: AuthService,
   ) {}
 
+  // Judges sign in to the panel too (judge space only), so these two accept every panel role.
   @Post('auth/logout')
+  @Roles(...PANEL_ROLES)
   @HttpCode(HttpStatus.NO_CONTENT)
   logout(@CurrentUser() user: AuthUser, @Body() dto: RefreshDto): Promise<void> {
     return this.auth.logout(user.id, dto.refreshToken);
   }
 
   @Get('me')
+  @Roles(...PANEL_ROLES)
   me(@CurrentUser() user: AuthUser) {
     return this.admin.user(user.id);
+  }
+
+  // Judge accounts: admins create them; head judges list them to build their judging team.
+  @Get('judges')
+  @Roles('ADMIN', 'SUPER_ADMIN', 'HEAD_JUDGE')
+  judges() {
+    return this.admin.judges();
+  }
+
+  @Post('judges')
+  @Roles('ADMIN', 'SUPER_ADMIN')
+  createJudge(@CurrentUser() user: AuthUser, @Body() dto: CreateJudgeDto) {
+    return this.admin.createJudge(user, dto);
   }
 
   @Get('stats/overview')
@@ -195,6 +206,13 @@ export class AdminController {
   @Roles('ADMIN', 'SUPER_ADMIN')
   auditLogs(@Query() q: AuditQueryDto) {
     return this.admin.auditLogs(q);
+  }
+
+  /** Re-scores closed weeks of the running season with the active rule set (reversal + new entries). */
+  @Post('recompute')
+  @Roles('SUPER_ADMIN')
+  recompute(@CurrentUser() actor: AuthUser, @Body() dto: RecomputeDto) {
+    return this.admin.recompute(actor, dto);
   }
 
   @Post('ledger/adjustments')

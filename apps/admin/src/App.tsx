@@ -1,11 +1,15 @@
 import { ReactNode } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
-import { canAdmin, useAuth } from './auth';
+import { canAdmin, isJudge, useAuth } from './auth';
 import { Layout } from './components/Layout';
 import { Audit } from './pages/Audit';
+import { CompetitionDetail, Competitions } from './pages/Competitions';
 import { Dashboard } from './pages/Dashboard';
+import { JudgeAthletes, JudgeQueue, JudgeReview, JudgeTeam } from './pages/Judge';
+import { Judges } from './pages/Judges';
 import { Login } from './pages/Login';
-import { GymVerification, HeldWorkouts } from './pages/Queues';
+import { Moderation } from './pages/Moderation';
+import { GymVerification, HeldWorkouts, ProofQueue } from './pages/Queues';
 import { RuleSets } from './pages/RuleSets';
 import { Seasons } from './pages/Seasons';
 import { Users } from './pages/Users';
@@ -20,6 +24,21 @@ export function App() {
   const { me, ready } = useAuth();
   if (!ready) return <p className="center">Chargement…</p>;
   if (!me) return <Login />;
+  if (isJudge(me)) {
+    return (
+      <BrowserRouter>
+        <Routes>
+          <Route element={<Layout />}>
+            <Route index element={<JudgeAthletes />} />
+            <Route path="submissions" element={<JudgeQueue />} />
+            <Route path="submissions/:id" element={<JudgeReview />} />
+            {me.role === 'HEAD_JUDGE' && <Route path="team" element={<JudgeTeam />} />}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Route>
+        </Routes>
+      </BrowserRouter>
+    );
+  }
   return (
     <BrowserRouter>
       <Routes>
@@ -27,10 +46,15 @@ export function App() {
           <Route index element={<Dashboard />} />
           <Route path="users" element={<Users />} />
           <Route path="held" element={<HeldWorkouts />} />
+          <Route path="proofs" element={<ProofQueue />} />
+          <Route path="moderation" element={<Moderation />} />
           <Route path="gyms" element={<AdminOnly><GymVerification /></AdminOnly>} />
           <Route path="rule-sets" element={<AdminOnly><RuleSets /></AdminOnly>} />
           <Route path="seasons" element={<AdminOnly><Seasons /></AdminOnly>} />
           <Route path="audit" element={<AdminOnly><Audit /></AdminOnly>} />
+          <Route path="competitions" element={<AdminOnly><Competitions /></AdminOnly>} />
+          <Route path="competitions/:id" element={<AdminOnly><CompetitionDetail /></AdminOnly>} />
+          <Route path="judges" element={<AdminOnly><Judges /></AdminOnly>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

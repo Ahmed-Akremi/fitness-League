@@ -5,6 +5,7 @@ import type { AuthUser } from '../../common/auth/auth-user';
 import { AdminApi, CurrentUser, RequiresVerifiedEmail, Roles } from '../../common/auth/decorators';
 import { PageQueryDto } from '../../common/pagination/page';
 import { CreateGymDto, ListGymsQueryDto, ReviewGymDto, UpdateGymDto } from './dto/gym.dto';
+import { GymDashboardService } from './gym-dashboard.service';
 import { GymLogoService, LOGO_MAX_BYTES } from './gym-logo.service';
 import { GymsService } from './gyms.service';
 
@@ -15,6 +16,7 @@ export class GymsController {
   constructor(
     private readonly gyms: GymsService,
     private readonly logos: GymLogoService,
+    private readonly dashboards: GymDashboardService,
   ) {}
 
   @Get()
@@ -55,6 +57,12 @@ export class GymsController {
   @HttpCode(HttpStatus.NO_CONTENT)
   removeLogo(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string): Promise<void> {
     return this.logos.remove(user, id);
+  }
+
+  /** Gym admin dashboard (docs §4.5 P3). */
+  @Get(':id/dashboard')
+  dashboard(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string) {
+    return this.dashboards.dashboard(user, id);
   }
 
   @Get(':id')

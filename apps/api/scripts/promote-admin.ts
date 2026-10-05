@@ -1,7 +1,7 @@
 /**
  * Bootstrap the first staff account (nobody can grant themselves a role through the API).
  * Usage: pnpm promote-admin <email> [SUPER_ADMIN|ADMIN|MODERATOR]
- * The user must already be registered; 2FA is enrolled at their first admin-panel sign-in.
+ * The user must already be registered; they then sign in to the admin panel with their email and password.
  */
 import { existsSync } from 'node:fs';
 import { PrismaClient, Role } from '@prisma/client';

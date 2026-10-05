@@ -13,7 +13,7 @@ The name is configurable (`APP_NAME`).
 ```
 apps/api       NestJS API + worker (Prisma, PostgreSQL 16)
 apps/admin     React admin panel (Vite + TypeScript)
-apps/mobile    Flutter app (Android, iOS; web build for previews)
+apps/mobile-rn React Native app (Expo: Android, iOS; web build for previews)
 infra/         docker-compose + seed data (Tunisia, sports, exercises, rule set v1)
 docs/          architecture document
 ```
@@ -64,7 +64,7 @@ cd apps/api && pnpm promote-admin you@example.com SUPER_ADMIN   # after register
 cd apps/admin && pnpm dev                                        # http://localhost:5173 (proxies /api to :3000)
 ```
 
-First sign-in enrols an authenticator app (TOTP is mandatory for staff).
+Staff sign in with email and password (no second factor).
 
 ### Media storage
 
@@ -80,7 +80,7 @@ With the API running: `cd apps/api && pnpm demo-data` (idempotent). Athletes `ah
 
 ## Mobile app
 
-See [`apps/mobile/README.md`](apps/mobile/README.md) (`flutter pub get`, `build_runner`, `gen-l10n`, `flutter run`).
+See [`apps/mobile-rn/README.md`](apps/mobile-rn/README.md) (`npx expo run:android`, or `pnpm web` for a browser preview).
 
 ## What exists today
 
@@ -95,13 +95,37 @@ See [`apps/mobile/README.md`](apps/mobile/README.md) (`flutter pub get`, `build_
 | Weekly LP, divisions, seasons (soft reset), leaderboards (national/region/gym/friends), scheduled jobs | Done, tested |
 | Gyms: directory, verification, memberships | Done, tested |
 | Friends, blocks, search, public profiles, Friend Battles, in-app notifications | Done, tested |
-| Admin API (2FA, RBAC, rule sets with dry run, seasons, catalog, audit, ledger adjustments) + React panel | Done, tested |
+| Admin API (email + password sign-in, RBAC, rule sets with dry run, seasons, catalog, audit, ledger adjustments) + React panel | Done, tested |
 | Media storage (local disk in dev, S3/MinIO in prod), gym logos (PNG/JPEG/WebP ≤ 2 MB → 512×512 WebP) | Done, tested |
 | Gym directory: sports offered, accent-insensitive search, sort by members; owners submit a gym with a photo, staff approve it | Done, tested |
 | CrossFit & Hyrox: movements, benchmark WODs (Fran, Murph, Cindy…), Hyrox race and stations, `FINISH_TIME` records, timed anti-cheat bounds, rule set v2 | Done, tested |
 | Gym coaches and coach-made WODs (for time / AMRAP / max load, Rx/Scaled boards, invalidation reverses XP) | Done, tested |
 | Mobile app: all screens (gyms, WODs, CrossFit/Hyrox logging, friends, battles, notifications, records, body, settings), redesigned UI (Barlow Condensed + Inter), fr/en/ar RTL | Done, widget tested; web preview verified at 390×844 |
+| Weekly Duels: opt-in queue (Friday → Monday noon), Glicko-2 matchmaking, ghost duel when unmatched, MMR on close; mobile card and duel screen | Done, tested |
+| Gym Wars: weekly auto-enrolment (gym admin can opt out), S/M/L brackets, Glicko-2 gym rating, size-neutral score (top-K, participation, progress, consistency), winners' XP; mobile war screen, gym record, battles card | Done, tested |
+| Badges: data-driven rules (counts, level, division, weekly streaks), awarded on events + daily sweep, 21-badge catalogue; mobile collection with progress | Done, tested |
+| Challenges: personal / friends / gym (admin, coaches) / community (staff), 5 workout quantities, live progress from workouts, XP for gym and community ones, optional weekly-score challenge component (`challenge_component`); mobile tab, detail, leaderboard, creation | Done, tested |
+| Private and public leagues: invite code (rate-limited), member cap, ranking on summed weekly totals / consistency / progress over the period; mobile Leagues tab, detail, creation | Done, tested |
+| Activity feed: friends' activity (visibility, blocks, mutes, deleted workouts hidden), one reaction per athlete (👍 🔥 💪), comments (author or activity owner deletes), notifications; mobile feed with comments sheet | Done, tested |
+| Push notifications: every notification goes through the outbox to FCM HTTP v1 (`PUSH_DRIVER=fcm`, service account, no SDK) or a log driver; devices API, per-category switches, quiet hours (Africa/Tunis), dead tokens dropped; mobile settings section. The app does not register its FCM token yet (needs a Firebase project and `google-services.json`) | Done, tested (API) |
+| Real time: Socket.IO `/ws` (access-token auth, session version checked), `notification.new` to the recipient, `battle.score` to battle participants; events relayed from the worker through PostgreSQL LISTEN/NOTIFY (no Redis); mobile bell and battle screen update live, polling kept as fallback | Done, tested |
+| Admin score recompute: SUPER_ADMIN re-scores closed weeks of the running season with the active rule set (dry run first, reversal + new ledger entries, audited); admin panel form with preview | Done, tested |
+| Workout proofs: up to 3 photos/screenshots per workout, re-encoded WebP without EXIF/GPS, private (athlete + moderators); moderator queue (admin panel) verifies or rejects with a note; verified workouts raise the performance component (`verified_weight_multiplier`); Gym War verified ratio behind `gym_war.use_verified_ratio`; mobile proof section on the workout | Done, tested |
+| Moderation: reports on athletes, workouts, comments and gyms; moderator decisions (dismiss, warn, suspend N days; bans for admins) that sign the athlete out; appeals once, from the app for warnings or through a signed link emailed with a suspension/ban; a different moderator decides; public anonymised moderation log; admin panel queue; report sheet in the app | Done, tested |
+| Behavioural anti-cheat: weekly scan after the close (score > 3σ above own history, minimum-duration farming, accounts sharing an install that meet in battles, friends alternating battle wins) raising flags only; moderators clear or confirm them in the admin panel | Done, tested |
+| Gym admin dashboard: members and requests, active 7/28 days, 8-week trend, top progress, members to nudge (14 days without a workout), WOD participation, war record; mobile screen from the gym profile | Done, tested |
+| Competitions: organizers create events (price, per-category price, the 18 category templates, coupons FREE / % / fixed), a banner per competition uploaded from the admin panel (replaced for each new event or final), WODs with direct or placement points (including WODs scored by the app from the reps of each movement × its points per rep, the athlete never types the score), prizes, judges and heats; athletes register (eligibility, capacity, deadlines checked by the server) and submit each score with the **YouTube link** of their video (required to submit); judge space in the **web admin panel** for judge-only accounts (`JUDGE` / `HEAD_JUDGE`, generated by admins, refused by the app so judges never compete or score): by athlete (each athlete's completed WODs with their links) or by status (approve, reject, penalty, adjust, versioned history), and head judges manage the judges and head judges of their competitions; TOTAL = sum of the WOD points, leaderboard recomputed on every change, tie-breaks, final lock, podium; organizer section in the admin panel. No online payment provider yet: organizers mark paid registrations by hand | Done, tested |
 | Docker images / compose, CI | Written, not yet run (no Docker locally; CI runs on the next push) |
+
+## Not done yet
+
+- Run Docker compose and CI once for real.
+- Competitions: online payment (no provider connected; organizers mark registrations as paid).
+- Phase 2: mobile FCM token registration (needs a Firebase project), live leaderboard moves, phone verification by SMS.
+- Phase 3: video proofs (needs a transcoding pipeline: ffprobe/ffmpeg).
+- Phase 4: integrations (watches, apps), coach tools, billing.
+
+See `docs/ARCHITECTURE.md` §4.5 for the planned endpoints.
 
 ## Security notes
 

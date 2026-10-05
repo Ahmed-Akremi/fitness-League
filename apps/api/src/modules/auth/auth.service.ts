@@ -1,6 +1,7 @@
 import { HttpStatus, Inject, Injectable, Logger } from '@nestjs/common';
 import { ConsentType, Gender, Locale, OAuthProvider, Prisma, User, VerificationTokenType } from '@prisma/client';
 import { AuditService } from '../../common/audit/audit.service';
+import { JUDGE_ROLES } from '../../common/auth/auth-user';
 import { BusinessCalendar } from '../../common/clock/business-calendar';
 import { ClockService } from '../../common/clock/clock.service';
 import { ENV } from '../../common/config/config.module';
@@ -94,6 +95,7 @@ export class AuthService {
   }
 
   private async signInExisting(user: User, now: Date): Promise<SessionDto> {
+    this.assertAppAccount(user);
     if (user.status === 'DELETED') throw this.invalidCredentials();
     this.assertCanSignIn(user, now);
     return this.prisma.$transaction(async (tx) => {
@@ -239,6 +241,7 @@ export class AuthService {
 
   async login(dto: LoginDto, ctx: RequestContext): Promise<SessionDto> {
     const user = await this.verifyCredentials(dto.email, dto.password, ctx);
+    this.assertAppAccount(user);
     return this.startSession(user, 'app');
   }
 
@@ -265,9 +268,9 @@ export class AuthService {
     return user;
   }
 
-  /** Records a failed second factor like a failed password (same lockout). */
-  async recordFailedSecondFactor(user: User, ctx: RequestContext): Promise<void> {
-    await this.recordFailedLogin(user, undefined, ctx);
+  /** Judges only judge (admin panel): they cannot compete, log workouts or score in the app. */
+  private assertAppAccount(user: User): void {
+    if (JUDGE_ROLES.includes(user.role)) throw AppException.forbidden('Judge accounts sign in to the admin panel.');
   }
 
   async startSession(user: User, audience: TokenAudience): Promise<SessionDto> {

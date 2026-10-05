@@ -90,6 +90,8 @@ export class GymsService {
         HAVING SUM(s.season_lp) > 0)
       SELECT rank::int FROM (SELECT gym_id, RANK() OVER (ORDER BY lp DESC) AS rank FROM totals) r WHERE gym_id = ${id}::uuid`;
     const membership = viewer ? await this.prisma.gymMember.findFirst({ where: { gymId: id, userId: viewer.id, status: { in: ['PENDING', 'APPROVED'] } } }) : null;
+    const outcomes = await this.prisma.gymWarParticipant.groupBy({ by: ['outcome'], where: { gymId: id, outcome: { not: null } }, _count: true });
+    const wars = (o: string) => outcomes.find((x) => x.outcome === o)?._count ?? 0;
     return {
       ...this.card(gym),
       addressLine: gym.addressLine,
@@ -101,7 +103,7 @@ export class GymsService {
         role: membership?.status === 'APPROVED' ? (membership.role === 'COACH' || (viewer && this.canManage(viewer, gym)) ? 'COACH' : 'MEMBER') : null,
       },
       canManage: viewer ? this.canManage(viewer, gym) : false,
-      warRecord: null, // Gym Wars: Phase 2
+      warRecord: { wins: wars('WIN'), losses: wars('LOSS'), draws: wars('DRAW'), rating: Math.round(Number(gym.rating)), enrolled: !gym.warsOptOut },
     };
   }
 

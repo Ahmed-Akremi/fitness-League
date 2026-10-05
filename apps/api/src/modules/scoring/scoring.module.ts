@@ -1,5 +1,6 @@
 import { Module, OnModuleInit } from '@nestjs/common';
 import { OutboxDispatcher } from '../../common/outbox/outbox-dispatcher';
+import { BadgesModule } from '../badges/badges.module';
 import { GoalsModule } from '../goals/goals.module';
 import { LedgerModule } from '../ledger/ledger.module';
 import { ProgressModule } from '../progress/progress.module';
@@ -8,7 +9,7 @@ import { ScoringController } from './scoring.controller';
 import { WorkoutScoringService } from './workout-scoring.service';
 
 @Module({
-  imports: [LedgerModule, ProgressModule, PrivacyModule, GoalsModule],
+  imports: [LedgerModule, ProgressModule, PrivacyModule, GoalsModule, BadgesModule],
   controllers: [ScoringController],
   providers: [WorkoutScoringService],
   exports: [WorkoutScoringService],

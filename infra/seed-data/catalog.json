@@ -92,6 +92,195 @@
       "rule": { "type": "COUNT", "event": "WORKOUT_ACCEPTED", "gte": 1 },
       "name": { "fr": "Premier pas", "en": "First Step", "ar": "الخطوة الأولى" },
       "description": { "fr": "Terminer ta première séance.", "en": "Complete your first workout.", "ar": "أكمل حصتك الأولى." }
+    },
+    {
+      "code": "TEN_WORKOUTS",
+      "category": "PROGRESS",
+      "icon": "dumbbell",
+      "rarity": "COMMON",
+      "rule": { "type": "COUNT", "event": "WORKOUT_ACCEPTED", "gte": 10 },
+      "name": { "fr": "Régulier", "en": "Regular", "ar": "منتظم" },
+      "description": { "fr": "Terminer 10 séances.", "en": "Complete 10 workouts.", "ar": "أكمل 10 حصص." }
+    },
+    {
+      "code": "FIFTY_WORKOUTS",
+      "category": "PROGRESS",
+      "icon": "dumbbell",
+      "rarity": "RARE",
+      "rule": { "type": "COUNT", "event": "WORKOUT_ACCEPTED", "gte": 50 },
+      "name": { "fr": "Acharné", "en": "Relentless", "ar": "مثابر" },
+      "description": { "fr": "Terminer 50 séances.", "en": "Complete 50 workouts.", "ar": "أكمل 50 حصة." }
+    },
+    {
+      "code": "CENTURY",
+      "category": "PROGRESS",
+      "icon": "trophy",
+      "rarity": "EPIC",
+      "rule": { "type": "COUNT", "event": "WORKOUT_ACCEPTED", "gte": 100 },
+      "name": { "fr": "Centurion", "en": "Centurion", "ar": "المئوي" },
+      "description": { "fr": "Terminer 100 séances.", "en": "Complete 100 workouts.", "ar": "أكمل 100 حصة." }
+    },
+    {
+      "code": "FIRST_PR",
+      "category": "PROGRESS",
+      "icon": "trending-up",
+      "rarity": "COMMON",
+      "rule": { "type": "COUNT", "event": "PR_AWARDED", "gte": 1 },
+      "name": { "fr": "Premier record", "en": "First record", "ar": "أول رقم قياسي" },
+      "description": { "fr": "Battre ton premier record personnel.", "en": "Beat your first personal record.", "ar": "حطّم أول رقم قياسي شخصي لك." }
+    },
+    {
+      "code": "PR_HUNTER",
+      "category": "PROGRESS",
+      "icon": "trending-up",
+      "rarity": "RARE",
+      "rule": { "type": "COUNT", "event": "PR_AWARDED", "gte": 10 },
+      "name": { "fr": "Chasseur de records", "en": "Record hunter", "ar": "صائد الأرقام" },
+      "description": { "fr": "Battre 10 records personnels.", "en": "Beat 10 personal records.", "ar": "حطّم 10 أرقام قياسية شخصية." }
+    },
+    {
+      "code": "GOAL_GETTER",
+      "category": "PROGRESS",
+      "icon": "flag",
+      "rarity": "COMMON",
+      "rule": { "type": "COUNT", "event": "GOAL_COMPLETED", "gte": 1 },
+      "name": { "fr": "Objectif atteint", "en": "Goal getter", "ar": "هدف محقق" },
+      "description": { "fr": "Atteindre un objectif.", "en": "Reach a goal.", "ar": "حقق هدفًا." }
+    },
+    {
+      "code": "STREAK_4",
+      "category": "CONSISTENCY",
+      "icon": "flame",
+      "rarity": "RARE",
+      "rule": { "type": "STREAK_WEEKS", "gte": 4 },
+      "name": { "fr": "Un mois sans faille", "en": "Solid month", "ar": "شهر ثابت" },
+      "description": { "fr": "Respecter ton plan 4 semaines d'affilée.", "en": "Meet your plan 4 weeks in a row.", "ar": "التزم بخطتك 4 أسابيع متتالية." }
+    },
+    {
+      "code": "STREAK_12",
+      "category": "CONSISTENCY",
+      "icon": "flame",
+      "rarity": "EPIC",
+      "rule": { "type": "STREAK_WEEKS", "gte": 12 },
+      "name": { "fr": "Inarrêtable", "en": "Unstoppable", "ar": "لا يُوقف" },
+      "description": { "fr": "Respecter ton plan 12 semaines d'affilée.", "en": "Meet your plan 12 weeks in a row.", "ar": "التزم بخطتك 12 أسبوعًا متتاليًا." }
+    },
+    {
+      "code": "FIRST_BATTLE_WIN",
+      "category": "COMPETITION",
+      "icon": "swords",
+      "rarity": "COMMON",
+      "rule": { "type": "COUNT", "event": "BATTLE_WIN", "gte": 1 },
+      "name": { "fr": "Premier duel gagné", "en": "First battle won", "ar": "أول تحدٍ مربوح" },
+      "description": { "fr": "Gagner une battle contre un ami.", "en": "Win a battle against a friend.", "ar": "اربح تحديًا ضد صديق." }
+    },
+    {
+      "code": "BATTLE_WINS_10",
+      "category": "COMPETITION",
+      "icon": "swords",
+      "rarity": "RARE",
+      "rule": { "type": "COUNT", "event": "BATTLE_WIN", "gte": 10 },
+      "name": { "fr": "Gladiateur", "en": "Gladiator", "ar": "مصارع" },
+      "description": { "fr": "Gagner 10 battles.", "en": "Win 10 battles.", "ar": "اربح 10 تحديات." }
+    },
+    {
+      "code": "DUEL_WIN",
+      "category": "COMPETITION",
+      "icon": "bolt",
+      "rarity": "COMMON",
+      "rule": { "type": "COUNT", "event": "DUEL_WIN", "gte": 1 },
+      "name": { "fr": "Duelliste", "en": "Duelist", "ar": "المبارز" },
+      "description": { "fr": "Gagner un duel de la semaine.", "en": "Win a Weekly Duel.", "ar": "اربح مبارزة الأسبوع." }
+    },
+    {
+      "code": "GOLD_DIVISION",
+      "category": "COMPETITION",
+      "icon": "medal",
+      "rarity": "RARE",
+      "rule": { "type": "DIVISION", "gte": "GOLD" },
+      "name": { "fr": "Or", "en": "Gold", "ar": "ذهبي" },
+      "description": { "fr": "Atteindre la division Or.", "en": "Reach the Gold division.", "ar": "ابلغ القسم الذهبي." }
+    },
+    {
+      "code": "DIAMOND_DIVISION",
+      "category": "ELITE",
+      "icon": "diamond",
+      "rarity": "EPIC",
+      "rule": { "type": "DIVISION", "gte": "DIAMOND" },
+      "name": { "fr": "Diamant", "en": "Diamond", "ar": "ماسي" },
+      "description": { "fr": "Atteindre la division Diamant.", "en": "Reach the Diamond division.", "ar": "ابلغ القسم الماسي." }
+    },
+    {
+      "code": "ELITE_DIVISION",
+      "category": "ELITE",
+      "icon": "crown",
+      "rarity": "LEGENDARY",
+      "rule": { "type": "DIVISION", "gte": "ELITE" },
+      "name": { "fr": "Élite", "en": "Elite", "ar": "النخبة" },
+      "description": { "fr": "Atteindre la division Élite.", "en": "Reach the Elite division.", "ar": "ابلغ قسم النخبة." }
+    },
+    {
+      "code": "LEVEL_25",
+      "category": "ELITE",
+      "icon": "star",
+      "rarity": "EPIC",
+      "rule": { "type": "LEVEL", "gte": 25 },
+      "name": { "fr": "Vétéran", "en": "Veteran", "ar": "المخضرم" },
+      "description": { "fr": "Atteindre le niveau 25.", "en": "Reach level 25.", "ar": "ابلغ المستوى 25." }
+    },
+    {
+      "code": "FIRST_FRIEND",
+      "category": "SOCIAL",
+      "icon": "users",
+      "rarity": "COMMON",
+      "rule": { "type": "COUNT", "event": "FRIEND", "gte": 1 },
+      "name": { "fr": "Partenaire d'entraînement", "en": "Training buddy", "ar": "رفيق التدريب" },
+      "description": { "fr": "Ajouter un premier ami.", "en": "Add your first friend.", "ar": "أضف أول صديق." }
+    },
+    {
+      "code": "FIVE_FRIENDS",
+      "category": "SOCIAL",
+      "icon": "users",
+      "rarity": "COMMON",
+      "rule": { "type": "COUNT", "event": "FRIEND", "gte": 5 },
+      "name": { "fr": "Bande", "en": "Crew", "ar": "الفريق" },
+      "description": { "fr": "Avoir 5 amis.", "en": "Have 5 friends.", "ar": "لديك 5 أصدقاء." }
+    },
+    {
+      "code": "GYM_MEMBER",
+      "category": "GYM",
+      "icon": "building",
+      "rarity": "COMMON",
+      "rule": { "type": "COUNT", "event": "GYM_JOINED", "gte": 1 },
+      "name": { "fr": "Membre d'une salle", "en": "Gym member", "ar": "عضو صالة" },
+      "description": { "fr": "Rejoindre une salle.", "en": "Join a gym.", "ar": "انضم إلى صالة." }
+    },
+    {
+      "code": "GYM_WAR_WIN",
+      "category": "GYM",
+      "icon": "shield",
+      "rarity": "RARE",
+      "rule": { "type": "COUNT", "event": "GYM_WAR_WIN", "gte": 1 },
+      "name": { "fr": "Guerrier de salle", "en": "Gym warrior", "ar": "محارب الصالة" },
+      "description": { "fr": "Gagner une guerre de salles en étant actif.", "en": "Win a Gym War as an active member.", "ar": "اربح حرب صالات كعضو نشط." }
+    },
+    {
+      "code": "GYM_WAR_WINS_5",
+      "category": "GYM",
+      "icon": "shield",
+      "rarity": "EPIC",
+      "rule": { "type": "COUNT", "event": "GYM_WAR_WIN", "gte": 5 },
+      "name": { "fr": "Pilier de la salle", "en": "Gym pillar", "ar": "ركيزة الصالة" },
+      "description": { "fr": "Gagner 5 guerres de salles.", "en": "Win 5 Gym Wars.", "ar": "اربح 5 حروب صالات." }
+    },
+    {
+      "code": "CHALLENGER",
+      "category": "PROGRESS",
+      "icon": "target",
+      "rarity": "COMMON",
+      "rule": { "type": "COUNT", "event": "CHALLENGE_COMPLETED", "gte": 1 },
+      "name": { "fr": "Challenger", "en": "Challenger", "ar": "المتحدي" },
+      "description": { "fr": "Réussir un challenge.", "en": "Complete a challenge.", "ar": "أنجز تحديًا." }
     }
   ],
   "_gymsNote": "Fictional sample gyms for development only (no real brands).",

@@ -23,6 +23,7 @@ textarea { width: 100%; font-family: ui-monospace, monospace; font-size: 13px; }
 button { background: var(--accent); color: #000; border: 0; border-radius: 10px; padding: 10px 14px; font-weight: 700; cursor: pointer; min-height: 40px; }
 button:disabled { opacity: 0.4; cursor: not-allowed; }
 button.danger { background: var(--danger); }
+button.secondary { background: var(--surface-2); color: var(--text); }
 .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 8px 0; }
 .error, [role='alert'] { color: var(--danger); }
 .secret { font-size: 18px; letter-spacing: 2px; word-break: break-all; }

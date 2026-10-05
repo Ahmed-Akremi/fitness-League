@@ -4,6 +4,7 @@ import { BusinessCalendar } from '../../common/clock/business-calendar';
 import { ClockService } from '../../common/clock/clock.service';
 import { uuidv7 } from '../../common/ids/uuid';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { BadgesService } from '../badges/badges.service';
 import { GoalsService } from '../goals/goals.service';
 import { LedgerService } from '../ledger/ledger.service';
 import { PrOutcome, ProgressService } from '../progress/progress.service';
@@ -38,6 +39,7 @@ export class WorkoutScoringService {
     private readonly ledger: LedgerService,
     private readonly privacy: PrivacyService,
     private readonly goals: GoalsService,
+    private readonly badges: BadgesService,
     private readonly clock: ClockService,
     private readonly calendar: BusinessCalendar,
   ) {}
@@ -164,20 +166,13 @@ export class WorkoutScoringService {
         config,
       });
 
-      // 4. First quest: "Complete your first workout" → +100 XP + First Step badge (docs §6).
+      // 4. First quest: "Complete your first workout" → +100 XP (docs §6); the First Step badge comes from its rule.
       const firstQuest = await tx.xpTransaction.findFirst({ where: { userId: w.userId, reason: 'QUEST', sourceId: 'FIRST_WORKOUT' } });
       if (!firstQuest) {
         await grant('QUEST', 'quest', 'FIRST_WORKOUT', config.first_workout_quest_xp, { formula: 'first_workout_quest_xp' });
-        const badge = await tx.badge.findUnique({ where: { code: 'FIRST_STEP' } });
-        if (badge) {
-          const ub = await tx.userBadge.upsert({
-            where: { userId_badgeId: { userId: w.userId, badgeId: badge.id } },
-            update: {},
-            create: { id: uuidv7(), userId: w.userId, badgeId: badge.id, sourceRef: w.id },
-          });
-          await tx.activityEvent.create({ data: { id: uuidv7(), userId: w.userId, type: 'BADGE', refType: 'user_badge', refId: ub.id, visibility: 'FRIENDS', payload: { badge: 'FIRST_STEP' } } });
-        }
       }
+      // 5. Badges newly met (docs §3.10).
+      await this.badges.evaluate(tx, w.userId, w.id);
     });
   }
 

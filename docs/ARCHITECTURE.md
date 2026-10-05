@@ -30,7 +30,7 @@ The default stack is **confirmed**. The table below only adds the choices the sp
 
 | Layer | Choice | Note |
 |---|---|---|
-| Mobile | Flutter 3.x, Riverpod, go_router, **Drift** (SQLite), dio, freezed/json_serializable, fl_chart, `flutter_localizations` + ARB files | Confirmed. |
+| Mobile | **React Native (Expo)**, expo-router, TanStack Query, Zustand, expo-sqlite (offline outbox), socket.io, ICU JSON translations (fr/en/ar, RTL) | Replaced the first Flutter app (2026-10). |
 | Backend | NestJS 11 (TypeScript, strict), REST + OpenAPI (`@nestjs/swagger`), modular monolith | Confirmed. |
 | ORM / migrations | **Prisma** (proposed) + raw SQL (`$queryRaw`) for ledger aggregation and reporting queries | Not specified in the spec. Prisma gives typed models, migrations and seeding with little glue. Alternative: Kysely (more SQL control, less tooling). **Q-14** |
 | Validation | `class-validator` DTOs (Nest standard); **zod** for the `ScoringRuleSet` JSON document | Rule sets are big nested JSON; zod gives one schema for server validation and the admin form. |
@@ -41,11 +41,11 @@ The default stack is **confirmed**. The table below only adds the choices the sp
 | Admin | React 19 + Vite + TanStack Query + React Router + shadcn/ui (Tailwind) | Confirmed (component library is my pick). |
 | API clients | Generated from OpenAPI: `openapi-generator` **dart-dio** for mobile, `openapi-typescript` for admin | Keeps mobile/admin in sync with the API contract; CI fails if the generated client is stale. |
 | Push | Firebase Cloud Messaging (Phase 2) | Confirmed. |
-| Monorepo | **pnpm workspaces** (`apps/api`, `apps/admin`, `apps/mobile`, `packages/*`) | One repo, one CI. Flutter lives in the same repo but is built by its own toolchain. |
+| Monorepo | **pnpm workspaces** (`apps/api`, `apps/admin`, `apps/mobile-rn`, `packages/*`) | One repo, one CI. |
 | Logs / errors | pino (JSON logs, request id), Sentry (optional, via env) | No stack traces to clients (§4.4). |
 | Timezone | All timestamps stored UTC (`timestamptz`); business calendar (weeks, seasons) in **Africa/Tunis** | Configurable per country later. |
 | Local dev | Docker Compose: `api`, `db`, `redis`, `minio`, `mailpit` (captures emails locally) | Added `mailpit` so email verification works offline in dev. |
-| CI | GitHub Actions: lint, typecheck, unit, integration (service containers), Flutter analyze/test, admin build | Confirmed. |
+| CI | GitHub Actions: lint, typecheck, unit, integration (service containers), mobile typecheck/test, admin build | Confirmed. |
 
 **No change to the architecture style**: modular monolith, one deployable API process + one worker process (same codebase, different entrypoint) so BullMQ jobs never run inside request handlers.
 
@@ -907,7 +907,7 @@ All jobs run in the **worker** process (BullMQ), are **idempotent** (keyed by bu
 - **Email verification** required for competitive features (U✓): leaderboards, battles, gym creation. Token 24 h, single use.
 - **Lockout**: 5 failed logins → 15 min lock (doubling up to 24 h), notification email. Generic error messages (no enumeration).
 - **Age gate**: `age(dob) < min_age_years` → `UNDER_AGE`, no account created, nothing stored except a hashed-email throttle entry for 24 h.
-- **Admin panel**: separate `aud=admin`, only roles MODERATOR+; **TOTP 2FA mandatory** for MODERATOR/ADMIN/SUPER_ADMIN (proposed, Q-10); admin logins audited; IP allow-list optional via env.
+- **Admin panel**: separate `aud=admin`, only roles MODERATOR+; email + password sign-in, **no second factor** (2FA removed 2026-10 at the owner's request; Q-10); admin logins audited; IP allow-list optional via env.
 
 ### 9.2 RBAC matrix
 
@@ -1032,7 +1032,7 @@ Reference data: `ETag` + `updatedSince` delta. Read models: stale-while-revalida
 | Security | Jest integration suite | authorization bypass (IDOR on every `/{id}` route), privilege escalation (role change paths), **client-sent points ignored** (`xp`/`lp`/`points` fields rejected), rate limits, invalid uploads (spoofed MIME, oversize, polyglot), JWT tampering / `aud` confusion (app token on admin API) |
 | Contract | OpenAPI diff in CI | generated clients up to date; breaking changes flagged |
 | Mobile | `flutter test` (unit + widget, golden tests for key cards), `integration_test` on emulator | onboarding, log workout (incl. offline → sync), battle flow, leaderboard; RTL goldens (Arabic) and large-font goldens |
-| Admin | Vitest + Testing Library, Playwright smoke | login + 2FA, rule-set edit/validate/activate, user suspend, season create |
+| Admin | Vitest + Testing Library, Playwright smoke | login, rule-set edit/validate/activate, user suspend, season create |
 | Load (before launch) | k6 | workout ingestion 50 rps, leaderboard reads 500 rps, weekly close on 100k users < 10 min |
 
 Clock is injected (`ClockService`) everywhere so weeks/seasons/battles are testable. Coverage target: ≥ 90 % lines on `scoring`, `ledger`, `anticheat`, `progress`; ≥ 80 % elsewhere.
@@ -1069,7 +1069,7 @@ Clock is injected (`ClockService`) everywhere so weeks/seasons/battles are testa
 | **Q-7** | Gender is optional, but strength standards differ strongly by sex and body weight is private/optional. How to derive level and plausibility when they are missing? | Use them server-side when given (never displayed); otherwise conservative unisex absolute tables. |
 | **Q-8** | Streak: daily streak (with planned rest days/freezes) or weekly streak (weeks meeting the plan)? A daily streak pushes daily training, which conflicts with §5 safety. | **Weekly streak** as the headline ("12-week streak"), plus a daily streak where planned rest days never break it. |
 | **Q-9** | One gym per user, or several (e.g. a CrossFit box + a regular gym)? | One primary gym (counts for Gym Wars and gym leaderboard). |
-| **Q-10** | Rule-set activation: super admin only, or admin + four-eyes approval? Mandatory 2FA for staff? | Super admin only in P1; TOTP 2FA mandatory for moderators and above. |
+| **Q-10** | Rule-set activation: super admin only, or admin + four-eyes approval? Mandatory 2FA for staff? | Super admin only in P1; no 2FA for staff (removed 2026-10 at the owner's request). |
 | **Q-11** | Gym Wars: gyms opt in weekly (gym admin) or auto-enrolled if eligible? | Auto-enrolled, gym admin can opt out. |
 | **Q-12** | Arabic: Modern Standard Arabic or Tunisian Derja for UI copy? Default language? | MSA for UI, French as default locale for Tunisia. |
 | **Q-13** | Real-time in Phase 1: needed for Friend Battle scores, or is polling (30 s on the battle screen) enough until the WebSocket gateway lands with notifications in Phase 2? | Polling in P1, Socket.IO in P2. |
@@ -1108,7 +1108,7 @@ fitness-league/
 ├─ apps/
 │  ├─ api/                 NestJS (src/modules/<module>/…, src/worker.ts, prisma/)
 │  ├─ admin/               React + Vite
-│  └─ mobile/              Flutter (lib/features/<feature>/{presentation,domain,data}, lib/core/…, l10n/)
+│  └─ mobile-rn/           React Native / Expo (src/features/<feature>, src/core/…, src/app routes)
 ├─ packages/
 │  ├─ scoring-schema/      zod schema of the rule set (shared API ↔ admin)
 │  └─ api-client-ts/       generated TS client for admin

@@ -64,7 +64,7 @@ describe('Gyms: verification & memberships (integration)', () => {
     await api().post(`/api/v1/gyms/${created.body.id}/members/${athlete.session.userId}/approve`).set(bearer(owner.session.accessToken)).expect(200);
 
     const profile = await api().get(`/api/v1/gyms/${created.body.id}`).set(bearer(stranger.session.accessToken)).expect(200);
-    expect(profile.body).toMatchObject({ name: 'Kalâa Strength Club', verified: true, membersCount: 2, warRecord: null });
+    expect(profile.body).toMatchObject({ name: 'Kalâa Strength Club', verified: true, membersCount: 2, warRecord: { wins: 0, losses: 0, draws: 0, rating: 1500, enrolled: true } });
     expect(JSON.stringify(profile.body)).not.toContain('+21673000000'); // contact details stay private
     const me = await api().get('/api/v1/me').set(bearer(athlete.session.accessToken)).expect(200);
     expect(me.body.profile.gym).toMatchObject({ id: created.body.id });

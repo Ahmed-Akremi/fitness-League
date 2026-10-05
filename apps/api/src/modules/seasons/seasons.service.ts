@@ -214,6 +214,54 @@ export class SeasonsService {
     }
   }
 
+  /**
+   * Admin "recompute range" (docs §5.2): re-scores the closed weeks in [from, to) with the active rule set.
+   * Never edits a ledger row: a changed week gets a reversal and a new entry. Weeks of closed seasons are left
+   * alone (their standings are final). `dryRun` only reports what would change.
+   */
+  async recomputeRange(from: Date, to: Date, dryRun: boolean): Promise<{ weeks: number; changed: number; lpDelta: number; changes: { userId: string; weekStart: string; before: { total: number; lp: number }; after: { total: number; lp: number } }[] }> {
+    const { version, config } = await this.ruleSets.getActive();
+    const rows = await this.prisma.weeklyScore.findMany({
+      where: { status: 'FINAL', weekStart: { gte: dateOnly(from), lt: dateOnly(to) }, season: { status: 'ACTIVE' } },
+      orderBy: [{ weekStart: 'asc' }, { userId: 'asc' }],
+    });
+    const lpIds = rows.map((r) => r.lpTransactionId).filter((id): id is string => id !== null);
+    const paid = new Map((await this.prisma.leaguePointTransaction.findMany({ where: { id: { in: lpIds } }, select: { id: true, amount: true } })).map((t) => [t.id, t.amount]));
+    const changes: { userId: string; weekStart: string; before: { total: number; lp: number }; after: { total: number; lp: number } }[] = [];
+    for (const w of rows) {
+      const weekStart = this.calendar.weekStart(new Date(w.weekStart.getTime() + 12 * 3_600_000));
+      const score = await this.weekly.compute(w.userId, weekStart, config, version);
+      const before = { total: Number(w.total), lp: w.lpTransactionId ? (paid.get(w.lpTransactionId) ?? 0) : 0 };
+      if (score.total === before.total && score.lp === before.lp) continue;
+      changes.push({ userId: w.userId, weekStart: this.calendar.localDate(weekStart), before, after: { total: score.total, lp: score.lp } });
+      if (dryRun) continue;
+      await this.prisma.$transaction(async (tx) => {
+        if (w.lpTransactionId) await this.ledger.reverseLp(tx, w.lpTransactionId, `recompute with rule set v${version}`, version, config.division_thresholds);
+        let lpTransactionId: string | null = null;
+        if (score.lp > 0) {
+          const n = await tx.leaguePointTransaction.count({ where: { userId: w.userId, sourceType: 'week', sourceId: { startsWith: this.calendar.localDate(weekStart) } } });
+          lpTransactionId = await this.ledger.appendLp(
+            tx,
+            {
+              userId: w.userId,
+              seasonId: w.seasonId,
+              amount: score.lp,
+              reason: 'WEEKLY_SCORE',
+              sourceType: 'week',
+              sourceId: `${this.calendar.localDate(weekStart)}#r${n}`,
+              ruleSetVersion: version,
+              effectiveAt: new Date(weekStart.getTime() + 7 * DAY),
+              explanation: { ...score.breakdown, components: score.components, total: score.total, result: score.lp, correction: `recomputed with rule set v${version}` },
+            },
+            config.division_thresholds,
+          );
+        }
+        await this.saveScore(tx, w.userId, w.seasonId, score, version, lpTransactionId);
+      });
+    }
+    return { weeks: rows.length, changed: changes.length, lpDelta: changes.reduce((acc, c) => acc + c.after.lp - c.before.lp, 0), changes: changes.slice(0, 200) };
+  }
+
   private async saveScore(tx: Tx, userId: string, seasonId: string | null, s: Awaited<ReturnType<WeeklyScoreService['compute']>>, version: number, lpTransactionId: string | null) {
     const season = seasonId ?? (await this.seasonAt(tx, s.weekStart))?.id;
     if (!season) return;

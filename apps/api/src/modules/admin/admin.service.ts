@@ -1,8 +1,8 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { Prisma, Role } from '@prisma/client';
-import { createHash } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { AuditService } from '../../common/audit/audit.service';
-import type { AuthUser } from '../../common/auth/auth-user';
+import { AuthUser, JUDGE_ROLES } from '../../common/auth/auth-user';
 import { BusinessCalendar } from '../../common/clock/business-calendar';
 import { ClockService } from '../../common/clock/clock.service';
 import { AppException, ErrorCode } from '../../common/errors/app-exception';
@@ -10,6 +10,7 @@ import { uuidv7 } from '../../common/ids/uuid';
 import { CursorCodec } from '../../common/pagination/cursor';
 import { toPage } from '../../common/pagination/page';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { PasswordService } from '../auth/password.service';
 import { divisionFor, LedgerService } from '../ledger/ledger.service';
 import { ruleSetConfigSchema } from '../scoring/rule-set.schema';
 import { RuleSetService } from '../scoring/rule-set.service';
@@ -18,9 +19,11 @@ import { WeeklyScoreService } from '../seasons/weekly-score.service';
 import {
   AuditQueryDto,
   CreateDraftDto,
+  CreateJudgeDto,
   CreateSeasonDto,
   ExerciseDto,
   LedgerAdjustmentDto,
+  RecomputeDto,
   ListUsersQueryDto,
   ReplaceExpectedProgressionDto,
   SportDto,
@@ -29,7 +32,7 @@ import {
   UpdateUserStatusDto,
 } from './dto/admin.dto';
 
-const RANK: Record<Role, number> = { USER: 0, GYM_ADMIN: 1, MODERATOR: 2, ADMIN: 3, SUPER_ADMIN: 4 };
+const RANK: Record<Role, number> = { USER: 0, JUDGE: 1, HEAD_JUDGE: 1, GYM_ADMIN: 1, MODERATOR: 2, ADMIN: 3, SUPER_ADMIN: 4 };
 const DRY_RUN_SAMPLE = 200;
 
 /** Admin panel back-end (docs §4.4 admin, RBAC matrix §9.2). Every change is audited with before/after. */
@@ -42,6 +45,7 @@ export class AdminService {
     private readonly seasons: SeasonsService,
     private readonly ledger: LedgerService,
     private readonly audit: AuditService,
+    private readonly passwords: PasswordService,
     private readonly cursors: CursorCodec,
     private readonly clock: ClockService,
     private readonly calendar: BusinessCalendar,
@@ -121,7 +125,6 @@ export class AdminService {
       status: u.status,
       suspendedUntil: u.suspendedUntil?.toISOString() ?? null,
       emailVerified: u.emailVerifiedAt !== null,
-      twoFactor: u.totpSecretEnc !== null,
       governorate: u.profile?.governorate.code,
       gym: u.profile?.primaryGym?.name ?? null,
       level: u.stats?.level ?? 1,
@@ -158,11 +161,47 @@ export class AdminService {
     const target = await this.actOn(actor, id);
     const ceiling = actor.role === 'SUPER_ADMIN' ? RANK.SUPER_ADMIN : RANK.MODERATOR;
     if (RANK[dto.role] > ceiling) throw AppException.forbidden('You cannot grant this role.');
+    if ((JUDGE_ROLES.includes(dto.role) || JUDGE_ROLES.includes(target.role)) && RANK[actor.role] < RANK.ADMIN) throw AppException.forbidden('Only admins manage judge accounts.');
     await this.prisma.$transaction(async (tx) => {
       await tx.user.update({ where: { id }, data: { role: dto.role, sessionVersion: { increment: 1 } } });
       await this.audit.log({ actorId: actor.id, actorRole: actor.role, action: 'USER_ROLE_CHANGED', entityType: 'user', entityId: id, before: { role: target.role }, after: { role: dto.role } }, tx);
     });
     return this.user(id);
+  }
+
+  // ───────────── Judge accounts ─────────────
+
+  async judges() {
+    const rows = await this.prisma.user.findMany({ where: { role: { in: JUDGE_ROLES }, status: { not: 'DELETED' } }, orderBy: { username: 'asc' } });
+    return rows.map((u) => ({ id: u.id, email: u.email, username: u.username, role: u.role, status: u.status, lastLoginAt: u.lastLoginAt?.toISOString() ?? null }));
+  }
+
+  /**
+   * A judge-only account with a generated password, shown once to the admin who hands it over. No profile:
+   * judges never use the app, so they never compete or score.
+   */
+  async createJudge(actor: AuthUser, dto: CreateJudgeDto) {
+    const email = dto.email.trim().toLowerCase();
+    if (await this.prisma.user.findFirst({ where: { OR: [{ email }, { username: dto.username }] } })) {
+      throw AppException.conflict(ErrorCode.CONFLICT, 'Email or username already used');
+    }
+    const password = randomBytes(9).toString('base64url');
+    const user = await this.prisma.$transaction(async (tx) => {
+      const u = await tx.user.create({
+        data: {
+          id: uuidv7(),
+          email,
+          username: dto.username,
+          role: dto.role,
+          passwordHash: await this.passwords.hash(password),
+          emailVerifiedAt: this.clock.now(),
+          dateOfBirth: new Date('1970-01-01'), // required column, unused for judge accounts
+        },
+      });
+      await this.audit.log({ actorId: actor.id, actorRole: actor.role, action: 'JUDGE_ACCOUNT_CREATED', entityType: 'user', entityId: u.id, after: { email, username: dto.username, role: dto.role } }, tx);
+      return u;
+    });
+    return { id: user.id, email: user.email, username: user.username, role: user.role, password };
   }
 
   private async actOn(actor: AuthUser, id: string) {
@@ -376,6 +415,20 @@ export class AdminService {
   }
 
   /** Manual correction, always a new ledger entry (never an edit) with the reason in the audit log. */
+  async recompute(actor: AuthUser, dto: RecomputeDto) {
+    const from = this.calendar.weekStart(new Date(`${dto.from.slice(0, 10)}T12:00:00Z`));
+    const to = this.calendar.weekStart(new Date(`${dto.to.slice(0, 10)}T12:00:00Z`));
+    if (to <= from) throw AppException.validation([{ field: 'to', code: 'INVALID_RANGE' }]);
+    // Only closed weeks: the running week is still provisional.
+    if (to.getTime() > this.seasons.lastClosableWeek(this.clock.now(), (await this.ruleSets.getActive()).config.week_grace_hours).getTime() + 7 * 86_400_000) {
+      throw AppException.validation([{ field: 'to', code: 'WEEK_NOT_CLOSED' }]);
+    }
+    const dryRun = dto.dryRun !== false;
+    const result = await this.seasons.recomputeRange(from, to, dryRun);
+    await this.audit.log({ actorId: actor.id, actorRole: actor.role, action: dryRun ? 'SCORES_RECOMPUTE_DRY_RUN' : 'SCORES_RECOMPUTED', entityType: 'weekly_scores', after: { from: dto.from, to: dto.to, reason: dto.reason, weeks: result.weeks, changed: result.changed, lpDelta: result.lpDelta } });
+    return { dryRun, ...result };
+  }
+
   async adjust(actor: AuthUser, dto: LedgerAdjustmentDto) {
     const { version, config } = await this.ruleSets.getActive();
     const target = await this.prisma.user.findUnique({ where: { id: dto.userId }, include: { stats: true } });

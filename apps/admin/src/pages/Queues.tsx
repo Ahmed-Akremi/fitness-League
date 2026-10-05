@@ -147,3 +147,68 @@ export function GymVerification() {
     </section>
   );
 }
+
+interface PendingProof {
+  workoutId: string;
+  username: string;
+  sport: string;
+  performedAt: string;
+  durationS: number;
+  exercises: { code: string; sets: { reps: number | null; weightKg: number | null; distanceM: number | null; durationS: number | null }[] }[];
+  proofs: { id: string; kind: string; url: string }[];
+}
+
+/** Proofs to review (Phase 3): a verified workout weighs more in the performance component. */
+export function ProofQueue() {
+  const { api } = useAuth();
+  const { data, error, reload } = useFetch(() => api.get<PendingProof[]>('/admin/proofs/queue'), [api]);
+  const [notes, setNotes] = useState<Record<string, string>>({});
+  const [message, setMessage] = useState<string | null>(null);
+
+  async function decide(id: string, decision: 'VERIFY' | 'REJECT') {
+    try {
+      await api.post(`/admin/proofs/${id}/decide`, { decision, note: notes[id] });
+      setMessage(decision === 'VERIFY' ? 'Séance vérifiée.' : 'Preuve refusée.');
+      await reload();
+    } catch (e) {
+      setMessage(errorText(e));
+    }
+  }
+
+  if (error) return <p role="alert">{errorText(error)}</p>;
+  return (
+    <section>
+      <h2>Preuves à vérifier</h2>
+      {message && <p role="status">{message}</p>}
+      {data?.length === 0 && <p>Aucune preuve en attente.</p>}
+      {data?.map((w) => (
+        <article key={w.workoutId} className="card">
+          <p>
+            <strong>@{w.username}</strong> · {w.sport} · {new Date(w.performedAt).toLocaleString('fr-FR')} · {Math.round(w.durationS / 60)} min
+          </p>
+          <div className="row">
+            {w.proofs.map((p) => (
+              <a key={p.id} href={p.url} target="_blank" rel="noreferrer">
+                <img src={p.url} alt={`Preuve (${p.kind})`} style={{ maxWidth: 240, maxHeight: 240, objectFit: 'contain' }} />
+              </a>
+            ))}
+          </div>
+          <details>
+            <summary>Séries déclarées</summary>
+            <pre>{JSON.stringify(w.exercises, null, 1)}</pre>
+          </details>
+          <label>
+            Note (obligatoire pour refuser, visible par l’athlète)
+            <input value={notes[w.workoutId] ?? ''} onChange={(e) => setNotes({ ...notes, [w.workoutId]: e.target.value })} />
+          </label>
+          <div className="row">
+            <button onClick={() => decide(w.workoutId, 'VERIFY')}>Vérifier</button>
+            <button className="danger" disabled={(notes[w.workoutId] ?? '').trim().length < 3} onClick={() => decide(w.workoutId, 'REJECT')}>
+              Refuser
+            </button>
+          </div>
+        </article>
+      ))}
+    </section>
+  );
+}

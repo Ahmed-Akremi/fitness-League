@@ -116,7 +116,7 @@ export class PrivacyService {
       this.prisma.consent.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } }),
       this.bodyMeasurements(userId, 10_000),
     ]);
-    const { passwordHash: _p, totpSecretEnc: _t, goals, ...account } = user;
+    const { passwordHash: _p, goals, ...account } = user;
     return {
       exportedAt: this.clock.now().toISOString(),
       account: { ...account, dateOfBirth: user.dateOfBirth.toISOString().slice(0, 10) },
@@ -172,7 +172,6 @@ export class PrivacyService {
             passwordHash: null,
             phoneE164: null,
             phoneVerifiedAt: null,
-            totpSecretEnc: null,
             dateOfBirth: new Date('1900-01-01T00:00:00Z'),
             status: 'DELETED',
             deletedAt: now,

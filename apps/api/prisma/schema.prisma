@@ -21,6 +21,9 @@ enum Role {
   MODERATOR
   GYM_ADMIN
   USER
+  /// Judge-only accounts, created by admins: admin panel judge space only, never the app.
+  JUDGE
+  HEAD_JUDGE
 }
 
 enum UserStatus {
@@ -185,6 +188,8 @@ enum MediaPurpose {
   GYM_PROOF
   EXPORT
   GYM_LOGO
+  COMPETITION_VIDEO
+  COMPETITION_COVER
 }
 
 enum BaselineStatus {
@@ -310,10 +315,132 @@ enum BattleStatus {
   EXPIRED
 }
 
+enum DuelQueueStatus {
+  WAITING
+  MATCHED
+  GHOST
+  LEFT
+}
+
 enum BattleOutcome {
   WIN
   LOSS
   DRAW
+}
+
+enum AnticheatFlagKind {
+  SCORE_SPIKE
+  FARMING
+  SHARED_DEVICE
+  BATTLE_COLLUSION
+}
+
+enum AnticheatFlagStatus {
+  OPEN
+  CLEARED
+  CONFIRMED
+}
+
+enum ReportTarget {
+  USER
+  WORKOUT
+  COMMENT
+  GYM
+}
+
+enum ReportReason {
+  CHEATING
+  HARASSMENT
+  SPAM
+  INAPPROPRIATE
+  IMPERSONATION
+  OTHER
+}
+
+enum ReportStatus {
+  OPEN
+  ACTIONED
+  DISMISSED
+}
+
+enum SanctionKind {
+  WARNING
+  SUSPENSION
+  BAN
+}
+
+enum AppealStatus {
+  NONE
+  PENDING
+  UPHELD
+  OVERTURNED
+}
+
+enum ProofKind {
+  PHOTO
+  SCREENSHOT
+}
+
+enum ProofStatus {
+  NONE
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum ReactionType {
+  LIKE
+  FIRE
+  STRONG
+}
+
+enum LeagueVisibility {
+  PUBLIC
+  PRIVATE
+}
+
+enum LeagueScoringPreset {
+  STANDARD
+  CONSISTENCY
+  PROGRESS
+}
+
+enum LeagueRole {
+  OWNER
+  MEMBER
+}
+
+enum ChallengeScope {
+  PERSONAL
+  FRIEND
+  COMMUNITY
+  GYM
+}
+
+enum ChallengeStatus {
+  ACTIVE
+  ENDED
+  CANCELLED
+}
+
+enum ChallengeMetric {
+  WORKOUTS
+  TRAINING_DAYS
+  DURATION_MIN
+  DISTANCE_KM
+  VOLUME_KG
+}
+
+enum GymWarStatus {
+  ACTIVE
+  COMPLETED
+  BYE
+}
+
+enum GymWarBracket {
+  S
+  M
+  L
 }
 
 enum GymStatus {
@@ -363,45 +490,61 @@ model User {
   lockedUntil      DateTime?  @map("locked_until") @db.Timestamptz
   suspendedUntil   DateTime?  @map("suspended_until") @db.Timestamptz
   sessionVersion   Int        @default(1) @map("session_version")
-  totpSecretEnc    Bytes?     @map("totp_secret_enc")
   lastLoginAt      DateTime?  @map("last_login_at") @db.Timestamptz
   createdAt        DateTime   @default(now()) @map("created_at") @db.Timestamptz
   updatedAt        DateTime   @updatedAt @map("updated_at") @db.Timestamptz
   deletedAt        DateTime?  @map("deleted_at") @db.Timestamptz
   anonymisedAt     DateTime?  @map("anonymised_at") @db.Timestamptz
 
-  profile            Profile?
-  settings           UserSettings?
-  stats              UserStats?
-  streak             Streak?
-  oauthIdentities    OAuthIdentity[]
-  refreshTokens      RefreshToken[]
-  verificationTokens VerificationToken[]
-  devices            Device[]
-  sports             UserSport[]
-  consents           Consent[]
-  bodyMeasurements   BodyMeasurement[]
-  dataRequests       DataRequest[]
-  workouts           Workout[]
-  baselines          Baseline[]
-  personalRecords    PersonalRecord[]
-  metricObservations MetricObservation[]
-  goals              Goal[]
-  activityEvents     ActivityEvent[]
-  xpTransactions     XpTransaction[]          @relation("XpOwner")
-  lpTransactions     LeaguePointTransaction[] @relation("LpOwner")
-  weeklyScores       WeeklyScore[]
-  xpDailyCounters    XpDailyCounter[]
-  seasonStandings    SeasonStanding[]
-  gymMemberships     GymMember[]              @relation("GymMemberUser")
-  ownedGyms          Gym[]                    @relation("GymOwner")
-  gymWods            GymWod[]                 @relation("GymWodAuthor")
-  gymWodScores       GymWodScore[]            @relation("GymWodScoreUser")
-  battleParticipants BattleParticipant[]
-  battlesCreated     Battle[]                 @relation("BattleCreator")
-  notifications      Notification[]
-  userBadges         UserBadge[]
-  media              Media[]
+  profile                Profile?
+  settings               UserSettings?
+  stats                  UserStats?
+  streak                 Streak?
+  oauthIdentities        OAuthIdentity[]
+  refreshTokens          RefreshToken[]
+  verificationTokens     VerificationToken[]
+  devices                Device[]
+  sports                 UserSport[]
+  consents               Consent[]
+  bodyMeasurements       BodyMeasurement[]
+  dataRequests           DataRequest[]
+  workouts               Workout[]
+  baselines              Baseline[]
+  personalRecords        PersonalRecord[]
+  metricObservations     MetricObservation[]
+  goals                  Goal[]
+  activityEvents         ActivityEvent[]
+  xpTransactions         XpTransaction[]           @relation("XpOwner")
+  lpTransactions         LeaguePointTransaction[]  @relation("LpOwner")
+  weeklyScores           WeeklyScore[]
+  xpDailyCounters        XpDailyCounter[]
+  seasonStandings        SeasonStanding[]
+  gymMemberships         GymMember[]               @relation("GymMemberUser")
+  ownedGyms              Gym[]                     @relation("GymOwner")
+  gymWods                GymWod[]                  @relation("GymWodAuthor")
+  gymWodScores           GymWodScore[]             @relation("GymWodScoreUser")
+  battleParticipants     BattleParticipant[]
+  mmrRating              MmrRating?
+  duelQueueEntries       DuelQueueEntry[]
+  challengesCreated      Challenge[]               @relation("ChallengeCreator")
+  challengeEntries       ChallengeParticipant[]
+  leaguesOwned           League[]                  @relation("LeagueOwner")
+  leagueMemberships      LeagueMember[]
+  activityReactions      ActivityReaction[]
+  activityComments       ActivityComment[]
+  mutesMade              Mute[]                    @relation("Muter")
+  mutedBy                Mute[]                    @relation("Muted")
+  reportsMade            Report[]                  @relation("Reporter")
+  sanctions              Sanction[]                @relation("Sanctioned")
+  anticheatFlags         AnticheatFlag[]
+  battlesCreated         Battle[]                  @relation("BattleCreator")
+  notifications          Notification[]
+  userBadges             UserBadge[]
+  media                  Media[]
+  competitionsCreated    Competition[]             @relation("CompetitionCreator")
+  competitionStaff       CompetitionStaff[]        @relation("CompetitionStaffUser")
+  competitionEntries     CompetitionRegistration[] @relation("CompetitionAthlete")
+  competitionSubmissions CompetitionSubmission[]   @relation("CompetitionSubmitter")
 
   @@index([status])
   @@map("users")
@@ -655,21 +798,21 @@ model MetricType {
 }
 
 model Exercise {
-  id             String   @id @db.Uuid
-  sportId        String?  @map("sport_id") @db.Uuid
-  code           String   @unique
-  nameI18n       Json     @map("name_i18n")
-  equipment      String?
-  isBodyweight   Boolean  @default(false) @map("is_bodyweight")
-  trackedMetrics String[] @map("tracked_metrics")
+  id              String         @id @db.Uuid
+  sportId         String?        @map("sport_id") @db.Uuid
+  code            String         @unique
+  nameI18n        Json           @map("name_i18n")
+  equipment       String?
+  isBodyweight    Boolean        @default(false) @map("is_bodyweight")
+  trackedMetrics  String[]       @map("tracked_metrics")
   /// Picker grouping on mobile (CrossFit movements, benchmark WODs, Hyrox).
   group           ExerciseGroup?
-  descriptionI18n Json     @default("{}") @map("description_i18n")
+  descriptionI18n Json           @default("{}") @map("description_i18n")
   /// Per-exercise overrides of the anti-cheat thresholds (docs §7.2), e.g. {"hold_kg": 300, "reject_kg": 500}.
-  plausibility   Json     @default("{}")
-  enabled        Boolean  @default(true)
-  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  plausibility    Json           @default("{}")
+  enabled         Boolean        @default(true)
+  createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime       @updatedAt @map("updated_at") @db.Timestamptz
 
   sport               Sport?                @relation(fields: [sportId], references: [id])
   workoutExercises    WorkoutExercise[]
@@ -702,6 +845,11 @@ model Workout {
   externalRef       String?       @map("external_ref")
   status            WorkoutStatus @default(PROCESSING)
   isVerified        Boolean       @default(false) @map("is_verified")
+  /// Phase 3 proof review (docs §3.5): NONE until a proof is attached, then PENDING → VERIFIED / REJECTED.
+  proofStatus       ProofStatus   @default(NONE) @map("proof_status")
+  proofReviewedById String?       @map("proof_reviewed_by") @db.Uuid
+  proofReviewedAt   DateTime?     @map("proof_reviewed_at") @db.Timestamptz
+  proofNote         String?       @map("proof_note")
   receivedAt        DateTime      @default(now()) @map("received_at") @db.Timestamptz
   deviceSubmittedAt DateTime?     @map("device_submitted_at") @db.Timestamptz
   totalVolumeKg     Decimal?      @map("total_volume_kg") @db.Decimal(12, 2)
@@ -719,11 +867,13 @@ model Workout {
   personalRecords    PersonalRecord[]
   gymWodScores       GymWodScore[]
   metricObservations MetricObservation[]
+  proofs             ProofMedia[]
 
   @@unique([userId, clientId])
   @@unique([userId, dataSource, externalRef])
   @@index([userId, performedAt(sort: Desc)])
   @@index([userId, fingerprint])
+  @@index([proofStatus, updatedAt])
   @@map("workouts")
 }
 
@@ -779,22 +929,24 @@ model WorkoutEvaluation {
 }
 
 model Media {
-  id        String       @id @db.Uuid
-  ownerId   String       @map("owner_id") @db.Uuid
-  bucket    String
-  objectKey String       @unique @map("object_key")
-  mime      String
-  sizeBytes Int          @map("size_bytes")
-  sha256    Bytes?
-  status    MediaStatus  @default(PENDING_UPLOAD)
-  purpose   MediaPurpose
-  width     Int?
-  height    Int?
-  durationS Int?         @map("duration_s")
-  createdAt DateTime     @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt DateTime     @updatedAt @map("updated_at") @db.Timestamptz
-  owner     User         @relation(fields: [ownerId], references: [id])
-  gymLogos  Gym[]        @relation("GymLogo")
+  id                String        @id @db.Uuid
+  ownerId           String        @map("owner_id") @db.Uuid
+  bucket            String
+  objectKey         String        @unique @map("object_key")
+  mime              String
+  sizeBytes         Int           @map("size_bytes")
+  sha256            Bytes?
+  status            MediaStatus   @default(PENDING_UPLOAD)
+  purpose           MediaPurpose
+  width             Int?
+  height            Int?
+  durationS         Int?          @map("duration_s")
+  createdAt         DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime      @updatedAt @map("updated_at") @db.Timestamptz
+  owner             User          @relation(fields: [ownerId], references: [id])
+  gymLogos          Gym[]         @relation("GymLogo")
+  competitionCovers Competition[] @relation("CompetitionCover")
+  proofs            ProofMedia[]
 
   @@index([ownerId])
   @@index([status, createdAt])
@@ -941,18 +1093,62 @@ model Streak {
 }
 
 model ActivityEvent {
-  id         String       @id @db.Uuid
-  userId     String       @map("user_id") @db.Uuid
+  id         String             @id @db.Uuid
+  userId     String             @map("user_id") @db.Uuid
   type       ActivityType
-  refType    String       @map("ref_type")
-  refId      String       @map("ref_id") @db.Uuid
-  payload    Json         @default("{}")
+  refType    String             @map("ref_type")
+  refId      String             @map("ref_id") @db.Uuid
+  payload    Json               @default("{}")
   visibility Visibility
-  createdAt  DateTime     @default(now()) @map("created_at") @db.Timestamptz
-  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime           @default(now()) @map("created_at") @db.Timestamptz
+  user       User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reactions  ActivityReaction[]
+  comments   ActivityComment[]
 
   @@index([userId, createdAt(sort: Desc)])
   @@map("activity_events")
+}
+
+/// One reaction per athlete per activity (changing it replaces the type).
+model ActivityReaction {
+  activityEventId String       @map("activity_event_id") @db.Uuid
+  userId          String       @map("user_id") @db.Uuid
+  type            ReactionType
+  createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz
+
+  activityEvent ActivityEvent @relation(fields: [activityEventId], references: [id], onDelete: Cascade)
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([activityEventId, userId])
+  @@map("activity_reactions")
+}
+
+model ActivityComment {
+  id              String    @id @db.Uuid
+  activityEventId String    @map("activity_event_id") @db.Uuid
+  userId          String    @map("user_id") @db.Uuid
+  body            String
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  deletedAt       DateTime? @map("deleted_at") @db.Timestamptz
+
+  activityEvent ActivityEvent @relation(fields: [activityEventId], references: [id], onDelete: Cascade)
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([activityEventId, createdAt])
+  @@map("activity_comments")
+}
+
+/// Hides someone's activity from my feed without unfriending or blocking (docs §3.9).
+model Mute {
+  muterId   String   @map("muter_id") @db.Uuid
+  mutedId   String   @map("muted_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  muter User @relation("Muter", fields: [muterId], references: [id], onDelete: Cascade)
+  muted User @relation("Muted", fields: [mutedId], references: [id], onDelete: Cascade)
+
+  @@id([muterId, mutedId])
+  @@map("mutes")
 }
 
 // ───────────────────── Scoring & ledgers ─────────────────────
@@ -1259,31 +1455,287 @@ model BattleParticipant {
   @@map("battle_participants")
 }
 
+/// Weekly Duel rating (Glicko-2, docs §6.1). One rating period = one business week.
+model MmrRating {
+  userId     String    @id @map("user_id") @db.Uuid
+  rating     Decimal   @default(1500) @db.Decimal(7, 2)
+  rd         Decimal   @default(350) @db.Decimal(6, 2)
+  volatility Decimal   @default(0.06) @db.Decimal(6, 5)
+  games      Int       @default(0)
+  /// Monday of the last rated week (RD decay counts the weeks since).
+  lastPeriod DateTime? @map("last_period") @db.Date
+  updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("mmr_ratings")
+}
+
+/// Opt-in for the Weekly Duel of the week starting `weekStart` (queue open Friday 00:00 → Monday 12:00).
+model DuelQueueEntry {
+  id        String          @id @db.Uuid
+  userId    String          @map("user_id") @db.Uuid
+  weekStart DateTime        @map("week_start") @db.Date
+  joinedAt  DateTime        @default(now()) @map("joined_at") @db.Timestamptz
+  status    DuelQueueStatus @default(WAITING)
+  battleId  String?         @map("battle_id") @db.Uuid
+  updatedAt DateTime        @updatedAt @map("updated_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, weekStart])
+  @@index([weekStart, status])
+  @@map("duel_queue_entries")
+}
+
+// ───────────────────────────── Behavioural anti-cheat ─────────────────────────────
+
+/// A behavioural signal for a moderator to look at (docs §7.3). Never a sanction by itself.
+model AnticheatFlag {
+  id           String              @id @db.Uuid
+  userId       String              @map("user_id") @db.Uuid
+  kind         AnticheatFlagKind
+  weekStart    DateTime            @map("week_start") @db.Date
+  details      Json
+  status       AnticheatFlagStatus @default(OPEN)
+  reviewedById String?             @map("reviewed_by") @db.Uuid
+  reviewedAt   DateTime?           @map("reviewed_at") @db.Timestamptz
+  note         String?
+  createdAt    DateTime            @default(now()) @map("created_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, kind, weekStart])
+  @@index([status, createdAt])
+  @@map("anticheat_flags")
+}
+
+// ───────────────────────────── Moderation ─────────────────────────────
+
+/// A user report on an athlete, a workout, a comment or a gym (docs §3.12, Phase 3).
+model Report {
+  id           String       @id @db.Uuid
+  reporterId   String       @map("reporter_id") @db.Uuid
+  targetType   ReportTarget @map("target_type")
+  targetId     String       @map("target_id") @db.Uuid
+  /// Owner of the reported content (the athlete a sanction would apply to); null for gyms.
+  targetUserId String?      @map("target_user_id") @db.Uuid
+  reason       ReportReason
+  details      String?
+  status       ReportStatus @default(OPEN)
+  handledById  String?      @map("handled_by") @db.Uuid
+  handledAt    DateTime?    @map("handled_at") @db.Timestamptz
+  decisionNote String?      @map("decision_note")
+  sanctionId   String?      @map("sanction_id") @db.Uuid
+  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz
+
+  reporter User @relation("Reporter", fields: [reporterId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([targetType, targetId])
+  @@map("reports")
+}
+
+/// A moderation decision on an athlete; appealable once (docs §3.12).
+model Sanction {
+  id                String       @id @db.Uuid
+  userId            String       @map("user_id") @db.Uuid
+  kind              SanctionKind
+  reason            ReportReason
+  note              String
+  startsAt          DateTime     @map("starts_at") @db.Timestamptz
+  endsAt            DateTime?    @map("ends_at") @db.Timestamptz
+  createdById       String       @map("created_by") @db.Uuid
+  revokedAt         DateTime?    @map("revoked_at") @db.Timestamptz
+  appealStatus      AppealStatus @default(NONE) @map("appeal_status")
+  appealText        String?      @map("appeal_text")
+  appealedAt        DateTime?    @map("appealed_at") @db.Timestamptz
+  appealDecidedById String?      @map("appeal_decided_by") @db.Uuid
+  appealDecidedAt   DateTime?    @map("appeal_decided_at") @db.Timestamptz
+  appealNote        String?      @map("appeal_note")
+  createdAt         DateTime     @default(now()) @map("created_at") @db.Timestamptz
+
+  user User @relation("Sanctioned", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([appealStatus])
+  @@map("sanctions")
+}
+
+// ───────────────────────────── Proofs ─────────────────────────────
+
+/// A photo or screenshot backing a workout (docs §3.5 proof_media). Re-encoded, metadata stripped.
+model ProofMedia {
+  id        String    @id @db.Uuid
+  workoutId String    @map("workout_id") @db.Uuid
+  mediaId   String    @map("media_id") @db.Uuid
+  kind      ProofKind
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  workout Workout @relation(fields: [workoutId], references: [id], onDelete: Cascade)
+  media   Media   @relation(fields: [mediaId], references: [id])
+
+  @@index([workoutId])
+  @@map("proof_media")
+}
+
+// ───────────────────────────── Private leagues ─────────────────────────────
+
+/// A user-made league ranking its members on their weekly scores over a period (docs §3.10).
+model League {
+  id            String              @id @db.Uuid
+  name          String
+  slug          String              @unique
+  visibility    LeagueVisibility    @default(PRIVATE)
+  inviteCode    String              @unique @map("invite_code")
+  ownerId       String              @map("owner_id") @db.Uuid
+  maxMembers    Int                 @default(50) @map("max_members")
+  startsAt      DateTime            @map("starts_at") @db.Timestamptz
+  endsAt        DateTime            @map("ends_at") @db.Timestamptz
+  scoringPreset LeagueScoringPreset @default(STANDARD) @map("scoring_preset")
+  createdAt     DateTime            @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime            @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt     DateTime?           @map("deleted_at") @db.Timestamptz
+
+  owner   User           @relation("LeagueOwner", fields: [ownerId], references: [id])
+  members LeagueMember[]
+
+  @@index([visibility, endsAt])
+  @@map("leagues")
+}
+
+model LeagueMember {
+  leagueId String     @map("league_id") @db.Uuid
+  userId   String     @map("user_id") @db.Uuid
+  role     LeagueRole @default(MEMBER)
+  joinedAt DateTime   @default(now()) @map("joined_at") @db.Timestamptz
+  leftAt   DateTime?  @map("left_at") @db.Timestamptz
+
+  league League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([leagueId, userId])
+  @@index([userId])
+  @@map("league_members")
+}
+
+// ───────────────────────────── Challenges ─────────────────────────────
+
+/// A challenge on a workout-level quantity over a window (docs §3.10).
+model Challenge {
+  id          String          @id @db.Uuid
+  scope       ChallengeScope
+  title       String
+  description String?
+  metric      ChallengeMetric
+  targetValue Decimal         @map("target_value") @db.Decimal(12, 1)
+  startsAt    DateTime        @map("starts_at") @db.Timestamptz
+  endsAt      DateTime        @map("ends_at") @db.Timestamptz
+  gymId       String?         @map("gym_id") @db.Uuid
+  createdById String          @map("created_by") @db.Uuid
+  xpReward    Int             @default(0) @map("xp_reward")
+  status      ChallengeStatus @default(ACTIVE)
+  createdAt   DateTime        @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime        @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt   DateTime?       @map("deleted_at") @db.Timestamptz
+
+  gym          Gym?                   @relation(fields: [gymId], references: [id])
+  createdBy    User                   @relation("ChallengeCreator", fields: [createdById], references: [id])
+  participants ChallengeParticipant[]
+
+  @@index([scope, endsAt])
+  @@index([gymId])
+  @@map("challenges")
+}
+
+model ChallengeParticipant {
+  challengeId     String    @map("challenge_id") @db.Uuid
+  userId          String    @map("user_id") @db.Uuid
+  joinedAt        DateTime  @default(now()) @map("joined_at") @db.Timestamptz
+  progressValue   Decimal   @default(0) @map("progress_value") @db.Decimal(12, 1)
+  completedAt     DateTime? @map("completed_at") @db.Timestamptz
+  xpTransactionId String?   @map("xp_transaction_id") @db.Uuid
+
+  challenge Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([challengeId, userId])
+  @@index([userId, completedAt])
+  @@map("challenge_participants")
+}
+
+// ───────────────────────────── Gym Wars ─────────────────────────────
+
+/// One weekly war between two gyms of the same size bracket, or a bye (docs §6.2).
+model GymWar {
+  id             String        @id @db.Uuid
+  weekStart      DateTime      @map("week_start") @db.Date
+  status         GymWarStatus  @default(ACTIVE)
+  bracket        GymWarBracket
+  result         Json          @default("{}")
+  ruleSetVersion Int           @map("rule_set_version")
+  closedAt       DateTime?     @map("closed_at") @db.Timestamptz
+  createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime      @updatedAt @map("updated_at") @db.Timestamptz
+
+  participants GymWarParticipant[]
+
+  @@index([weekStart, status])
+  @@map("gym_wars")
+}
+
+model GymWarParticipant {
+  id                  String         @id @db.Uuid
+  gymWarId            String         @map("gym_war_id") @db.Uuid
+  gymId               String         @map("gym_id") @db.Uuid
+  weekStart           DateTime       @map("week_start") @db.Date
+  /// Members eligible when the war started (approved before it, primary gym, calibrated, verified email).
+  memberIds           String[]       @map("member_ids") @db.Uuid
+  eligibleMemberCount Int            @map("eligible_member_count")
+  activeMemberCount   Int            @default(0) @map("active_member_count")
+  score               Decimal?       @db.Decimal(5, 2)
+  breakdown           Json           @default("{}")
+  outcome             BattleOutcome?
+  ratingBefore        Decimal        @map("rating_before") @db.Decimal(7, 2)
+  ratingAfter         Decimal?       @map("rating_after") @db.Decimal(7, 2)
+
+  war GymWar @relation(fields: [gymWarId], references: [id], onDelete: Cascade)
+  gym Gym    @relation(fields: [gymId], references: [id])
+
+  @@unique([gymId, weekStart])
+  @@index([gymWarId])
+  @@map("gym_war_participants")
+}
+
 // ───────────────────────────── Gyms ─────────────────────────────
 
 model Gym {
-  id            String    @id @db.Uuid
-  name          String
-  slug          String    @unique
-  countryCode   String    @default("TN") @map("country_code") @db.Char(2)
-  governorateId String    @map("governorate_id") @db.Uuid
-  cityId        String    @map("city_id") @db.Uuid
-  addressLine   String?   @map("address_line")
-  contactPhone  String?   @map("contact_phone")
-  contactEmail  String?   @map("contact_email")
-  socialLinks   Json      @default("{}") @map("social_links")
-  status        GymStatus @default(PENDING)
-  ownerUserId   String?   @map("owner_user_id") @db.Uuid
-  verifiedAt    DateTime? @map("verified_at") @db.Timestamptz
-  verifiedById  String?   @map("verified_by") @db.Uuid
-  level         Int       @default(1)
-  rating        Decimal   @default(1500) @db.Decimal(7, 2)
-  ratingRd      Decimal   @default(350) @map("rating_rd") @db.Decimal(6, 2)
-  logoMediaId   String?   @map("logo_media_id") @db.Uuid
-  logo          Media?    @relation("GymLogo", fields: [logoMediaId], references: [id])
-  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz
-  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz
+  id               String    @id @db.Uuid
+  name             String
+  slug             String    @unique
+  countryCode      String    @default("TN") @map("country_code") @db.Char(2)
+  governorateId    String    @map("governorate_id") @db.Uuid
+  cityId           String    @map("city_id") @db.Uuid
+  addressLine      String?   @map("address_line")
+  contactPhone     String?   @map("contact_phone")
+  contactEmail     String?   @map("contact_email")
+  socialLinks      Json      @default("{}") @map("social_links")
+  status           GymStatus @default(PENDING)
+  ownerUserId      String?   @map("owner_user_id") @db.Uuid
+  verifiedAt       DateTime? @map("verified_at") @db.Timestamptz
+  verifiedById     String?   @map("verified_by") @db.Uuid
+  level            Int       @default(1)
+  rating           Decimal   @default(1500) @db.Decimal(7, 2)
+  ratingRd         Decimal   @default(350) @map("rating_rd") @db.Decimal(6, 2)
+  /// Glicko-2 volatility of the gym rating (Gym Wars, docs §6.2).
+  ratingVolatility Decimal   @default(0.06) @map("rating_volatility") @db.Decimal(6, 5)
+  /// Gyms are auto-enrolled in Gym Wars; the gym admin can opt out (Q-11).
+  warsOptOut       Boolean   @default(false) @map("wars_opt_out")
+  logoMediaId      String?   @map("logo_media_id") @db.Uuid
+  logo             Media?    @relation("GymLogo", fields: [logoMediaId], references: [id])
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt        DateTime? @map("deleted_at") @db.Timestamptz
 
   country              Country                  @relation(fields: [countryCode], references: [code])
   governorate          Governorate              @relation(fields: [governorateId], references: [id])
@@ -1294,6 +1746,8 @@ model Gym {
   primaryForProfiles   Profile[]
   sports               GymSport[]
   wods                 GymWod[]
+  warParticipations    GymWarParticipant[]
+  challenges           Challenge[]
 
   @@index([governorateId, status])
   @@map("gyms")
@@ -1503,4 +1957,527 @@ model GymWodScore {
   @@unique([wodId, userId])
   @@index([wodId, division, status, value])
   @@map("gym_wod_scores")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Competitions (CrossFit / functional fitness events). Money is an integer in minor units of `currency`.
+// Competition roles (organizer, judge, head judge) are per competition (CompetitionStaff); platform ADMIN /
+// SUPER_ADMIN keep every right. Judges and reviewers on versions, penalties and appeals are plain ids,
+// every decision is also written to the existing AuditLog.
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum CompetitionFormat {
+  ONLINE
+  ONSITE
+  HYBRID
+}
+
+enum CompetitionStatus {
+  DRAFT
+  REGISTRATION_OPEN
+  REGISTRATION_CLOSED
+  ACTIVE
+  SUBMISSION_OPEN
+  JUDGING
+  PROVISIONAL_LEADERBOARD
+  FINAL_LEADERBOARD
+  FINISHED
+  CANCELLED
+}
+
+enum CompetitionStaffRole {
+  ORGANIZER
+  JUDGE
+  HEAD_JUDGE
+}
+
+enum CategoryGender {
+  MALE
+  FEMALE
+  MIXED
+}
+
+enum RegistrationStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  REFUNDED
+}
+
+enum CompetitionPaymentStatus {
+  PENDING
+  PAID
+  FREE
+  FAILED
+  REFUNDED
+}
+
+enum CompetitionScoreType {
+  TIME
+  REPS
+  ROUNDS_REPS
+  DISTANCE
+  LOAD
+  CALORIES
+  POINTS
+  MAX_WEIGHT
+  COMPLEX
+  MOVEMENT_REPS
+}
+
+enum CompetitionScoringMethod {
+  DIRECT_POINTS
+  PLACEMENT_POINTS
+}
+
+enum CompetitionSubmissionStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  NEEDS_CORRECTION
+  PENALIZED
+  FINAL
+}
+
+enum CompetitionPenaltyType {
+  NO_REP
+  TIME_PENALTY
+  REP_PENALTY
+  LOAD_PENALTY
+  POINT_PENALTY
+  OTHER
+}
+
+enum CouponType {
+  PERCENTAGE
+  FIXED_AMOUNT
+  FREE
+}
+
+enum PrizeType {
+  CASH
+  TROPHY
+  MEDAL
+  EQUIPMENT
+  VOUCHER
+  CUSTOM
+}
+
+enum CompetitionAppealStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  CLOSED
+}
+
+model Competition {
+  id                       String            @id @db.Uuid
+  slug                     String            @unique
+  title                    String
+  description              String
+  coverMediaId             String?           @map("cover_media_id") @db.Uuid
+  cover                    Media?            @relation("CompetitionCover", fields: [coverMediaId], references: [id])
+  logoMediaId              String?           @map("logo_media_id") @db.Uuid
+  location                 String?
+  countryCode              String            @default("TN") @map("country_code") @db.Char(2)
+  city                     String?
+  format                   CompetitionFormat
+  status                   CompetitionStatus @default(DRAFT)
+  registrationStart        DateTime          @map("registration_start") @db.Timestamptz
+  registrationEnd          DateTime          @map("registration_end") @db.Timestamptz
+  eventStart               DateTime          @map("event_start") @db.Timestamptz
+  eventEnd                 DateTime          @map("event_end") @db.Timestamptz
+  scoreSubmissionStart     DateTime?         @map("score_submission_start") @db.Timestamptz
+  scoreSubmissionDeadline  DateTime?         @map("score_submission_deadline") @db.Timestamptz
+  judgingDeadline          DateTime?         @map("judging_deadline") @db.Timestamptz
+  appealDeadline           DateTime?         @map("appeal_deadline") @db.Timestamptz
+  leaderboardPublicationAt DateTime?         @map("leaderboard_publication_at") @db.Timestamptz
+  registrationPrice        Int               @default(0) @map("registration_price")
+  currency                 String            @default("TND") @db.Char(3)
+  maxParticipants          Int?              @map("max_participants")
+  /// Ordered tie-break rules (domain.ts TieBreakRule[]), configured by the organizer.
+  tieBreakRules            Json              @default("[]") @map("tie_break_rules")
+  leaderboardLockedAt      DateTime?         @map("leaderboard_locked_at") @db.Timestamptz
+  createdById              String            @map("created_by") @db.Uuid
+  createdAt                DateTime          @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt                DateTime          @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt                DateTime?         @map("deleted_at") @db.Timestamptz
+
+  createdBy     User                          @relation("CompetitionCreator", fields: [createdById], references: [id])
+  categories    CompetitionCategory[]
+  staff         CompetitionStaff[]
+  registrations CompetitionRegistration[]
+  workouts      CompetitionWorkout[]
+  prizes        CompetitionPrize[]
+  coupons       CompetitionCoupon[]
+  entries       CompetitionLeaderboardEntry[]
+  announcements CompetitionAnnouncement[]
+  heats         CompetitionHeat[]
+
+  @@index([status, eventStart])
+  @@map("competitions")
+}
+
+model CompetitionCategory {
+  id                        String         @id @db.Uuid
+  competitionId             String         @map("competition_id") @db.Uuid
+  name                      String
+  gender                    CategoryGender
+  minAge                    Int?           @map("min_age")
+  maxAge                    Int?           @map("max_age")
+  level                     String?
+  maxParticipants           Int?           @map("max_participants")
+  registrationPriceOverride Int?           @map("registration_price_override")
+  sortOrder                 Int            @default(0) @map("sort_order")
+  active                    Boolean        @default(true)
+  createdAt                 DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt                 DateTime       @updatedAt @map("updated_at") @db.Timestamptz
+
+  competition   Competition                   @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  registrations CompetitionRegistration[]
+  variants      CompetitionWorkoutVariant[]
+  prizes        CompetitionPrize[]
+  entries       CompetitionLeaderboardEntry[]
+  heats         CompetitionHeat[]
+
+  @@index([competitionId, sortOrder])
+  @@map("competition_categories")
+}
+
+model CompetitionStaff {
+  id            String               @id @db.Uuid
+  competitionId String               @map("competition_id") @db.Uuid
+  userId        String               @map("user_id") @db.Uuid
+  role          CompetitionStaffRole
+  createdAt     DateTime             @default(now()) @map("created_at") @db.Timestamptz
+
+  competition Competition                  @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  user        User                         @relation("CompetitionStaffUser", fields: [userId], references: [id])
+  assignments CompetitionJudgeAssignment[]
+
+  @@unique([competitionId, userId, role])
+  @@index([userId])
+  @@map("competition_staff")
+}
+
+model CompetitionRegistration {
+  id                 String                   @id @db.Uuid
+  competitionId      String                   @map("competition_id") @db.Uuid
+  categoryId         String                   @map("category_id") @db.Uuid
+  userId             String                   @map("user_id") @db.Uuid
+  registrationStatus RegistrationStatus       @default(PENDING) @map("registration_status")
+  paymentStatus      CompetitionPaymentStatus @default(PENDING) @map("payment_status")
+  originalPrice      Int                      @map("original_price")
+  discount           Int                      @default(0)
+  finalPrice         Int                      @map("final_price")
+  currency           String                   @db.Char(3)
+  couponId           String?                  @map("coupon_id") @db.Uuid
+  registeredAt       DateTime                 @default(now()) @map("registered_at") @db.Timestamptz
+  updatedAt          DateTime                 @updatedAt @map("updated_at") @db.Timestamptz
+
+  competition Competition                  @relation(fields: [competitionId], references: [id])
+  category    CompetitionCategory          @relation(fields: [categoryId], references: [id])
+  user        User                         @relation("CompetitionAthlete", fields: [userId], references: [id])
+  payments    CompetitionPayment[]
+  heatLanes   CompetitionHeatLane[]
+  redemption  CompetitionCouponRedemption?
+
+  @@unique([competitionId, userId])
+  @@index([categoryId, registrationStatus])
+  @@map("competition_registrations")
+}
+
+model CompetitionWorkout {
+  id                 String                   @id @db.Uuid
+  competitionId      String                   @map("competition_id") @db.Uuid
+  number             Int
+  name               String
+  description        String
+  standards          String?
+  movements          Json                     @default("[]")
+  videoUrl           String?                  @map("video_url")
+  imageMediaId       String?                  @map("image_media_id") @db.Uuid
+  timeCapS           Int?                     @map("time_cap_s")
+  scoreType          CompetitionScoreType     @map("score_type")
+  scoringMethod      CompetitionScoringMethod @map("scoring_method")
+  maximumPoints      Int                      @map("maximum_points")
+  minimumPoints      Int                      @default(0) @map("minimum_points")
+  /// PLACEMENT_POINTS table: [1st, 2nd, …] points, this WOD only.
+  placementTable     Json                     @default("[]") @map("placement_table")
+  categorySpecific   Boolean                  @default(false) @map("category_specific")
+  releaseAt          DateTime?                @map("release_at") @db.Timestamptz
+  submissionStart    DateTime                 @map("submission_start") @db.Timestamptz
+  submissionDeadline DateTime                 @map("submission_deadline") @db.Timestamptz
+  active             Boolean                  @default(true)
+  createdAt          DateTime                 @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime                 @updatedAt @map("updated_at") @db.Timestamptz
+
+  competition Competition                  @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  variants    CompetitionWorkoutVariant[]
+  submissions CompetitionSubmission[]
+  assignments CompetitionJudgeAssignment[]
+  heats       CompetitionHeat[]
+
+  @@unique([competitionId, number])
+  @@map("competition_workouts")
+}
+
+/// Category-specific version of a WOD (e.g. RX 60 kg, Scaled 30 kg).
+model CompetitionWorkoutVariant {
+  id          String  @id @db.Uuid
+  workoutId   String  @map("workout_id") @db.Uuid
+  categoryId  String  @map("category_id") @db.Uuid
+  description String
+  standards   String?
+  timeCapS    Int?    @map("time_cap_s")
+
+  workout  CompetitionWorkout  @relation(fields: [workoutId], references: [id], onDelete: Cascade)
+  category CompetitionCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([workoutId, categoryId])
+  @@map("competition_workout_variants")
+}
+
+model CompetitionSubmission {
+  id             String                      @id @db.Uuid
+  workoutId      String                      @map("workout_id") @db.Uuid
+  registrationId String                      @map("registration_id") @db.Uuid
+  userId         String                      @map("user_id") @db.Uuid
+  status         CompetitionSubmissionStatus @default(SUBMITTED)
+  /// Raw result as entered: timeS, rounds, reps, load, distance, calories, points, remainingTimeS, capped.
+  raw            Json
+  rawValue       Decimal?                    @map("raw_value") @db.Decimal(12, 2)
+  /// Official points = latest version's points; only counted when status is FINAL.
+  points         Decimal?                    @db.Decimal(10, 2)
+  notes          String?
+  videoUrl       String?                     @map("video_url")
+  youtubeId      String?                     @map("youtube_id")
+  videoMediaId   String?                     @map("video_media_id") @db.Uuid
+  clientId       String                      @map("client_id") @db.Uuid
+  submittedAt    DateTime                    @default(now()) @map("submitted_at") @db.Timestamptz
+  updatedAt      DateTime                    @updatedAt @map("updated_at") @db.Timestamptz
+
+  workout   CompetitionWorkout        @relation(fields: [workoutId], references: [id])
+  user      User                      @relation("CompetitionSubmitter", fields: [userId], references: [id])
+  versions  CompetitionScoreVersion[]
+  penalties CompetitionPenalty[]
+  appeals   CompetitionAppeal[]
+
+  @@unique([workoutId, userId])
+  @@unique([clientId])
+  @@index([workoutId, status])
+  @@index([registrationId])
+  @@map("competition_submissions")
+}
+
+/// Append-only history of a submission's points (never updated or deleted).
+model CompetitionScoreVersion {
+  id           String   @id @db.Uuid
+  submissionId String   @map("submission_id") @db.Uuid
+  version      Int
+  points       Decimal  @db.Decimal(10, 2)
+  rawValue     Decimal? @map("raw_value") @db.Decimal(12, 2)
+  reason       String
+  judgeId      String?  @map("judge_id") @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  submission CompetitionSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@unique([submissionId, version])
+  @@map("competition_score_versions")
+}
+
+model CompetitionPenalty {
+  id           String                 @id @db.Uuid
+  submissionId String                 @map("submission_id") @db.Uuid
+  type         CompetitionPenaltyType
+  points       Decimal                @db.Decimal(10, 2)
+  reason       String
+  judgeId      String                 @map("judge_id") @db.Uuid
+  createdAt    DateTime               @default(now()) @map("created_at") @db.Timestamptz
+
+  submission CompetitionSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@index([submissionId])
+  @@map("competition_penalties")
+}
+
+/// A judge works on a competition, optionally narrowed to a category and/or a WOD.
+model CompetitionJudgeAssignment {
+  id         String  @id @db.Uuid
+  staffId    String  @map("staff_id") @db.Uuid
+  categoryId String? @map("category_id") @db.Uuid
+  workoutId  String? @map("workout_id") @db.Uuid
+
+  staff   CompetitionStaff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  workout CompetitionWorkout? @relation(fields: [workoutId], references: [id], onDelete: Cascade)
+
+  @@unique([staffId, categoryId, workoutId])
+  @@map("competition_judge_assignments")
+}
+
+model CompetitionPrize {
+  id            String    @id @db.Uuid
+  competitionId String    @map("competition_id") @db.Uuid
+  categoryId    String?   @map("category_id") @db.Uuid
+  position      Int
+  type          PrizeType
+  amount        Int?
+  currency      String?   @db.Char(3)
+  description   String?
+
+  competition Competition          @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  category    CompetitionCategory? @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@index([competitionId, categoryId, position])
+  @@map("competition_prizes")
+}
+
+model CompetitionCoupon {
+  id            String     @id @db.Uuid
+  competitionId String     @map("competition_id") @db.Uuid
+  categoryId    String?    @map("category_id") @db.Uuid
+  code          String
+  type          CouponType
+  value         Int        @default(0)
+  maxUses       Int?       @map("max_uses")
+  usedCount     Int        @default(0) @map("used_count")
+  expiresAt     DateTime?  @map("expires_at") @db.Timestamptz
+  minimumAmount Int?       @map("minimum_amount")
+  active        Boolean    @default(true)
+  createdAt     DateTime   @default(now()) @map("created_at") @db.Timestamptz
+
+  competition Competition                   @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  redemptions CompetitionCouponRedemption[]
+
+  @@unique([competitionId, code])
+  @@map("competition_coupons")
+}
+
+model CompetitionCouponRedemption {
+  id             String   @id @db.Uuid
+  couponId       String   @map("coupon_id") @db.Uuid
+  registrationId String   @unique @map("registration_id") @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  discount       Int
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  coupon       CompetitionCoupon       @relation(fields: [couponId], references: [id])
+  registration CompetitionRegistration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+
+  @@unique([couponId, userId])
+  @@map("competition_coupon_redemptions")
+}
+
+/// No payment provider exists yet: MANUAL (marked by the organizer) and FREE now, a provider adapter later.
+model CompetitionPayment {
+  id             String                   @id @db.Uuid
+  registrationId String                   @map("registration_id") @db.Uuid
+  amount         Int
+  currency       String                   @db.Char(3)
+  status         CompetitionPaymentStatus
+  provider       String                   @default("MANUAL")
+  providerRef    String?                  @map("provider_ref")
+  recordedById   String?                  @map("recorded_by") @db.Uuid
+  createdAt      DateTime                 @default(now()) @map("created_at") @db.Timestamptz
+
+  registration CompetitionRegistration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+
+  @@index([registrationId])
+  @@map("competition_payments")
+}
+
+/// Materialized leaderboard row, recomputed server-side (in the same transaction) whenever an official score changes.
+model CompetitionLeaderboardEntry {
+  id            String   @id @db.Uuid
+  competitionId String   @map("competition_id") @db.Uuid
+  categoryId    String   @map("category_id") @db.Uuid
+  userId        String   @map("user_id") @db.Uuid
+  /// { workoutId: official points }
+  wodPoints     Json     @default("{}") @map("wod_points")
+  totalPoints   Decimal  @default(0) @map("total_points") @db.Decimal(12, 2)
+  rank          Int
+  pendingCount  Int      @default(0) @map("pending_count")
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  competition Competition         @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  category    CompetitionCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([competitionId, categoryId, userId])
+  @@index([competitionId, categoryId, rank], map: "competition_leaderboard_rank_idx")
+  @@index([competitionId, categoryId, totalPoints(sort: Desc)], map: "competition_leaderboard_total_idx")
+  @@map("competition_leaderboard_entries")
+}
+
+model CompetitionAppeal {
+  id           String                  @id @db.Uuid
+  submissionId String                  @map("submission_id") @db.Uuid
+  userId       String                  @map("user_id") @db.Uuid
+  reason       String
+  status       CompetitionAppealStatus @default(PENDING)
+  reviewedById String?                 @map("reviewed_by") @db.Uuid
+  response     String?
+  createdAt    DateTime                @default(now()) @map("created_at") @db.Timestamptz
+  reviewedAt   DateTime?               @map("reviewed_at") @db.Timestamptz
+
+  submission CompetitionSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@index([submissionId])
+  @@index([status])
+  @@map("competition_appeals")
+}
+
+model CompetitionAnnouncement {
+  id            String   @id @db.Uuid
+  competitionId String   @map("competition_id") @db.Uuid
+  title         String
+  body          String
+  createdById   String   @map("created_by") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  competition Competition @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+
+  @@index([competitionId, createdAt])
+  @@map("competition_announcements")
+}
+
+/// On-site heats (§45): a timed slot of a WOD with athletes in lanes.
+model CompetitionHeat {
+  id            String    @id @db.Uuid
+  competitionId String    @map("competition_id") @db.Uuid
+  workoutId     String?   @map("workout_id") @db.Uuid
+  categoryId    String?   @map("category_id") @db.Uuid
+  number        Int
+  name          String
+  startsAt      DateTime? @map("starts_at") @db.Timestamptz
+  durationMin   Int?      @map("duration_min")
+  laneCount     Int       @default(8) @map("lane_count")
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  competition Competition           @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  workout     CompetitionWorkout?   @relation(fields: [workoutId], references: [id], onDelete: Cascade)
+  category    CompetitionCategory?  @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  lanes       CompetitionHeatLane[]
+
+  @@unique([competitionId, workoutId, number])
+  @@index([competitionId, startsAt])
+  @@map("competition_heats")
+}
+
+model CompetitionHeatLane {
+  id             String @id @db.Uuid
+  heatId         String @map("heat_id") @db.Uuid
+  lane           Int
+  registrationId String @map("registration_id") @db.Uuid
+
+  heat         CompetitionHeat         @relation(fields: [heatId], references: [id], onDelete: Cascade)
+  registration CompetitionRegistration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+
+  @@unique([heatId, lane])
+  @@unique([heatId, registrationId])
+  @@index([registrationId])
+  @@map("competition_heat_lanes")
 }

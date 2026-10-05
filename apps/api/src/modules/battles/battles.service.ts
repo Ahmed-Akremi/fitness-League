@@ -8,6 +8,8 @@ import { uuidv7 } from '../../common/ids/uuid';
 import { CursorCodec } from '../../common/pagination/cursor';
 import { toPage } from '../../common/pagination/page';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { DuelsService } from '../duels/duels.service';
+import { BadgesService } from '../badges/badges.service';
 import { LedgerService } from '../ledger/ledger.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import type { RuleSetConfig } from '../scoring/rule-set.schema';
@@ -38,11 +40,13 @@ export class BattlesService {
     private readonly ledger: LedgerService,
     private readonly ruleSets: RuleSetService,
     private readonly notifications: NotificationsService,
+    private readonly badges: BadgesService,
     private readonly access: SocialAccess,
     private readonly audit: AuditService,
     private readonly cursors: CursorCodec,
     private readonly clock: ClockService,
     private readonly calendar: BusinessCalendar,
+    private readonly duels: DuelsService,
   ) {}
 
   // ───────────── Lifecycle ─────────────
@@ -54,7 +58,8 @@ export class BattlesService {
     }
     const season = await this.prisma.season.findFirst({ where: { status: 'ACTIVE' } });
     if (!season) throw AppException.conflict(ErrorCode.CONFLICT, 'No active season.');
-    const open = { status: { in: ['PENDING', 'ACTIVE'] as ('PENDING' | 'ACTIVE')[] } };
+    // The weekly duel does not count against the friend battle limit.
+    const open = { type: 'FRIEND' as const, status: { in: ['PENDING', 'ACTIVE'] as ('PENDING' | 'ACTIVE')[] } };
     for (const userId of [me, dto.opponentId]) {
       if ((await this.prisma.battle.count({ where: { ...open, participants: { some: { userId } } } })) >= MAX_OPEN_BATTLES) {
         throw AppException.conflict(ErrorCode.CONFLICT, `At most ${MAX_OPEN_BATTLES} open battles per athlete.`, { userId });
@@ -139,6 +144,8 @@ export class BattlesService {
       endsAt: b.status === 'PENDING' ? null : b.endsAt.toISOString(),
       durationDays: b.durationDays,
       components: (b.config as { components?: string[] }).components ?? BATTLE_COMPONENTS,
+      isGhost: b.isGhost,
+      ghostTarget: b.isGhost ? Number((b.config as { ghostTarget?: number }).ghostTarget ?? 0) : null,
       result: b.result,
       participants: b.participants.map((p) => {
         const u = users.find((x) => x.id === p.userId);
@@ -166,7 +173,7 @@ export class BattlesService {
     });
     const page = toPage(rows, q.limit, (r) => ({ id: r.id }), (k) => this.cursors.encode(k));
     return {
-      data: page.data.map((b) => ({ id: b.id, status: b.status, createdById: b.createdById, opponentId: b.participants.find((p) => p.userId !== me)?.userId, endsAt: b.status === 'PENDING' ? null : b.endsAt.toISOString(), durationDays: b.durationDays })),
+      data: page.data.map((b) => ({ id: b.id, type: b.type, isGhost: b.isGhost, status: b.status, createdById: b.createdById, opponentId: b.participants.find((p) => p.userId !== me)?.userId, endsAt: b.status === 'PENDING' ? null : b.endsAt.toISOString(), durationDays: b.durationDays })),
       page: page.page,
     };
   }
@@ -192,6 +199,10 @@ export class BattlesService {
       const scores = new Map<string, Awaited<ReturnType<WeeklyScoreService['computeWindow']>>>();
       for (const p of b.participants) scores.set(p.userId, await this.weekly.computeWindow(p.userId, b.startsAt, b.endsAt, config, version, tx, weights));
 
+      if (b.isGhost) {
+        await this.closeGhost(tx, b, scores.get(b.participants[0]!.userId)!, config, version);
+        return;
+      }
       const [a, c] = b.participants;
       const sa = scores.get(a!.userId)!.total;
       const sc = scores.get(c!.userId)!.total;
@@ -214,14 +225,14 @@ export class BattlesService {
           await this.ledger.appendXp(tx, { userId: p.userId, amount: config.battle_win_xp, reason: 'BATTLE_WIN', sourceType: 'battle', sourceId: b.id, ruleSetVersion: version, effectiveAt, explanation: { formula: 'battle_win_xp', result: config.battle_win_xp } }, config);
         }
 
-        // LP, with anti-collusion limits for friend battles (docs §5.7).
+        // LP, with anti-collusion limits for friend battles (docs §5.7); duel opponents are strangers by construction.
         const lp = this.lpFor(outcome, s.trainingDays, config);
-        const skip = lp ? await this.lpBlockedReason(tx, p.userId, opponentId, b, config) : null;
+        const skip = lp && b.type === 'FRIEND' ? await this.lpBlockedReason(tx, p.userId, opponentId, b, config) : null;
         let lpTransactionId: string | null = null;
         if (lp && !skip) {
           lpTransactionId = await this.ledger.appendLp(
             tx,
-            { userId: p.userId, seasonId: b.seasonId, amount: lp.amount, reason: lp.reason, sourceType: 'friend_battle', sourceId: b.id, ruleSetVersion: version, effectiveAt, explanation: { formula: lp.reason.toLowerCase(), inputs: { score: s.total, opponentScore: scores.get(opponentId)!.total }, result: lp.amount } },
+            { userId: p.userId, seasonId: b.seasonId, amount: lp.amount, reason: lp.reason, sourceType: b.type === 'DUEL' ? 'duel' : 'friend_battle', sourceId: b.id, ruleSetVersion: version, effectiveAt, explanation: { formula: lp.reason.toLowerCase(), inputs: { score: s.total, opponentScore: scores.get(opponentId)!.total }, result: lp.amount } },
             config.division_thresholds,
           );
         }
@@ -238,12 +249,55 @@ export class BattlesService {
         });
         if (outcome === 'WIN') {
           await tx.activityEvent.create({ data: { id: uuidv7(), userId: p.userId, type: 'BATTLE_WIN', refType: 'battle', refId: b.id, visibility: 'FRIENDS', payload: { opponentId } } });
+          await this.badges.evaluate(tx, p.userId, b.id);
         }
         await this.notifications.notify(tx, p.userId, 'BATTLE_RESULT', { battleId: b.id, outcome, score: s.total, opponentScore: scores.get(opponentId)!.total });
+      }
+      if (b.type === 'DUEL') {
+        const results = b.participants.map((p) => ({ userId: p.userId, score: draw ? 0.5 : p.userId === winnerId ? 1 : 0 }));
+        await this.duels.rate(tx, b, results, config.duel.glicko_tau);
       }
       await tx.battle.update({ where: { id: b.id }, data: { status: 'COMPLETED', closedAt: this.clock.now(), result: { winnerId, draw, scores: Object.fromEntries([...scores].map(([u, s]) => [u, s.total])) } } });
       await this.audit.log({ action: 'BATTLE_CLOSED', entityType: 'battle', entityId: b.id, after: { winnerId, draw } }, tx);
     });
+  }
+
+  /**
+   * Ghost duel (docs §6.1): the athlete against their own previous week. No MMR change; a win pays `ghost_win_lp`,
+   * otherwise participation LP for someone who trained.
+   */
+  private async closeGhost(tx: Tx, b: FullBattle, s: Awaited<ReturnType<WeeklyScoreService['computeWindow']>>, config: RuleSetConfig, version: number): Promise<void> {
+    const p = b.participants[0]!;
+    const target = Number((b.config as { ghostTarget?: number }).ghostTarget ?? 0);
+    const diff = s.total - target;
+    const outcome: BattleOutcome = Math.abs(diff) < config.battle_draw_margin ? 'DRAW' : diff > 0 ? 'WIN' : 'LOSS';
+    const effectiveAt = b.endsAt;
+    let xpTransactionId: string | null = null;
+    const effortXp = Math.round(s.total * config.battle_xp_per_point);
+    if (effortXp > 0) {
+      xpTransactionId = (await this.ledger.appendXp(tx, { userId: p.userId, amount: effortXp, reason: 'BATTLE', sourceType: 'battle', sourceId: b.id, ruleSetVersion: version, effectiveAt, explanation: { formula: 'battle_xp', inputs: { score: s.total }, result: effortXp } }, config)).id;
+    }
+    const lp =
+      outcome === 'WIN'
+        ? { reason: 'BATTLE_WIN' as LpReason, amount: config.duel.ghost_win_lp }
+        : s.trainingDays > 0
+          ? { reason: 'BATTLE_PARTICIPATION' as LpReason, amount: config.battle_participation_lp }
+          : null;
+    let lpTransactionId: string | null = null;
+    if (lp && lp.amount > 0) {
+      lpTransactionId = await this.ledger.appendLp(
+        tx,
+        { userId: p.userId, seasonId: b.seasonId, amount: lp.amount, reason: lp.reason, sourceType: 'duel', sourceId: b.id, ruleSetVersion: version, effectiveAt, explanation: { formula: 'ghost_duel', inputs: { score: s.total, target }, result: lp.amount } },
+        config.division_thresholds,
+      );
+    }
+    await tx.battleParticipant.update({
+      where: { battleId_userId: { battleId: b.id, userId: p.userId } },
+      data: { score: s.total, outcome, breakdown: { components: s.components, trainingDays: s.trainingDays, plannedDays: s.plannedDays }, lpTransactionId, xpTransactionId },
+    });
+    await this.notifications.notify(tx, p.userId, 'BATTLE_RESULT', { battleId: b.id, outcome, score: s.total, opponentScore: target, ghost: true });
+    await tx.battle.update({ where: { id: b.id }, data: { status: 'COMPLETED', closedAt: this.clock.now(), result: { ghost: true, target, winnerId: outcome === 'WIN' ? p.userId : null, draw: outcome === 'DRAW', scores: { [p.userId]: s.total } } } });
+    await this.audit.log({ action: 'BATTLE_CLOSED', entityType: 'battle', entityId: b.id, after: { ghost: true, outcome } }, tx);
   }
 
   // ───────────── Internals ─────────────

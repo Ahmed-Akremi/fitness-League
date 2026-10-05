@@ -66,29 +66,6 @@ export class TokenService {
     }
   }
 
-  /** Short-lived token carrying an encrypted pending TOTP secret between the two admin setup steps. */
-  async signSetupToken(sub: string, encryptedSecret: string): Promise<string> {
-    const now = Math.floor(this.clock.now().getTime() / 1000);
-    return new SignJWT({ ts: encryptedSecret })
-      .setProtectedHeader({ alg: 'EdDSA', kid: this.env.JWT_KEY_ID })
-      .setSubject(sub)
-      .setIssuer(this.env.JWT_ISSUER)
-      .setAudience('admin-setup')
-      .setIssuedAt(now)
-      .setExpirationTime(now + 600)
-      .sign(this.privateKey);
-  }
-
-  async verifySetupToken(token: string): Promise<{ sub: string; encryptedSecret: string }> {
-    try {
-      const { payload } = await jwtVerify(token, this.publicKey, { issuer: this.env.JWT_ISSUER, audience: 'admin-setup', algorithms: ['EdDSA'], currentDate: this.clock.now() });
-      if (typeof payload.sub !== 'string' || typeof payload.ts !== 'string') throw new InvalidTokenError(false);
-      return { sub: payload.sub, encryptedSecret: payload.ts };
-    } catch (err) {
-      throw new InvalidTokenError(err instanceof joseErrors.JWTExpired);
-    }
-  }
-
   /** 256-bit random opaque token for refresh / email / reset links. */
   newOpaqueToken(): { token: string; hash: Buffer } {
     const token = randomBytes(32).toString('base64url');

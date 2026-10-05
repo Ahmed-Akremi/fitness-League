@@ -5,6 +5,7 @@ import { ArrayMaxSize, IsArray, IsOptional, IsUUID } from 'class-validator';
 import type { AuthUser } from '../../common/auth/auth-user';
 import { CurrentUser } from '../../common/auth/decorators';
 import { uuidv7 } from '../../common/ids/uuid';
+import { OutboxService } from '../../common/outbox/outbox.service';
 import { CursorCodec } from '../../common/pagination/cursor';
 import { PageQueryDto, toPage } from '../../common/pagination/page';
 import { PrismaService } from '../../common/prisma/prisma.service';
@@ -16,7 +17,30 @@ export type NotificationType =
   | 'BATTLE_STARTED'
   | 'BATTLE_DECLINED'
   | 'BATTLE_RESULT'
-  | 'GYM_WOD_SCORE_INVALIDATED';
+  | 'DUEL_MATCHED'
+  | 'DUEL_GHOST'
+  | 'GYM_WAR_STARTED'
+  | 'GYM_WAR_RESULT'
+  | 'BADGE_AWARDED'
+  | 'CHALLENGE_COMPLETED'
+  | 'ACTIVITY_REACTION'
+  | 'ACTIVITY_COMMENT'
+  | 'PROOF_VERIFIED'
+  | 'PROOF_REJECTED'
+  | 'REPORT_HANDLED'
+  | 'SANCTION_WARNING'
+  | 'APPEAL_DECIDED'
+  | 'GYM_WOD_SCORE_INVALIDATED'
+  | 'COMPETITION_REGISTRATION_CONFIRMED'
+  | 'COMPETITION_WOD_AVAILABLE'
+  | 'COMPETITION_SCORE_SUBMITTED'
+  | 'COMPETITION_SCORE_UNDER_REVIEW'
+  | 'COMPETITION_SCORE_APPROVED'
+  | 'COMPETITION_SCORE_REJECTED'
+  | 'COMPETITION_SCORE_MODIFIED'
+  | 'COMPETITION_SCORE_NEEDS_CORRECTION'
+  | 'COMPETITION_APPEAL_DECIDED'
+  | 'COMPETITION_LEADERBOARD_FINAL';
 
 /**
  * In-app notifications (Phase 1: list only). ASSUMPTION Q-17: push (FCM), per-type preferences and quiet hours
@@ -27,10 +51,14 @@ export class NotificationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly cursors: CursorCodec,
+    private readonly outbox: OutboxService,
   ) {}
 
   async notify(tx: Prisma.TransactionClient, userId: string, type: NotificationType, payload: Prisma.InputJsonObject): Promise<void> {
-    await tx.notification.create({ data: { id: uuidv7(), userId, type, payload } });
+    const id = uuidv7();
+    await tx.notification.create({ data: { id, userId, type, payload } });
+    // Push goes out after commit, through the outbox (docs §2.3).
+    await this.outbox.enqueue(tx, 'NotificationCreated', { notificationId: id });
   }
 
   async list(userId: string, q: PageQueryDto) {

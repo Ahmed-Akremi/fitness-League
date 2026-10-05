@@ -67,6 +67,15 @@ export class AdminApi {
   patch<T>(path: string, body?: unknown): Promise<T> {
     return this.request<T>('PATCH', path, body);
   }
+  delete<T = void>(path: string): Promise<T> {
+    return this.request<T>('DELETE', path);
+  }
+  /** Multipart PUT with a single `file` field (images). */
+  upload<T>(path: string, file: Blob, name = 'file'): Promise<T> {
+    const form = new FormData();
+    form.append('file', file, name);
+    return this.request<T>('PUT', path, form);
+  }
 
   async logout(): Promise<void> {
     const refreshToken = this.storage.getItem(REFRESH_KEY);
@@ -78,10 +87,12 @@ export class AdminApi {
   }
 
   private async request<T>(method: string, path: string, body?: unknown, retried = false): Promise<T> {
+    const form = body instanceof FormData;
     const res = await this.fetchFn(this.base + path, {
       method,
-      headers: { 'content-type': 'application/json', ...(this.access && { authorization: `Bearer ${this.access}` }) },
-      body: body === undefined ? undefined : JSON.stringify(body),
+      // FormData sets its own multipart content-type (with the boundary).
+      headers: { ...(!form && { 'content-type': 'application/json' }), ...(this.access && { authorization: `Bearer ${this.access}` }) },
+      body: body === undefined ? undefined : form ? body : JSON.stringify(body),
     });
     if (res.status === 204) return undefined as T;
     const data = await res.json().catch(() => ({}));
@@ -116,8 +127,7 @@ export class AdminApi {
 export function errorText(e: unknown): string {
   if (!(e instanceof ApiError)) return 'Erreur réseau : vérifiez la connexion à l’API.';
   const messages: Record<string, string> = {
-    INVALID_CREDENTIALS: 'Email, mot de passe ou code incorrect.',
-    TOTP_REQUIRED: 'Code de l’application d’authentification requis.',
+    INVALID_CREDENTIALS: 'Email ou mot de passe incorrect.',
     ACCOUNT_LOCKED: 'Compte temporairement verrouillé (trop de tentatives).',
     FORBIDDEN: 'Action non autorisée pour votre rôle.',
     VALIDATION_FAILED: 'Données invalides.',

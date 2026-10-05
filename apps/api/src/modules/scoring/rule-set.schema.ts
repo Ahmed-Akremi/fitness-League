@@ -51,6 +51,8 @@ export const ruleSetConfigSchema = z
     goal_milestone_xp: nonNegInt,
     first_workout_quest_xp: nonNegInt,
     challenge_xp: nonNegInt,
+    /** Phase 2: count the challenge component in the weekly score (off keeps Phase 1 renormalised weights). */
+    challenge_component: z.boolean().default(false),
     weight_change_max_pct_per_week: z.number().positive().max(5),
 
     // Anti-sandbagging & fairness
@@ -86,6 +88,55 @@ export const ruleSetConfigSchema = z
     friend_battle_lp_weekly_max: nonNegInt,
     friend_battle_same_opponent_season_max: nonNegInt,
     gym_war_win_xp: nonNegInt,
+
+    /** Weekly Duels (docs §6.1). Defaulted so rule sets written before Phase 2 stay valid. */
+    duel: z
+      .object({
+        glicko_tau: z.number().positive(),
+        window_base: posInt,
+        window_step: nonNegInt,
+        window_step_hours: posInt,
+        window_max: posInt,
+        no_rematch_weeks: nonNegInt,
+        same_gym_allowed: z.boolean(),
+        recent_activity_days: posInt,
+        ghost_win_lp: nonNegInt,
+      })
+      .default({
+        glicko_tau: 0.5,
+        window_base: 150,
+        window_step: 100,
+        window_step_hours: 6,
+        window_max: 400,
+        no_rematch_weeks: 4,
+        same_gym_allowed: false,
+        recent_activity_days: 14,
+        ghost_win_lp: 10,
+      }),
+
+    /** Gym Wars (docs §6.2). Defaulted so rule sets written before Phase 2 stay valid. */
+    gym_war: z
+      .object({
+        weights: z.object({ top_k: ratio, participation: ratio, progress: ratio, verified: ratio.max(0.99), consistency: ratio }),
+        top_k: posInt,
+        member_score_cap: posInt,
+        min_active_verified_members: posInt,
+        bracket_m_min: posInt,
+        bracket_l_min: posInt,
+        no_rematch_weeks: nonNegInt,
+        /** Phase 3: count the share of verified workouts (w4); off spreads w4 over the other weights. */
+        use_verified_ratio: z.boolean().default(false),
+      })
+      .default({
+        weights: { top_k: 0.35, participation: 0.2, progress: 0.2, verified: 0.1, consistency: 0.15 },
+        top_k: 20,
+        member_score_cap: 100,
+        min_active_verified_members: 8,
+        bracket_m_min: 31,
+        bracket_l_min: 81,
+        no_rematch_weeks: 3,
+        use_verified_ratio: false,
+      }),
 
     // Levels
     level_base_xp: posInt,
@@ -138,6 +189,14 @@ export const ruleSetConfigSchema = z
     const sum = w.progress + w.consistency + w.performance + w.challenge;
     if (Math.abs(sum - 1) > 1e-6) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['lp_weights'], message: `weights must sum to 1 (got ${Number(sum.toFixed(4))})` });
+    }
+    const gw = c.gym_war.weights;
+    const gwSum = gw.top_k + gw.participation + gw.progress + gw.verified + gw.consistency;
+    if (Math.abs(gwSum - 1) > 1e-6) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['gym_war', 'weights'], message: `weights must sum to 1 (got ${Number(gwSum.toFixed(4))})` });
+    }
+    if (c.gym_war.bracket_m_min >= c.gym_war.bracket_l_min) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['gym_war', 'bracket_m_min'], message: 'bracket_m_min must be < bracket_l_min' });
     }
     if (c.pr_xp_min > c.pr_xp_max) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['pr_xp_min'], message: 'pr_xp_min must be <= pr_xp_max' });

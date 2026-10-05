@@ -5,6 +5,7 @@ import {
   ArrayMaxSize,
   IsArray,
   IsBoolean,
+  IsEmail,
   IsEnum,
   IsIn,
   IsInt,
@@ -229,4 +230,38 @@ export class LedgerAdjustmentDto {
   @IsString()
   @Length(5, 500)
   reason!: string;
+}
+
+export class RecomputeDto {
+  @ApiProperty({ example: '2026-10-05', description: 'First week (Monday, business calendar) to re-score' })
+  @IsISO8601()
+  from!: string;
+
+  @ApiProperty({ example: '2026-11-02', description: 'Exclusive end week' })
+  @IsISO8601()
+  to!: string;
+
+  @ApiPropertyOptional({ default: true, description: 'Report the changes without writing anything' })
+  @IsOptional()
+  @IsBoolean()
+  dryRun?: boolean;
+
+  @ApiProperty({ example: 'Rule set v3: consistency weight fix' })
+  @IsString()
+  @Length(5, 300)
+  reason!: string;
+}
+
+export class CreateJudgeDto {
+  @ApiProperty({ example: 'judge.sousse@example.com' })
+  @IsEmail()
+  email!: string;
+
+  @ApiProperty({ example: 'judge_sousse' })
+  @Matches(/^[a-z0-9_.]{3,20}$/)
+  username!: string;
+
+  @ApiProperty({ enum: ['JUDGE', 'HEAD_JUDGE'] })
+  @IsIn(['JUDGE', 'HEAD_JUDGE'])
+  role!: 'JUDGE' | 'HEAD_JUDGE';
 }
