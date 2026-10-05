@@ -1,5 +1,6 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseIntPipe, ParseUUIDPipe, Patch, Post, Put, Query } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseIntPipe, ParseUUIDPipe, Patch, Post, Put, Query, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiBearerAuth, ApiConsumes, ApiTags } from '@nestjs/swagger';
 import type { AuthUser } from '../../common/auth/auth-user';
 import { AdminApi, CurrentUser, RequiresVerifiedEmail, Roles } from '../../common/auth/decorators';
 import { RateLimit } from '../../common/rate-limit/rate-limit';
@@ -31,6 +32,7 @@ import {
   UpdateCompetitionDto,
   WorkoutDto,
 } from './competitions.dto';
+import { COVER_MAX_BYTES, CompetitionCoverService } from './competition-cover.service';
 import { CompetitionsService } from './competitions.service';
 import { HeatsService } from './heats.service';
 import { JudgingService } from './judging.service';
@@ -46,7 +48,22 @@ export class CompetitionsController {
     private readonly competitions: CompetitionsService,
     private readonly judging: JudgingService,
     private readonly heats: HeatsService,
+    private readonly covers: CompetitionCoverService,
   ) {}
+
+  /** Banner shown at the top of the competition page; replaced for each new event or final. */
+  @Put(':id/cover')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: COVER_MAX_BYTES + 1, files: 1 } }))
+  @ApiConsumes('multipart/form-data')
+  setCover(@CurrentUser() user: AuthUser, @id() competitionId: string, @UploadedFile() file?: Express.Multer.File) {
+    return this.covers.set(user, competitionId, file);
+  }
+
+  @Delete(':id/cover')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  removeCover(@CurrentUser() user: AuthUser, @id() competitionId: string): Promise<void> {
+    return this.covers.remove(user, competitionId);
+  }
 
   @Get()
   list(@CurrentUser() user: AuthUser, @Query() q: ListCompetitionsQueryDto) {
@@ -428,7 +445,22 @@ export class AdminCompetitionsController {
     private readonly competitions: CompetitionsService,
     private readonly judging: JudgingService,
     private readonly heats: HeatsService,
+    private readonly covers: CompetitionCoverService,
   ) {}
+
+  /** Banner shown at the top of the competition page; replaced for each new event or final. */
+  @Put(':id/cover')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: COVER_MAX_BYTES + 1, files: 1 } }))
+  @ApiConsumes('multipart/form-data')
+  setCover(@CurrentUser() user: AuthUser, @id() competitionId: string, @UploadedFile() file?: Express.Multer.File) {
+    return this.covers.set(user, competitionId, file);
+  }
+
+  @Delete(':id/cover')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  removeCover(@CurrentUser() user: AuthUser, @id() competitionId: string): Promise<void> {
+    return this.covers.remove(user, competitionId);
+  }
 
   @Get() list() {
     return this.competitions.listAll();

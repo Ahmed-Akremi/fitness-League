@@ -6,6 +6,7 @@ import { ClockService } from '../../common/clock/clock.service';
 import { AppException, ErrorCode } from '../../common/errors/app-exception';
 import { uuidv7 } from '../../common/ids/uuid';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { StorageService } from '../../common/storage/storage.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import {
   AnnouncementDto,
@@ -74,6 +75,7 @@ export class CompetitionsService {
     private readonly clock: ClockService,
     private readonly notifications: NotificationsService,
     private readonly judging: JudgingService,
+    private readonly storage: StorageService,
   ) {}
 
   // ───────────── Competitions ─────────────
@@ -104,7 +106,7 @@ export class CompetitionsService {
       where,
       orderBy: { eventStart: 'asc' },
       take: 100,
-      include: { _count: { select: { registrations: { where: { registrationStatus: 'CONFIRMED' } } } } },
+      include: { cover: true, _count: { select: { registrations: { where: { registrationStatus: 'CONFIRMED' } } } } },
     });
     return rows.map((c) => this.card(c, c._count.registrations));
   }
@@ -115,7 +117,7 @@ export class CompetitionsService {
       where: { deletedAt: null },
       orderBy: { eventStart: 'desc' },
       take: 200,
-      include: { _count: { select: { registrations: { where: { registrationStatus: 'CONFIRMED' } } } } },
+      include: { cover: true, _count: { select: { registrations: { where: { registrationStatus: 'CONFIRMED' } } } } },
     });
     return rows.map((c) => this.card(c, c._count.registrations));
   }
@@ -124,6 +126,7 @@ export class CompetitionsService {
     const c = await this.prisma.competition.findFirst({
       where: { id, deletedAt: null },
       include: {
+        cover: true,
         categories: { orderBy: { sortOrder: 'asc' } },
         workouts: { where: { active: true }, orderBy: { number: 'asc' }, include: { variants: true } },
         prizes: { orderBy: [{ categoryId: 'asc' }, { position: 'asc' }] },
@@ -575,13 +578,14 @@ export class CompetitionsService {
     return c ? { ...c, value: c.value } : null;
   }
 
-  private card(c: Prisma.CompetitionGetPayload<object>, participants: number) {
+  private card(c: Prisma.CompetitionGetPayload<{ include: { cover: true } }>, participants: number) {
     return {
       id: c.id,
       slug: c.slug,
       title: c.title,
       shortDescription: c.description.slice(0, 160),
       coverMediaId: c.coverMediaId,
+      coverUrl: c.cover && c.cover.status !== 'DELETED' ? this.storage.url(c.cover.objectKey) : null,
       logoMediaId: c.logoMediaId,
       location: c.location,
       city: c.city,

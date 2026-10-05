@@ -189,6 +189,7 @@ enum MediaPurpose {
   EXPORT
   GYM_LOGO
   COMPETITION_VIDEO
+  COMPETITION_COVER
 }
 
 enum BaselineStatus {
@@ -928,23 +929,24 @@ model WorkoutEvaluation {
 }
 
 model Media {
-  id        String       @id @db.Uuid
-  ownerId   String       @map("owner_id") @db.Uuid
-  bucket    String
-  objectKey String       @unique @map("object_key")
-  mime      String
-  sizeBytes Int          @map("size_bytes")
-  sha256    Bytes?
-  status    MediaStatus  @default(PENDING_UPLOAD)
-  purpose   MediaPurpose
-  width     Int?
-  height    Int?
-  durationS Int?         @map("duration_s")
-  createdAt DateTime     @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt DateTime     @updatedAt @map("updated_at") @db.Timestamptz
-  owner     User         @relation(fields: [ownerId], references: [id])
-  gymLogos  Gym[]        @relation("GymLogo")
-  proofs    ProofMedia[]
+  id                String        @id @db.Uuid
+  ownerId           String        @map("owner_id") @db.Uuid
+  bucket            String
+  objectKey         String        @unique @map("object_key")
+  mime              String
+  sizeBytes         Int           @map("size_bytes")
+  sha256            Bytes?
+  status            MediaStatus   @default(PENDING_UPLOAD)
+  purpose           MediaPurpose
+  width             Int?
+  height            Int?
+  durationS         Int?          @map("duration_s")
+  createdAt         DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime      @updatedAt @map("updated_at") @db.Timestamptz
+  owner             User          @relation(fields: [ownerId], references: [id])
+  gymLogos          Gym[]         @relation("GymLogo")
+  competitionCovers Competition[] @relation("CompetitionCover")
+  proofs            ProofMedia[]
 
   @@index([ownerId])
   @@index([status, createdAt])
@@ -2075,6 +2077,7 @@ model Competition {
   title                    String
   description              String
   coverMediaId             String?           @map("cover_media_id") @db.Uuid
+  cover                    Media?            @relation("CompetitionCover", fields: [coverMediaId], references: [id])
   logoMediaId              String?           @map("logo_media_id") @db.Uuid
   location                 String?
   countryCode              String            @default("TN") @map("country_code") @db.Char(2)
@@ -2453,9 +2456,9 @@ model CompetitionHeat {
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz
 
-  competition Competition          @relation(fields: [competitionId], references: [id], onDelete: Cascade)
-  workout     CompetitionWorkout?  @relation(fields: [workoutId], references: [id], onDelete: Cascade)
-  category    CompetitionCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  competition Competition           @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  workout     CompetitionWorkout?   @relation(fields: [workoutId], references: [id], onDelete: Cascade)
+  category    CompetitionCategory?  @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   lanes       CompetitionHeatLane[]
 
   @@unique([competitionId, workoutId, number])

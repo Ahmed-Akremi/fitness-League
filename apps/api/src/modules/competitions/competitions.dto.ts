@@ -43,7 +43,6 @@ export class CompetitionDto {
   @ApiProperty({ example: 'Tunisia Functional Fitness Championship' }) @IsString() @Length(3, 120) title!: string;
   @ApiProperty({ example: 'tunisia-ff-2026' }) @Matches(/^[a-z0-9]+(?:-[a-z0-9]+)*$/) @Length(3, 80) slug!: string;
   @ApiProperty() @IsString() @Length(1, 5000) description!: string;
-  @ApiPropertyOptional() @IsOptional() @IsUUID() coverMediaId?: string;
   @ApiPropertyOptional() @IsOptional() @IsUUID() logoMediaId?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @Length(0, 200) location?: string;
   @ApiPropertyOptional({ example: 'TN' }) @IsOptional() @Matches(/^[A-Z]{2}$/) countryCode?: string;
@@ -67,7 +66,6 @@ export class CompetitionDto {
 export class UpdateCompetitionDto implements Partial<CompetitionDto> {
   @IsOptional() @IsString() @Length(3, 120) title?: string;
   @IsOptional() @IsString() @Length(1, 5000) description?: string;
-  @IsOptional() @IsUUID() coverMediaId?: string;
   @IsOptional() @IsUUID() logoMediaId?: string;
   @IsOptional() @IsString() @Length(0, 200) location?: string;
   @IsOptional() @IsString() @Length(0, 100) city?: string;

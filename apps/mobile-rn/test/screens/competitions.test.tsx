@@ -53,6 +53,20 @@ describe('score submission', () => {
   });
 });
 
+describe('banner', () => {
+  const page = { ...competition, eventStart: '2026-10-20T08:00:00Z', organizer: { fullName: 'Org' } };
+
+  it('shows the banner uploaded by the organizer', async () => {
+    const screen = await renderScreen(() => <CompetitionScreen id="c1" />, new FakeBackend().on('GET', '/competitions/c1', [200, { ...page, coverUrl: 'https://cdn.test/media/competitions/c1/cover-final.webp' }]));
+    expect((await screen.findByTestId('comp-cover')).props.source).toEqual({ uri: 'https://cdn.test/media/competitions/c1/cover-final.webp' });
+  });
+
+  it('falls back to the default banner when none was uploaded', async () => {
+    const screen = await renderScreen(() => <CompetitionScreen id="c1" />, new FakeBackend().on('GET', '/competitions/c1', [200, { ...page, coverUrl: null }]));
+    expect((await screen.findByTestId('comp-cover')).props.source).not.toHaveProperty('uri');
+  });
+});
+
 describe('heats', () => {
   it('shows the athlete their heat and lane on the competition page', async () => {
     const backend = new FakeBackend()

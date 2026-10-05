@@ -88,7 +88,7 @@ function statusLabelForCompetition(t: T, s: string) {
 
 type Tab = 'info' | 'wods' | 'leaderboard';
 
-/** Default cover until competitions carry their own uploaded cover image. */
+/** Shown when the organizer has not uploaded a banner for this competition. */
 const DEFAULT_COVER = require('../../../assets/competition-cover.jpg');
 const LOGO = require('../../../assets/icon.png');
 
@@ -128,7 +128,7 @@ export function CompetitionScreen({ id }: { id: string }) {
         {tab === 'info' && (
           <>
             {/* Explicit size: react-native-web ignores aspectRatio on an Image and renders the picture at its own height. */}
-            <Image testID="comp-cover" source={DEFAULT_COVER} accessibilityIgnoresInvertColors style={{ width, height: (width * 596) / 1440 }} resizeMode="cover" />
+            <Image testID="comp-cover" source={c.coverUrl ? { uri: c.coverUrl } : DEFAULT_COVER} accessibilityIgnoresInvertColors style={{ width, height: (width * 596) / 1440 }} resizeMode="cover" />
             <View style={{ padding: 16, gap: 16 }}>
               <View style={{ flexDirection: 'row', gap: 16, alignItems: 'center' }}>
                 <View style={{ width: 96, height: 96, borderRadius: 48, overflow: 'hidden', backgroundColor: colors.surfaceHigh }}>

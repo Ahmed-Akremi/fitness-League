@@ -173,6 +173,30 @@ export function CompetitionDetail() {
         </button>
       </p>
       {message ? <p className="message">{message}</p> : null}
+      <Panel title="Bannière">
+        <p>Affichée en haut de la page de la compétition dans l’app. Change-la pour chaque nouvelle compétition ou finale (PNG, JPEG ou WebP, 5 Mo max ; recadrée en 1440 × 596).</p>
+        {c.coverUrl ? <img src={c.coverUrl} alt="Bannière de la compétition" style={{ width: '100%', maxWidth: 720, aspectRatio: '1440 / 596', objectFit: 'cover', borderRadius: 8, display: 'block' }} /> : <p>Aucune bannière : l’app affiche la bannière par défaut.</p>}
+        <p>
+          <label>
+            {c.coverUrl ? 'Remplacer la bannière : ' : 'Ajouter une bannière : '}
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                e.target.value = '';
+                if (file) void run('Bannière mise à jour.', () => api.upload(`${base}/cover`, file, file.name));
+              }}
+            />
+          </label>{' '}
+          {c.coverUrl ? (
+            <button type="button" className="secondary" onClick={() => window.confirm('Supprimer la bannière ?') && run('Bannière supprimée.', () => api.delete(`${base}/cover`))}>
+              Supprimer
+            </button>
+          ) : null}
+        </p>
+      </Panel>
+
       {d && (
         <p>
           Participants {d.participants} · payées {d.paidRegistrations} · gratuites {d.freeRegistrations} · paiements en attente {d.pendingPayments} · revenus {money(d.revenue, cur)} · à juger {d.pendingJudging} · validées {d.approvedSubmissions} · refusées {d.rejectedSubmissions}
