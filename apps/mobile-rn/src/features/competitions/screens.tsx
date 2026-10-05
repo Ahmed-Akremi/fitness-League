@@ -1,18 +1,18 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { router } from 'expo-router';
+import { router, Stack } from 'expo-router';
 import { useRef, useState } from 'react';
-import { Image, Linking, Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Image, Linking, Pressable, RefreshControl, ScrollView, Share, useWindowDimensions, View, type LayoutChangeEvent } from 'react-native';
 
 import type { Json } from '../../core/api/client';
 import { ApiError } from '../../core/api/errors';
 import { useLocale, useT, type T } from '../../core/prefs';
 import { useApi } from '../../core/services';
-import { displayText, useTheme } from '../../core/theme';
+import { displayText, radius, useTheme } from '../../core/theme';
 import { formatDate } from '../../core/utils/format';
 import { newClientId } from '../../core/utils/ids';
 import { EmptyState, Loading, SectionHeader, SkeletonList, StatCard, TimeField } from '../../core/widgets/common';
 import { ErrorText, ErrorView, errorMessage } from '../../core/widgets/error';
-import { Button, Card, Chip, Icon, ListRow, Screen, Segmented, TextField, Txt, toast } from '../../core/widgets/kit';
+import { Button, Card, Chip, Icon, ListRow, Screen, Segmented, TextField, Txt, toast, type IconName } from '../../core/widgets/kit';
 import { compKeys, competitionsApi, formatMoney, useCompetition, useCompetitions, useCompLeaderboard, useHeats, useMySubmissions, youtubeId, type CompFilter } from './api';
 
 const statusLabel = (t: T, s: string) => (t as (k: string) => string)(`compStatus${s}`);
@@ -86,14 +86,21 @@ function statusLabelForCompetition(t: T, s: string) {
 
 // ───────────── Detail ─────────────
 
-type Tab = 'overview' | 'categories' | 'wods' | 'leaderboard' | 'prizes';
+type Tab = 'info' | 'wods' | 'leaderboard';
+
+/** Default cover until competitions carry their own uploaded cover image. */
+const DEFAULT_COVER = require('../../../assets/competition-cover.jpg');
+const LOGO = require('../../../assets/icon.png');
 
 export function CompetitionScreen({ id }: { id: string }) {
   const t = useT();
   const locale = useLocale();
   const { colors } = useTheme();
   const comp = useCompetition(id);
-  const [tab, setTab] = useState<Tab>('overview');
+  const [tab, setTab] = useState<Tab>('info');
+  const { width } = useWindowDimensions();
+  const scroll = useRef<ScrollView>(null);
+  const anchors = useRef<Record<string, number>>({});
   const registered = comp.data?.myRegistration?.registrationStatus === 'CONFIRMED';
   const mine = useMySubmissions(id, registered);
   if (comp.isError) return <ErrorView error={comp.error} onRetry={() => comp.refetch()} />;
@@ -101,91 +108,183 @@ export function CompetitionScreen({ id }: { id: string }) {
   const c = comp.data;
   const subs = new Map<string, Json>((mine.data ?? []).map((s) => [s.workout.id, s]));
   const price = (p: number) => (p === 0 ? t('compFree') : formatMoney(p, c.currency, locale));
+  const place = c.location ?? c.city;
+  const categories = c.categories.filter((cat: Json) => cat.active);
+  const anchor = (key: string) => (e: LayoutChangeEvent) => (anchors.current[key] = e.nativeEvent.layout.y);
+  const goTo = (key: string) => scroll.current?.scrollTo({ y: anchors.current[key] ?? 0, animated: true });
+  const share = () => Share.share({ message: `${c.title} · ${formatDate(c.eventStart, locale)}${place ? ` · ${place}` : ''}` });
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <ScrollView contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 96 }} refreshControl={<RefreshControl refreshing={false} onRefresh={() => comp.refetch()} tintColor={colors.primary} />}>
-        <Txt style={displayText(30)}>{c.title}</Txt>
-        <Txt color={colors.outline}>{`${c.format} · ${c.city ?? c.location ?? ''} · ${formatDate(c.eventStart, locale)}`}</Txt>
-        <Segmented
-          value={tab}
-          onChange={setTab}
-          options={[
-            { key: 'overview', label: t('compOverview') },
-            { key: 'categories', label: t('compCategories') },
-            { key: 'wods', label: t('compWods') },
-            { key: 'leaderboard', label: t('leaderboard') },
-            { key: 'prizes', label: t('compPrizes') },
-          ]}
-        />
-        {tab === 'overview' && (
+      <Stack.Screen options={{ title: c.title }} />
+      <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: colors.surfaceHigh }}>
+        {([['info', t('compEventInfo')], ['wods', t('compWods')], ['leaderboard', t('leaderboard')]] as const).map(([key, label]) => (
+          <Pressable key={key} testID={`comp-tab-${key}`} accessibilityRole="tab" accessibilityState={{ selected: tab === key }} onPress={() => setTab(key)} style={{ flex: 1, alignItems: 'center', paddingVertical: 14, borderBottomWidth: 3, borderBottomColor: tab === key ? colors.primary : 'transparent' }}>
+            <Txt variant="title" color={tab === key ? colors.primary : colors.text}>{label}</Txt>
+          </Pressable>
+        ))}
+      </View>
+      <ScrollView ref={scroll} contentContainerStyle={{ paddingBottom: 96 }} refreshControl={<RefreshControl refreshing={false} onRefresh={() => comp.refetch()} tintColor={colors.primary} />}>
+        {tab === 'info' && (
           <>
-            <Card>
-              <Txt>{c.description}</Txt>
-            </Card>
-            <Card style={{ paddingVertical: 4 }}>
-              <ListRow icon="person" title={t('compOrganizer')} subtitle={c.organizer?.fullName ?? c.organizer?.username} />
-              <ListRow icon="payments" title={t('compPrice')} subtitle={price(c.registrationPrice)} />
-              <ListRow icon="event" title={t('compDeadline', { date: formatDate(c.deadlines.registrationEnd, locale) })} />
-              {c.deadlines.scoreSubmissionDeadline && <ListRow icon="timer" title={t('compSubmissionDeadline')} subtitle={formatDate(c.deadlines.scoreSubmissionDeadline, locale)} />}
-              {c.deadlines.judgingDeadline && <ListRow icon="gavel" title={t('compJudgingDeadline')} subtitle={formatDate(c.deadlines.judgingDeadline, locale)} />}
-              {c.deadlines.leaderboardPublicationAt && <ListRow icon="leaderboard" title={t('compLeaderboardDate')} subtitle={formatDate(c.deadlines.leaderboardPublicationAt, locale)} />}
-              <ListRow icon="groups" title={t('compAthletes', { count: c.participants })} />
-            </Card>
-            <HeatSchedule id={id} />
+            {/* Explicit size: react-native-web ignores aspectRatio on an Image and renders the picture at its own height. */}
+            <Image testID="comp-cover" source={DEFAULT_COVER} accessibilityIgnoresInvertColors style={{ width, height: (width * 596) / 1440 }} resizeMode="cover" />
+            <View style={{ padding: 16, gap: 16 }}>
+              <View style={{ flexDirection: 'row', gap: 16, alignItems: 'center' }}>
+                <View style={{ width: 96, height: 96, borderRadius: 48, overflow: 'hidden', backgroundColor: colors.surfaceHigh }}>
+                  <Image source={LOGO} style={{ width: '100%', height: '100%' }} />
+                </View>
+                <View style={{ flex: 1, gap: 6 }}>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                    <Tag label={statusLabelForCompetition(t, c.status)} />
+                    {c.countryCode ? <Tag label={c.countryCode} /> : null}
+                  </View>
+                  <Txt style={[displayText(26), { textTransform: 'uppercase' }]}>{c.title}</Txt>
+                  <Txt variant="small" color={colors.outline} style={{ textTransform: 'uppercase', letterSpacing: 0.5 }}>{[place?.toLowerCase().includes(String(c.format).toLowerCase()) ? null : c.format, formatDate(c.eventStart, locale), place].filter(Boolean).join(' · ')}</Txt>
+                  <Pressable testID="comp-share" accessibilityRole="button" onPress={share} style={{ flexDirection: 'row', alignSelf: 'flex-start', alignItems: 'center', gap: 6, backgroundColor: colors.surfaceHigh, borderRadius: radius.pill, paddingHorizontal: 14, paddingVertical: 8 }}>
+                    <Icon name="share" size={18} />
+                    <Txt>{t('compShare')}</Txt>
+                  </Pressable>
+                </View>
+              </View>
+
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <Tile icon="place" label={t('compLocation')} onPress={place ? () => Linking.openURL(`https://maps.google.com/?q=${encodeURIComponent(place)}`) : undefined} />
+                <Tile icon="category" label={t('compCategories')} onPress={categories.length ? () => goTo('categories') : undefined} />
+                <Tile icon="emoji-events" label={t('compPrizes')} onPress={c.prizes.length ? () => goTo('prizes') : undefined} />
+                <Tile icon="fitness-center" label={t('compWods')} onPress={() => setTab('wods')} />
+              </View>
+
+              {c.myRegistration && (
+                <View testID="comp-role" style={{ borderRadius: radius.card, overflow: 'hidden', borderWidth: 1, borderColor: colors.primary }}>
+                  <View style={{ backgroundColor: colors.primary, paddingHorizontal: 16, paddingVertical: 14 }}>
+                    <Txt variant="title" color={colors.onPrimary}>{t('compIAmAthlete')}</Txt>
+                  </View>
+                  <View style={{ padding: 12, gap: 10, backgroundColor: colors.surface }}>
+                    <Txt color={colors.outline}>{t('compMyActions')}</Txt>
+                    <ActionRow done={registered} title={t('compRegistration')} subtitle={registered ? t('compAllSet') : t('compPaymentPending')} />
+                    {registered && <ActionRow done={c.workouts.length > 0 && c.workouts.every((w: Json) => subs.has(w.id))} title={t('compSubmitScore')} subtitle={t('compScoresSent', { done: subs.size, total: c.workouts.length })} onPress={() => setTab('wods')} />}
+                  </View>
+                </View>
+              )}
+
+              {c.description ? (
+                <Card>
+                  <Txt>{c.description}</Txt>
+                </Card>
+              ) : null}
+              <Card style={{ paddingVertical: 4 }}>
+                <ListRow icon="person" title={t('compOrganizer')} subtitle={c.organizer?.fullName ?? c.organizer?.username} />
+                <ListRow icon="payments" title={t('compPrice')} subtitle={price(c.registrationPrice)} />
+                <ListRow icon="event" title={t('compDeadline', { date: formatDate(c.deadlines.registrationEnd, locale) })} />
+                {c.deadlines.scoreSubmissionDeadline && <ListRow icon="timer" title={t('compSubmissionDeadline')} subtitle={formatDate(c.deadlines.scoreSubmissionDeadline, locale)} />}
+                {c.deadlines.judgingDeadline && <ListRow icon="gavel" title={t('compJudgingDeadline')} subtitle={formatDate(c.deadlines.judgingDeadline, locale)} />}
+                {c.deadlines.leaderboardPublicationAt && <ListRow icon="leaderboard" title={t('compLeaderboardDate')} subtitle={formatDate(c.deadlines.leaderboardPublicationAt, locale)} />}
+                <ListRow icon="groups" title={t('compAthletes', { count: c.participants })} />
+              </Card>
+              <HeatSchedule id={id} />
+
+              {categories.length > 0 && (
+                <View onLayout={anchor('categories')} style={{ gap: 8 }}>
+                  <SectionHeader title={t('compCategories')} />
+                  {categories.map((cat: Json) => (
+                    <Card key={cat.id} style={{ paddingVertical: 4 }}>
+                      <ListRow title={cat.name} subtitle={[cat.gender, cat.minAge != null ? `${cat.minAge}${cat.maxAge != null ? `-${cat.maxAge}` : '+'}` : null].filter(Boolean).join(' · ')} trailing={<Txt variant="title">{price(cat.price)}</Txt>} />
+                    </Card>
+                  ))}
+                </View>
+              )}
+
+              {c.prizes.length > 0 && (
+                <View onLayout={anchor('prizes')} style={{ gap: 8 }}>
+                  <SectionHeader title={t('compPrizes')} />
+                  {c.prizes.map((p: Json) => (
+                    <Card key={p.id} style={{ paddingVertical: 4 }}>
+                      <ListRow
+                        icon="military-tech"
+                        title={`${p.position === 1 ? '🥇' : p.position === 2 ? '🥈' : p.position === 3 ? '🥉' : `#${p.position}`} ${p.description ?? p.type}`}
+                        subtitle={c.categories.find((x: Json) => x.id === p.categoryId)?.name}
+                        trailing={p.amount != null ? <Txt variant="title">{formatMoney(p.amount, p.currency ?? c.currency, locale)}</Txt> : null}
+                      />
+                    </Card>
+                  ))}
+                </View>
+              )}
+            </View>
           </>
         )}
-        {tab === 'categories' &&
-          c.categories
-            .filter((cat: Json) => cat.active)
-            .map((cat: Json) => (
-              <Card key={cat.id} style={{ paddingVertical: 4 }}>
-                <ListRow title={cat.name} subtitle={[cat.gender, cat.minAge != null ? `${cat.minAge}${cat.maxAge != null ? `-${cat.maxAge}` : '+'}` : null].filter(Boolean).join(' · ')} trailing={<Txt variant="title">{price(cat.price)}</Txt>} />
-              </Card>
-            ))}
-        {tab === 'wods' &&
-          c.workouts.map((w: Json) => {
-            const s = subs.get(w.id);
-            return (
-              <Card key={w.id} testID={`wod-${w.number}`} style={{ gap: 6 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Txt variant="title" style={{ flex: 1, fontWeight: '800' }}>{w.name}</Txt>
-                  <Txt color={colors.primary} style={{ fontWeight: '700' }}>{t('compMaxPoints', { points: w.maximumPoints })}</Txt>
-                </View>
-                <Txt>{w.description}</Txt>
-                {w.standards ? <Txt variant="small" color={colors.outline}>{w.standards}</Txt> : null}
-                {s && <Txt variant="small">{`${statusLabel(t, s.status)}${s.points != null && s.status === 'FINAL' ? ` · ${t('compPoints', { points: Number(s.points) })}` : ''}`}</Txt>}
-                {registered && (!s || ['DRAFT', 'SUBMITTED', 'NEEDS_CORRECTION'].includes(s.status)) && (
-                  <Button testID={`submit-${w.number}`} kind="tonal" icon="edit-note" label={t('compSubmitScore')} onPress={() => router.push(`/competitions/${id}/wods/${w.id}/submit`)} />
-                )}
-              </Card>
-            );
-          })}
-        {tab === 'leaderboard' && <CompLeaderboard id={id} categories={c.categories} workouts={c.workouts} />}
-        {tab === 'prizes' &&
-          (c.prizes.length === 0 ? (
-            <EmptyState icon="workspace-premium" message="—" />
-          ) : (
-            c.prizes.map((p: Json) => (
-              <Card key={p.id} style={{ paddingVertical: 4 }}>
-                <ListRow
-                  icon="military-tech"
-                  title={`${p.position === 1 ? '🥇' : p.position === 2 ? '🥈' : p.position === 3 ? '🥉' : `#${p.position}`} ${p.description ?? p.type}`}
-                  subtitle={c.categories.find((x: Json) => x.id === p.categoryId)?.name}
-                  trailing={p.amount != null ? <Txt variant="title">{formatMoney(p.amount, p.currency ?? c.currency, locale)}</Txt> : null}
-                />
-              </Card>
-            ))
-          ))}
+        {tab === 'wods' && (
+          <View style={{ padding: 16, gap: 12 }}>
+            {c.workouts.length === 0 ? (
+              <EmptyState icon="fitness-center" message="—" />
+            ) : (
+              c.workouts.map((w: Json) => {
+                const s = subs.get(w.id);
+                return (
+                  <Card key={w.id} testID={`wod-${w.number}`} style={{ gap: 6 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Txt variant="title" style={{ flex: 1, fontWeight: '800' }}>{w.name}</Txt>
+                      <Txt color={colors.primary} style={{ fontWeight: '700' }}>{t('compMaxPoints', { points: w.maximumPoints })}</Txt>
+                    </View>
+                    <Txt>{w.description}</Txt>
+                    {w.standards ? <Txt variant="small" color={colors.outline}>{w.standards}</Txt> : null}
+                    {s && <Txt variant="small">{`${statusLabel(t, s.status)}${s.points != null && s.status === 'FINAL' ? ` · ${t('compPoints', { points: Number(s.points) })}` : ''}`}</Txt>}
+                    {registered && (!s || ['DRAFT', 'SUBMITTED', 'NEEDS_CORRECTION'].includes(s.status)) && (
+                      <Button testID={`submit-${w.number}`} kind="tonal" icon="edit-note" label={t('compSubmitScore')} onPress={() => router.push(`/competitions/${id}/wods/${w.id}/submit`)} />
+                    )}
+                  </Card>
+                );
+              })
+            )}
+          </View>
+        )}
+        {tab === 'leaderboard' && (
+          <View style={{ padding: 16 }}>
+            <CompLeaderboard id={id} categories={c.categories} workouts={c.workouts} />
+          </View>
+        )}
       </ScrollView>
-      <View style={{ padding: 16, paddingTop: 8 }}>
-        {c.myRegistration ? (
-          <Button testID="comp-mine-button" kind="outlined" icon="emoji-events" label={c.myRegistration.registrationStatus === 'CONFIRMED' ? t('compMyCompetition') : t('compPaymentPending')} onPress={() => setTab('wods')} />
-        ) : c.status === 'REGISTRATION_OPEN' ? (
+      {!c.myRegistration && c.status === 'REGISTRATION_OPEN' && (
+        <View style={{ padding: 16, paddingTop: 8 }}>
           <Button testID="comp-register" label={t('compRegister')} onPress={() => router.push(`/competitions/${id}/register`)} />
-        ) : null}
-      </View>
+        </View>
+      )}
     </View>
+  );
+}
+
+function Tag({ label }: { label: string }) {
+  const { colors } = useTheme();
+  return (
+    <View style={{ borderWidth: 1, borderColor: colors.outline, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2 }}>
+      <Txt variant="small">{label}</Txt>
+    </View>
+  );
+}
+
+/** Quick-access square; greyed out when there is nothing behind it. */
+function Tile({ icon, label, onPress }: { icon: IconName; label: string; onPress?: () => void }) {
+  const { colors } = useTheme();
+  const fg = onPress ? colors.text : colors.outline;
+  return (
+    <Pressable accessibilityRole="button" accessibilityState={{ disabled: !onPress }} disabled={!onPress} onPress={onPress} style={({ pressed }) => ({ flex: 1, aspectRatio: 0.95, alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 14, backgroundColor: colors.surface, opacity: pressed ? 0.8 : onPress ? 1 : 0.6 })}>
+      <Icon name={icon} size={28} color={fg} />
+      <Txt variant="small" color={fg} numberOfLines={1}>{label}</Txt>
+    </Pressable>
+  );
+}
+
+function ActionRow({ done, title, subtitle, onPress }: { done: boolean; title: string; subtitle: string; onPress?: () => void }) {
+  const { colors } = useTheme();
+  return (
+    <Pressable accessibilityRole={onPress ? 'button' : undefined} disabled={!onPress} onPress={onPress} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 14, borderWidth: 1, borderColor: colors.surfaceHigh }}>
+      <Icon name={done ? 'check-circle' : 'radio-button-unchecked'} size={28} color={done ? colors.success : colors.outline} />
+      <View style={{ flex: 1 }}>
+        <Txt variant="title">{title}</Txt>
+        <Txt color={colors.outline}>{subtitle}</Txt>
+      </View>
+      {onPress && <Icon name="chevron-right" color={colors.outline} />}
+    </Pressable>
   );
 }
 
