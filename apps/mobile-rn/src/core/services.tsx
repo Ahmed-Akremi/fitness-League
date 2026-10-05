@@ -20,13 +20,14 @@ export interface Services {
 /** Real implementations; the demo build answers every request on the phone (no server). */
 export function createServices(): Services {
   const onExpired = () => setAuthStatus('signedOut');
-  if (config.demo) {
-    const api = new ApiClient('http://demo/api/v1', new SecureTokenStorage(), onExpired, demoFetch(require('../../assets/demo/api.json')));
-    return { api, sync: new WorkoutSyncService(api, new MemoryOutboxStore()), realtime: new NoopRealtime() };
-  }
   // Web is a preview target: tokens in localStorage, the offline queue in memory (as in the Flutter web build).
   const web = Platform.OS === 'web';
-  const api = new ApiClient(config.apiBaseUrl, web ? new WebTokenStorage() : new SecureTokenStorage(), onExpired);
+  const tokens = web ? new WebTokenStorage() : new SecureTokenStorage();
+  if (config.demo) {
+    const api = new ApiClient('http://demo/api/v1', tokens, onExpired, demoFetch(require('../../assets/demo/api.json')));
+    return { api, sync: new WorkoutSyncService(api, new MemoryOutboxStore()), realtime: new NoopRealtime() };
+  }
+  const api = new ApiClient(config.apiBaseUrl, tokens, onExpired);
   // Loaded lazily so tests, the demo and the web build never open the native database.
   const store = web ? new MemoryOutboxStore() : new (require('./offline/sqlite-outbox') as typeof import('./offline/sqlite-outbox')).SqliteOutboxStore();
   return {
