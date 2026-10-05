@@ -17,7 +17,7 @@ export function Judges() {
   const { api } = useAuth();
   const { data, error, reload } = useFetch(() => api.get<JudgeAccount[]>('/admin/judges'), [api]);
   const [form, setForm] = useState({ email: '', username: '', role: 'JUDGE' });
-  const [created, setCreated] = useState<(JudgeAccount & { password: string }) | null>(null);
+  const [created, setCreated] = useState<(JudgeAccount & { password: string; reset?: boolean }) | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
   async function submit(e: FormEvent) {
@@ -27,6 +27,16 @@ export function Judges() {
       setCreated(await api.post<JudgeAccount & { password: string }>('/admin/judges', form));
       setForm({ email: '', username: '', role: form.role });
       await reload();
+    } catch (err) {
+      setMessage(errorText(err));
+    }
+  }
+
+  async function resetPassword(j: JudgeAccount) {
+    if (!window.confirm(`Générer un nouveau mot de passe pour ${j.email} ? L’ancien ne fonctionnera plus.`)) return;
+    setMessage(null);
+    try {
+      setCreated({ ...(await api.post<JudgeAccount & { password: string }>(`/admin/judges/${j.id}/reset-password`)), reset: true });
     } catch (err) {
       setMessage(errorText(err));
     }
@@ -61,7 +71,7 @@ export function Judges() {
       {created && (
         <article className="card" role="status">
           <p>
-            Compte créé : <strong>{created.email}</strong> ({created.role === 'HEAD_JUDGE' ? 'juge en chef' : 'juge'})
+            {created.reset ? 'Nouveau mot de passe pour' : 'Compte créé :'} <strong>{created.email}</strong> ({created.role === 'HEAD_JUDGE' ? 'juge en chef' : 'juge'})
           </p>
           <p>
             Mot de passe : <code className="secret">{created.password}</code>
@@ -77,6 +87,7 @@ export function Judges() {
             <th>Email</th>
             <th>Rôle</th>
             <th>Dernière connexion</th>
+            <th />
           </tr>
         </thead>
         <tbody>
@@ -86,6 +97,11 @@ export function Judges() {
               <td>{j.email}</td>
               <td>{j.role === 'HEAD_JUDGE' ? 'Juge en chef' : 'Juge'}</td>
               <td>{j.lastLoginAt ? new Date(j.lastLoginAt).toLocaleString('fr-FR') : 'jamais'}</td>
+              <td>
+                <button className="secondary" onClick={() => void resetPassword(j)}>
+                  Nouveau mot de passe
+                </button>
+              </td>
             </tr>
           ))}
         </tbody>

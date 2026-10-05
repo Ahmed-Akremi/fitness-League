@@ -24,6 +24,8 @@ button { background: var(--accent); color: #000; border: 0; border-radius: 10px;
 button:disabled { opacity: 0.4; cursor: not-allowed; }
 button.danger { background: var(--danger); }
 button.secondary { background: var(--surface-2); color: var(--text); }
+.chip { display: inline-flex; align-items: center; gap: 4px; margin-right: 6px; }
+.chip button { padding: 0 6px; line-height: 1.4; }
 .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 8px 0; }
 .error, [role='alert'] { color: var(--danger); }
 .secret { font-size: 18px; letter-spacing: 2px; word-break: break-all; }

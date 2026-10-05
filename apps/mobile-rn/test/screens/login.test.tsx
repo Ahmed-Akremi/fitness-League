@@ -20,6 +20,16 @@ describe('LoginScreen', () => {
     await waitFor(() => expect(useSession.getState().status).toBe('signedIn'));
   });
 
+  it('tells a judge account to use the admin panel', async () => {
+    const backend = new FakeBackend().on('POST', '/auth/login', [403, { code: 'JUDGE_ACCOUNT' }]);
+    const screen = await renderScreen(LoginScreen, backend, { status: 'signedOut' });
+    await fireEvent.changeText(screen.getByTestId('login-email'), 'judge@example.test');
+    await fireEvent.changeText(screen.getByTestId('login-password'), 'secret-password');
+    await fireEvent.press(screen.getByTestId('login-submit'));
+    expect(await screen.findByText(/judge account: judges work in the web admin panel/)).toBeTruthy();
+    expect(useSession.getState().status).toBe('signedOut');
+  });
+
   it('validates the form before calling the API', async () => {
     const backend = new FakeBackend();
     const screen = await renderScreen(LoginScreen, backend, { status: 'signedOut' });

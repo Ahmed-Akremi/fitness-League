@@ -403,7 +403,7 @@ The cursor is base64url of `{sortKey, id}` (keyset pagination, stable under inse
   "traceId": "01J8…"
 }
 ```
-Standard codes: `VALIDATION_FAILED` 422, `UNAUTHENTICATED` 401, `TOKEN_EXPIRED` 401, `FORBIDDEN` 403, `NOT_FOUND` 404, `CONFLICT` / `IDEMPOTENCY_CONFLICT` / `VERSION_CONFLICT` 409, `RATE_LIMITED` 429 (+ `Retry-After`), `ACCOUNT_LOCKED` 423, `UNDER_AGE` 422, `WORKOUT_REJECTED` 422 (with `ruleHits`), `INTERNAL` 500 (no stack trace, only `traceId`).
+Standard codes: `VALIDATION_FAILED` 422, `UNAUTHENTICATED` 401, `TOKEN_EXPIRED` 401, `FORBIDDEN` 403, `JUDGE_ACCOUNT` 403 (judge account signing in to the app), `NOT_FOUND` 404, `CONFLICT` / `IDEMPOTENCY_CONFLICT` / `VERSION_CONFLICT` 409, `RATE_LIMITED` 429 (+ `Retry-After`), `ACCOUNT_LOCKED` 423, `UNDER_AGE` 422, `WORKOUT_REJECTED` 422 (with `ruleHits`), `INTERNAL` 500 (no stack trace, only `traceId`).
 
 ### 4.4 Endpoints — Phase 1
 

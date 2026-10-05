@@ -122,6 +122,7 @@
   "errorSession": "Your session has expired. Please sign in again.",
   "errorInvalidCredentials": "Wrong email or password.",
   "errorAccountLocked": "Too many attempts. Try again later.",
+  "errorJudgeAccount": "This is a judge account: judges work in the web admin panel, not in the app.",
   "errorUnderAge": "You must be at least {age} to join.",
   "errorEmailTaken": "This email is already registered.",
   "errorUsernameTaken": "This username is taken.",

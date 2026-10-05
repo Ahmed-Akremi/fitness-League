@@ -21,6 +21,8 @@ export function errorMessage(t: T, error: unknown): string {
       switch (error.code) {
         case 'ACCOUNT_LOCKED':
           return t('errorAccountLocked');
+        case 'JUDGE_ACCOUNT':
+          return t('errorJudgeAccount');
         case 'UNDER_AGE':
           return t('errorUnderAge', { age: Number(error.extra.minAgeYears ?? 18) });
         case 'EMAIL_TAKEN':

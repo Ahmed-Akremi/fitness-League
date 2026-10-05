@@ -122,6 +122,7 @@
   "errorSession": "Ta session a expiré. Reconnecte-toi.",
   "errorInvalidCredentials": "Email ou mot de passe incorrect.",
   "errorAccountLocked": "Trop de tentatives. Réessaie plus tard.",
+  "errorJudgeAccount": "C’est un compte juge : les juges travaillent dans le panneau d’administration web, pas dans l’application.",
   "errorUnderAge": "Tu dois avoir au moins {age} ans pour t'inscrire.",
   "errorEmailTaken": "Cet email est déjà utilisé.",
   "errorUsernameTaken": "Ce nom d'utilisateur est pris.",

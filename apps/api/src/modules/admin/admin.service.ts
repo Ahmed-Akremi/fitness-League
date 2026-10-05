@@ -204,6 +204,19 @@ export class AdminService {
     return { id: user.id, email: user.email, username: user.username, role: user.role, password };
   }
 
+  /** A new generated password for a judge account, shown once; the old password and every session stop working. */
+  async resetJudgePassword(actor: AuthUser, id: string) {
+    const judge = await this.prisma.user.findUnique({ where: { id } });
+    if (!judge || judge.status === 'DELETED' || !JUDGE_ROLES.includes(judge.role)) throw AppException.notFound('Judge');
+    const password = randomBytes(9).toString('base64url');
+    await this.prisma.$transaction(async (tx) => {
+      await tx.user.update({ where: { id }, data: { passwordHash: await this.passwords.hash(password), failedLoginCount: 0, lockedUntil: null, sessionVersion: { increment: 1 } } });
+      await tx.refreshToken.updateMany({ where: { userId: id, revokedAt: null }, data: { revokedAt: this.clock.now() } });
+      await this.audit.log({ actorId: actor.id, actorRole: actor.role, action: 'JUDGE_PASSWORD_RESET', entityType: 'user', entityId: id }, tx);
+    });
+    return { id: judge.id, email: judge.email, username: judge.username, role: judge.role, password };
+  }
+
   private async actOn(actor: AuthUser, id: string) {
     if (actor.id === id) throw AppException.forbidden('You cannot change your own account here.');
     const target = await this.prisma.user.findUnique({ where: { id } });

@@ -270,7 +270,9 @@ export class AuthService {
 
   /** Judges only judge (admin panel): they cannot compete, log workouts or score in the app. */
   private assertAppAccount(user: User): void {
-    if (JUDGE_ROLES.includes(user.role)) throw AppException.forbidden('Judge accounts sign in to the admin panel.');
+    if (JUDGE_ROLES.includes(user.role)) {
+      throw new AppException(HttpStatus.FORBIDDEN, ErrorCode.JUDGE_ACCOUNT, 'Forbidden', { detail: 'Judge accounts sign in to the admin panel.' });
+    }
   }
 
   async startSession(user: User, audience: TokenAudience): Promise<SessionDto> {

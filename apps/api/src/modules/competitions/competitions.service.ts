@@ -375,6 +375,15 @@ export class CompetitionsService {
     return a;
   }
 
+  /** Removes one WOD (or category) assignment; the judge stays on the staff. */
+  async unassign(user: AuthUser, competitionId: string, assignmentId: string) {
+    await this.judging.requireRole(user, competitionId, ['ORGANIZER', 'HEAD_JUDGE']);
+    const a = await this.prisma.competitionJudgeAssignment.findFirst({ where: { id: assignmentId, staff: { competitionId } } });
+    if (!a) throw AppException.notFound('Assignment');
+    await this.prisma.competitionJudgeAssignment.delete({ where: { id: assignmentId } });
+    await this.audit.log({ actorId: user.id, actorRole: user.role, action: 'competition.judge.unassigned', entityType: 'CompetitionJudgeAssignment', entityId: assignmentId, before: { staffId: a.staffId, categoryId: a.categoryId, workoutId: a.workoutId } });
+  }
+
   async addPrize(user: AuthUser, competitionId: string, dto: PrizeDto) {
     await this.judging.requireRole(user, competitionId, ['ORGANIZER']);
     const c = await this.prisma.competition.findUniqueOrThrow({ where: { id: competitionId } });

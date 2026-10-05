@@ -273,6 +273,12 @@ export class CompetitionsController {
     return this.competitions.assign(user, competitionId, dto);
   }
 
+  @Delete(':id/judge-assignments/:assignmentId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  unassign(@CurrentUser() user: AuthUser, @id() competitionId: string, @id('assignmentId') assignmentId: string): Promise<void> {
+    return this.competitions.unassign(user, competitionId, assignmentId);
+  }
+
   @Post(':id/prizes')
   addPrize(@CurrentUser() user: AuthUser, @id() competitionId: string, @Body() dto: PrizeDto) {
     return this.competitions.addPrize(user, competitionId, dto);
@@ -418,6 +424,12 @@ export class AdminJudgeController extends JudgeController {
     return this.competitions.assign(user, competitionId, dto);
   }
 
+  @Delete('competitions/:id/judge-assignments/:assignmentId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  unassign(@CurrentUser() user: AuthUser, @id() competitionId: string, @id('assignmentId') assignmentId: string): Promise<void> {
+    return this.competitions.unassign(user, competitionId, assignmentId);
+  }
+
   @Get('competitions/:id/appeals')
   appeals(@CurrentUser() user: AuthUser, @id() competitionId: string) {
     return this.judging.appeals(user, competitionId);
@@ -515,6 +527,9 @@ export class AdminCompetitionsController {
   }
   @Post(':id/judge-assignments') assign(@CurrentUser() u: AuthUser, @id() cid: string, @Body() dto: AssignmentDto) {
     return this.competitions.assign(u, cid, dto);
+  }
+  @Delete(':id/judge-assignments/:assignmentId') @HttpCode(HttpStatus.NO_CONTENT) unassign(@CurrentUser() u: AuthUser, @id() cid: string, @id('assignmentId') aid: string): Promise<void> {
+    return this.competitions.unassign(u, cid, aid);
   }
   @Get(':id/registrations') registrations(@CurrentUser() u: AuthUser, @id() cid: string) {
     return this.competitions.registrations(u, cid);

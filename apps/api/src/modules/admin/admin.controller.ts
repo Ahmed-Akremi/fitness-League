@@ -89,6 +89,13 @@ export class AdminController {
     return this.admin.createJudge(user, dto);
   }
 
+  @Post('judges/:id/reset-password')
+  @Roles('ADMIN', 'SUPER_ADMIN')
+  @HttpCode(HttpStatus.OK)
+  resetJudgePassword(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string) {
+    return this.admin.resetJudgePassword(user, id);
+  }
+
   @Get('stats/overview')
   overview() {
     return this.admin.overview();

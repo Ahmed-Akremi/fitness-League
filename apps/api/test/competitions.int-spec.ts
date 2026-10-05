@@ -263,7 +263,8 @@ describe('Competitions (integration)', () => {
 
     // The generated password opens the admin panel (judge space only), not the app.
     const creds = { email: 'new.judge@example.test', password: created.body.password };
-    await api().post('/api/v1/auth/login').send(creds).expect(403);
+    const refused = await api().post('/api/v1/auth/login').send(creds).expect(403);
+    expect(refused.body.code).toBe('JUDGE_ACCOUNT'); // the app shows a clear message
     const login = await api().post('/api/v1/admin/auth/login').send(creds).expect(200);
     const judgePanel = bearer(login.body.session.accessToken);
     expect((await api().get('/api/v1/admin/me').set(judgePanel).expect(200)).body).toMatchObject({ id: created.body.id, role: 'JUDGE' });
@@ -274,6 +275,18 @@ describe('Competitions (integration)', () => {
     await api().get('/api/v1/judge/athletes').set(judgePanel).expect(401); // admin token refused by app routes
     // Athletes still cannot open the panel.
     await api().post('/api/v1/admin/auth/login').send({ email: ahmed.email, password: ahmed.password }).expect(403);
+
+    // Admins give a judge a new password: shown once, the old one and the open sessions stop working.
+    const resetUrl = `/api/v1/admin/judges/${created.body.id}/reset-password`;
+    await api().post(resetUrl).set(bearer(headJudge.token)).expect(403);
+    await api().post(`/api/v1/admin/judges/${ahmed.id}/reset-password`).set(panel).expect(404); // judge accounts only
+    const reset = await api().post(resetUrl).set(panel).expect(200);
+    expect(reset.body).toMatchObject({ id: created.body.id, email: 'new.judge@example.test' });
+    expect(reset.body.password).toMatch(/^[\w-]{12}$/);
+    expect(reset.body.password).not.toBe(created.body.password);
+    await api().get('/api/v1/admin/me').set(judgePanel).expect(401);
+    await api().post('/api/v1/admin/auth/login').send(creds).expect(401);
+    await api().post('/api/v1/admin/auth/login').send({ ...creds, password: reset.body.password }).expect(200);
   });
 
   it('HEAD JUDGE manages the judges and head judges of their competition', async () => {
@@ -287,7 +300,15 @@ describe('Competitions (integration)', () => {
     const second = await judgeAccount('HEAD_JUDGE');
     const added = await api().post(`${base}/staff`).set(bearer(headJudge.token)).send({ userId: extra.id, role: 'JUDGE' }).expect(201);
     await api().post(`${base}/staff`).set(bearer(headJudge.token)).send({ userId: second.id, role: 'HEAD_JUDGE' }).expect(201);
-    await api().post(`${base}/judge-assignments`).set(bearer(headJudge.token)).send({ staffId: added.body.id, workoutId: wods[0] }).expect(201);
+    const assignment = await api().post(`${base}/judge-assignments`).set(bearer(headJudge.token)).send({ staffId: added.body.id, workoutId: wods[0] }).expect(201);
+    await api().post(`${base}/judge-assignments`).set(bearer(headJudge.token)).send({ staffId: added.body.id, workoutId: wods[1] }).expect(201);
+    // Removing one WOD assignment keeps the judge and their other WODs.
+    await api().delete(`${base}/judge-assignments/${assignment.body.id}`).set(bearer(judge.token)).expect(403);
+    await api().delete(`${base}/judge-assignments/${assignment.body.id}`).set(bearer(headJudge.token)).expect(204);
+    await api().delete(`${base}/judge-assignments/${assignment.body.id}`).set(bearer(headJudge.token)).expect(404);
+    const afterUnassign = await api().get(`${base}/staff`).set(bearer(headJudge.token)).expect(200);
+    const extraRow = afterUnassign.body.find((r: { id: string }) => r.id === added.body.id);
+    expect(extraRow.assignments.map((a: { workoutId: string }) => a.workoutId)).toEqual([wods[1]]);
     // Only judge accounts judge (athletes never do), a JUDGE cannot be made head judge, organizers stay the organizer's call.
     await api().post(`${base}/staff`).set(bearer(headJudge.token)).send({ userId: ahmed.id, role: 'JUDGE' }).expect(403);
     await api().post(`${base}/staff`).set(bearer(headJudge.token)).send({ userId: extra.id, role: 'HEAD_JUDGE' }).expect(403);

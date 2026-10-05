@@ -312,7 +312,23 @@ function TeamPanel({ competition: c, accounts }: { competition: J; accounts: J[]
               <td>{s.user?.profile?.fullName ?? s.user?.username}</td>
               <td>{ROLE[s.role] ?? s.role}</td>
               <td>
-                {s.role === 'ORGANIZER' ? '—' : s.assignments.length ? s.assignments.map((a: J) => wod(a.workoutId)).join(', ') : 'tous les WODs'}
+                {s.role === 'ORGANIZER'
+                  ? '—'
+                  : s.assignments.length
+                    ? s.assignments.map((a: J) => (
+                        <span key={a.id} className="chip">
+                          {wod(a.workoutId)}{' '}
+                          <button
+                            className="secondary"
+                            aria-label={`Retirer ${wod(a.workoutId)}`}
+                            title="Retirer ce WOD"
+                            onClick={() => run('WOD retiré.', () => api.delete(`${base}/judge-assignments/${a.id}`))}
+                          >
+                            ×
+                          </button>{' '}
+                        </span>
+                      ))
+                    : 'tous les WODs'}
                 {s.role === 'JUDGE' && (
                   <span>
                     {' '}
