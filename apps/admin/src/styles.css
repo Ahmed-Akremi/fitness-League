@@ -52,4 +52,16 @@ tbody tr:hover, tr.selected { background: var(--surface-2); }
 .panel h3 { margin-top: 0; }
 .audit { color: var(--muted); font-size: 13px; }
 pre { white-space: pre-wrap; }
+textarea.prose { font-family: inherit; font-size: 15px; resize: vertical; }
+.composer { display: grid; gap: 10px; }
+.composer .spacer, .news .spacer { flex: 1; }
+label.file { display: inline-flex; align-items: center; background: var(--surface-2); color: var(--text); border-radius: 10px; padding: 0 14px; min-height: 40px; font-weight: 700; cursor: pointer; }
+label.file input { display: none; }
+img.preview { max-width: 360px; max-height: 240px; border-radius: 12px; object-fit: cover; }
+.ok { color: var(--accent); }
+.news { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+.news-item { display: grid; gap: 8px; margin: 0; padding: 0; overflow: hidden; }
+.news-item img { width: 100%; max-height: 220px; object-fit: cover; }
+.news-body { padding: 12px 16px 16px; display: grid; gap: 6px; }
+.news-body p { margin: 0; white-space: pre-wrap; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }

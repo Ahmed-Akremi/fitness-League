@@ -2,6 +2,7 @@ import { ReactNode } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { canAdmin, isJudge, useAuth } from './auth';
 import { Layout } from './components/Layout';
+import { Announcements } from './pages/Announcements';
 import { Audit } from './pages/Audit';
 import { CompetitionDetail, Competitions } from './pages/Competitions';
 import { Dashboard } from './pages/Dashboard';
@@ -55,6 +56,7 @@ export function App() {
           <Route path="competitions" element={<AdminOnly><Competitions /></AdminOnly>} />
           <Route path="competitions/:id" element={<AdminOnly><CompetitionDetail /></AdminOnly>} />
           <Route path="judges" element={<AdminOnly><Judges /></AdminOnly>} />
+          <Route path="announcements" element={<AdminOnly><Announcements /></AdminOnly>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>
