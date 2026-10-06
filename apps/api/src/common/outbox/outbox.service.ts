@@ -3,7 +3,7 @@ import { Prisma } from '@prisma/client';
 import { uuidv7 } from '../ids/uuid';
 import { OutboxDispatcher } from './outbox-dispatcher';
 
-export type DomainEventType = 'WorkoutAccepted' | 'WorkoutUpdated' | 'WorkoutDeleted' | 'WorkoutReviewed' | 'BodyMeasurementAdded' | 'NotificationCreated';
+export type DomainEventType = 'WorkoutAccepted' | 'WorkoutUpdated' | 'WorkoutDeleted' | 'WorkoutReviewed' | 'BodyMeasurementAdded' | 'NotificationCreated' | 'AnnouncementPublished';
 
 /**
  * Transactional outbox (docs §2.3): events are written in the same DB transaction as the change that caused
