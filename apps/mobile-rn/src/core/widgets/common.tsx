@@ -2,9 +2,9 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { AccessibilityInfo, ActivityIndicator, Animated, Image, Pressable, TextInput, View } from 'react-native';
 
 import { useLocale, useT } from '../prefs';
-import { displayText, fonts, radius, useTheme } from '../theme';
+import { displayText, fonts, radius, space, useTheme } from '../theme';
 import { formatDuration, localized, parseDuration } from '../utils/format';
-import { Button, Chip, Icon, Txt, type IconName } from './kit';
+import { Button, Chip, Icon, LinkButton, Txt, type IconName } from './kit';
 
 export function Loading() {
   const { colors } = useTheme();
@@ -20,8 +20,8 @@ export function StatCard({ label, children, onPress, trailing }: { label: string
   const { colors } = useTheme();
   const Box = onPress ? Pressable : View;
   return (
-    <Box onPress={onPress} accessibilityRole={onPress ? 'button' : undefined} style={{ backgroundColor: colors.surface, borderRadius: radius.card, padding: 18 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+    <Box onPress={onPress} accessibilityRole={onPress ? 'button' : undefined} style={{ backgroundColor: colors.surface, borderRadius: radius.card, padding: space.lg, borderWidth: 1, borderColor: colors.border }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
         <Txt variant="label" color={colors.outline} style={{ flex: 1 }}>{label}</Txt>
         {trailing}
       </View>
@@ -71,9 +71,19 @@ export function EmptyState({ icon, message, actionLabel, onAction }: { icon: Ico
 export function SectionHeader({ title, actionLabel, onAction }: { title: string; actionLabel?: string; onAction?: () => void }) {
   const { colors } = useTheme();
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: 20, paddingBottom: 8, paddingHorizontal: 4 }}>
+    // In a Screen (gap 12) this gives 24 px above the title and 12 px between the title and its content.
+    <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: space.md, paddingHorizontal: space.xs }}>
       <Txt accessibilityRole="header" variant="label" color={colors.outline} style={{ flex: 1, letterSpacing: 1.4 }}>{title}</Txt>
-      {actionLabel && <Button kind="text" label={actionLabel} onPress={onAction} />}
+      {actionLabel && <LinkButton label={actionLabel} onPress={onAction} />}
+    </View>
+  );
+}
+
+/** Small tinted status pill (Accepted, Pending…). */
+export function StatusPill({ label, color, testID }: { label: string; color: string; testID?: string }) {
+  return (
+    <View testID={testID} style={{ backgroundColor: color + '24', borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 4 }}>
+      <Txt variant="small" color={color} style={{ fontSize: 12, fontWeight: '700' }}>{label}</Txt>
     </View>
   );
 }

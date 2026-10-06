@@ -13,6 +13,8 @@ export interface Colors {
   surfaceHigh: string;
   text: string;
   outline: string;
+  /** Hairline borders and dividers. */
+  border: string;
   primary: string;
   onPrimary: string;
   error: string;
@@ -33,6 +35,7 @@ export const palettes = {
     surfaceHigh: '#20232A',
     text: '#E6E8EC',
     outline: '#8C919B',
+    border: '#FFFFFF14',
     primary: accent,
     onPrimary: '#000000',
     error: '#FF6B6B',
@@ -44,6 +47,7 @@ export const palettes = {
     surfaceHigh: '#E9EBEF',
     text: '#14161A',
     outline: '#6B7079',
+    border: '#0000000F',
     primary: darken(accent),
     onPrimary: '#000000',
     error: '#C62828',
@@ -58,6 +62,9 @@ export const fonts = {
 };
 
 export const radius = { card: 20, field: 14, pill: 999 };
+
+/** Spacing scale: the gaps and paddings used by shared widgets and screens. */
+export const space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24 } as const;
 
 export function useTheme(): { dark: boolean; colors: Colors } {
   const mode = usePrefs((s) => s.themeMode);
