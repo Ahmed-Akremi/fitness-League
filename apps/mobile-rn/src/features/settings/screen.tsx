@@ -95,7 +95,7 @@ export function PreferencesSection() {
           meApi(api).updateSettings({ locale: v }).catch(() => {});
         }}
       />
-      <Segmented<ThemeMode>
+      <Segmented<ThemeMode> flush
         value={themeMode}
         onChange={(m) => usePrefs.getState().setThemeMode(m)}
         options={[

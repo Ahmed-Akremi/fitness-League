@@ -139,7 +139,8 @@ function HomeBody({ me }: { me: Me }) {
           <GoalCard goal={active[0]} onPress={() => router.navigate('/goals')} />
         ))}
       <SectionHeader title={t('shortcuts')} />
-      <View style={{ flexDirection: 'row', gap: 8 }}>
+      {/* Full-bleed row: each tile is as wide as its label, so long labels (fr/ar) are never cut; the next tile peeks to invite scrolling. */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, marginHorizontal: -space.lg }} contentContainerStyle={{ gap: space.sm, paddingHorizontal: space.lg }}>
         {(
           [
             ['emoji-events', t('records'), '/records'],
@@ -149,12 +150,12 @@ function HomeBody({ me }: { me: Me }) {
             ['military-tech', t('competitions'), '/competitions'],
           ] as [IconName, string, string][]
         ).map(([icon, label, route]) => (
-          <Pressable key={route} accessibilityRole="button" onPress={() => router.push(route as never)} style={{ flex: 1, alignItems: 'center', gap: space.xs, paddingVertical: space.md, paddingHorizontal: space.xs, borderRadius: 16, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}>
+          <Pressable key={route} accessibilityRole="button" onPress={() => router.push(route as never)} style={{ minWidth: 76, alignItems: 'center', gap: space.xs, paddingVertical: space.md, paddingHorizontal: space.md, borderRadius: 16, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}>
             <Icon name={icon} color={colors.primary} />
-            <Txt variant="small" numberOfLines={2} style={{ fontSize: 12, textAlign: 'center' }}>{label}</Txt>
+            <Txt variant="small" numberOfLines={1} style={{ fontSize: 12 }}>{label}</Txt>
           </Pressable>
         ))}
-      </View>
+      </ScrollView>
       <Button testID="home-log-workout" icon="add" label={t('logWorkout').toUpperCase()} onPress={() => router.push('/workouts/new')} style={{ marginTop: 8 }} />
     </>
   );

@@ -294,7 +294,7 @@ export function NewBattleScreen({ opponentId }: { opponentId?: string }) {
           );
         })}
         <SectionHeader title={t('battleDuration')} />
-        <Segmented value={days} onChange={setDays} options={(['3', '7', '14'] as const).map((d) => ({ key: d, label: t('days', { count: Number(d) }) }))} />
+        <Segmented flush value={days} onChange={setDays} options={(['3', '7', '14'] as const).map((d) => ({ key: d, label: t('days', { count: Number(d) }) }))} />
         <SectionHeader title={t('battleComponents')} />
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
           {COMPONENTS.map((c) => (

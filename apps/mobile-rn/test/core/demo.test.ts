@@ -34,6 +34,10 @@ describe('demo backend (offline build)', () => {
     await expect(api().get('/challenges', { status: 'ENDED' })).resolves.toEqual([]);
   });
 
+  it('answers the notification preferences (Settings) with every category on', async () => {
+    await expect(api().get('/me/notification-preferences')).resolves.toEqual({ categories: {}, quietHours: null });
+  });
+
   it('accepts writes without storing them and 404s the unknown', async () => {
     await expect(api().post('/workouts/sync', { items: [] })).resolves.toEqual({ results: [] });
     await expect(api().get('/nowhere')).rejects.toMatchObject({ status: 404 });

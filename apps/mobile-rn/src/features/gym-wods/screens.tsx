@@ -158,7 +158,7 @@ function WodScoreSheet({ wod, onSubmit, onClose }: { wod: Json; onSubmit: (body:
               <Txt variant="title" style={{ flex: 1, fontSize: 20 }}>{t('wodSubmitScore')}</Txt>
               <IconButton icon="close" label={t('cancel')} onPress={onClose} />
             </View>
-            <Segmented
+            <Segmented flush
               value={division}
               onChange={setDivision}
               options={[
@@ -263,7 +263,7 @@ export function WodScreen({ gymId, wodId }: { gymId: string; wodId: string }) {
             <Txt style={{ fontWeight: '700' }}>{mine.division === 'SCALED' ? t('scaled') : 'Rx'}</Txt>
           </Card>
         )}
-        <Segmented
+        <Segmented flush
           value={division}
           onChange={setDivision}
           options={[
@@ -382,7 +382,7 @@ export function CreateWodScreen({ gymId }: { gymId: string }) {
       <TextField testID="wod-title" label={t('wodTitle')} value={title} onChangeText={setTitle} maxLength={80} />
       <TextField testID="wod-description" label={t('wodDescription')} value={description} onChangeText={setDescription} maxLength={2000} multiline style={{ minHeight: 90 }} />
       <Txt variant="label">{t('wodScoreType')}</Txt>
-      <Segmented
+      <Segmented flush
         value={scoreType}
         onChange={setScoreType}
         options={[

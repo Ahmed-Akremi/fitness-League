@@ -212,7 +212,7 @@ export function NewChallengeScreen() {
     <Screen>
       <TextField testID="challenge-title" label={t('challengeTitle')} value={title} onChangeText={setTitle} maxLength={80} />
       <SectionHeader title={t('challengeWho')} />
-      <Segmented
+      <Segmented flush
         value={scope}
         onChange={setScope}
         options={[
@@ -228,7 +228,7 @@ export function NewChallengeScreen() {
       </View>
       <TextField testID="challenge-target" label={`${t('challengeTarget')} (${challengeMetricLabel(t, metric)})`} value={target} onChangeText={(v) => setTarget(v.replace(/[^0-9.,]/g, ''))} keyboardType="decimal-pad" />
       <SectionHeader title={t('battleDuration')} />
-      <Segmented
+      <Segmented flush
         value={days}
         onChange={setDays}
         options={(['7', '14', '30'] as const).map((d) => ({ key: d, label: t('days', { count: Number(d) }) }))}
