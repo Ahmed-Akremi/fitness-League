@@ -541,5 +541,14 @@
   "compVideoRequired": "Add the YouTube link of your video to submit your score.",
   "compPointsPerRep": "{points} pt/rep",
   "compComputedScore": "Calculated score",
-  "compComputedHint": "Reps × points per rep, computed by the app."
+  "compComputedHint": "Reps × points per rep, computed by the app.",
+  "newsTitle": "News",
+  "newsMore": "See more",
+  "newsReadMore": "Read more",
+  "newsLike": "Like",
+  "newsLiked": "Liked",
+  "notifAnnouncement": "News: {excerpt}",
+  "notifAnnouncementPhoto": "New photo from the league",
+  "homeCompetitionsTitle": "Competitions",
+  "homeSeeAll": "See all"
 }

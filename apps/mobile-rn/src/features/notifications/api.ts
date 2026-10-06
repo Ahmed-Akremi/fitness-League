@@ -81,6 +81,8 @@ export function notificationText(t: T, locale: string, n: Json): string {
       return t('notifCompetitionAppeal');
     case 'COMPETITION_LEADERBOARD_FINAL':
       return t('notifCompetitionFinal');
+    case 'ANNOUNCEMENT':
+      return p.excerpt ? t('notifAnnouncement', { excerpt: String(p.excerpt) }) : t('notifAnnouncementPhoto');
     default:
       return t('notifGeneric');
   }
@@ -115,6 +117,8 @@ export function notificationRoute(n: Json): string | null {
       return '/feed';
     case 'CHALLENGE_COMPLETED':
       return `/challenges/${p.challengeId}`;
+    case 'ANNOUNCEMENT':
+      return '/'; // the news lives on the home screen
     default:
       return typeof n.type === 'string' && n.type.startsWith('COMPETITION_') && p.competitionId ? `/competitions/${p.competitionId}` : null;
   }
@@ -124,5 +128,6 @@ export function notificationIcon(type?: string): IconName {
   if (type === 'FRIEND_REQUEST' || type === 'FRIEND_ACCEPTED') return 'person-add-alt-1';
   if (type === 'GYM_WOD_SCORE_INVALIDATED') return 'report-gmailerrorred';
   if (type?.startsWith('COMPETITION_')) return 'military-tech';
+  if (type === 'ANNOUNCEMENT') return 'campaign';
   return 'sports-mma';
 }

@@ -30,7 +30,7 @@ export function StatCard({ label, children, onPress, trailing }: { label: string
   );
 }
 
-function useReducedMotion() {
+export function useReducedMotion() {
   const [reduced, setReduced] = useState(false);
   useEffect(() => {
     AccessibilityInfo.isReduceMotionEnabled().then(setReduced).catch(() => {});

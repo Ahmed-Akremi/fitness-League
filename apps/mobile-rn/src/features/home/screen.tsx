@@ -16,6 +16,7 @@ import { useGoals } from '../goals/api';
 import { formatWodScore, useGymWods } from '../gym-wods/api';
 import { useGym, useMyGyms } from '../gyms/api';
 import { meKey, useHomeDashboard, useMe, type Me } from '../me/api';
+import { NewsSection } from '../announcements/news';
 import { NotificationBell } from '../notifications/screens';
 import { useRecords } from '../progress/api';
 import { useApi } from '../../core/services';
@@ -157,6 +158,7 @@ function HomeBody({ me }: { me: Me }) {
         ))}
       </ScrollView>
       <Button testID="home-log-workout" icon="add" label={t('logWorkout').toUpperCase()} onPress={() => router.push('/workouts/new')} style={{ marginTop: 8 }} />
+      <NewsSection />
     </>
   );
 }
