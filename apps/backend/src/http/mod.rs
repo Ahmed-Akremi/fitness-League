@@ -1,5 +1,7 @@
 //! The HTTP shell: one route table and one middleware stack for the whole API.
 
+pub mod rate_limit;
+
 use std::{
     any::Any,
     time::{Duration, Instant},
@@ -101,12 +103,13 @@ pub fn route_table() -> Vec<(Method, &'static str)> {
 
 pub fn app(state: AppState) -> Router {
     // A request crosses the layers from the last `.layer` to the first: request context, panic catcher,
-    // security headers, CORS, timeout, and then the route.
+    // security headers, CORS, timeout, the per-address rate limit, and then the route.
     api()
         .router
         .fallback(|| async { AppError::not_found("Route") })
         .method_not_allowed_fallback(|| async { AppError::new(StatusCode::METHOD_NOT_ALLOWED, "METHOD_NOT_ALLOWED", "Method not allowed") })
         .layer(DefaultBodyLimit::max(MAX_BODY_BYTES))
+        .layer(middleware::from_fn_with_state(state.clone(), rate_limit::global))
         .layer(middleware::from_fn(timeout))
         .layer(cors(&state.cfg))
         .layer(middleware::from_fn_with_state(state.clone(), security_headers))
