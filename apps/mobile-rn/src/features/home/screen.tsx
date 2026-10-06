@@ -6,11 +6,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { Json } from '../../core/api/client';
 import { useLocale, useT } from '../../core/prefs';
-import { displayText, radius, useTheme } from '../../core/theme';
+import { displayText, radius, space, useTheme } from '../../core/theme';
 import { formatDate, formatMetric, localized } from '../../core/utils/format';
 import { AvatarBadge, CountdownText, divisionColor, GymLogo, Loading, SectionHeader, StatCard, XpBar } from '../../core/widgets/common';
 import { ErrorView } from '../../core/widgets/error';
-import { Button, Card, Expander, Icon, IconButton, ListRow, Screen, Txt, useHeader, type IconName } from '../../core/widgets/kit';
+import { Button, Card, Expander, Icon, IconButton, ListGroup, ListRow, Screen, Txt, useHeader, type IconName } from '../../core/widgets/kit';
 import { authApi } from '../auth/api';
 import { useGoals } from '../goals/api';
 import { formatWodScore, useGymWods } from '../gym-wods/api';
@@ -38,7 +38,7 @@ export function HomeScreen() {
       ) : !me.data ? (
         <Loading />
       ) : (
-        <ScrollView contentContainerStyle={{ padding: 20, paddingTop: 12, gap: 12, paddingBottom: 28 }} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.primary} />}>
+        <ScrollView contentContainerStyle={{ padding: space.lg, paddingTop: space.md, gap: space.md, paddingBottom: 28 }} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.primary} />}>
           <HomeBody me={me.data} />
         </ScrollView>
       )}
@@ -100,7 +100,7 @@ function HomeBody({ me }: { me: Me }) {
             <Txt color={divisionColor(division)} style={{ fontWeight: '800' }}>{division ?? '—'}</Txt>
           </View>
         </View>
-        <View style={{ marginTop: 14 }}>
+        <View style={{ marginTop: space.md }}>
           <XpBar value={xpNext === 0 ? 0 : xpInto / xpNext} label={t('level', { level: stats.level ?? 1 })} />
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8, gap: 4 }}>
@@ -116,7 +116,7 @@ function HomeBody({ me }: { me: Me }) {
         </Card>
       )}
       {dashboard.isError && <ErrorView error={dashboard.error} onRetry={() => dashboard.refetch()} />}
-      <View style={{ flexDirection: 'row', gap: 10 }}>
+      <View style={{ flexDirection: 'row', gap: space.sm }}>
         <Tile label={t('rankNationalShort')} value={ranks.national == null ? '—' : `#${ranks.national}`} onPress={() => router.navigate('/league')} />
         <Tile label={localized(profile.governorate?.name, locale)} value={ranks.governorate == null ? '—' : `#${ranks.governorate}`} onPress={() => router.navigate('/league')} />
         <Tile label={t('thisWeek')} value={week.total == null ? '—' : String(Math.round(week.total))} caption={week.total == null ? undefined : `${week.trainingDays}/${week.plannedDays}`} />
@@ -149,9 +149,9 @@ function HomeBody({ me }: { me: Me }) {
             ['military-tech', t('competitions'), '/competitions'],
           ] as [IconName, string, string][]
         ).map(([icon, label, route]) => (
-          <Pressable key={route} accessibilityRole="button" onPress={() => router.push(route as never)} style={{ flex: 1, alignItems: 'center', gap: 4, paddingVertical: 14, borderRadius: 16, borderWidth: 1, borderColor: colors.surfaceHigh }}>
+          <Pressable key={route} accessibilityRole="button" onPress={() => router.push(route as never)} style={{ flex: 1, alignItems: 'center', gap: space.xs, paddingVertical: space.md, paddingHorizontal: space.xs, borderRadius: 16, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}>
             <Icon name={icon} color={colors.primary} />
-            <Txt variant="small" numberOfLines={1}>{label}</Txt>
+            <Txt variant="small" numberOfLines={2} style={{ fontSize: 12, textAlign: 'center' }}>{label}</Txt>
           </Pressable>
         ))}
       </View>
@@ -180,7 +180,7 @@ export function GoalCard({ goal: g, onPress }: { goal: Json; onPress?: () => voi
 function Tile({ label, value, caption, onPress }: { label: string; value: string; caption?: string; onPress?: () => void }) {
   const { colors } = useTheme();
   return (
-    <Pressable onPress={onPress} disabled={!onPress} style={{ flex: 1, backgroundColor: colors.surface, borderRadius: radius.card, padding: 12 }}>
+    <Pressable onPress={onPress} disabled={!onPress} style={{ flex: 1, backgroundColor: colors.surface, borderRadius: radius.card, padding: space.md, borderWidth: 1, borderColor: colors.border }}>
       <Txt variant="label" numberOfLines={1} color={colors.outline} style={{ fontSize: 11, letterSpacing: 1 }}>{label}</Txt>
       <Txt style={[displayText(28), { marginTop: 4 }]}>{value}</Txt>
       {caption ? <Txt variant="small">{caption}</Txt> : null}
@@ -253,20 +253,29 @@ export function ProfileScreen() {
             <ListRow leading={<GymLogo name={g.name} url={g.logoUrl} size={40} />} title={g.name} subtitle={g.status === 'REJECTED' ? t('gymRejected') : t('gymPending')} trailing={<Icon name={g.status === 'REJECTED' ? 'cancel' : 'hourglass-top'} />} />
           </Card>
         ))}
-      <ListRow icon="add-business" title={t('addMyGym')} onPress={() => router.push('/gyms/new')} />
-      <ListRow icon="insights" title={t('myProgress')} onPress={() => router.push('/progress')} />
-      <Expander icon="emoji-events" title={t('records')}>
-        {records.map((r, i) => (
-          <ListRow key={i} title={`${localized(r.exercise?.name, locale)} · ${r.metric?.code}`} trailing={<Txt variant="title">{formatMetric(r.value, r.metric?.unit, locale)}</Txt>} />
-        ))}
-      </Expander>
-      <ListRow icon="emoji-events" title={t('allRecords')} onPress={() => router.push('/records')} />
-      <ListRow icon="military-tech" title={t('badges')} onPress={() => router.push('/badges')} />
-      <ListRow icon="group" title={t('friends')} onPress={() => router.push('/friends')} />
-      <ListRow icon="sports-mma" title={t('battles')} onPress={() => router.push('/battles')} />
-      <ListRow icon="military-tech" title={t('competitions')} onPress={() => router.push('/competitions')} />
-      <ListRow icon="monitor-weight" title={t('body')} onPress={() => router.push('/me/body')} />
-      <ListRow icon="settings" title={t('settings')} onPress={() => router.push('/settings')} />
+      <SectionHeader title={t('profileGroupProgress')} />
+      <ListGroup>
+        <ListRow icon="insights" title={t('myProgress')} chevron onPress={() => router.push('/progress')} />
+        <Expander icon="emoji-events" title={t('records')}>
+          {records.map((r, i) => (
+            <ListRow key={i} title={`${localized(r.exercise?.name, locale)} · ${r.metric?.code}`} trailing={<Txt variant="title">{formatMetric(r.value, r.metric?.unit, locale)}</Txt>} />
+          ))}
+        </Expander>
+        <ListRow icon="emoji-events" title={t('allRecords')} chevron onPress={() => router.push('/records')} />
+        <ListRow icon="military-tech" title={t('badges')} chevron onPress={() => router.push('/badges')} />
+      </ListGroup>
+      <SectionHeader title={t('profileGroupSocial')} />
+      <ListGroup>
+        <ListRow icon="group" title={t('friends')} chevron onPress={() => router.push('/friends')} />
+        <ListRow icon="sports-mma" title={t('battles')} chevron onPress={() => router.push('/battles')} />
+        <ListRow icon="military-tech" title={t('competitions')} chevron onPress={() => router.push('/competitions')} />
+      </ListGroup>
+      <SectionHeader title={t('profileGroupAccount')} />
+      <ListGroup>
+        <ListRow icon="add-business" title={t('addMyGym')} chevron onPress={() => router.push('/gyms/new')} />
+        <ListRow icon="monitor-weight" title={t('body')} chevron onPress={() => router.push('/me/body')} />
+        <ListRow icon="settings" title={t('settings')} chevron onPress={() => router.push('/settings')} />
+      </ListGroup>
     </Screen>
   );
 }
