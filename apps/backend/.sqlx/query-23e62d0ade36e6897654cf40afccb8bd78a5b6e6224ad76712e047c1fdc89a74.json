@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "INSERT INTO rule_sets (id, version, status, config, change_note, activated_at) VALUES (?, ?, 'ACTIVE', ?, ?, UTC_TIMESTAMP(6))",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "23e62d0ade36e6897654cf40afccb8bd78a5b6e6224ad76712e047c1fdc89a74"
+}

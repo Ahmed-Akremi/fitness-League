@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "INSERT INTO metric_types (id, code, unit, direction, name_fr, name_en, name_ar) VALUES (?, ?, ?, ?, ?, ?, ?)\n             ON DUPLICATE KEY UPDATE unit = VALUES(unit), direction = VALUES(direction),\n                 name_fr = VALUES(name_fr), name_en = VALUES(name_en), name_ar = VALUES(name_ar)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 7
+    },
+    "nullable": []
+  },
+  "hash": "9fa1ba8c7635acd39077ea399673258899b107394a2efce18ca5867be3638516"
+}

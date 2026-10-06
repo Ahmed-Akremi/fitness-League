@@ -1,6 +1,8 @@
 use std::process::ExitCode;
 
-const USAGE: &str = "usage: backend <serve|migrate|keys>";
+use secrecy::ExposeSecret;
+
+const USAGE: &str = "usage: backend <serve|migrate|seed [dir]|keys>";
 
 #[tokio::main]
 async fn main() -> ExitCode {
@@ -14,6 +16,7 @@ async fn main() -> ExitCode {
     let result = match args.first().map(String::as_str) {
         Some("serve") => serve().await,
         Some("migrate") => migrate().await,
+        Some("seed") => seed(args.get(1)).await,
         Some("keys") => keys(),
         _ => Err(USAGE.to_owned()),
     };
@@ -66,4 +69,14 @@ async fn serve() -> Result<(), String> {
 fn init_logging(level: &str) {
     let filter = tracing_subscriber::EnvFilter::try_new(level).unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info"));
     tracing_subscriber::fmt().json().with_env_filter(filter).init();
+}
+
+/// Loads the reference catalog with the application account: it only needs to write rows.
+async fn seed(dir: Option<&String>) -> Result<(), String> {
+    let cfg = backend::config::Config::from_env()?;
+    let pool = backend::db::connect(cfg.database_url.expose_secret(), 1).await.map_err(|e| format!("database: {e}"))?;
+    let dir = dir.map_or("infra/seed-data", String::as_str);
+    let summary = backend::seed::run(&pool, std::path::Path::new(dir)).await?;
+    println!("seeded: {summary:?}");
+    Ok(())
 }

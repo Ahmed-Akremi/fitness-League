@@ -3,9 +3,10 @@
 
 use axum::{
     body::Bytes,
-    extract::{FromRequest, Request},
-    http::{StatusCode, header},
+    extract::{FromRequest, FromRequestParts, Query, Request},
+    http::{StatusCode, header, request::Parts},
 };
+use uuid::Uuid;
 use serde::de::DeserializeOwned;
 
 use crate::error::{AppError, FieldError};
@@ -121,6 +122,27 @@ pub fn parse<T: DeserializeOwned>(bytes: &[u8]) -> Result<T, AppError> {
         }
         AppError::field(if path == "." { "body" } else { &path }, "INVALID")
     })
+}
+
+/// A query string parsed into `T`. Query structs keep their fields as `Option<String>` and check them
+/// with the helpers below, so a bad value names its field.
+pub struct ValidQuery<T>(pub T);
+
+impl<S, T> FromRequestParts<S> for ValidQuery<T>
+where
+    S: Send + Sync,
+    T: DeserializeOwned,
+{
+    type Rejection = AppError;
+
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, AppError> {
+        Query::<T>::from_request_parts(parts, state).await.map(|Query(value)| Self(value)).map_err(|_| AppError::field("query", "INVALID"))
+    }
+}
+
+/// An optional id from the query string. Malformed is an error; absent is `None`.
+pub fn uuid_param(field: &str, value: Option<&str>) -> Result<Option<Uuid>, AppError> {
+    value.map(|raw| Uuid::parse_str(raw).map_err(|_| AppError::field(field, "ISUUID"))).transpose()
 }
 
 #[cfg(test)]
@@ -252,5 +274,16 @@ mod tests {
 
         let (status, body) = call(JSON, signup(&"x".repeat(2000))).await;
         assert_eq!((status, body["code"].as_str()), (StatusCode::PAYLOAD_TOO_LARGE, Some("PAYLOAD_TOO_LARGE")));
+    }
+
+    #[test]
+    fn a_uuid_parameter_is_optional_but_never_malformed() {
+        let id = uuid::Uuid::now_v7();
+        assert_eq!(uuid_param("sportId", None).unwrap(), None);
+        assert_eq!(uuid_param("sportId", Some(&id.to_string())).unwrap(), Some(id));
+        for bad in ["", "42", "' OR 1=1 --", "018f0000-0000-7000-8000-00000000000"] {
+            let err = uuid_param("sportId", Some(bad)).unwrap_err();
+            assert_eq!(err.status, StatusCode::UNPROCESSABLE_ENTITY, "{bad:?}");
+        }
     }
 }

@@ -93,7 +93,8 @@ impl Api {
 
 /// The one place where modules join the API.
 fn api() -> Api {
-    modules::health::routes(Api::new())
+    let api = modules::health::routes(Api::new());
+    modules::reference::routes(api)
 }
 
 /// `(method, path)` of every registered route.

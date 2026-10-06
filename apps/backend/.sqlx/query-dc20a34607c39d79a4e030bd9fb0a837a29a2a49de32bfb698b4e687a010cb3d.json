@@ -1,0 +1,150 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT id AS \"id: Uuid\", code, category, logging_mode, icon, name_fr, name_en, name_ar\n           FROM sports WHERE enabled ORDER BY code",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | PRIMARY_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.sports",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "code",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | UNIQUE_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 160
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.sports",
+            "name": "code"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "category",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | ENUM | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 40
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.sports",
+            "name": "category"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "logging_mode",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | ENUM | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 64
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.sports",
+            "name": "logging_mode"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "icon",
+        "type_info": {
+          "type": "VarString",
+          "flags": "",
+          "collation": 224,
+          "max_size": 160
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.sports",
+            "name": "icon"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "name_fr",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 320
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.sports",
+            "name": "name_fr"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "name_en",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 320
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.sports",
+            "name": "name_en"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "name_ar",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 320
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.sports",
+            "name": "name_ar"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "dc20a34607c39d79a4e030bd9fb0a837a29a2a49de32bfb698b4e687a010cb3d"
+}

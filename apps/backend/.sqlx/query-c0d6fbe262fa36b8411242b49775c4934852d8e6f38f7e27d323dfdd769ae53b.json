@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "DELETE FROM exercise_metrics WHERE exercise_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "c0d6fbe262fa36b8411242b49775c4934852d8e6f38f7e27d323dfdd769ae53b"
+}

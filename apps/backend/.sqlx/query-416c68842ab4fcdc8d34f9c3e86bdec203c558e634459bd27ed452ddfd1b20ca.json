@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "INSERT INTO exercises (id, sport_id, code, name_fr, name_en, name_ar, equipment, is_bodyweight, exercise_group,\n                                    description_fr, description_en, description_ar, plausibility)\n             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\n             ON DUPLICATE KEY UPDATE sport_id = VALUES(sport_id), name_fr = VALUES(name_fr), name_en = VALUES(name_en),\n                 name_ar = VALUES(name_ar), equipment = VALUES(equipment), is_bodyweight = VALUES(is_bodyweight),\n                 exercise_group = VALUES(exercise_group), description_fr = VALUES(description_fr),\n                 description_en = VALUES(description_en), description_ar = VALUES(description_ar),\n                 plausibility = VALUES(plausibility)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 13
+    },
+    "nullable": []
+  },
+  "hash": "416c68842ab4fcdc8d34f9c3e86bdec203c558e634459bd27ed452ddfd1b20ca"
+}
