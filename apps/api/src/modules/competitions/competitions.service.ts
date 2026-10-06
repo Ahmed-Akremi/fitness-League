@@ -88,6 +88,9 @@ export class CompetitionsService {
       where.OR = [{ registrations: { some: { userId: user.id } } }, { staff: { some: { userId: user.id } } }];
     }
     switch (q.filter) {
+      case 'CURRENT':
+        where.status = { notIn: ['DRAFT', 'FINISHED', 'CANCELLED'] };
+        break;
       case 'REGISTRATION_OPEN':
         where.status = 'REGISTRATION_OPEN';
         break;

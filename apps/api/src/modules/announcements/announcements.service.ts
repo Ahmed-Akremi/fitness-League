@@ -10,7 +10,9 @@ import { PageQueryDto, toPage } from '../../common/pagination/page';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { StorageService } from '../../common/storage/storage.service';
 import { encodeAnnouncementImage } from './announcement-image';
-import { ANNOUNCEMENT_BODY_MAX, normalizeBody } from './announcement-rules';
+import { ANNOUNCEMENT_BODY_MAX, excerpt, normalizeBody } from './announcement-rules';
+
+const FAN_OUT_BATCH = 1000;
 
 export interface AnnouncementView {
   id: string;
@@ -90,6 +92,34 @@ export class AnnouncementsService {
       await this.audit.log({ actorId: user.id, actorRole: user.role, action: 'announcement.deleted', entityType: 'Announcement', entityId: id }, tx);
     });
     if (media) await this.storage.delete(media.objectKey);
+  }
+
+  /**
+   * Bell notification for every active athlete (worker, after commit). Judges, staff and suspended accounts are
+   * skipped. Safe to replay: athletes who already have it are left alone. No push yet (FCM is not configured),
+   * so no NotificationCreated event per row — the app refreshes the bell itself.
+   */
+  async fanOut(announcementId: string): Promise<number> {
+    const row = await this.prisma.announcement.findFirst({ where: { id: announcementId, deletedAt: null } });
+    if (!row) return 0;
+    const payload = { announcementId, excerpt: excerpt(row.body) };
+    let created = 0;
+    let after: string | undefined;
+    for (;;) {
+      const users = await this.prisma.user.findMany({
+        where: { role: 'USER', status: 'ACTIVE', deletedAt: null, ...(after && { id: { gt: after } }) },
+        orderBy: { id: 'asc' },
+        take: FAN_OUT_BATCH,
+        select: { id: true },
+      });
+      if (users.length === 0) return created;
+      after = users[users.length - 1].id;
+      const ids = users.map((u) => u.id);
+      const already = await this.prisma.notification.findMany({ where: { type: 'ANNOUNCEMENT', userId: { in: ids }, payload: { path: ['announcementId'], equals: announcementId } }, select: { userId: true } });
+      const done = new Set(already.map((n) => n.userId));
+      const data = ids.filter((id) => !done.has(id)).map((userId) => ({ id: uuidv7(), userId, type: 'ANNOUNCEMENT', payload }));
+      if (data.length) created += (await this.prisma.notification.createMany({ data })).count;
+    }
   }
 
   private async page(q: PageQueryDto, viewerId: string | null) {

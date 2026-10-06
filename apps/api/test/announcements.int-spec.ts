@@ -5,6 +5,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import sharp from 'sharp';
 import request from 'supertest';
+import { OutboxDispatcher } from '../src/common/outbox/outbox-dispatcher';
+import { AnnouncementsService } from '../src/modules/announcements/announcements.service';
 import { adminBearer, registerUser, setupTestApp } from './helpers';
 
 describe('Announcements (integration)', () => {
@@ -31,9 +33,9 @@ describe('Announcements (integration)', () => {
     await prisma?.$disconnect();
   });
 
-  async function athlete() {
+  async function athlete(role?: 'GYM_ADMIN') {
     const u = await registerUser(app, prisma);
-    await prisma.user.update({ where: { id: u.session.userId }, data: { emailVerifiedAt: new Date() } });
+    await prisma.user.update({ where: { id: u.session.userId }, data: { emailVerifiedAt: new Date(), ...(role ? { role } : {}) } });
     const login = await api().post('/api/v1/auth/login').send({ email: u.body.email, password: u.body.password }).expect(200);
     return { id: u.session.userId, token: login.body.accessToken as string };
   }
@@ -115,5 +117,60 @@ describe('Announcements (integration)', () => {
     await fetchBytes(new URL(created.body.imageUrl).pathname).expect(404);
     await api().delete(`/api/v1/admin/announcements/${created.body.id}`).set(admin.auth).expect(404);
     expect(await prisma.auditLog.count({ where: { action: 'announcement.deleted', entityId: created.body.id } })).toBe(1);
+  });
+
+  it('notifies every active athlete once in the bell, never judges, admins or suspended accounts', async () => {
+    const admin = await panelUser('ADMIN');
+    const judge = await panelUser('JUDGE');
+    const a = await athlete();
+    const suspended = await athlete();
+    await prisma.user.update({ where: { id: suspended.id }, data: { status: 'SUSPENDED' } });
+
+    const news = 'Summer final: registrations open on Monday with a special prize pool for every category in Tunisia';
+    const created = await api().post('/api/v1/admin/announcements').set(admin.auth).field('body', news).expect(201);
+    await app.get(OutboxDispatcher).drainAll();
+
+    const notes = await prisma.notification.findMany({ where: { type: 'ANNOUNCEMENT', payload: { path: ['announcementId'], equals: created.body.id } } });
+    const users = notes.map((n) => n.userId);
+    expect(users.filter((u) => u === a.id)).toHaveLength(1);
+    expect(users).not.toContain(judge.id);
+    expect(users).not.toContain(admin.id);
+    expect(users).not.toContain(suspended.id);
+    const payload = notes.find((n) => n.userId === a.id)!.payload as { excerpt: string };
+    expect(payload.excerpt).toHaveLength(80);
+    expect(payload.excerpt.endsWith('…')).toBe(true);
+
+    // A replayed event creates no duplicates.
+    expect(await app.get(AnnouncementsService).fanOut(created.body.id)).toBe(0);
+    expect(await prisma.notification.count({ where: { userId: a.id, type: 'ANNOUNCEMENT', payload: { path: ['announcementId'], equals: created.body.id } } })).toBe(1);
+
+    const bell = await api().get('/api/v1/notifications').set(bearer(a.token)).expect(200);
+    expect(bell.body.data[0]).toMatchObject({ type: 'ANNOUNCEMENT', read: false });
+  });
+
+  it('lists published, unfinished competitions for the home carousel', async () => {
+    const organizer = await athlete('GYM_ADMIN');
+    const a = await athlete();
+    const h = (n: number) => new Date(Date.now() + n * 3_600_000).toISOString();
+    const create = async (title: string) =>
+      (
+        await api()
+          .post('/api/v1/competitions')
+          .set(bearer(organizer.token))
+          .send({ title, slug: `${title.toLowerCase().replace(/ /g, '-')}-${Date.now()}`, description: 'x', format: 'ONLINE', registrationStart: h(-1), registrationEnd: h(48), eventStart: h(72), eventEnd: h(96), registrationPrice: 0, currency: 'TND' })
+          .expect(201)
+      ).body.id as string;
+    const open = await create('Open Throwdown');
+    await api().post(`/api/v1/competitions/${open}/categories`).set(bearer(organizer.token)).send({ name: 'Open', gender: 'MIXED' }).expect(201);
+    await api().patch(`/api/v1/competitions/${open}/status`).set(bearer(organizer.token)).send({ status: 'REGISTRATION_OPEN' }).expect(200);
+    const draft = await create('Draft Games');
+    const finished = await create('Finished Cup');
+    await prisma.competition.update({ where: { id: finished }, data: { status: 'FINISHED' } });
+
+    const list = await api().get('/api/v1/competitions?filter=CURRENT').set(bearer(a.token)).expect(200);
+    const ids = list.body.map((c: { id: string }) => c.id);
+    expect(ids).toContain(open);
+    expect(ids).not.toContain(draft);
+    expect(ids).not.toContain(finished);
   });
 });
