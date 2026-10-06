@@ -1,6 +1,6 @@
 use std::process::ExitCode;
 
-const USAGE: &str = "usage: backend <keys>";
+const USAGE: &str = "usage: backend <migrate|keys>";
 
 #[tokio::main]
 async fn main() -> ExitCode {
@@ -12,6 +12,7 @@ async fn main() -> ExitCode {
     }
     let args: Vec<String> = std::env::args().skip(1).collect();
     let result = match args.first().map(String::as_str) {
+        Some("migrate") => migrate().await,
         Some("keys") => keys(),
         _ => Err(USAGE.to_owned()),
     };
@@ -27,5 +28,14 @@ async fn main() -> ExitCode {
 fn keys() -> Result<(), String> {
     let (private, public) = backend::devkeys::generate()?;
     println!("JWT_PRIVATE_KEY_B64={private}\nJWT_PUBLIC_KEY_B64={public}");
+    Ok(())
+}
+
+/// Applies the migrations with the schema-owning account, which nothing else ever uses.
+async fn migrate() -> Result<(), String> {
+    let url = std::env::var("MIGRATE_DATABASE_URL").map_err(|_| "MIGRATE_DATABASE_URL: required".to_owned())?;
+    let pool = backend::db::connect(&url, 1).await.map_err(|e| format!("database: {e}"))?;
+    backend::db::MIGRATOR.run(&pool).await.map_err(|e| format!("migration failed: {e}"))?;
+    println!("migrations applied");
     Ok(())
 }

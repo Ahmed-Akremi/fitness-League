@@ -18,13 +18,29 @@ services:
 
   redis:
     image: redis:7-alpine
-    command: ["redis-server", "--appendonly", "yes"]
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:-fl_redis_dev}"]
     ports: ["6379:6379"]
     volumes: [redisdata:/data]
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-fl_redis_dev}", "--no-auth-warning", "ping"]
       interval: 5s
       retries: 10
+
+  # New Rust backend (apps/backend). PostgreSQL above stays until the old API is retired.
+  mariadb:
+    image: mariadb:11.4
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_uca1400_ai_ci"]
+    environment:
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD:-fl_root_dev}
+    # 3307 on the host: 3306 is often taken by a local MySQL.
+    ports: ["3307:3306"]
+    volumes:
+      - mariadbdata:/var/lib/mysql
+      - ./mariadb/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      retries: 20
 
   minio:
     image: minio/minio:latest
@@ -49,7 +65,7 @@ services:
       PORT: 3000
       LOG_LEVEL: info
       DATABASE_URL: postgresql://${POSTGRES_USER:-fl}:${POSTGRES_PASSWORD:-fl}@db:5432/${POSTGRES_DB:-fitness_league}?schema=public
-      REDIS_URL: redis://redis:6379
+      REDIS_URL: redis://:${REDIS_PASSWORD:-fl_redis_dev}@redis:6379
       CURSOR_HMAC_SECRET: ${CURSOR_HMAC_SECRET:-local-dev-cursor-secret-change-me-000}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
       OPENAPI_ENABLED: "true"
@@ -63,3 +79,4 @@ volumes:
   pgdata:
   redisdata:
   miniodata:
+  mariadbdata:
