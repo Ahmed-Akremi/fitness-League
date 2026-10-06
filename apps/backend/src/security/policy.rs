@@ -9,11 +9,13 @@ const MAX_LOCK_MINUTES: u32 = 24 * 60;
 /// Every fifth consecutive failure locks the account: 15 minutes, then 30, 60… capped at 24 hours.
 /// `None` when this failure does not trigger a lock.
 pub fn lock_minutes(failed_count: u32) -> Option<u32> {
-    if failed_count < MAX_FAILED_LOGINS || failed_count % MAX_FAILED_LOGINS != 0 {
+    if failed_count < MAX_FAILED_LOGINS || !failed_count.is_multiple_of(MAX_FAILED_LOGINS) {
         return None;
     }
     let doublings = failed_count / MAX_FAILED_LOGINS - 1;
-    let minutes = 2u32.checked_pow(doublings).and_then(|factor| BASE_LOCK_MINUTES.checked_mul(factor));
+    let minutes = 2u32
+        .checked_pow(doublings)
+        .and_then(|factor| BASE_LOCK_MINUTES.checked_mul(factor));
     Some(minutes.map_or(MAX_LOCK_MINUTES, |m| m.min(MAX_LOCK_MINUTES)))
 }
 
@@ -52,7 +54,10 @@ mod tests {
     #[test]
     fn every_fifth_failure_locks_and_the_lock_doubles() {
         assert_eq!([1, 4, 6, 9, 11].map(lock_minutes), [None; 5]);
-        assert_eq!([5, 10, 15, 20].map(lock_minutes), [Some(15), Some(30), Some(60), Some(120)]);
+        assert_eq!(
+            [5, 10, 15, 20].map(lock_minutes),
+            [Some(15), Some(30), Some(60), Some(120)]
+        );
     }
 
     #[test]
@@ -60,7 +65,7 @@ mod tests {
         assert_eq!(lock_minutes(35), Some(960));
         assert_eq!(lock_minutes(40), Some(1440));
         assert_eq!(lock_minutes(500), Some(1440));
-        assert_eq!(lock_minutes(u32::MAX - u32::MAX % 5), Some(1440));
+        assert_eq!(lock_minutes(u32::MAX), Some(1440));
     }
 
     #[test]
@@ -75,7 +80,18 @@ mod tests {
 
     #[test]
     fn brackets_never_reveal_a_minor_or_an_exact_age() {
-        assert_eq!([17, 18, 24, 25, 34, 35, 80].map(age_bracket), [None, Some("18-24"), Some("18-24"), Some("25-34"), Some("25-34"), Some("35+"), Some("35+")]);
+        assert_eq!(
+            [17, 18, 24, 25, 34, 35, 80].map(age_bracket),
+            [
+                None,
+                Some("18-24"),
+                Some("18-24"),
+                Some("25-34"),
+                Some("25-34"),
+                Some("35+"),
+                Some("35+")
+            ]
+        );
     }
 
     #[test]

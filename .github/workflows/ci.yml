@@ -75,6 +75,47 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
 
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/backend
+    services:
+      mariadb:
+        image: mariadb:11.4
+        env:
+          MARIADB_ROOT_PASSWORD: fl_root_dev
+          MARIADB_DATABASE: fitness_league
+        ports: ["3307:3306"]
+        options: >-
+          --health-cmd "healthcheck.sh --connect --innodb_initialized" --health-interval 5s --health-retries 20
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 5s --health-retries 10
+    env:
+      # Queries are checked against the committed .sqlx data: the build itself needs no database.
+      SQLX_OFFLINE: "true"
+      # The tests create one throw-away database each.
+      DATABASE_URL: mysql://root:fl_root_dev@127.0.0.1:3307/fitness_league
+      TEST_REDIS_URL: redis://127.0.0.1:6379
+    steps:
+      - uses: actions/checkout@v4
+      # Installs the version pinned in rust-toolchain.toml.
+      - run: rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/backend
+      - run: cargo fmt --check
+      - run: cargo clippy --all-targets -- -D warnings
+      - run: cargo test
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-audit,cargo-deny
+      - run: cargo audit
+      - run: cargo deny check
+
   secrets-scan:
     runs-on: ubuntu-latest
     steps:

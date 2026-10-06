@@ -25,12 +25,20 @@ pub fn generate() -> Result<(String, String), String> {
         .spawn()
         .map_err(|e| format!("openssl: {e}"))?;
     // The pipe closes when this temporary is dropped, which lets openssl finish.
-    child.stdin.take().ok_or("openssl: no stdin")?.write_all(&private.stdout).map_err(|e| e.to_string())?;
+    child
+        .stdin
+        .take()
+        .ok_or("openssl: no stdin")?
+        .write_all(&private.stdout)
+        .map_err(|e| e.to_string())?;
     let public = child.wait_with_output().map_err(|e| e.to_string())?;
     if !public.status.success() {
         return Err("openssl pkey failed".into());
     }
-    Ok((STANDARD.encode(&private.stdout), STANDARD.encode(&public.stdout)))
+    Ok((
+        STANDARD.encode(&private.stdout),
+        STANDARD.encode(&public.stdout),
+    ))
 }
 
 #[cfg(test)]

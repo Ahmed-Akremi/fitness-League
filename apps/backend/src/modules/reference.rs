@@ -64,8 +64,12 @@ struct CitiesQuery {
     governorate_id: Option<String>,
 }
 
-async fn cities(State(state): State<AppState>, ValidQuery(query): ValidQuery<CitiesQuery>) -> Result<Response, AppError> {
-    let governorate_id = uuid_param("governorateId", query.governorate_id.as_deref())?.ok_or_else(|| AppError::field("governorateId", "ISUUID"))?;
+async fn cities(
+    State(state): State<AppState>,
+    ValidQuery(query): ValidQuery<CitiesQuery>,
+) -> Result<Response, AppError> {
+    let governorate_id = uuid_param("governorateId", query.governorate_id.as_deref())?
+        .ok_or_else(|| AppError::field("governorateId", "ISUUID"))?;
     let rows = sqlx::query!(
         r#"SELECT id AS "id: Uuid", code, name_fr, name_en, name_ar FROM cities WHERE governorate_id = ? ORDER BY code"#,
         governorate_id
@@ -111,19 +115,28 @@ struct ExercisesQuery {
     updated_since: Option<String>,
 }
 
-async fn exercises(State(state): State<AppState>, ValidQuery(query): ValidQuery<ExercisesQuery>) -> Result<Response, AppError> {
+async fn exercises(
+    State(state): State<AppState>,
+    ValidQuery(query): ValidQuery<ExercisesQuery>,
+) -> Result<Response, AppError> {
     let sport_id = uuid_param("sportId", query.sport_id.as_deref())?;
     let updated_since = query
         .updated_since
         .as_deref()
-        .map(|raw| DateTime::parse_from_rfc3339(raw).map(|at| at.naive_utc()).map_err(|_| AppError::field("updatedSince", "ISISO8601")))
+        .map(|raw| {
+            DateTime::parse_from_rfc3339(raw)
+                .map(|at| at.naive_utc())
+                .map_err(|_| AppError::field("updatedSince", "ISISO8601"))
+        })
         .transpose()?;
 
     // Shared exercises (no sport) only make sense for strength and functional sports, not for e.g. swimming.
     let include_shared = match sport_id {
         None => true,
         Some(id) => {
-            let category = sqlx::query_scalar!("SELECT category FROM sports WHERE id = ?", id).fetch_optional(&state.db).await?;
+            let category = sqlx::query_scalar!("SELECT category FROM sports WHERE id = ?", id)
+                .fetch_optional(&state.db)
+                .await?;
             category.ok_or_else(|| AppError::not_found("Sport"))? != "CARDIO"
         }
     };

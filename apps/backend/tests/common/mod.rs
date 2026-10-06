@@ -42,11 +42,20 @@ pub fn env() -> HashMap<String, String> {
     let (private, public) = keys().clone();
     [
         ("APP_ENV", "test".to_owned()),
-        ("DATABASE_URL", "mysql://unused/the-harness-supplies-the-pool".to_owned()),
-        ("REDIS_URL", std::env::var("TEST_REDIS_URL").expect("TEST_REDIS_URL (see .cargo/config.toml)")),
+        (
+            "DATABASE_URL",
+            "mysql://unused/the-harness-supplies-the-pool".to_owned(),
+        ),
+        (
+            "REDIS_URL",
+            std::env::var("TEST_REDIS_URL").expect("TEST_REDIS_URL (see .cargo/config.toml)"),
+        ),
         ("JWT_PRIVATE_KEY_B64", private),
         ("JWT_PUBLIC_KEY_B64", public),
-        ("APP_HMAC_SECRET", "test-hmac-secret-0123456789abcdef".to_owned()),
+        (
+            "APP_HMAC_SECRET",
+            "test-hmac-secret-0123456789abcdef".to_owned(),
+        ),
         ("RATE_LIMIT_ENABLED", "false".to_owned()),
     ]
     .into_iter()
@@ -60,15 +69,25 @@ impl TestApp {
     }
 
     /// `tweak` edits the environment before the configuration is built.
-    pub async fn with(opts: MySqlPoolOptions, conn: MySqlConnectOptions, tweak: impl FnOnce(&mut HashMap<String, String>)) -> Self {
+    pub async fn with(
+        opts: MySqlPoolOptions,
+        conn: MySqlConnectOptions,
+        tweak: impl FnOnce(&mut HashMap<String, String>),
+    ) -> Self {
         let mut vars = env();
         tweak(&mut vars);
         let cfg = Config::from_map(&vars).expect("test configuration");
         let db = backend::db::pool(opts, conn);
         // A unique prefix keeps the Redis keys of parallel tests apart.
         let prefix = format!("test:{}:", uuid::Uuid::now_v7().simple());
-        let state = AppState::new(cfg, db.clone(), &prefix).await.expect("redis (is the compose stack up?)");
-        Self { router: backend::http::app(state.clone()), state, db }
+        let state = AppState::new(cfg, db.clone(), &prefix)
+            .await
+            .expect("redis (is the compose stack up?)");
+        Self {
+            router: backend::http::app(state.clone()),
+            state,
+            db,
+        }
     }
 
     pub async fn send(&self, mut req: Request<Body>) -> Reply {
@@ -76,14 +95,24 @@ impl TestApp {
         if req.extensions().get::<ConnectInfo<SocketAddr>>().is_none() {
             req.extensions_mut().insert(from_ip([127, 0, 0, 1]));
         }
-        let res = self.router.clone().oneshot(req).await.expect("the router is infallible");
+        let res = self
+            .router
+            .clone()
+            .oneshot(req)
+            .await
+            .expect("the router is infallible");
         let (parts, body) = res.into_parts();
         let bytes = body.collect().await.expect("body").to_bytes();
-        Reply { status: parts.status, headers: parts.headers, json: serde_json::from_slice(&bytes).unwrap_or(Value::Null) }
+        Reply {
+            status: parts.status,
+            headers: parts.headers,
+            json: serde_json::from_slice(&bytes).unwrap_or(Value::Null),
+        }
     }
 
     pub async fn get(&self, path: &str) -> Reply {
-        self.send(request(Method::GET, path).body(Body::empty()).unwrap()).await
+        self.send(request(Method::GET, path).body(Body::empty()).unwrap())
+            .await
     }
 }
 

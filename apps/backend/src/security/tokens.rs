@@ -66,26 +66,57 @@ pub struct Tokens {
 }
 
 fn now_s() -> u64 {
-    SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or_default()
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or_default()
 }
 
 impl Tokens {
     pub fn new(cfg: &Config) -> Result<Self, String> {
-        let encoding = EncodingKey::from_ed_pem(cfg.jwt_private_key_pem.expose_secret().as_bytes()).map_err(|e| format!("JWT_PRIVATE_KEY_B64: {e}"))?;
-        let signing_key_id = cfg.jwt_public_keys.first().map(|(kid, _)| kid.clone()).ok_or("JWT_PUBLIC_KEY_B64: required")?;
+        let encoding = EncodingKey::from_ed_pem(cfg.jwt_private_key_pem.expose_secret().as_bytes())
+            .map_err(|e| format!("JWT_PRIVATE_KEY_B64: {e}"))?;
+        let signing_key_id = cfg
+            .jwt_public_keys
+            .first()
+            .map(|(kid, _)| kid.clone())
+            .ok_or("JWT_PUBLIC_KEY_B64: required")?;
         let mut decoding = HashMap::new();
         for (kid, pem) in &cfg.jwt_public_keys {
-            decoding.insert(kid.clone(), DecodingKey::from_ed_pem(pem.as_bytes()).map_err(|e| format!("JWT public key {kid}: {e}"))?);
+            decoding.insert(
+                kid.clone(),
+                DecodingKey::from_ed_pem(pem.as_bytes())
+                    .map_err(|e| format!("JWT public key {kid}: {e}"))?,
+            );
         }
-        Ok(Self { encoding, signing_key_id, decoding, issuer: cfg.jwt_issuer.clone(), ttl_s: cfg.access_token_ttl_s })
+        Ok(Self {
+            encoding,
+            signing_key_id,
+            decoding,
+            issuer: cfg.jwt_issuer.clone(),
+            ttl_s: cfg.access_token_ttl_s,
+        })
     }
 
     /// Returns the token and the number of seconds until it expires.
-    pub fn sign_access(&self, user_id: Uuid, role: Role, session_version: i32, audience: Audience) -> Result<(String, u64), AppError> {
+    pub fn sign_access(
+        &self,
+        user_id: Uuid,
+        role: Role,
+        session_version: i32,
+        audience: Audience,
+    ) -> Result<(String, u64), AppError> {
         self.sign_at(now_s(), user_id, role, session_version, audience)
     }
 
-    fn sign_at(&self, issued_at: u64, user_id: Uuid, role: Role, session_version: i32, audience: Audience) -> Result<(String, u64), AppError> {
+    fn sign_at(
+        &self,
+        issued_at: u64,
+        user_id: Uuid,
+        role: Role,
+        session_version: i32,
+        audience: Audience,
+    ) -> Result<(String, u64), AppError> {
         let mut header = Header::new(Algorithm::EdDSA);
         header.kid = Some(self.signing_key_id.clone());
         let claims = Claims {
@@ -97,25 +128,40 @@ impl Tokens {
             iat: issued_at,
             exp: issued_at + self.ttl_s,
         };
-        let token = jsonwebtoken::encode(&header, &claims, &self.encoding).map_err(AppError::internal)?;
+        let token =
+            jsonwebtoken::encode(&header, &claims, &self.encoding).map_err(AppError::internal)?;
         Ok((token, self.ttl_s))
     }
 
     /// The algorithm, issuer and audience are pinned; the key is chosen by the key id of the header.
-    pub fn verify_access(&self, token: &str, audience: Audience) -> Result<AccessClaims, TokenError> {
+    pub fn verify_access(
+        &self,
+        token: &str,
+        audience: Audience,
+    ) -> Result<AccessClaims, TokenError> {
         let header = jsonwebtoken::decode_header(token).map_err(|_| TokenError::Invalid)?;
-        let key = header.kid.as_deref().and_then(|kid| self.decoding.get(kid)).ok_or(TokenError::Invalid)?;
+        let key = header
+            .kid
+            .as_deref()
+            .and_then(|kid| self.decoding.get(kid))
+            .ok_or(TokenError::Invalid)?;
         let mut validation = Validation::new(Algorithm::EdDSA);
         validation.set_audience(&[audience.as_str()]);
         validation.set_issuer(&[self.issuer.as_str()]);
         validation.set_required_spec_claims(&["exp", "sub", "aud", "iss"]);
         validation.leeway = 0;
-        let data = jsonwebtoken::decode::<Claims>(token, key, &validation).map_err(|e| match e.kind() {
+        let data = jsonwebtoken::decode::<Claims>(token, key, &validation).map_err(|e| match e
+            .kind()
+        {
             ErrorKind::ExpiredSignature => TokenError::Expired,
             _ => TokenError::Invalid,
         })?;
         let user_id = Uuid::parse_str(&data.claims.sub).map_err(|_| TokenError::Invalid)?;
-        Ok(AccessClaims { user_id, role: data.claims.role, session_version: data.claims.sv })
+        Ok(AccessClaims {
+            user_id,
+            role: data.claims.role,
+            session_version: data.claims.sv,
+        })
     }
 }
 
@@ -169,45 +215,92 @@ mod tests {
     #[test]
     fn a_signed_token_verifies_with_its_claims() {
         let (tokens, id) = (tokens(), user());
-        let (token, expires_in) = tokens.sign_access(id, Role::GymAdmin, 3, Audience::App).unwrap();
+        let (token, expires_in) = tokens
+            .sign_access(id, Role::GymAdmin, 3, Audience::App)
+            .unwrap();
         assert_eq!(expires_in, 900);
-        assert_eq!(tokens.verify_access(&token, Audience::App), Ok(AccessClaims { user_id: id, role: Role::GymAdmin, session_version: 3 }));
+        assert_eq!(
+            tokens.verify_access(&token, Audience::App),
+            Ok(AccessClaims {
+                user_id: id,
+                role: Role::GymAdmin,
+                session_version: 3
+            })
+        );
     }
 
     #[test]
     fn an_app_token_is_refused_by_the_admin_audience_and_the_reverse() {
         let tokens = tokens();
-        let (app, _) = tokens.sign_access(user(), Role::Admin, 1, Audience::App).unwrap();
-        let (admin, _) = tokens.sign_access(user(), Role::Admin, 1, Audience::Admin).unwrap();
-        assert_eq!(tokens.verify_access(&app, Audience::Admin), Err(TokenError::Invalid));
-        assert_eq!(tokens.verify_access(&admin, Audience::App), Err(TokenError::Invalid));
+        let (app, _) = tokens
+            .sign_access(user(), Role::Admin, 1, Audience::App)
+            .unwrap();
+        let (admin, _) = tokens
+            .sign_access(user(), Role::Admin, 1, Audience::Admin)
+            .unwrap();
+        assert_eq!(
+            tokens.verify_access(&app, Audience::Admin),
+            Err(TokenError::Invalid)
+        );
+        assert_eq!(
+            tokens.verify_access(&admin, Audience::App),
+            Err(TokenError::Invalid)
+        );
     }
 
     #[test]
     fn an_expired_token_is_reported_as_expired() {
         let tokens = tokens();
-        let (old, _) = tokens.sign_at(now_s() - 901, user(), Role::User, 1, Audience::App).unwrap();
-        assert_eq!(tokens.verify_access(&old, Audience::App), Err(TokenError::Expired));
-        let (fresh, _) = tokens.sign_at(now_s() - 890, user(), Role::User, 1, Audience::App).unwrap();
+        let (old, _) = tokens
+            .sign_at(now_s() - 901, user(), Role::User, 1, Audience::App)
+            .unwrap();
+        assert_eq!(
+            tokens.verify_access(&old, Audience::App),
+            Err(TokenError::Expired)
+        );
+        let (fresh, _) = tokens
+            .sign_at(now_s() - 890, user(), Role::User, 1, Audience::App)
+            .unwrap();
         assert!(tokens.verify_access(&fresh, Audience::App).is_ok());
     }
 
     #[test]
     fn a_tampered_or_foreign_token_is_invalid() {
         let tokens = tokens();
-        let (token, _) = tokens.sign_access(user(), Role::User, 1, Audience::App).unwrap();
+        let (token, _) = tokens
+            .sign_access(user(), Role::User, 1, Audience::App)
+            .unwrap();
 
         // Swap the payload for one claiming another role, keeping the signature.
         let parts: Vec<&str> = token.split('.').collect();
-        let forged_payload = URL_SAFE_NO_PAD.encode(String::from_utf8(URL_SAFE_NO_PAD.decode(parts[1]).unwrap()).unwrap().replace("\"USER\"", "\"SUPER_ADMIN\""));
-        assert_eq!(tokens.verify_access(&format!("{}.{forged_payload}.{}", parts[0], parts[2]), Audience::App), Err(TokenError::Invalid));
+        let forged_payload = URL_SAFE_NO_PAD.encode(
+            String::from_utf8(URL_SAFE_NO_PAD.decode(parts[1]).unwrap())
+                .unwrap()
+                .replace("\"USER\"", "\"SUPER_ADMIN\""),
+        );
+        assert_eq!(
+            tokens.verify_access(
+                &format!("{}.{forged_payload}.{}", parts[0], parts[2]),
+                Audience::App
+            ),
+            Err(TokenError::Invalid)
+        );
 
         // Signed by somebody else's key, with our key id.
-        let (foreign, _) = self::tokens().sign_access(user(), Role::User, 1, Audience::App).unwrap();
-        assert_eq!(tokens.verify_access(&foreign, Audience::App), Err(TokenError::Invalid));
+        let (foreign, _) = self::tokens()
+            .sign_access(user(), Role::User, 1, Audience::App)
+            .unwrap();
+        assert_eq!(
+            tokens.verify_access(&foreign, Audience::App),
+            Err(TokenError::Invalid)
+        );
 
         for garbage in ["", "abc", "a.b.c", "..", &token[..token.len() - 2]] {
-            assert_eq!(tokens.verify_access(garbage, Audience::App), Err(TokenError::Invalid), "{garbage:?}");
+            assert_eq!(
+                tokens.verify_access(garbage, Audience::App),
+                Err(TokenError::Invalid),
+                "{garbage:?}"
+            );
         }
     }
 
@@ -215,19 +308,34 @@ mod tests {
     fn only_eddsa_is_accepted() {
         let (private, public) = devkeys::generate().unwrap();
         let tokens = Tokens::new(&config(&private, &public, "")).unwrap();
-        let claims = Claims { sub: user().to_string(), role: Role::SuperAdmin, sv: 1, aud: "app".into(), iss: "fitness-league".into(), iat: now_s(), exp: now_s() + 600 };
+        let claims = Claims {
+            sub: user().to_string(),
+            role: Role::SuperAdmin,
+            sv: 1,
+            aud: "app".into(),
+            iss: "fitness-league".into(),
+            iat: now_s(),
+            exp: now_s() + 600,
+        };
 
         // "alg: none": no signature at all.
         let header = URL_SAFE_NO_PAD.encode(r#"{"alg":"none","typ":"JWT","kid":"k1"}"#);
         let payload = URL_SAFE_NO_PAD.encode(serde_json::to_string(&claims).unwrap());
-        assert_eq!(tokens.verify_access(&format!("{header}.{payload}."), Audience::App), Err(TokenError::Invalid));
+        assert_eq!(
+            tokens.verify_access(&format!("{header}.{payload}."), Audience::App),
+            Err(TokenError::Invalid)
+        );
 
         // Algorithm confusion: HS256 keyed with our public key, which an attacker can know.
         let public_pem = STANDARD.decode(public).unwrap();
         let mut hs256 = Header::new(Algorithm::HS256);
         hs256.kid = Some("k1".into());
-        let confused = jsonwebtoken::encode(&hs256, &claims, &EncodingKey::from_secret(&public_pem)).unwrap();
-        assert_eq!(tokens.verify_access(&confused, Audience::App), Err(TokenError::Invalid));
+        let confused =
+            jsonwebtoken::encode(&hs256, &claims, &EncodingKey::from_secret(&public_pem)).unwrap();
+        assert_eq!(
+            tokens.verify_access(&confused, Audience::App),
+            Err(TokenError::Invalid)
+        );
     }
 
     #[test]
@@ -235,16 +343,33 @@ mod tests {
         let (old_private, old_public) = devkeys::generate().unwrap();
         let (new_private, new_public) = devkeys::generate().unwrap();
         let before = Tokens::new(&config(&old_private, &old_public, "")).unwrap();
-        let (token, _) = before.sign_access(user(), Role::User, 1, Audience::App).unwrap();
+        let (token, _) = before
+            .sign_access(user(), Role::User, 1, Audience::App)
+            .unwrap();
 
         // After the rotation the new key signs as `k2`; the old key stays listed as `k1` until its tokens expire.
         let mut rotated = config(&new_private, &new_public, "");
-        rotated.jwt_public_keys = vec![("k2".into(), rotated.jwt_public_keys[0].1.clone()), ("k1".into(), String::from_utf8(STANDARD.decode(&old_public).unwrap()).unwrap())];
+        rotated.jwt_public_keys = vec![
+            ("k2".into(), rotated.jwt_public_keys[0].1.clone()),
+            (
+                "k1".into(),
+                String::from_utf8(STANDARD.decode(&old_public).unwrap()).unwrap(),
+            ),
+        ];
         let after = Tokens::new(&rotated).unwrap();
-        assert!(after.verify_access(&token, Audience::App).is_ok(), "a token of the old key is still accepted");
-        let (fresh, _) = after.sign_access(user(), Role::User, 1, Audience::App).unwrap();
+        assert!(
+            after.verify_access(&token, Audience::App).is_ok(),
+            "a token of the old key is still accepted"
+        );
+        let (fresh, _) = after
+            .sign_access(user(), Role::User, 1, Audience::App)
+            .unwrap();
         assert!(after.verify_access(&fresh, Audience::App).is_ok());
-        assert_eq!(before.verify_access(&fresh, Audience::App), Err(TokenError::Invalid), "a key id nobody listed is refused");
+        assert_eq!(
+            before.verify_access(&fresh, Audience::App),
+            Err(TokenError::Invalid),
+            "a key id nobody listed is refused"
+        );
     }
 
     #[test]

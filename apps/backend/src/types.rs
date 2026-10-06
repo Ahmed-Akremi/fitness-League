@@ -16,7 +16,15 @@ pub enum Role {
 }
 
 impl Role {
-    pub const ALL: [Role; 7] = [Role::User, Role::GymAdmin, Role::Moderator, Role::Admin, Role::SuperAdmin, Role::Judge, Role::HeadJudge];
+    pub const ALL: [Role; 7] = [
+        Role::User,
+        Role::GymAdmin,
+        Role::Moderator,
+        Role::Admin,
+        Role::SuperAdmin,
+        Role::Judge,
+        Role::HeadJudge,
+    ];
 
     /// Judge accounts only judge, in the admin panel. They never sign in to the app.
     pub fn is_judge(self) -> bool {
@@ -36,15 +44,33 @@ mod tests {
 
     #[test]
     fn roles_use_their_wire_names() {
-        assert_eq!(serde_json::to_string(&Role::GymAdmin).unwrap(), "\"GYM_ADMIN\"");
-        assert_eq!(serde_json::from_str::<Role>("\"HEAD_JUDGE\"").unwrap(), Role::HeadJudge);
+        assert_eq!(
+            serde_json::to_string(&Role::GymAdmin).unwrap(),
+            "\"GYM_ADMIN\""
+        );
+        assert_eq!(
+            serde_json::from_str::<Role>("\"HEAD_JUDGE\"").unwrap(),
+            Role::HeadJudge
+        );
         assert!(serde_json::from_str::<Role>("\"ROOT\"").is_err());
     }
 
     #[test]
     fn the_panel_is_for_staff_and_judges_only() {
-        let panel: Vec<Role> = Role::ALL.into_iter().filter(|r| r.can_open_panel()).collect();
-        assert_eq!(panel, [Role::Moderator, Role::Admin, Role::SuperAdmin, Role::Judge, Role::HeadJudge]);
+        let panel: Vec<Role> = Role::ALL
+            .into_iter()
+            .filter(|r| r.can_open_panel())
+            .collect();
+        assert_eq!(
+            panel,
+            [
+                Role::Moderator,
+                Role::Admin,
+                Role::SuperAdmin,
+                Role::Judge,
+                Role::HeadJudge
+            ]
+        );
         let judges: Vec<Role> = Role::ALL.into_iter().filter(|r| r.is_judge()).collect();
         assert_eq!(judges, [Role::Judge, Role::HeadJudge]);
     }

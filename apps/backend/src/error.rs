@@ -27,6 +27,12 @@ pub struct AppError {
     pub status: StatusCode,
     pub code: &'static str,
     pub title: String,
+    /// The rarely used parts sit behind one pointer, so a `Result<T, AppError>` stays small.
+    more: Box<More>,
+}
+
+#[derive(Debug, Default)]
+struct More {
     detail: Option<&'static str>,
     errors: Vec<FieldError>,
     extra: Map<String, Value>,
@@ -37,33 +43,46 @@ pub struct AppError {
 
 impl AppError {
     pub fn new(status: StatusCode, code: &'static str, title: &str) -> Self {
-        Self { status, code, title: title.to_owned(), detail: None, errors: Vec::new(), extra: Map::new(), retry_after_s: None, cause: None }
+        Self {
+            status,
+            code,
+            title: title.to_owned(),
+            more: Box::default(),
+        }
     }
 
     pub fn detail(mut self, detail: &'static str) -> Self {
-        self.detail = Some(detail);
+        self.more.detail = Some(detail);
         self
     }
 
     /// Adds a field to the problem body (e.g. `lockedUntil`). Reserved fields always win over extras.
     pub fn with(mut self, key: &str, value: impl Into<Value>) -> Self {
-        self.extra.insert(key.to_owned(), value.into());
+        self.more.extra.insert(key.to_owned(), value.into());
         self
     }
 
     pub fn retry_after(mut self, seconds: u64) -> Self {
-        self.retry_after_s = Some(seconds);
+        self.more.retry_after_s = Some(seconds);
         self
     }
 
     pub fn validation(errors: Vec<FieldError>) -> Self {
-        let mut e = Self::new(StatusCode::UNPROCESSABLE_ENTITY, "VALIDATION_FAILED", "Validation failed").detail("One or more fields are invalid.");
-        e.errors = errors;
+        let mut e = Self::new(
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "VALIDATION_FAILED",
+            "Validation failed",
+        )
+        .detail("One or more fields are invalid.");
+        e.more.errors = errors;
         e
     }
 
     pub fn field(field: &str, code: &str) -> Self {
-        Self::validation(vec![FieldError { field: field.to_owned(), code: code.to_owned() }])
+        Self::validation(vec![FieldError {
+            field: field.to_owned(),
+            code: code.to_owned(),
+        }])
     }
 
     pub fn unauthenticated(code: &'static str, title: &str) -> Self {
@@ -75,7 +94,11 @@ impl AppError {
     }
 
     pub fn not_found(what: &str) -> Self {
-        Self::new(StatusCode::NOT_FOUND, "NOT_FOUND", &format!("{what} not found"))
+        Self::new(
+            StatusCode::NOT_FOUND,
+            "NOT_FOUND",
+            &format!("{what} not found"),
+        )
     }
 
     pub fn conflict(code: &'static str) -> Self {
@@ -83,14 +106,22 @@ impl AppError {
     }
 
     pub fn internal(cause: impl Display) -> Self {
-        let mut e = Self::new(StatusCode::INTERNAL_SERVER_ERROR, "INTERNAL", "Internal error");
-        e.cause = Some(cause.to_string());
+        let mut e = Self::new(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "INTERNAL",
+            "Internal error",
+        );
+        e.more.cause = Some(cause.to_string());
         e
     }
 
     pub fn unavailable(cause: impl Display) -> Self {
-        let mut e = Self::new(StatusCode::SERVICE_UNAVAILABLE, "SERVICE_UNAVAILABLE", "Service temporarily unavailable");
-        e.cause = Some(cause.to_string());
+        let mut e = Self::new(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "SERVICE_UNAVAILABLE",
+            "Service temporarily unavailable",
+        );
+        e.more.cause = Some(cause.to_string());
         e
     }
 }
@@ -110,27 +141,42 @@ impl From<redis::RedisError> for AppError {
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         if self.status.is_server_error() {
-            tracing::error!(code = self.code, cause = self.cause.as_deref().unwrap_or(""), "request failed");
+            tracing::error!(
+                code = self.code,
+                cause = self.more.cause.as_deref().unwrap_or(""),
+                "request failed"
+            );
         }
         // Extras go in first, so they can never overwrite the reserved fields written after them.
-        let mut body = self.extra;
-        body.insert("type".into(), json!(format!("https://errors.fitnessleague.app/{}", self.code.to_lowercase().replace('_', "-"))));
+        let more = *self.more;
+        let mut body = more.extra;
+        body.insert(
+            "type".into(),
+            json!(format!(
+                "https://errors.fitnessleague.app/{}",
+                self.code.to_lowercase().replace('_', "-")
+            )),
+        );
         body.insert("title".into(), json!(self.title));
         body.insert("status".into(), json!(self.status.as_u16()));
         body.insert("code".into(), json!(self.code));
-        if let Some(detail) = self.detail {
+        if let Some(detail) = more.detail {
             body.insert("detail".into(), json!(detail));
         }
-        if !self.errors.is_empty() {
-            body.insert("errors".into(), json!(self.errors));
+        if !more.errors.is_empty() {
+            body.insert("errors".into(), json!(more.errors));
         }
         if let Ok(id) = REQUEST_ID.try_with(Clone::clone) {
             body.insert("traceId".into(), json!(id));
         }
         let mut res = (self.status, Json(Value::Object(body))).into_response();
-        res.headers_mut().insert(header::CONTENT_TYPE, HeaderValue::from_static("application/problem+json"));
-        if let Some(seconds) = self.retry_after_s {
-            res.headers_mut().insert(header::RETRY_AFTER, HeaderValue::from(seconds));
+        res.headers_mut().insert(
+            header::CONTENT_TYPE,
+            HeaderValue::from_static("application/problem+json"),
+        );
+        if let Some(seconds) = more.retry_after_s {
+            res.headers_mut()
+                .insert(header::RETRY_AFTER, HeaderValue::from(seconds));
         }
         res
     }
@@ -151,7 +197,10 @@ mod tests {
     async fn renders_problem_json_with_a_stable_code() {
         let res = AppError::conflict("EMAIL_TAKEN").into_response();
         assert_eq!(res.status(), StatusCode::CONFLICT);
-        assert_eq!(res.headers()[header::CONTENT_TYPE], "application/problem+json");
+        assert_eq!(
+            res.headers()[header::CONTENT_TYPE],
+            "application/problem+json"
+        );
         let b = body(res).await;
         assert_eq!(b["code"], "EMAIL_TAKEN");
         assert_eq!(b["status"], 409);
@@ -174,17 +223,27 @@ mod tests {
 
     #[tokio::test]
     async fn a_server_error_never_carries_its_cause() {
-        let res = AppError::internal("connection to 10.0.0.5:3306 refused: SELECT * FROM users").into_response();
+        let res = AppError::internal("connection to 10.0.0.5:3306 refused: SELECT * FROM users")
+            .into_response();
         assert_eq!(res.status(), StatusCode::INTERNAL_SERVER_ERROR);
         let text = body(res).await.to_string();
-        assert!(!text.contains("10.0.0.5") && !text.contains("SELECT"), "{text}");
+        assert!(
+            !text.contains("10.0.0.5") && !text.contains("SELECT"),
+            "{text}"
+        );
     }
 
     #[tokio::test]
     async fn carries_the_request_id_and_retry_after() {
         let res = REQUEST_ID
             .scope("req-123".to_owned(), async {
-                AppError::new(StatusCode::TOO_MANY_REQUESTS, "RATE_LIMITED", "Too many requests").retry_after(42).into_response()
+                AppError::new(
+                    StatusCode::TOO_MANY_REQUESTS,
+                    "RATE_LIMITED",
+                    "Too many requests",
+                )
+                .retry_after(42)
+                .into_response()
             })
             .await;
         assert_eq!(res.headers()[header::RETRY_AFTER], "42");
@@ -194,13 +253,22 @@ mod tests {
     #[tokio::test]
     async fn validation_errors_list_every_field() {
         let res = AppError::validation(vec![
-            FieldError { field: "email".into(), code: "ISEMAIL".into() },
-            FieldError { field: "consents.terms".into(), code: "EQUALS".into() },
+            FieldError {
+                field: "email".into(),
+                code: "ISEMAIL".into(),
+            },
+            FieldError {
+                field: "consents.terms".into(),
+                code: "EQUALS".into(),
+            },
         ])
         .into_response();
         assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
         let b = body(res).await;
         assert_eq!(b["code"], "VALIDATION_FAILED");
-        assert_eq!(b["errors"], serde_json::json!([{"field": "email", "code": "ISEMAIL"}, {"field": "consents.terms", "code": "EQUALS"}]));
+        assert_eq!(
+            b["errors"],
+            serde_json::json!([{"field": "email", "code": "ISEMAIL"}, {"field": "consents.terms", "code": "EQUALS"}])
+        );
     }
 }

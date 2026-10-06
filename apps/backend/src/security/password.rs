@@ -37,33 +37,51 @@ impl Passwords {
         // OWASP minimum for Argon2id: 19 MiB, 2 passes, 1 lane.
         let params = Params::new(19_456, 2, 1, None).map_err(|e| e.to_string())?;
         let argon = Argon2::new(Algorithm::Argon2id, Version::V0x13, params);
-        let dummy_hash = argon.hash_password(DUMMY_PASSWORD.as_bytes()).map_err(|e| e.to_string())?.to_string();
-        Ok(Self { argon, slots: Arc::new(Semaphore::new(slots)), dummy_hash })
+        let dummy_hash = argon
+            .hash_password(DUMMY_PASSWORD.as_bytes())
+            .map_err(|e| e.to_string())?
+            .to_string();
+        Ok(Self {
+            argon,
+            slots: Arc::new(Semaphore::new(slots)),
+            dummy_hash,
+        })
     }
 
     pub async fn hash(self: &Arc<Self>, password: String) -> Result<String, AppError> {
         // The slot moves into the blocking task. A caller that gives up (timeout, closed connection)
         // must not free it while the hash is still running and holding its memory.
-        let slot = Arc::clone(&self.slots).acquire_owned().await.map_err(AppError::internal)?;
+        let slot = Arc::clone(&self.slots)
+            .acquire_owned()
+            .await
+            .map_err(AppError::internal)?;
         let this = Arc::clone(self);
         tokio::task::spawn_blocking(move || {
             let _slot = slot;
-            this.argon.hash_password(password.as_bytes()).map(|hash| hash.to_string())
+            this.argon
+                .hash_password(password.as_bytes())
+                .map(|hash| hash.to_string())
         })
-            .await
-            .map_err(AppError::internal)?
-            .map_err(AppError::internal)
+        .await
+        .map_err(AppError::internal)?
+        .map_err(AppError::internal)
     }
 
     /// `stored = None` (no such account) costs one full verification and always answers `false`.
     pub async fn verify(self: &Arc<Self>, stored: Option<String>, password: String) -> bool {
-        let Ok(slot) = Arc::clone(&self.slots).acquire_owned().await else { return false };
+        let Ok(slot) = Arc::clone(&self.slots).acquire_owned().await else {
+            return false;
+        };
         let this = Arc::clone(self);
         tokio::task::spawn_blocking(move || {
             let _slot = slot;
             let known = stored.is_some();
             let phc = stored.unwrap_or_else(|| this.dummy_hash.clone());
-            let matches = PasswordHash::new(&phc).is_ok_and(|parsed| this.argon.verify_password(password.as_bytes(), &parsed).is_ok());
+            let matches = PasswordHash::new(&phc).is_ok_and(|parsed| {
+                this.argon
+                    .verify_password(password.as_bytes(), &parsed)
+                    .is_ok()
+            });
             matches && known
         })
         .await
@@ -82,7 +100,10 @@ pub fn password_problem(password: &str, email: &str, username: &str) -> Option<&
         return Some("MAXLENGTH");
     }
     let lower = password.to_lowercase();
-    if lower == email.to_lowercase() || lower == username.to_lowercase() || COMMON.lines().any(|line| line == lower) {
+    if lower == email.to_lowercase()
+        || lower == username.to_lowercase()
+        || COMMON.lines().any(|line| line == lower)
+    {
         return Some("TOO_COMMON");
     }
     None
@@ -96,16 +117,33 @@ mod tests {
     #[tokio::test]
     async fn a_hash_verifies_only_its_own_password() {
         let passwords = Arc::new(Passwords::new().unwrap());
-        let hash = passwords.hash("correct horse battery".into()).await.unwrap();
-        assert!(hash.starts_with("$argon2id$v=19$m=19456,t=2,p=1$"), "{hash}");
-        assert!(passwords.verify(Some(hash.clone()), "correct horse battery".into()).await);
-        assert!(!passwords.verify(Some(hash), "correct horse batterz".into()).await);
+        let hash = passwords
+            .hash("correct horse battery".into())
+            .await
+            .unwrap();
+        assert!(
+            hash.starts_with("$argon2id$v=19$m=19456,t=2,p=1$"),
+            "{hash}"
+        );
+        assert!(
+            passwords
+                .verify(Some(hash.clone()), "correct horse battery".into())
+                .await
+        );
+        assert!(
+            !passwords
+                .verify(Some(hash), "correct horse batterz".into())
+                .await
+        );
     }
 
     #[tokio::test]
     async fn two_hashes_of_one_password_differ() {
         let passwords = Arc::new(Passwords::new().unwrap());
-        assert_ne!(passwords.hash("same password 123".into()).await.unwrap(), passwords.hash("same password 123".into()).await.unwrap());
+        assert_ne!(
+            passwords.hash("same password 123".into()).await.unwrap(),
+            passwords.hash("same password 123".into()).await.unwrap()
+        );
     }
 
     #[tokio::test]
@@ -115,7 +153,11 @@ mod tests {
         // even for the password the dummy hash was made from.
         assert!(!passwords.verify(None, "anything at all".into()).await);
         assert!(!passwords.verify(None, DUMMY_PASSWORD.into()).await);
-        assert!(!passwords.verify(Some("not-a-phc-string".into()), "anything at all".into()).await);
+        assert!(
+            !passwords
+                .verify(Some("not-a-phc-string".into()), "anything at all".into())
+                .await
+        );
         assert!(!passwords.verify(Some(String::new()), String::new()).await);
     }
 
@@ -126,9 +168,21 @@ mod tests {
         assert_eq!(ok(&"x".repeat(129)), Some("MAXLENGTH"));
         assert_eq!(ok(&"x7#".repeat(42)), None, "126 characters is allowed");
         assert_eq!(ok("1234567890"), Some("TOO_COMMON"));
-        assert_eq!(ok("QwErTyUiOp"), Some("TOO_COMMON"), "the list is matched without regard to case");
-        assert_eq!(ok("Ahmed@Example.tn"), Some("TOO_COMMON"), "the email is not a password");
-        assert_eq!(password_problem("ahmed_fit_", "a@b.tn", "ahmed_fit_"), Some("TOO_COMMON"), "nor is the username");
+        assert_eq!(
+            ok("QwErTyUiOp"),
+            Some("TOO_COMMON"),
+            "the list is matched without regard to case"
+        );
+        assert_eq!(
+            ok("Ahmed@Example.tn"),
+            Some("TOO_COMMON"),
+            "the email is not a password"
+        );
+        assert_eq!(
+            password_problem("ahmed_fit_", "a@b.tn", "ahmed_fit_"),
+            Some("TOO_COMMON"),
+            "nor is the username"
+        );
         assert_eq!(ok("river-stone-42-kite"), None);
     }
 
@@ -136,7 +190,10 @@ mod tests {
     fn length_is_counted_in_characters() {
         // Ten Arabic letters are twenty bytes but ten characters: long enough.
         assert_eq!(password_problem(&"ب".repeat(10), "a@b.tn", "ahmed"), None);
-        assert_eq!(password_problem(&"ب".repeat(9), "a@b.tn", "ahmed"), Some("MINLENGTH"));
+        assert_eq!(
+            password_problem(&"ب".repeat(9), "a@b.tn", "ahmed"),
+            Some("MINLENGTH")
+        );
     }
 
     #[tokio::test]
@@ -153,7 +210,11 @@ mod tests {
         }
         caller.abort();
         let _ = caller.await;
-        assert_eq!(passwords.slots.available_permits(), 0, "the hash is still running, so its slot must stay taken");
+        assert_eq!(
+            passwords.slots.available_permits(),
+            0,
+            "the hash is still running, so its slot must stay taken"
+        );
 
         // The slot comes back when the work is really over.
         for _ in 0..2000 {

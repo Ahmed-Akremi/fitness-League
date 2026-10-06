@@ -1,4 +1,4 @@
-# Handoff — fitness-league (2026-10-06)
+# Handoff — fitness-league (2026-10-07)
 
 ## 1. Goal
 
@@ -14,6 +14,7 @@
 - **Score computed by the app** (owner's request, 2026-10-05): the athlete enters the reps of each movement of the WOD, never the score; owner's choices: reps per movement (not sets or rounds) × points per rep set by the organizer, capped at the WOD maximum.
 - **Tutorial video** (owner's request): 9:16 tutorial of the competition flow, on the Desktop.
 - **Competition page redesign** (owner's request, 2026-10-05): copy the layout of a reference app screenshot (Carthage Throwdown): 3 tabs "Event Info / Workouts / Leaderboard", full-width cover, round logo + tags + big uppercase title + Share, quick-access tiles, "I am an Athlete in this event" card with mandatory actions. Cover = owner's banner `Desktop/fitness-league-registration-banner.png`.
+- **New backend in Rust + MariaDB + Redis** (owner's decision, 2026-10-06): a fresh design that keeps the routes, JSON shapes and error codes the mobile app and the admin panel already use, so neither frontend changes. Scope = what the frontends call (about 160 endpoints), not the 301 routes of `apps/api`. Six parts (foundation and accounts, training loop, gyms and social, competitions, admin and moderation, cut-over). Spec: `docs/superpowers/specs/2026-10-06-rust-backend-foundation-design.md`. BullMQ was considered and not used (it is a Node.js library; the job queue will be a Redis Stream).
 
 ## 2. Current state
 
@@ -36,6 +37,8 @@
   - App: `ahmed_rx@demo.fitnessleague.test` → Profil → Compétitions. Judge accounts are refused by the app (403 `JUDGE_ACCOUNT`, the login screen shows `errorJudgeAccount`). Note: the local API build predates this code; rebuild (`pnpm build` in `apps/api`) before restarting it.
   - Local DB: migrations `20261005120000_competition_cover` and `20261005130000_movement_reps_score` are **not applied yet** to the local database (run `pnpm prisma migrate deploy` in `apps/api` before restarting the API); migration `20261004150000_judge_roles` applied; the 4 demo judges were converted to `JUDGE` / `HEAD_JUDGE` by hand (a fresh `pnpm demo-competition` now creates them that way).
 - A `git stash` on `feat/gyms-sports-mobile` holds 58 files that differed only by CRLF line endings (no content change).
+- **Rust backend, plan 1a (foundation) done** on branch `feat/rust-backend` (local commits, **not pushed**), 2026-10-07. `apps/backend` serves `/api/v1/health`, `/ready` and the four `/ref/*` lists; there are no accounts yet. In place: configuration that refuses to start on a missing or weak secret; problem+json errors; strict JSON parsing (unknown fields, non-object bodies and oversized bodies refused); MariaDB 11.4 schema of part 1 (20 tables) with a least-privilege application account and an audit log the database makes append-only; security headers, CORS allow-list and a 15 s timeout; Redis sliding-window rate limits; Argon2id passwords and Ed25519 access tokens (primitives only, not wired to routes yet); idempotent seed. Checks at the last run: 80 tests green (`cargo test`), `cargo fmt --check` and Clippy with warnings as errors clean, `cargo audit` reports no known vulnerability and `cargo deny check` passes (advisories, bans, licences, sources).
+- Rust backend local stack: `docker compose -f infra/docker-compose.yml up -d mariadb redis mailpit` (MariaDB on host port **3307**; **Redis now requires a password**, default `fl_redis_dev`, also for the old API's `REDIS_URL`). Rust 1.99 was installed with `rustup` in the WSL home. Every `cargo` command is run with `CARGO_TARGET_DIR="$HOME/.cache/fitness-league/target"` because the repository is in OneDrive. `apps/backend/.env` (git-ignored) holds the local JWT keys and HMAC secret; the API listens on port 3100.
 
 ## 3. Active files
 
@@ -81,6 +84,14 @@ Tutorial video (outside git)
 Repo
 - `.github/workflows/ci.yml` (mobile job = RN typecheck + jest), `README.md`, `docs/ARCHITECTURE.md`, `.env.example`, `.gitignore`.
 
+Rust backend (`apps/backend`, branch `feat/rust-backend`)
+- `Cargo.toml`, `rust-toolchain.toml` (1.99.0), `deny.toml`, `.cargo/config.toml` (tooling database URL for the sqlx macros and tests), `.env.example`, `.sqlx/` (query metadata, regenerate with `cargo sqlx prepare`), `assets/common-passwords.txt`.
+- `migrations/0001_reference.sql` … `0004_audit.sql`; `infra/mariadb/init/01-accounts.sql` (accounts `fl_migrate` and `fl_app`); `infra/docker-compose.yml` (service `mariadb`, Redis password).
+- `src/main.rs` (subcommands `serve`, `migrate`, `seed [dir]`, `keys`), `config.rs`, `error.rs` (`AppError`, `REQUEST_ID`), `validate.rs` (`Check`, `ValidJson`, `ValidQuery`, `uuid_param`), `db.rs`, `state.rs`, `types.rs` (`Role`), `seed.rs`, `devkeys.rs`.
+- `src/http/mod.rs` (`Api` route builder, middleware stack, `route_table()`), `src/http/rate_limit.rs` (rules table, `check`, `ClientIp::subject()`), `src/security/{password,tokens,policy}.rs`, `src/modules/{health,reference}.rs`.
+- `tests/common/mod.rs` (`TestApp`), `tests/{schema,http_shell,rate_limit,reference}.rs`.
+- Plan: `docs/superpowers/plans/2026-10-06-rust-backend-1a-foundation.md`. CI: job `backend` in `.github/workflows/ci.yml`.
+
 ## 4. Changes made
 
 Commits on `feat/competitions` (this session):
@@ -103,6 +114,8 @@ Commits on `feat/competitions` (this session):
 
 Outside git: `DEV_STATIC_TOTP_CODE` line removed from the local `apps/api/.env`.
 
+Rust backend, branch `feat/rust-backend` (2026-10-07, one commit per plan task): `3977442` package skeleton and configuration; `b48abe5` errors and strict parsing; `79c39ae` MariaDB schema and accounts; `3867517` HTTP shell; `599f827` rate limits; `8343c35` password, token and policy primitives; `6ab593f` seed and reference endpoints; `508ae7f` security fixes found by the commit review (see Failed attempts); then CI, dependency policy and docs.
+
 ## 5. Failed attempts
 
 - **Deleting `sniffVideo` by truncating `domain.ts` / `domain.spec.ts` to end of file** also removed `seedHeats` and its tests (added after it). Fixed by rebuilding both files from `HEAD` and cutting only the video block.
@@ -118,8 +131,17 @@ Outside git: `DEV_STATIC_TOTP_CODE` line removed from the local `apps/api/.env`.
 - **Ran `npx prettier --write` in `apps/admin`**: the repo has no Prettier config, so it reformatted with defaults (double quotes, 80 cols). Fixed by re-running with `--single-quote --print-width 220` and restoring the one-line `<AdminOnly>` routes by hand. Do not run Prettier without those options.
 - **GateGuard blocks a whole command when it contains `git rm`** with other steps; run the edits first, then `git rm` alone after stating the files and the rollback.
 - **Secret exposure**: a `.env` read printed the start of `JWT_PRIVATE_KEY_B64` / `JWT_PUBLIC_KEY_B64` (filter regex missed names with digits). Local dev keys only, but they should be regenerated.
+- **Rust backend — library APIs that differed from the plan** (the plan's code was written before Rust was installed): `hmac` 0.13 needs `use hmac::KeyInit` for `new_from_slice`; sqlx infers a `GROUP_CONCAT` column as bytes, fixed with the alias override `AS "tracked?: String"`; Clippy's `result_large_err` required boxing the rarely used fields of `AppError`. Everything else compiled as written (axum 0.8, sqlx 0.9, redis 1.x, argon2 0.6, jsonwebtoken 11, tower-http 0.7).
+- **serde fills a struct from a JSON array**, positionally: a request body `["Ahmed", 30, …]` was accepted. `validate::parse` now requires the body to be an object. An array given for a *nested* object is still read positionally (the same field rules apply to it).
+- **Three security findings on the first rate-limit and password commits, all fixed in `508ae7f`**: an unreadable `X-Forwarded-For` entry (e.g. `ip:port`) was skipped, letting a client behind the proxy choose its address; IPv6 clients had one counter per address and could rotate inside their /64; the password-hashing slot was released when the caller was cancelled while the hash kept running. Rule for plan 1b: per-address limits use `ClientIp::subject()`, never the raw address.
+- **GateGuard blocks a Bash command whose text contains destructive-looking SQL** (statements that remove a table or empty it), even inside a heredoc that only writes documentation or a test. Write such content with the Edit tool, or generate the files from the plan with a script.
+- **`#[sqlx::test]` creates a bookkeeping table `_sqlx_test_databases`** in the development database (22 tables visible instead of 21). Harmless.
+- **`cargo audit` flagged the `rsa` crate** (RUSTSEC-2023-0071, timing side channel, no fixed version), pulled in only by the `rust_crypto` backend of `jsonwebtoken`. Tokens are Ed25519 only, so the backend was switched to `aws_lc_rs`, which removes `rsa` from the build (it compiles here without cmake). `cargo deny` then needed the Boost licence (`BSL-1.0`, permissive) in its allow-list and `[licenses.private] ignore = true` for our own unpublished crate.
 
 ## 6. Next steps
+
+0a. **Rust backend, plan 1b (accounts)**: write the plan, then build the Redis Stream job queue and email worker, register and login with lockout, the signed-in-user extractors with refresh rotation and logout, email verification and password reset, `/me` with profile, settings and onboarding, export and account deletion with the daily sweep, admin login and `backend promote`, then the security suite of the spec (every role against every route; the walk of `route_table()` against the list of public routes) and the contract check for the session and `/me` payloads. After that, parts 2 to 6 of the spec.
+0a-bis. Rust backend open points from the spec: no frontend screen opens the `/verify-email` and `/reset-password` links yet; admin two-factor stays removed (owner's decision) and is the strongest protection still missing for staff accounts.
 
 0b. **Cover image licensing**: the owner's banner photo carries visible "alamy" watermarks (stock preview). Replace it with a licensed / own photo before any public release — just overwrite `apps/mobile-rn/assets/competition-cover.jpg` (keep ~1440×596).
 0c. Per-competition **logo** is still the app icon (`LOGO`); the banner is now uploadable (done). Same pattern if the owner wants a logo per competition.

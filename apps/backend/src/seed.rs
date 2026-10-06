@@ -103,17 +103,37 @@ pub async fn run(db: &MySqlPool, dir: &Path) -> Result<Summary, String> {
 
     // Check the cross-references before writing anything.
     let sports: HashSet<&str> = catalog.sports.iter().map(|s| s.code.as_str()).collect();
-    let metrics: HashSet<&str> = catalog.metric_types.iter().map(|m| m.code.as_str()).collect();
+    let metrics: HashSet<&str> = catalog
+        .metric_types
+        .iter()
+        .map(|m| m.code.as_str())
+        .collect();
     for exercise in &catalog.exercises {
-        if let Some(sport) = exercise.sport.as_deref().filter(|code| !sports.contains(code)) {
-            return Err(format!("catalog.json: exercise {} names the unknown sport {sport}", exercise.code));
+        if let Some(sport) = exercise
+            .sport
+            .as_deref()
+            .filter(|code| !sports.contains(code))
+        {
+            return Err(format!(
+                "catalog.json: exercise {} names the unknown sport {sport}",
+                exercise.code
+            ));
         }
-        if let Some(metric) = exercise.metrics.iter().find(|code| !metrics.contains(code.as_str())) {
-            return Err(format!("catalog.json: exercise {} names the unknown metric {metric}", exercise.code));
+        if let Some(metric) = exercise
+            .metrics
+            .iter()
+            .find(|code| !metrics.contains(code.as_str()))
+        {
+            return Err(format!(
+                "catalog.json: exercise {} names the unknown metric {metric}",
+                exercise.code
+            ));
         }
     }
 
-    write(db, &tunisia, &catalog, &rules).await.map_err(|e| format!("seed failed: {e}"))
+    write(db, &tunisia, &catalog, &rules)
+        .await
+        .map_err(|e| format!("seed failed: {e}"))
 }
 
 fn read<T: DeserializeOwned>(dir: &Path, name: &str) -> Result<T, String> {
@@ -145,7 +165,12 @@ pub fn slugify(text: &str) -> String {
     out.trim_end_matches('-').to_owned()
 }
 
-async fn write(db: &MySqlPool, tunisia: &Tunisia, catalog: &Catalog, rules: &RuleSetFile) -> Result<Summary, sqlx::Error> {
+async fn write(
+    db: &MySqlPool,
+    tunisia: &Tunisia,
+    catalog: &Catalog,
+    rules: &RuleSetFile,
+) -> Result<Summary, sqlx::Error> {
     let country = &tunisia.country;
     sqlx::query!(
         "INSERT INTO countries (code, name_fr, name_en, name_ar) VALUES (?, ?, ?, ?)
@@ -173,7 +198,12 @@ async fn write(db: &MySqlPool, tunisia: &Tunisia, catalog: &Catalog, rules: &Rul
         )
         .execute(db)
         .await?;
-        let governorate_id = sqlx::query_scalar!(r#"SELECT id AS "id: Uuid" FROM governorates WHERE code = ?"#, g.code).fetch_one(db).await?;
+        let governorate_id = sqlx::query_scalar!(
+            r#"SELECT id AS "id: Uuid" FROM governorates WHERE code = ?"#,
+            g.code
+        )
+        .fetch_one(db)
+        .await?;
 
         for (french, arabic) in &g.cities {
             // The seed file gives a French and an Arabic name; English uses the French spelling.
@@ -209,7 +239,12 @@ async fn write(db: &MySqlPool, tunisia: &Tunisia, catalog: &Catalog, rules: &Rul
         )
         .execute(db)
         .await?;
-        let id = sqlx::query_scalar!(r#"SELECT id AS "id: Uuid" FROM metric_types WHERE code = ?"#, m.code).fetch_one(db).await?;
+        let id = sqlx::query_scalar!(
+            r#"SELECT id AS "id: Uuid" FROM metric_types WHERE code = ?"#,
+            m.code
+        )
+        .fetch_one(db)
+        .await?;
         metric_ids.insert(m.code.as_str(), id);
     }
 
@@ -230,14 +265,27 @@ async fn write(db: &MySqlPool, tunisia: &Tunisia, catalog: &Catalog, rules: &Rul
         )
         .execute(db)
         .await?;
-        let id = sqlx::query_scalar!(r#"SELECT id AS "id: Uuid" FROM sports WHERE code = ?"#, s.code).fetch_one(db).await?;
+        let id = sqlx::query_scalar!(
+            r#"SELECT id AS "id: Uuid" FROM sports WHERE code = ?"#,
+            s.code
+        )
+        .fetch_one(db)
+        .await?;
         sport_ids.insert(s.code.as_str(), id);
     }
 
     for x in &catalog.exercises {
-        let sport_id = x.sport.as_deref().and_then(|code| sport_ids.get(code)).copied();
+        let sport_id = x
+            .sport
+            .as_deref()
+            .and_then(|code| sport_ids.get(code))
+            .copied();
         let (description_fr, description_en, description_ar) = match &x.description {
-            Some(d) => (Some(d.fr.as_str()), Some(d.en.as_str()), Some(d.ar.as_str())),
+            Some(d) => (
+                Some(d.fr.as_str()),
+                Some(d.en.as_str()),
+                Some(d.ar.as_str()),
+            ),
             None => (None, None, None),
         };
         // Unchanged values leave `updated_at` alone, so a delta sync only sees real changes.
@@ -266,12 +314,24 @@ async fn write(db: &MySqlPool, tunisia: &Tunisia, catalog: &Catalog, rules: &Rul
         )
         .execute(db)
         .await?;
-        let exercise_id = sqlx::query_scalar!(r#"SELECT id AS "id: Uuid" FROM exercises WHERE code = ?"#, x.code).fetch_one(db).await?;
+        let exercise_id = sqlx::query_scalar!(
+            r#"SELECT id AS "id: Uuid" FROM exercises WHERE code = ?"#,
+            x.code
+        )
+        .fetch_one(db)
+        .await?;
 
-        sqlx::query!("DELETE FROM exercise_metrics WHERE exercise_id = ?", exercise_id).execute(db).await?;
+        sqlx::query!(
+            "DELETE FROM exercise_metrics WHERE exercise_id = ?",
+            exercise_id
+        )
+        .execute(db)
+        .await?;
         for (position, code) in x.metrics.iter().enumerate() {
             // Every code was checked in `run`, so the lookup always succeeds.
-            let Some(metric_id) = metric_ids.get(code.as_str()) else { continue };
+            let Some(metric_id) = metric_ids.get(code.as_str()) else {
+                continue;
+            };
             sqlx::query!(
                 "INSERT INTO exercise_metrics (exercise_id, metric_type_id, position) VALUES (?, ?, ?)",
                 exercise_id,
@@ -284,7 +344,9 @@ async fn write(db: &MySqlPool, tunisia: &Tunisia, catalog: &Catalog, rules: &Rul
     }
 
     // The first rule set only. Later versions are drafted and activated from the admin panel.
-    let existing = sqlx::query_scalar!("SELECT COUNT(*) FROM rule_sets").fetch_one(db).await?;
+    let existing = sqlx::query_scalar!("SELECT COUNT(*) FROM rule_sets")
+        .fetch_one(db)
+        .await?;
     if existing == 0 {
         sqlx::query!(
             "INSERT INTO rule_sets (id, version, status, config, change_note, activated_at) VALUES (?, ?, 'ACTIVE', ?, ?, UTC_TIMESTAMP(6))",

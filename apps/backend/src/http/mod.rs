@@ -41,7 +41,10 @@ pub struct Api {
 
 impl Api {
     fn new() -> Self {
-        Self { router: Router::new(), table: Vec::new() }
+        Self {
+            router: Router::new(),
+            table: Vec::new(),
+        }
     }
 
     pub fn get<H, T>(self, path: &'static str, handler: H) -> Self
@@ -108,12 +111,24 @@ pub fn app(state: AppState) -> Router {
     api()
         .router
         .fallback(|| async { AppError::not_found("Route") })
-        .method_not_allowed_fallback(|| async { AppError::new(StatusCode::METHOD_NOT_ALLOWED, "METHOD_NOT_ALLOWED", "Method not allowed") })
+        .method_not_allowed_fallback(|| async {
+            AppError::new(
+                StatusCode::METHOD_NOT_ALLOWED,
+                "METHOD_NOT_ALLOWED",
+                "Method not allowed",
+            )
+        })
         .layer(DefaultBodyLimit::max(MAX_BODY_BYTES))
-        .layer(middleware::from_fn_with_state(state.clone(), rate_limit::global))
+        .layer(middleware::from_fn_with_state(
+            state.clone(),
+            rate_limit::global,
+        ))
         .layer(middleware::from_fn(timeout))
         .layer(cors(&state.cfg))
-        .layer(middleware::from_fn_with_state(state.clone(), security_headers))
+        .layer(middleware::from_fn_with_state(
+            state.clone(),
+            security_headers,
+        ))
         .layer(CatchPanicLayer::custom(panic_response))
         .layer(middleware::from_fn(request_context))
         .with_state(state)
@@ -125,10 +140,20 @@ async fn request_context(req: Request, next: Next) -> Response {
     let id = Uuid::now_v7().to_string();
     let span = tracing::info_span!("request", request_id = %id, method = %req.method(), path = req.uri().path(), user_id = tracing::field::Empty);
     let started = Instant::now();
-    let mut res = REQUEST_ID.scope(id.clone(), next.run(req)).instrument(span.clone()).await;
-    span.in_scope(|| tracing::info!(status = res.status().as_u16(), ms = started.elapsed().as_millis() as u64, "request"));
+    let mut res = REQUEST_ID
+        .scope(id.clone(), next.run(req))
+        .instrument(span.clone())
+        .await;
+    span.in_scope(|| {
+        tracing::info!(
+            status = res.status().as_u16(),
+            ms = started.elapsed().as_millis() as u64,
+            "request"
+        )
+    });
     if let Ok(value) = HeaderValue::from_str(&id) {
-        res.headers_mut().insert(HeaderName::from_static("x-request-id"), value);
+        res.headers_mut()
+            .insert(HeaderName::from_static("x-request-id"), value);
     }
     res
 }
@@ -140,17 +165,32 @@ fn panic_response(_panic: Box<dyn Any + Send + 'static>) -> Response {
 async fn security_headers(State(state): State<AppState>, req: Request, next: Next) -> Response {
     let mut res = next.run(req).await;
     let headers = res.headers_mut();
-    headers.insert(header::X_CONTENT_TYPE_OPTIONS, HeaderValue::from_static("nosniff"));
+    headers.insert(
+        header::X_CONTENT_TYPE_OPTIONS,
+        HeaderValue::from_static("nosniff"),
+    );
     headers.insert(header::X_FRAME_OPTIONS, HeaderValue::from_static("DENY"));
-    headers.insert(header::REFERRER_POLICY, HeaderValue::from_static("no-referrer"));
-    headers.insert(header::CONTENT_SECURITY_POLICY, HeaderValue::from_static("default-src 'none'; frame-ancestors 'none'"));
-    headers.insert(HeaderName::from_static("cross-origin-resource-policy"), HeaderValue::from_static("same-origin"));
+    headers.insert(
+        header::REFERRER_POLICY,
+        HeaderValue::from_static("no-referrer"),
+    );
+    headers.insert(
+        header::CONTENT_SECURITY_POLICY,
+        HeaderValue::from_static("default-src 'none'; frame-ancestors 'none'"),
+    );
+    headers.insert(
+        HeaderName::from_static("cross-origin-resource-policy"),
+        HeaderValue::from_static("same-origin"),
+    );
     // Nothing is cached unless a handler says so (only the public reference lists do).
     if !headers.contains_key(header::CACHE_CONTROL) {
         headers.insert(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));
     }
     if state.cfg.env == AppEnv::Production {
-        headers.insert(header::STRICT_TRANSPORT_SECURITY, HeaderValue::from_static("max-age=63072000; includeSubDomains"));
+        headers.insert(
+            header::STRICT_TRANSPORT_SECURITY,
+            HeaderValue::from_static("max-age=63072000; includeSubDomains"),
+        );
     }
     res
 }
@@ -158,10 +198,20 @@ async fn security_headers(State(state): State<AppState>, req: Request, next: Nex
 /// Only the listed origins (the admin panel) may call the API from a browser. No cookies are used,
 /// so credentials are never allowed.
 fn cors(cfg: &Config) -> CorsLayer {
-    let origins: Vec<HeaderValue> = cfg.cors_origins.iter().filter_map(|origin| HeaderValue::from_str(origin).ok()).collect();
+    let origins: Vec<HeaderValue> = cfg
+        .cors_origins
+        .iter()
+        .filter_map(|origin| HeaderValue::from_str(origin).ok())
+        .collect();
     CorsLayer::new()
         .allow_origin(AllowOrigin::list(origins))
-        .allow_methods([Method::GET, Method::POST, Method::PUT, Method::PATCH, Method::DELETE])
+        .allow_methods([
+            Method::GET,
+            Method::POST,
+            Method::PUT,
+            Method::PATCH,
+            Method::DELETE,
+        ])
         .allow_headers([
             header::AUTHORIZATION,
             header::CONTENT_TYPE,
@@ -176,7 +226,12 @@ fn cors(cfg: &Config) -> CorsLayer {
 async fn timeout(req: Request, next: Next) -> Response {
     match tokio::time::timeout(REQUEST_TIMEOUT, next.run(req)).await {
         Ok(res) => res,
-        Err(_) => AppError::new(StatusCode::SERVICE_UNAVAILABLE, "TIMEOUT", "Request timed out").into_response(),
+        Err(_) => AppError::new(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "TIMEOUT",
+            "Request timed out",
+        )
+        .into_response(),
     }
 }
 
@@ -190,9 +245,15 @@ mod tests {
     use super::*;
 
     async fn call(router: Router) -> (StatusCode, serde_json::Value) {
-        let res = router.oneshot(Request::builder().uri("/").body(Body::empty()).unwrap()).await.unwrap();
+        let res = router
+            .oneshot(Request::builder().uri("/").body(Body::empty()).unwrap())
+            .await
+            .unwrap();
         let status = res.status();
-        (status, serde_json::from_slice(&res.into_body().collect().await.unwrap().to_bytes()).unwrap())
+        (
+            status,
+            serde_json::from_slice(&res.into_body().collect().await.unwrap().to_bytes()).unwrap(),
+        )
     }
 
     #[tokio::test]
@@ -200,7 +261,12 @@ mod tests {
         async fn boom() -> &'static str {
             panic!("secret internal state")
         }
-        let (status, body) = call(Router::new().route("/", get(boom)).layer(CatchPanicLayer::custom(panic_response))).await;
+        let (status, body) = call(
+            Router::new()
+                .route("/", get(boom))
+                .layer(CatchPanicLayer::custom(panic_response)),
+        )
+        .await;
         assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
         assert_eq!(body["code"], "INTERNAL");
         assert!(!body.to_string().contains("secret"));
@@ -212,7 +278,12 @@ mod tests {
             tokio::time::sleep(REQUEST_TIMEOUT * 2).await;
             "late"
         }
-        let (status, body) = call(Router::new().route("/", get(slow)).layer(middleware::from_fn(timeout))).await;
+        let (status, body) = call(
+            Router::new()
+                .route("/", get(slow))
+                .layer(middleware::from_fn(timeout)),
+        )
+        .await;
         assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE);
         assert_eq!(body["code"], "TIMEOUT");
     }

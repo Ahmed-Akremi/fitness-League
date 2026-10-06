@@ -47,7 +47,14 @@ impl fmt::Debug for Config {
             .field("app_link_base_url", &self.app_link_base_url)
             .field("database_url", &self.database_url)
             .field("redis_url", &self.redis_url)
-            .field("jwt_key_ids", &self.jwt_public_keys.iter().map(|(kid, _)| kid).collect::<Vec<_>>())
+            .field(
+                "jwt_key_ids",
+                &self
+                    .jwt_public_keys
+                    .iter()
+                    .map(|(kid, _)| kid)
+                    .collect::<Vec<_>>(),
+            )
             .field("jwt_issuer", &self.jwt_issuer)
             .field("cors_origins", &self.cors_origins)
             .field("trusted_proxies", &self.trusted_proxies)
@@ -63,7 +70,14 @@ impl Config {
     pub fn plaintext_backends(&self) -> Vec<&'static str> {
         let mut names = Vec::new();
         let database = self.database_url.expose_secret().to_lowercase();
-        if !["ssl-mode=required", "ssl-mode=verify_ca", "ssl-mode=verify_identity"].iter().any(|mode| database.contains(mode)) {
+        if ![
+            "ssl-mode=required",
+            "ssl-mode=verify_ca",
+            "ssl-mode=verify_identity",
+        ]
+        .iter()
+        .any(|mode| database.contains(mode))
+        {
             names.push("MariaDB");
         }
         if !self.redis_url.expose_secret().starts_with("rediss://") {
@@ -78,7 +92,10 @@ impl Config {
 
     /// Every problem is reported at once, one per line.
     pub fn from_map(vars: &HashMap<String, String>) -> Result<Self, String> {
-        let mut r = Reader { vars, problems: Vec::new() };
+        let mut r = Reader {
+            vars,
+            problems: Vec::new(),
+        };
 
         let env = match r.get("APP_ENV").unwrap_or("development") {
             "development" => AppEnv::Development,
@@ -92,32 +109,49 @@ impl Config {
 
         let database_url = r.required("DATABASE_URL");
         if !database_url.is_empty() && !database_url.starts_with("mysql://") {
-            r.problems.push("DATABASE_URL: must start with mysql://".into());
+            r.problems
+                .push("DATABASE_URL: must start with mysql://".into());
         }
         let redis_url = r.required("REDIS_URL");
-        if !redis_url.is_empty() && !redis_url.starts_with("redis://") && !redis_url.starts_with("rediss://") {
-            r.problems.push("REDIS_URL: must start with redis:// or rediss://".into());
+        if !redis_url.is_empty()
+            && !redis_url.starts_with("redis://")
+            && !redis_url.starts_with("rediss://")
+        {
+            r.problems
+                .push("REDIS_URL: must start with redis:// or rediss://".into());
         }
 
         let jwt_private_key_pem = r.pem("JWT_PRIVATE_KEY_B64");
         let mut jwt_public_keys = vec![(r.or("JWT_KEY_ID", "k1"), r.pem("JWT_PUBLIC_KEY_B64"))];
         for pair in r.list("JWT_EXTRA_PUBLIC_KEYS") {
-            match pair.split_once(':').and_then(|(kid, b64)| decode_pem(b64).map(|pem| (kid.to_owned(), pem))) {
+            match pair
+                .split_once(':')
+                .and_then(|(kid, b64)| decode_pem(b64).map(|pem| (kid.to_owned(), pem)))
+            {
                 Some(key) => jwt_public_keys.push(key),
-                None => r.problems.push("JWT_EXTRA_PUBLIC_KEYS: expected kid:base64(PEM)[,…]".into()),
+                None => r
+                    .problems
+                    .push("JWT_EXTRA_PUBLIC_KEYS: expected kid:base64(PEM)[,…]".into()),
             }
         }
 
         let app_hmac_secret = r.required("APP_HMAC_SECRET");
         if !app_hmac_secret.is_empty() && app_hmac_secret.len() < 32 {
-            r.problems.push("APP_HMAC_SECRET: at least 32 characters".into());
+            r.problems
+                .push("APP_HMAC_SECRET: at least 32 characters".into());
         }
 
         let mut trusted_proxies = Vec::new();
         for item in r.list("TRUSTED_PROXIES") {
-            match item.parse::<IpNet>().ok().or_else(|| item.parse::<IpAddr>().ok().map(IpNet::from)) {
+            match item
+                .parse::<IpNet>()
+                .ok()
+                .or_else(|| item.parse::<IpAddr>().ok().map(IpNet::from))
+            {
                 Some(net) => trusted_proxies.push(net),
-                None => r.problems.push(format!("TRUSTED_PROXIES: {item} is not an address or a network")),
+                None => r.problems.push(format!(
+                    "TRUSTED_PROXIES: {item} is not an address or a network"
+                )),
             }
         }
 
@@ -125,7 +159,8 @@ impl Config {
             None | Some("true") => true,
             Some("false") => false,
             Some(_) => {
-                r.problems.push("RATE_LIMIT_ENABLED: expected true or false".into());
+                r.problems
+                    .push("RATE_LIMIT_ENABLED: expected true or false".into());
                 true
             }
         };
@@ -154,23 +189,29 @@ impl Config {
 
         if cfg.env == AppEnv::Production {
             if !cfg.rate_limit_enabled {
-                r.problems.push("RATE_LIMIT_ENABLED: cannot be false in production".into());
+                r.problems
+                    .push("RATE_LIMIT_ENABLED: cannot be false in production".into());
             }
             if cfg.cors_origins.iter().any(|o| o == "*") {
-                r.problems.push("CORS_ORIGINS: * is not allowed in production".into());
+                r.problems
+                    .push("CORS_ORIGINS: * is not allowed in production".into());
             }
             if cfg.smtp_url.is_none() {
                 r.problems.push("SMTP_URL: required in production".into());
             }
             if !cfg.app_link_base_url.starts_with("https://") {
-                r.problems.push("APP_LINK_BASE_URL: must be https in production".into());
+                r.problems
+                    .push("APP_LINK_BASE_URL: must be https in production".into());
             }
         }
 
         if r.problems.is_empty() {
             Ok(cfg)
         } else {
-            Err(format!("Invalid environment configuration:\n  - {}", r.problems.join("\n  - ")))
+            Err(format!(
+                "Invalid environment configuration:\n  - {}",
+                r.problems.join("\n  - ")
+            ))
         }
     }
 }
@@ -183,7 +224,10 @@ struct Reader<'a> {
 impl<'a> Reader<'a> {
     /// A variable that is set but blank counts as missing.
     fn get(&self, key: &str) -> Option<&'a str> {
-        self.vars.get(key).map(|v| v.trim()).filter(|v| !v.is_empty())
+        self.vars
+            .get(key)
+            .map(|v| v.trim())
+            .filter(|v| !v.is_empty())
     }
 
     fn required(&mut self, key: &str) -> String {
@@ -202,16 +246,30 @@ impl<'a> Reader<'a> {
 
     fn list(&self, key: &str) -> Vec<String> {
         self.get(key)
-            .map(|v| v.split(',').map(|s| s.trim().to_owned()).filter(|s| !s.is_empty()).collect())
+            .map(|v| {
+                v.split(',')
+                    .map(|s| s.trim().to_owned())
+                    .filter(|s| !s.is_empty())
+                    .collect()
+            })
             .unwrap_or_default()
     }
 
-    fn number<T: FromStr + PartialOrd + fmt::Display + Copy>(&mut self, key: &str, default: T, min: T, max: T) -> T {
-        let Some(raw) = self.get(key) else { return default };
+    fn number<T: FromStr + PartialOrd + fmt::Display + Copy>(
+        &mut self,
+        key: &str,
+        default: T,
+        min: T,
+        max: T,
+    ) -> T {
+        let Some(raw) = self.get(key) else {
+            return default;
+        };
         match raw.parse::<T>() {
             Ok(n) if n >= min && n <= max => n,
             _ => {
-                self.problems.push(format!("{key}: expected a number between {min} and {max}"));
+                self.problems
+                    .push(format!("{key}: expected a number between {min} and {max}"));
                 default
             }
         }
@@ -223,7 +281,8 @@ impl<'a> Reader<'a> {
             return raw;
         }
         decode_pem(&raw).unwrap_or_else(|| {
-            self.problems.push(format!("{key}: expected a base64-encoded PEM key"));
+            self.problems
+                .push(format!("{key}: expected a base64-encoded PEM key"));
             String::new()
         })
     }
@@ -240,16 +299,27 @@ mod tests {
     use super::*;
 
     fn pem_b64(label: &str) -> String {
-        STANDARD.encode(format!("-----BEGIN {label}-----\nAAAA\n-----END {label}-----\n"))
+        STANDARD.encode(format!(
+            "-----BEGIN {label}-----\nAAAA\n-----END {label}-----\n"
+        ))
     }
 
     fn valid() -> HashMap<String, String> {
         [
-            ("DATABASE_URL", "mysql://fl_app:db-pass-1234@localhost:3307/fitness_league".to_owned()),
-            ("REDIS_URL", "redis://:redis-pass-1234@localhost:6379".to_owned()),
+            (
+                "DATABASE_URL",
+                "mysql://fl_app:db-pass-1234@localhost:3307/fitness_league".to_owned(),
+            ),
+            (
+                "REDIS_URL",
+                "redis://:redis-pass-1234@localhost:6379".to_owned(),
+            ),
             ("JWT_PRIVATE_KEY_B64", pem_b64("PRIVATE KEY")),
             ("JWT_PUBLIC_KEY_B64", pem_b64("PUBLIC KEY")),
-            ("APP_HMAC_SECRET", "0123456789abcdef0123456789abcdef".to_owned()),
+            (
+                "APP_HMAC_SECRET",
+                "0123456789abcdef0123456789abcdef".to_owned(),
+            ),
         ]
         .into_iter()
         .map(|(k, v)| (k.to_owned(), v))
@@ -280,14 +350,24 @@ mod tests {
     #[test]
     fn reports_every_missing_secret_at_once() {
         let err = Config::from_map(&HashMap::new()).unwrap_err();
-        for key in ["DATABASE_URL", "REDIS_URL", "JWT_PRIVATE_KEY_B64", "JWT_PUBLIC_KEY_B64", "APP_HMAC_SECRET"] {
-            assert!(err.contains(&format!("{key}: required")), "{key} missing from: {err}");
+        for key in [
+            "DATABASE_URL",
+            "REDIS_URL",
+            "JWT_PRIVATE_KEY_B64",
+            "JWT_PUBLIC_KEY_B64",
+            "APP_HMAC_SECRET",
+        ] {
+            assert!(
+                err.contains(&format!("{key}: required")),
+                "{key} missing from: {err}"
+            );
         }
     }
 
     #[test]
     fn a_blank_value_counts_as_missing() {
-        let err = Config::from_map(&with(&[("APP_HMAC_SECRET", "   "), ("REDIS_URL", "")])).unwrap_err();
+        let err =
+            Config::from_map(&with(&[("APP_HMAC_SECRET", "   "), ("REDIS_URL", "")])).unwrap_err();
         assert!(err.contains("APP_HMAC_SECRET: required"));
         assert!(err.contains("REDIS_URL: required"));
     }
@@ -302,7 +382,13 @@ mod tests {
             ("TRUSTED_PROXIES", "10.0.0.0/8, nonsense"),
         ]))
         .unwrap_err();
-        for part in ["APP_HMAC_SECRET: at least 32", "DATABASE_URL: must start with mysql://", "JWT_PUBLIC_KEY_B64: expected", "PORT: expected", "TRUSTED_PROXIES: nonsense"] {
+        for part in [
+            "APP_HMAC_SECRET: at least 32",
+            "DATABASE_URL: must start with mysql://",
+            "JWT_PUBLIC_KEY_B64: expected",
+            "PORT: expected",
+            "TRUSTED_PROXIES: nonsense",
+        ] {
             assert!(err.contains(part), "{part} missing from: {err}");
         }
     }
@@ -311,15 +397,27 @@ mod tests {
     fn reads_lists_and_extra_verification_keys() {
         let extra = format!("old:{}", pem_b64("PUBLIC KEY"));
         let cfg = Config::from_map(&with(&[
-            ("CORS_ORIGINS", " http://localhost:5173 , http://localhost:8081 "),
+            (
+                "CORS_ORIGINS",
+                " http://localhost:5173 , http://localhost:8081 ",
+            ),
             ("TRUSTED_PROXIES", "10.0.0.0/8,192.168.1.7"),
             ("JWT_EXTRA_PUBLIC_KEYS", &extra),
             ("JWT_KEY_ID", "k2"),
         ]))
         .unwrap();
-        assert_eq!(cfg.cors_origins, ["http://localhost:5173", "http://localhost:8081"]);
+        assert_eq!(
+            cfg.cors_origins,
+            ["http://localhost:5173", "http://localhost:8081"]
+        );
         assert_eq!(cfg.trusted_proxies.len(), 2);
-        assert_eq!(cfg.jwt_public_keys.iter().map(|(kid, _)| kid.as_str()).collect::<Vec<_>>(), ["k2", "old"]);
+        assert_eq!(
+            cfg.jwt_public_keys
+                .iter()
+                .map(|(kid, _)| kid.as_str())
+                .collect::<Vec<_>>(),
+            ["k2", "old"]
+        );
     }
 
     #[test]
@@ -331,28 +429,59 @@ mod tests {
             ("APP_LINK_BASE_URL", "http://app.example"),
         ]))
         .unwrap_err();
-        for part in ["RATE_LIMIT_ENABLED", "CORS_ORIGINS", "SMTP_URL: required in production", "APP_LINK_BASE_URL"] {
+        for part in [
+            "RATE_LIMIT_ENABLED",
+            "CORS_ORIGINS",
+            "SMTP_URL: required in production",
+            "APP_LINK_BASE_URL",
+        ] {
             assert!(err.contains(part), "{part} missing from: {err}");
         }
-        let ok = with(&[("APP_ENV", "production"), ("SMTP_URL", "smtps://user:pw@mail.example:465")]);
+        let ok = with(&[
+            ("APP_ENV", "production"),
+            ("SMTP_URL", "smtps://user:pw@mail.example:465"),
+        ]);
         assert_eq!(Config::from_map(&ok).unwrap().env, AppEnv::Production);
     }
 
     #[test]
     fn debug_output_never_shows_a_secret() {
-        let printed = format!("{:?}", Config::from_map(&with(&[("SMTP_URL", "smtp://user:smtp-pass-1234@mail")])).unwrap());
-        for secret in ["db-pass-1234", "redis-pass-1234", "0123456789abcdef0123456789abcdef", "smtp-pass-1234", "AAAA"] {
-            assert!(!printed.contains(secret), "secret {secret} leaked in: {printed}");
+        let printed = format!(
+            "{:?}",
+            Config::from_map(&with(&[("SMTP_URL", "smtp://user:smtp-pass-1234@mail")])).unwrap()
+        );
+        for secret in [
+            "db-pass-1234",
+            "redis-pass-1234",
+            "0123456789abcdef0123456789abcdef",
+            "smtp-pass-1234",
+            "AAAA",
+        ] {
+            assert!(
+                !printed.contains(secret),
+                "secret {secret} leaked in: {printed}"
+            );
         }
     }
 
     #[test]
     fn reports_the_backends_reached_without_tls() {
-        assert_eq!(Config::from_map(&valid()).unwrap().plaintext_backends(), ["MariaDB", "Redis"]);
+        assert_eq!(
+            Config::from_map(&valid()).unwrap().plaintext_backends(),
+            ["MariaDB", "Redis"]
+        );
         let secured = with(&[
-            ("DATABASE_URL", "mysql://fl_app:pw@db.internal:3306/fitness_league?ssl-mode=VERIFY_IDENTITY"),
+            (
+                "DATABASE_URL",
+                "mysql://fl_app:pw@db.internal:3306/fitness_league?ssl-mode=VERIFY_IDENTITY",
+            ),
             ("REDIS_URL", "rediss://:pw@cache.internal:6380"),
         ]);
-        assert!(Config::from_map(&secured).unwrap().plaintext_backends().is_empty());
+        assert!(
+            Config::from_map(&secured)
+                .unwrap()
+                .plaintext_backends()
+                .is_empty()
+        );
     }
 }
