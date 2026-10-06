@@ -1,4 +1,4 @@
-# Handoff — fitness-league (2026-10-06)
+# Handoff — fitness-league (2026-10-06, RN UI polish)
 
 ## 1. Goal
 
@@ -13,6 +13,7 @@
 - **Editable banner** (owner's request, 2026-10-05): a new banner for each new competition or final, uploaded from the admin panel.
 - **Score computed by the app** (owner's request, 2026-10-05): the athlete enters the reps of each movement of the WOD, never the score; owner's choices: reps per movement (not sets or rounds) × points per rep set by the organizer, capped at the WOD maximum.
 - **Tutorial video** (owner's request): 9:16 tutorial of the competition flow, on the Desktop.
+- **RN UI polish** (owner's request, 2026-10-06, done): "upgrade the UI and fix the UX, too much spaces between text and cards" — app mobile only, approach A (shared tokens + components, then every screen). Spec `docs/superpowers/specs/2026-10-06-rn-ui-polish-design.md`, plan `docs/superpowers/plans/2026-10-06-rn-ui-polish.md`.
 - **Competition page redesign** (owner's request, 2026-10-05): copy the layout of a reference app screenshot (Carthage Throwdown): 3 tabs "Event Info / Workouts / Leaderboard", full-width cover, round logo + tags + big uppercase title + Share, quick-access tiles, "I am an Athlete in this event" card with mandatory actions. Cover = owner's banner `Desktop/fitness-league-registration-banner.png`.
 
 ## 2. Current state
@@ -20,11 +21,12 @@
 - **Everything is merged into `main`** (2026-10-05, by the owner in the GitHub UI): PR #1 `feat/gyms-sports-mobile` (`6e6dcc6`) and PR #2 `feat/competitions` (`29fd30d`). Local `main` fast-forwarded to `29fd30d`; `feat/competitions` has no commit that `main` lacks. Work now happens directly on `main` (owner's request, 2026-10-06: "commit et push sur main"); `main` = `origin/main` after the judge follow-ups (`6dd4781`) and the handoff commits. `dfca86f` (made by the owner, message "dis a claude pour lire fishier handoff") contains the whole judge-accounts change below.
 - `gh` is still not installed in WSL and the GitHub MCP server fails to connect ("Authorization header is badly formatted"): PRs are opened by the owner from the browser.
 - `brag-output/` (tutorial video script) is **untracked** on purpose (outside git).
+- RN UI polish (2026-10-06) committed on `main` (`5402a5c`..`8197258`) and pushed; RN app 80 tests (17 suites, `npx jest --maxWorkers=2`; the default parallel run can time out `gyms.test` on `/mnt/c` while Metro runs) + typecheck clean. Before/after screenshots (390×844, offline demo): `Desktop/ui-avant-apres/{avant,apres}/`.
 - All checks green at the last run (2026-10-06, after the judge follow-ups):
   - API: 164 unit tests, lint clean, typecheck clean; integration: competitions + admin + auth (36 tests) re-run green — the full suite (128 tests, 33 files) was last run on 2026-10-05.
   - RN app: 73 tests (15 suites), typecheck clean.
   - Admin panel: 7 tests, typecheck clean.
-- Local servers: after the PC restart (2026-10-05) only the RN web preview runs, in **offline demo mode** (`EXPO_PUBLIC_DEMO=true CI=1 npx expo start --web --port 8081`, no API needed; sign in as `ahmed_rx@…`).
+- Local servers (2026-10-06 evening): RN web preview on :8081 in offline demo mode (`EXPO_PUBLIC_DEMO=true CI=1 npx expo start --web --port 8081`, started by Claude for the screenshots; no hot reload — restart after edits). Earlier note: after the PC restart (2026-10-05) only the RN web preview runs, in **offline demo mode** (`EXPO_PUBLIC_DEMO=true CI=1 npx expo start --web --port 8081`, no API needed; sign in as `ahmed_rx@…`).
 - **Phone + browser server (2026-10-05 late evening, still running on 2026-10-06)**: `EXPO_PUBLIC_DEMO=true npx expo start --tunnel --port 8082` in `apps/mobile-rn` (offline demo, current code). WSL2 is in NAT mode (`172.31.x`), so a phone on the Wi-Fi cannot reach Metro directly → tunnel (`@expo/ngrok` installed globally under `~/.local/node`). Tunnel URL `https://gwllusk-anonymous-8082.exp.direct` (changes on every restart; read it from `curl -s http://127.0.0.1:4040/api/tunnels`). Expo prints no QR in a non-TTY shell: the QR was generated with the `qrcode` npm package to `Desktop/expo-qr.png`, content `exp+fitness-league://expo-development-client/?url=<encoded tunnel URL>` (opens in the **dev-client build**, not Expo Go). Android bundle pre-built once (200, 9 MB, 94 s). Also opened in the Windows browser at http://localhost:8082.
 - The API / Postgres / admin servers below are **not** running; restart them as described when needed:
   - Embedded Postgres on `localhost:55432` (`pnpm db:embedded`, throw-away data dir in `/tmp`).
@@ -70,6 +72,15 @@ Judge accounts follow-ups (2026-10-06, commit `6dd4781` on `main`)
 - RN: `src/core/widgets/error.tsx` (`JUDGE_ACCOUNT` → `errorJudgeAccount`); i18n en/fr/ar; `test/screens/login.test.tsx`.
 - Docs: `docs/ARCHITECTURE.md` (error code list).
 
+RN UI polish (2026-10-06)
+- `src/core/theme/index.ts` — `space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24 }`, `Colors.border` (`#FFFFFF14` dark / `#0000000F` light).
+- `src/core/widgets/kit.tsx` — `Card` hairline border; `Screen` `paddingTop: 8`; `ListRow` 48 px, outline icons; new `ListGroup` (rows in one card, dividers, `inset`, skips empty children), `LinkButton`; `Segmented` `flush` (no side padding inside padded containers).
+- `src/core/widgets/common.tsx` — `SectionHeader` 12 px above / 0 below + `LinkButton` action (24 px between sections, 12 px title → content in a `Screen`); `StatCard` border; new `StatusPill`.
+- Headers in Barlow Condensed 26 (`(tabs)/_layout.tsx`, `shell/root.tsx`).
+- Screens: Profile menu in 3 groups (i18n `profileGroupProgress|Social|Account`); Home shortcuts = full-bleed horizontal row (labels never cut); Train rows with sport icon + `StatusPill`; competition card icons + `StatusPill`; settings, competition, gyms, gym-wods, gym-wars, leagues, social lists → `ListGroup`.
+- Demo: `assets/demo/api.json` + `GET /challenges?status=ACTIVE|ENDED` (`[]`) and `GET /me/notification-preferences` (Goals tab and Settings no longer empty/broken offline).
+- Tests: `test/core/widgets.test.tsx`, `test/screens/workouts.test.tsx`, profile case in `account.test.tsx`, demo cases in `demo.test.ts`.
+
 Banner + computed score (2026-10-05)
 - API: `prisma/migrations/20261005120000_competition_cover` (enum `COMPETITION_COVER`, FK `competitions.cover_media_id` → `media`); `src/modules/competitions/competition-cover.service.ts` (PNG/JPEG/WebP ≤ 5 MB → 1440×596 WebP, content-hashed key, old file deleted, audit); `PUT/DELETE /competitions/:id/cover` and `/admin/competitions/:id/cover`; `coverUrl` in list/detail (`card()`); `coverMediaId` removed from the competition DTOs. `prisma/migrations/20261005130000_movement_reps_score` (score type `MOVEMENT_REPS`); `domain.ts` (`ScoredMovement`, `scoredMovements`, `movementPoints`, `rawValue` case); `competitions.dto.ts` (`MovementDto`, WOD `movements` = `{ name, pointsPerRep }[]`); `competitions.service.ts` (`checkWorkout`: `POINTS_PER_REP_REQUIRED`; `submit`: raw `{ movementReps: number[] }`, computed value not refused above the max, capped by the leaderboard); tests `test/competition-cover.int-spec.ts`, `test/competition-movement-score.int-spec.ts`, `domain.spec.ts`; demo WOD 2 = MOVEMENT_REPS (burpees 1 pt, wall balls 0.5 pt).
 - Admin: `src/api.ts` (`upload()`, multipart PUT); `src/pages/Competitions.tsx` (panel "Bannière": preview, replace, delete; WOD form default type "Reps par mouvement" + textarea `Nom = points` per line, `parseMovements` + `Competitions.test.ts`); `src/pages/Judge.tsx` (per-movement breakdown in the review).
@@ -99,6 +110,7 @@ Commits on `feat/competitions` (this session):
 11. `333da44` WOD score computed from the reps of each movement (`MOVEMENT_REPS`).
 12. docs: README + this handoff; branch pushed.
 13. Owner merged PR #1 and PR #2 into `main` on GitHub; local `main` fast-forwarded.
+15. `165c581`..`8197258` on `main` (2026-10-06): RN UI polish — spec, plan, tokens/components, profile groups, compact train rows, list groups everywhere, demo fixes. Checks: RN 80 tests + typecheck.
 14. `6dd4781` on `main` (2026-10-06): judge accounts follow-ups (password reset, single WOD assignment removal, clear app message for judges). Checks: API 164 unit + competitions/admin/auth integration (36) green, lint clean; admin 7 tests + typecheck; RN 73 tests + typecheck.
 
 Outside git: `DEV_STATIC_TOTP_CODE` line removed from the local `apps/api/.env`.
@@ -113,6 +125,7 @@ Outside git: `DEV_STATIC_TOTP_CODE` line removed from the local `apps/api/.env`.
 - **`pnpm demo-competition`** hit 429 (sign-up limit 5/hour/IP for 15 accounts) — fixed in the script.
 - **Demo competition accounts were not onboarded** → the app redirected them to `/onboarding`; fixed in the script (existing accounts onboarded once through the API).
 - **`pkill -f <pattern>`** killed the calling shell (exit 144) because the pattern matched its own command line; kill by PID (`ss -ltnp` / `ps`).
+- **Screenshot browser libs reset with the scratchpad** (2026-10-06): `libnspr4.so` missing again → `apt-get download libnspr4 libnss3 libasound2t64` + `dpkg -x` into the new scratchpad, run with `LD_LIBRARY_PATH=<scratchpad>/libs/usr/lib/x86_64-linux-gnu`.
 - **Playwright MCP browser**: Chrome not installed in WSL (the MCP tool fails). What works: a Node script using the cached `playwright-core` (`~/.npm/_npx/9833c18b2d85bc59/node_modules/playwright-core`) with `executablePath` = `~/.cache/ms-playwright/chromium_headless_shell-1243/chrome-headless-shell-linux64/chrome-headless-shell`; the audio package is now `libasound2t64`. Older note: Workaround: cached Chromium `~/.cache/ms-playwright/chromium-1243` + `libnss3`, `libnspr4`, `libasound2` extracted with `apt-get download` + `dpkg -x` into the scratchpad, used through `LD_LIBRARY_PATH`.
 - **Deep links on RN web** (`/judge`, `/competitions` loaded directly) always land on `/` (splash redirect); navigate in-app instead. On Profil, a hidden copy of the Home screen also contains "Compétitions" → click the last visible match, after scrolling it above the tab bar.
 - **Ran `npx prettier --write` in `apps/admin`**: the repo has no Prettier config, so it reformatted with defaults (double quotes, 80 cols). Fixed by re-running with `--single-quote --print-width 220` and restoring the one-line `<AdminOnly>` routes by hand. Do not run Prettier without those options.
@@ -125,6 +138,8 @@ Outside git: `DEV_STATIC_TOTP_CODE` line removed from the local `apps/api/.env`.
 0c. Per-competition **logo** is still the app icon (`LOGO`); the banner is now uploadable (done). Same pattern if the owner wants a logo per competition.
 0d. Offline demo `assets/demo/api.json` was recorded before WOD 2 became `MOVEMENT_REPS`: re-record it against a fresh `pnpm demo-competition` to show the per-movement form offline.
 0e. Tutorial video: the voice-off is synthetic (Windows TTS); the owner can record their own voice from the script. The video still shows the "alamy" watermarks of the default banner and says "lien dans la bio" (no store link yet).
+
+0g. UI polish follow-ups (optional): the admin panel was out of scope (still bare CSS); light theme only received the new tokens (not reviewed screen by screen); gym members screen would show an empty card for a gym with zero members (not reachable: the owner is always a member).
 
 0f. Owner's other PC: get the `Failed to construct transformer:` line from its Expo terminal if the fix above (out of OneDrive + `pnpm install`) is not enough.
 
