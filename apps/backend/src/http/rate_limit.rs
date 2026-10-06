@@ -118,20 +118,52 @@ pub async fn check(state: &AppState, rule: &Rule, subject: &str) -> Result<(), A
 /// trusted proxy, and then the rightmost address that is not itself a trusted proxy is the client:
 /// everything to its left was written by the client and may be forged.
 pub fn client_ip(peer: IpAddr, forwarded_for: Option<&str>, trusted: &[IpNet]) -> IpAddr {
+    let peer = peer.to_canonical();
     let is_trusted = |ip: &IpAddr| trusted.iter().any(|net| net.contains(ip));
     if !is_trusted(&peer) {
         return peer;
     }
-    forwarded_for
-        .into_iter()
-        .flat_map(|value| value.rsplit(','))
-        .filter_map(|part| part.trim().parse::<IpAddr>().ok())
-        .find(|ip| !is_trusted(ip))
-        .unwrap_or(peer)
+    for entry in forwarded_for.into_iter().flat_map(|value| value.rsplit(',')) {
+        match parse_forwarded(entry) {
+            Some(ip) if is_trusted(&ip) => {}
+            Some(ip) => return ip,
+            // An entry this parser cannot read ends the walk. Skipping it would let the client choose
+            // its address, by writing one of its own further left.
+            None => return peer,
+        }
+    }
+    peer
+}
+
+/// One `X-Forwarded-For` entry: an address, possibly in brackets or with a port
+/// (`1.2.3.4`, `1.2.3.4:5678`, `[2001:db8::1]`, `[2001:db8::1]:443`).
+fn parse_forwarded(entry: &str) -> Option<IpAddr> {
+    let entry = entry.trim();
+    let bare = entry.strip_prefix('[').and_then(|rest| rest.strip_suffix(']')).unwrap_or(entry);
+    bare.parse::<IpAddr>().ok().or_else(|| entry.parse::<SocketAddr>().ok().map(|socket| socket.ip())).map(|ip| ip.to_canonical())
+}
+
+/// The counter an address falls into. An IPv6 customer usually holds a whole /64 and could use a new
+/// address for every request, so IPv6 is counted per /64 network. An IPv4-mapped address counts as IPv4.
+pub fn ip_subject(ip: IpAddr) -> String {
+    match ip.to_canonical() {
+        IpAddr::V4(v4) => v4.to_string(),
+        IpAddr::V6(v6) => {
+            let s = v6.segments();
+            format!("{:x}:{:x}:{:x}:{:x}::/64", s[0], s[1], s[2], s[3])
+        }
+    }
 }
 
 /// The client address of the current request.
 pub struct ClientIp(pub IpAddr);
+
+impl ClientIp {
+    /// What every per-address rule counts by. Never the raw address: see `ip_subject`.
+    pub fn subject(&self) -> String {
+        ip_subject(self.0)
+    }
+}
 
 impl FromRequestParts<AppState> for ClientIp {
     type Rejection = Infallible;
@@ -146,8 +178,8 @@ impl FromRequestParts<AppState> for ClientIp {
 }
 
 /// Applies the per-address limit to every request.
-pub async fn global(State(state): State<AppState>, ClientIp(ip): ClientIp, req: Request, next: Next) -> Response {
-    match check(&state, &GLOBAL_IP, &ip.to_string()).await {
+pub async fn global(State(state): State<AppState>, client: ClientIp, req: Request, next: Next) -> Response {
+    match check(&state, &GLOBAL_IP, &client.subject()).await {
         Ok(()) => next.run(req).await,
         Err(refused) => refused.into_response(),
     }
@@ -196,7 +228,7 @@ mod tests {
         assert_eq!(client_ip(ip("10.0.0.1"), Some("6.6.6.6, 1.2.3.4"), &trusted), ip("1.2.3.4"));
         // Two proxies in a row: both are skipped.
         assert_eq!(client_ip(ip("10.0.0.1"), Some("6.6.6.6, 1.2.3.4, 10.0.0.2"), &trusted), ip("1.2.3.4"));
-        // Garbage is skipped; a header with nothing usable falls back to the peer.
+        // An unreadable entry ends the walk: the peer is used.
         assert_eq!(client_ip(ip("10.0.0.1"), Some("not-an-ip, 10.0.0.3"), &trusted), ip("10.0.0.1"));
         assert_eq!(client_ip(ip("10.0.0.1"), Some("2001:db8::1"), &trusted), ip("2001:db8::1"));
     }
@@ -238,5 +270,34 @@ mod tests {
         names.sort_unstable();
         names.dedup();
         assert_eq!(names.len(), table.len(), "two rules sharing a name would share their counters");
+    }
+
+    #[test]
+    fn an_unreadable_forwarded_entry_ends_the_walk() {
+        let trusted: Vec<IpNet> = vec!["10.0.0.0/8".parse().unwrap()];
+        // The proxy wrote something this parser cannot read. Walking past it would let the client choose
+        // its own address (6.6.6.6 is whatever it typed), so the proxy's address is used instead.
+        assert_eq!(client_ip(ip("10.0.0.1"), Some("6.6.6.6, garbage"), &trusted), ip("10.0.0.1"));
+        assert_eq!(client_ip(ip("10.0.0.1"), Some("6.6.6.6, "), &trusted), ip("10.0.0.1"));
+        assert_eq!(client_ip(ip("10.0.0.1"), Some("6.6.6.6, unknown, 10.0.0.2"), &trusted), ip("10.0.0.1"));
+    }
+
+    #[test]
+    fn a_forwarded_entry_may_carry_a_port_or_brackets() {
+        let trusted: Vec<IpNet> = vec!["10.0.0.0/8".parse().unwrap()];
+        assert_eq!(client_ip(ip("10.0.0.1"), Some("6.6.6.6, 203.0.113.7:51234"), &trusted), ip("203.0.113.7"));
+        assert_eq!(client_ip(ip("10.0.0.1"), Some("6.6.6.6, [2001:db8::7]:443"), &trusted), ip("2001:db8::7"));
+        assert_eq!(client_ip(ip("10.0.0.1"), Some("6.6.6.6, [2001:db8::7]"), &trusted), ip("2001:db8::7"));
+        // A proxy reached over an IPv4-mapped IPv6 socket is still the trusted proxy.
+        assert_eq!(client_ip(ip("::ffff:10.0.0.1"), Some("1.2.3.4"), &trusted), ip("1.2.3.4"));
+    }
+
+    #[test]
+    fn ipv6_is_counted_per_64_network_and_mapped_ipv4_as_ipv4() {
+        assert_eq!(ip_subject(ip("203.0.113.7")), "203.0.113.7");
+        assert_eq!(ip_subject(ip("::ffff:203.0.113.7")), "203.0.113.7");
+        assert_eq!(ip_subject(ip("2001:db8:1:2:aaaa:bbbb:cccc:dddd")), ip_subject(ip("2001:db8:1:2::1")));
+        assert_ne!(ip_subject(ip("2001:db8:1:2::1")), ip_subject(ip("2001:db8:1:3::1")));
+        assert_ne!(ip_subject(ip("2001:db8:1:2::1")), ip_subject(ip("203.0.113.7")));
     }
 }

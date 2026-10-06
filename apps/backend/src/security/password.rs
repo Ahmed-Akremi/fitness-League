@@ -22,25 +22,34 @@ pub struct Passwords {
     argon: Argon2<'static>,
     /// Each hash takes 19 MiB and a core for tens of milliseconds: cap how many run at once, so a burst
     /// of logins cannot exhaust memory.
-    slots: Semaphore,
+    slots: Arc<Semaphore>,
     /// Verified when the account does not exist, so the response time does not reveal which emails do.
     dummy_hash: String,
 }
 
 impl Passwords {
     pub fn new() -> Result<Self, String> {
+        Self::with_slots(std::thread::available_parallelism().map_or(2, |n| n.get()))
+    }
+
+    /// `slots` hashes may run at the same time.
+    fn with_slots(slots: usize) -> Result<Self, String> {
         // OWASP minimum for Argon2id: 19 MiB, 2 passes, 1 lane.
         let params = Params::new(19_456, 2, 1, None).map_err(|e| e.to_string())?;
         let argon = Argon2::new(Algorithm::Argon2id, Version::V0x13, params);
         let dummy_hash = argon.hash_password(DUMMY_PASSWORD.as_bytes()).map_err(|e| e.to_string())?.to_string();
-        let slots = std::thread::available_parallelism().map_or(2, |n| n.get());
-        Ok(Self { argon, slots: Semaphore::new(slots), dummy_hash })
+        Ok(Self { argon, slots: Arc::new(Semaphore::new(slots)), dummy_hash })
     }
 
     pub async fn hash(self: &Arc<Self>, password: String) -> Result<String, AppError> {
-        let _slot = self.slots.acquire().await.map_err(AppError::internal)?;
+        // The slot moves into the blocking task. A caller that gives up (timeout, closed connection)
+        // must not free it while the hash is still running and holding its memory.
+        let slot = Arc::clone(&self.slots).acquire_owned().await.map_err(AppError::internal)?;
         let this = Arc::clone(self);
-        tokio::task::spawn_blocking(move || this.argon.hash_password(password.as_bytes()).map(|hash| hash.to_string()))
+        tokio::task::spawn_blocking(move || {
+            let _slot = slot;
+            this.argon.hash_password(password.as_bytes()).map(|hash| hash.to_string())
+        })
             .await
             .map_err(AppError::internal)?
             .map_err(AppError::internal)
@@ -48,9 +57,10 @@ impl Passwords {
 
     /// `stored = None` (no such account) costs one full verification and always answers `false`.
     pub async fn verify(self: &Arc<Self>, stored: Option<String>, password: String) -> bool {
-        let Ok(_slot) = self.slots.acquire().await else { return false };
+        let Ok(slot) = Arc::clone(&self.slots).acquire_owned().await else { return false };
         let this = Arc::clone(self);
         tokio::task::spawn_blocking(move || {
+            let _slot = slot;
             let known = stored.is_some();
             let phc = stored.unwrap_or_else(|| this.dummy_hash.clone());
             let matches = PasswordHash::new(&phc).is_ok_and(|parsed| this.argon.verify_password(password.as_bytes(), &parsed).is_ok());
@@ -127,5 +137,31 @@ mod tests {
         // Ten Arabic letters are twenty bytes but ten characters: long enough.
         assert_eq!(password_problem(&"ب".repeat(10), "a@b.tn", "ahmed"), None);
         assert_eq!(password_problem(&"ب".repeat(9), "a@b.tn", "ahmed"), Some("MINLENGTH"));
+    }
+
+    #[tokio::test]
+    async fn a_cancelled_caller_keeps_its_slot_until_the_hash_ends() {
+        let passwords = Arc::new(Passwords::with_slots(1).unwrap());
+        let caller = tokio::spawn({
+            let passwords = Arc::clone(&passwords);
+            async move { passwords.hash("a long enough password".into()).await }
+        });
+        // Wait until the hash holds the only slot, then cancel the caller, as a timeout or a closed
+        // connection would.
+        while passwords.slots.available_permits() == 1 {
+            tokio::task::yield_now().await;
+        }
+        caller.abort();
+        let _ = caller.await;
+        assert_eq!(passwords.slots.available_permits(), 0, "the hash is still running, so its slot must stay taken");
+
+        // The slot comes back when the work is really over.
+        for _ in 0..2000 {
+            if passwords.slots.available_permits() == 1 {
+                return;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(5)).await;
+        }
+        panic!("the slot was never released");
     }
 }

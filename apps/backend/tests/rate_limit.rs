@@ -1,8 +1,11 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 mod common;
 
+use std::net::{Ipv6Addr, SocketAddr};
+
 use axum::{
     body::Body,
+    extract::ConnectInfo,
     http::{Method, Request, StatusCode},
 };
 use common::{TestApp, from_ip, request};
@@ -74,4 +77,18 @@ async fn no_address_is_written_to_redis(opts: MySqlPoolOptions, conn: MySqlConne
     let keys: Vec<String> = redis::cmd("KEYS").arg(format!("{}*", app.state.redis_prefix)).query_async(&mut connection).await.unwrap();
     assert_eq!(keys.len(), 1, "{keys:?}");
     assert!(keys[0].contains("rl:global-ip:") && !keys[0].contains("9.9.9.9"), "{keys:?}");
+}
+
+#[sqlx::test]
+async fn a_client_rotating_inside_its_ipv6_network_is_still_counted(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let app = limited(opts, conn).await;
+    let mut host = 0u16;
+    // One customer usually holds a whole /64 and can use a new address for every request.
+    let refused = first_refusal(&app, || {
+        host += 1;
+        let address = Ipv6Addr::new(0x2001, 0xdb8, 1, 2, 0, 0, 0, host);
+        request(Method::GET, "/api/v1/health").extension(ConnectInfo(SocketAddr::from((address, 40000)))).body(Body::empty()).unwrap()
+    })
+    .await;
+    assert_eq!(refused.status, StatusCode::TOO_MANY_REQUESTS);
 }
