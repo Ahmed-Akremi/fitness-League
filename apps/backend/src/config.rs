@@ -4,7 +4,7 @@ use std::{collections::HashMap, fmt, net::IpAddr, str::FromStr};
 
 use base64::{Engine, engine::general_purpose::STANDARD};
 use ipnet::IpNet;
-use secrecy::SecretString;
+use secrecy::{ExposeSecret, SecretString};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AppEnv {
@@ -58,6 +58,20 @@ impl fmt::Debug for Config {
 }
 
 impl Config {
+    /// The backends reached without TLS. In production each one is reported at start: on a private
+    /// network this can be acceptable, but it has to be a decision and not an accident.
+    pub fn plaintext_backends(&self) -> Vec<&'static str> {
+        let mut names = Vec::new();
+        let database = self.database_url.expose_secret().to_lowercase();
+        if !["ssl-mode=required", "ssl-mode=verify_ca", "ssl-mode=verify_identity"].iter().any(|mode| database.contains(mode)) {
+            names.push("MariaDB");
+        }
+        if !self.redis_url.expose_secret().starts_with("rediss://") {
+            names.push("Redis");
+        }
+        names
+    }
+
     pub fn from_env() -> Result<Self, String> {
         Self::from_map(&std::env::vars().collect())
     }
@@ -330,5 +344,15 @@ mod tests {
         for secret in ["db-pass-1234", "redis-pass-1234", "0123456789abcdef0123456789abcdef", "smtp-pass-1234", "AAAA"] {
             assert!(!printed.contains(secret), "secret {secret} leaked in: {printed}");
         }
+    }
+
+    #[test]
+    fn reports_the_backends_reached_without_tls() {
+        assert_eq!(Config::from_map(&valid()).unwrap().plaintext_backends(), ["MariaDB", "Redis"]);
+        let secured = with(&[
+            ("DATABASE_URL", "mysql://fl_app:pw@db.internal:3306/fitness_league?ssl-mode=VERIFY_IDENTITY"),
+            ("REDIS_URL", "rediss://:pw@cache.internal:6380"),
+        ]);
+        assert!(Config::from_map(&secured).unwrap().plaintext_backends().is_empty());
     }
 }
