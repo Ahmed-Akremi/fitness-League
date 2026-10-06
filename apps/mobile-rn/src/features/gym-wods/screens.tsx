@@ -12,7 +12,7 @@ import { formatDuration } from '../../core/utils/format';
 import { newClientId } from '../../core/utils/ids';
 import { AvatarBadge, CountdownText, EmptyState, Loading, RankRow, SectionHeader, SkeletonList, TimeField } from '../../core/widgets/common';
 import { ErrorText, ErrorView, errorMessage } from '../../core/widgets/error';
-import { Button, Card, Chip, Dialog, Expander, Icon, IconButton, ListRow, Screen, Segmented, SwitchRow, TextField, Txt, toast } from '../../core/widgets/kit';
+import { Button, Card, Chip, Dialog, Expander, Icon, IconButton, ListGroup, ListRow, Screen, Segmented, SwitchRow, TextField, Txt, toast } from '../../core/widgets/kit';
 import { DateField, Select } from '../../core/widgets/pickers';
 import { useGym } from '../gyms/api';
 import { useMe } from '../me/api';
@@ -28,9 +28,9 @@ export function GymWodsSection({ gymId, isMember, isCoach }: { gymId: string; is
     return (
       <View>
         {header}
-        <Card style={{ paddingVertical: 4 }}>
+        <ListGroup>
           <ListRow icon="lock-outline" title={t('wodsMembersOnly')} />
-        </Card>
+        </ListGroup>
       </View>
     );
   }
@@ -40,9 +40,9 @@ export function GymWodsSection({ gymId, isMember, isCoach }: { gymId: string; is
       {header}
       {active.isLoading && <Loading />}
       {!active.isLoading && wods.length === 0 && (
-        <Card style={{ paddingVertical: 4 }}>
+        <ListGroup>
           <ListRow icon="event-busy" title={t('wodNone')} />
-        </Card>
+        </ListGroup>
       )}
       {wods.map((w) => (
         <WodCard key={w.id} gymId={gymId} wod={w} />

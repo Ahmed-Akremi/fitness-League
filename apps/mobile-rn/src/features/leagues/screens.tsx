@@ -10,7 +10,7 @@ import { useApi } from '../../core/services';
 import { displayText, useTheme } from '../../core/theme';
 import { EmptyState, Loading, RankRow, SectionHeader, SkeletonList } from '../../core/widgets/common';
 import { ErrorText, ErrorView, errorMessage } from '../../core/widgets/error';
-import { Button, Card, Fab, Icon, IconButton, ListRow, Screen, Segmented, SwitchRow, TextField, Txt, toast } from '../../core/widgets/kit';
+import { Button, Card, Fab, Icon, IconButton, ListGroup, ListRow, Screen, Segmented, SwitchRow, TextField, Txt, toast } from '../../core/widgets/kit';
 import { leagueKeys, leaguesApi, useLeague, useLeagueBoard, useLeagues } from './api';
 
 export const leaguePresetLabel = (t: T, preset: string) =>
@@ -125,7 +125,7 @@ export function LeagueDetailScreen({ id }: { id: string }) {
       <Txt style={displayText(30)}>{lg.name}</Txt>
       <Txt color={colors.outline}>{`${leaguePresetLabel(t, lg.scoringPreset)} · ${t('membersOf', { count: lg.members, max: lg.maxMembers })}`}</Txt>
       {code && (
-        <Card style={{ paddingVertical: 4 }}>
+        <ListGroup>
           <ListRow
             icon="key"
             title={code}
@@ -141,7 +141,7 @@ export function LeagueDetailScreen({ id }: { id: string }) {
               />
             }
           />
-        </Card>
+        </ListGroup>
       )}
       {lg.isMember !== true && lg.status !== 'ENDED' && <Button testID="league-join" label={t('leagueJoin')} busy={busy} onPress={() => run(() => repo.join(id).then(() => Promise.all([league.refetch(), board.refetch()])))} />}
       <SectionHeader title={t('leaderboard')} />

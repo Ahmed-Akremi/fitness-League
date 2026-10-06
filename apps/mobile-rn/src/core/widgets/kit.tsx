@@ -187,16 +187,19 @@ export function ListRow({ icon, leading, title, subtitle, trailing, onPress, tes
   );
 }
 
-/** Rows grouped in one card with hairline dividers (settings style). Empty children (`cond && …`) are skipped. */
-export function ListGroup({ children, style, testID }: { children: ReactNode; style?: StyleProp<ViewStyle>; testID?: string }) {
+/**
+ * Rows grouped in one card with hairline dividers (settings style). Empty children (`cond && …`) are skipped.
+ * `inset`: where dividers start — after the icon by default; pass `space.sm` for rows without an icon.
+ */
+export function ListGroup({ children, inset = 48, style, testID }: { children: ReactNode; inset?: number; style?: StyleProp<ViewStyle>; testID?: string }) {
   const { colors } = useTheme();
   const rows = Children.toArray(children).filter(isValidElement);
   return (
     <Card testID={testID} style={[{ paddingVertical: space.xs, paddingHorizontal: space.sm }, style]}>
       {rows.map((row, i) => (
         <Fragment key={row.key ?? i}>
-          {/* marginStart: the divider starts after the icon, on the right in Arabic. */}
-          {i > 0 && <View testID="list-divider" style={{ height: 1, backgroundColor: colors.border, marginStart: 48 }} />}
+          {/* marginStart: the inset follows the reading direction (right in Arabic). */}
+          {i > 0 && <View testID="list-divider" style={{ height: 1, backgroundColor: colors.border, marginStart: inset }} />}
           {row}
         </Fragment>
       ))}

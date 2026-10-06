@@ -238,13 +238,13 @@ export function ProfileScreen() {
         <Txt style={displayText(30)}>{profile.fullName ?? me.data.username}</Txt>
         <Txt color={colors.outline}>{`@${me.data.username} · ${t('level', { level: stats.level ?? 1 })}${stats.division ? ` · ${stats.division}` : ''}`}</Txt>
       </View>
-      <Card style={{ paddingVertical: 4 }}>
+      <ListGroup>
         {profile.gym ? (
           <ListRow icon="fitness-center" title={profile.gym.name} chevron onPress={() => router.push(`/gyms/${profile.gym!.id}`)} />
         ) : (
           <ListRow icon="storefront" title={t('findGym')} onPress={() => router.push('/gyms')} />
         )}
-      </Card>
+      </ListGroup>
       {/* Gyms I submitted that are not verified yet (verified ones show as "my gym" above). */}
       {myGyms
         .filter((g) => g.status !== 'VERIFIED')

@@ -7,12 +7,12 @@ import type { Json } from '../../core/api/client';
 import { ApiError } from '../../core/api/errors';
 import { useLocale, useT, type T } from '../../core/prefs';
 import { useApi } from '../../core/services';
-import { displayText, radius, useTheme } from '../../core/theme';
+import { displayText, radius, space, useTheme } from '../../core/theme';
 import { formatDate } from '../../core/utils/format';
 import { newClientId } from '../../core/utils/ids';
-import { EmptyState, Loading, SectionHeader, SkeletonList, StatCard, TimeField } from '../../core/widgets/common';
+import { EmptyState, Loading, SectionHeader, SkeletonList, StatCard, StatusPill, TimeField } from '../../core/widgets/common';
 import { ErrorText, ErrorView, errorMessage } from '../../core/widgets/error';
-import { Button, Card, Chip, Icon, ListRow, Screen, Segmented, TextField, Txt, toast, type IconName } from '../../core/widgets/kit';
+import { Button, Card, Chip, Icon, ListGroup, ListRow, Screen, Segmented, TextField, Txt, toast, type IconName } from '../../core/widgets/kit';
 import { compKeys, competitionsApi, formatMoney, useCompetition, useCompetitions, useCompLeaderboard, useHeats, useMySubmissions, youtubeId, type CompFilter } from './api';
 
 const statusLabel = (t: T, s: string) => (t as (k: string) => string)(`compStatus${s}`);
@@ -61,19 +61,34 @@ function CompetitionCard({ c }: { c: Json }) {
   const locale = useLocale();
   const { colors } = useTheme();
   return (
-    <Card testID={`comp-${c.id}`} onPress={() => router.push(`/competitions/${c.id}`)} style={{ gap: 6 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+    <Card testID={`comp-${c.id}`} onPress={() => router.push(`/competitions/${c.id}`)} style={{ gap: space.sm }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
         <Icon name="emoji-events" color={colors.primary} />
         <Txt variant="title" style={{ flex: 1, fontWeight: '800' }}>{c.title}</Txt>
       </View>
-      <Txt variant="small" color={colors.outline} numberOfLines={2}>{c.shortDescription}</Txt>
-      <Txt>{`📅 ${formatDate(c.eventStart, locale)}   📍 ${c.city ?? c.location ?? '—'}`}</Txt>
-      <Txt>{`💰 ${c.registrationPrice === 0 ? t('compFree') : formatMoney(c.registrationPrice, c.currency, locale)}   👥 ${t('compAthletes', { count: c.participants })}`}</Txt>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
-        <Chip label={statusLabelForCompetition(t, c.status)} selected={c.status === 'REGISTRATION_OPEN'} />
+      {c.shortDescription ? <Txt variant="small" color={colors.outline} numberOfLines={2}>{c.shortDescription}</Txt> : null}
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: space.lg, rowGap: space.xs }}>
+        <Meta icon="event" text={formatDate(c.eventStart, locale)} />
+        <Meta icon="place" text={c.city ?? c.location ?? '—'} />
+        <Meta icon="payments" text={c.registrationPrice === 0 ? t('compFree') : formatMoney(c.registrationPrice, c.currency, locale)} />
+        <Meta icon="groups" text={t('compAthletes', { count: c.participants })} />
+      </View>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
+        <StatusPill label={statusLabelForCompetition(t, c.status)} color={c.status === 'REGISTRATION_OPEN' ? colors.primary : colors.outline} />
         {c.status === 'REGISTRATION_OPEN' && <Txt variant="small" color={colors.outline}>{t('compDeadline', { date: formatDate(c.registrationEnd, locale) })}</Txt>}
       </View>
     </Card>
+  );
+}
+
+/** Small icon + text pair (date, place, price…) on competition cards. */
+function Meta({ icon, text }: { icon: IconName; text: string }) {
+  const { colors } = useTheme();
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.xs }}>
+      <Icon name={icon} size={16} color={colors.outline} />
+      <Txt variant="small">{text}</Txt>
+    </View>
   );
 }
 
@@ -173,7 +188,7 @@ export function CompetitionScreen({ id }: { id: string }) {
                   <Txt>{c.description}</Txt>
                 </Card>
               ) : null}
-              <Card style={{ paddingVertical: 4 }}>
+              <ListGroup>
                 <ListRow icon="person" title={t('compOrganizer')} subtitle={c.organizer?.fullName ?? c.organizer?.username} />
                 <ListRow icon="payments" title={t('compPrice')} subtitle={price(c.registrationPrice)} />
                 <ListRow icon="event" title={t('compDeadline', { date: formatDate(c.deadlines.registrationEnd, locale) })} />
@@ -181,33 +196,34 @@ export function CompetitionScreen({ id }: { id: string }) {
                 {c.deadlines.judgingDeadline && <ListRow icon="gavel" title={t('compJudgingDeadline')} subtitle={formatDate(c.deadlines.judgingDeadline, locale)} />}
                 {c.deadlines.leaderboardPublicationAt && <ListRow icon="leaderboard" title={t('compLeaderboardDate')} subtitle={formatDate(c.deadlines.leaderboardPublicationAt, locale)} />}
                 <ListRow icon="groups" title={t('compAthletes', { count: c.participants })} />
-              </Card>
+              </ListGroup>
               <HeatSchedule id={id} />
 
               {categories.length > 0 && (
-                <View onLayout={anchor('categories')} style={{ gap: 8 }}>
+                <View onLayout={anchor('categories')} style={{ gap: space.md }}>
                   <SectionHeader title={t('compCategories')} />
-                  {categories.map((cat: Json) => (
-                    <Card key={cat.id} style={{ paddingVertical: 4 }}>
-                      <ListRow title={cat.name} subtitle={[cat.gender, cat.minAge != null ? `${cat.minAge}${cat.maxAge != null ? `-${cat.maxAge}` : '+'}` : null].filter(Boolean).join(' · ')} trailing={<Txt variant="title">{price(cat.price)}</Txt>} />
-                    </Card>
-                  ))}
+                  <ListGroup inset={space.sm}>
+                    {categories.map((cat: Json) => (
+                      <ListRow key={cat.id} title={cat.name} subtitle={[cat.gender, cat.minAge != null ? `${cat.minAge}${cat.maxAge != null ? `-${cat.maxAge}` : '+'}` : null].filter(Boolean).join(' · ')} trailing={<Txt variant="title">{price(cat.price)}</Txt>} />
+                    ))}
+                  </ListGroup>
                 </View>
               )}
 
               {c.prizes.length > 0 && (
-                <View onLayout={anchor('prizes')} style={{ gap: 8 }}>
+                <View onLayout={anchor('prizes')} style={{ gap: space.md }}>
                   <SectionHeader title={t('compPrizes')} />
-                  {c.prizes.map((p: Json) => (
-                    <Card key={p.id} style={{ paddingVertical: 4 }}>
+                  <ListGroup>
+                    {c.prizes.map((p: Json) => (
                       <ListRow
+                        key={p.id}
                         icon="military-tech"
                         title={`${p.position === 1 ? '🥇' : p.position === 2 ? '🥈' : p.position === 3 ? '🥉' : `#${p.position}`} ${p.description ?? p.type}`}
                         subtitle={c.categories.find((x: Json) => x.id === p.categoryId)?.name}
                         trailing={p.amount != null ? <Txt variant="title">{formatMoney(p.amount, p.currency ?? c.currency, locale)}</Txt> : null}
                       />
-                    </Card>
-                  ))}
+                    ))}
+                  </ListGroup>
                 </View>
               )}
             </View>
@@ -312,7 +328,7 @@ function HeatSchedule({ id }: { id: string }) {
         </Card>
       ))}
       <SectionHeader title={t('compHeats')} />
-      <Card style={{ paddingVertical: 4 }}>
+      <ListGroup>
         {heats.data.map((h) => (
           <ListRow
             key={h.id}
@@ -322,7 +338,7 @@ function HeatSchedule({ id }: { id: string }) {
             trailing={<Txt>{when(h)}</Txt>}
           />
         ))}
-      </Card>
+      </ListGroup>
     </>
   );
 }

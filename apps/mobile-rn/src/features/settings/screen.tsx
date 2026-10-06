@@ -7,10 +7,10 @@ import { setAuthStatus } from '../../core/auth/session';
 import type { Locale } from '../../core/i18n';
 import { useLocale, usePrefs, useT, type ThemeMode } from '../../core/prefs';
 import { useApi } from '../../core/services';
-import { useTheme } from '../../core/theme';
+import { space, useTheme } from '../../core/theme';
 import { SectionHeader } from '../../core/widgets/common';
 import { errorMessage } from '../../core/widgets/error';
-import { Dialog, IconButton, ListRow, Screen, Segmented, SwitchRow, toast } from '../../core/widgets/kit';
+import { Dialog, IconButton, ListGroup, ListRow, Screen, Segmented, SwitchRow, toast } from '../../core/widgets/kit';
 import { Select } from '../../core/widgets/pickers';
 import { useAuth } from '../auth/api';
 import { meApi, meKey, useMe } from '../me/api';
@@ -51,9 +51,11 @@ export function SettingsScreen() {
       <SectionHeader title={t('privacy')} />
       <PrivacySection />
       <SectionHeader title={t('account')} />
-      <ListRow icon="download" title={t('exportData')} onPress={exportData} />
-      <ListRow icon="delete-forever" danger title={t('deleteAccount')} onPress={() => setDeleting(true)} />
-      <ListRow testID="logout" icon="logout" title={t('logout')} onPress={() => auth.logout()} />
+      <ListGroup>
+        <ListRow icon="download" title={t('exportData')} onPress={exportData} />
+        <ListRow icon="delete-forever" danger title={t('deleteAccount')} onPress={() => setDeleting(true)} />
+        <ListRow testID="logout" icon="logout" title={t('logout')} onPress={() => auth.logout()} />
+      </ListGroup>
       <Dialog
         visible={deleting}
         title={t('deleteAccount')}
@@ -141,7 +143,7 @@ export function PrivacySection() {
   }
 
   return (
-    <View style={{ gap: 4 }}>
+    <View style={{ gap: space.md }}>
       <Select
         label={t('workoutVisibility')}
         value={value('defaultVisibility') ?? 'FRIENDS'}
@@ -152,8 +154,10 @@ export function PrivacySection() {
         ]}
         onChange={(v) => set('defaultVisibility', v)}
       />
-      <SwitchRow title={t('showAgeBracket')} value={value('showAgeBracket') === true} onChange={(v) => set('showAgeBracket', v)} />
-      <SwitchRow title={t('showOnLeaderboards')} value={value('showOnLeaderboards') !== false} onChange={(v) => set('showOnLeaderboards', v)} />
+      <ListGroup inset={space.sm}>
+        <SwitchRow title={t('showAgeBracket')} value={value('showAgeBracket') === true} onChange={(v) => set('showAgeBracket', v)} />
+        <SwitchRow title={t('showOnLeaderboards')} value={value('showOnLeaderboards') !== false} onChange={(v) => set('showOnLeaderboards', v)} />
+      </ListGroup>
     </View>
   );
 }
@@ -188,16 +192,18 @@ export function NotificationSettingsSection() {
 
   return (
     <View>
-      {CATEGORIES.map((c) => (
-        <SwitchRow key={c} testID={`push-${c}`} title={label(c)} value={categories[c] !== false} onChange={(v) => save({ categories: { [c]: v } })} />
-      ))}
-      <ListRow
-        icon="bedtime"
-        title={t('quietHours')}
-        subtitle={quiet == null ? t('quietHoursOff') : `${quiet.start} – ${quiet.end}`}
-        onPress={() => setEditing('start')}
-        trailing={quiet == null ? null : <IconButton icon="close" label={t('delete')} color={colors.outline} onPress={() => save({ quietHours: null })} />}
-      />
+      <ListGroup inset={space.sm}>
+        {CATEGORIES.map((c) => (
+          <SwitchRow key={c} testID={`push-${c}`} title={label(c)} value={categories[c] !== false} onChange={(v) => save({ categories: { [c]: v } })} />
+        ))}
+        <ListRow
+          icon="bedtime"
+          title={t('quietHours')}
+          subtitle={quiet == null ? t('quietHoursOff') : `${quiet.start} – ${quiet.end}`}
+          onPress={() => setEditing('start')}
+          trailing={quiet == null ? null : <IconButton icon="close" label={t('delete')} color={colors.outline} onPress={() => save({ quietHours: null })} />}
+        />
+      </ListGroup>
       {/* Quiet hours: start then end, typed as HH:MM (24 h). */}
       <Dialog
         visible={editing != null}
