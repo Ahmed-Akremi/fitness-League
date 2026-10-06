@@ -5,11 +5,12 @@ import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 
 import { useLocale, useT } from '../../core/prefs';
 import { useServices } from '../../core/services';
-import { useTheme } from '../../core/theme';
+import { space, useTheme } from '../../core/theme';
 import { formatDate, formatDuration, formatMetric, formatNumber } from '../../core/utils/format';
-import { EmptyState, Loading, StatCard } from '../../core/widgets/common';
+import { EmptyState, Loading, sportIcon, StatCard, StatusPill } from '../../core/widgets/common';
 import { ErrorView } from '../../core/widgets/error';
 import { Card, Icon, IconButton, Txt } from '../../core/widgets/kit';
+import { useSports } from '../reference/api';
 import { ProofsSection } from './proofs';
 import { explainPoints, usePendingWorkouts, useWorkoutDetail, useWorkouts, workoutKeys, type Workout } from './api';
 
@@ -20,6 +21,7 @@ export function TrainScreen() {
   const { sync } = useServices();
   const qc = useQueryClient();
   const workouts = useWorkouts();
+  const sportCodes = new Map((useSports().data ?? []).map((s) => [s.id, s.code]));
   const pending = usePendingWorkouts();
   const [refreshing, setRefreshing] = useState(false);
 
@@ -61,11 +63,11 @@ export function TrainScreen() {
       </View>
     );
   else
-    body = workouts.data.data.map((w) => <WorkoutTile key={w.id} workout={w} />);
+    body = workouts.data.data.map((w) => <WorkoutTile key={w.id} workout={w} sportCode={sportCodes.get(String(w.sportId))} />);
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 96, gap: 10 }} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.primary} />}>
+      <ScrollView contentContainerStyle={{ padding: space.lg, paddingTop: space.sm, paddingBottom: 96, gap: space.sm }} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.primary} />}>
         {queuedCards}
         {body}
       </ScrollView>
@@ -82,7 +84,7 @@ export function TrainScreen() {
   );
 }
 
-function WorkoutTile({ workout }: { workout: Workout }) {
+function WorkoutTile({ workout, sportCode }: { workout: Workout; sportCode?: string }) {
   const t = useT();
   const locale = useLocale();
   const { colors } = useTheme();
@@ -92,14 +94,15 @@ function WorkoutTile({ workout }: { workout: Workout }) {
   const distance = workout.totalDistanceM;
   const subtitle = [volume && volume > 0 ? `${formatNumber(volume, locale)} kg` : null, distance && distance > 0 ? formatMetric(distance, 'm', locale) : null].filter(Boolean).join(' · ');
   return (
-    <Card testID={`workout-${workout.id}`} onPress={() => router.push(`/workouts/${workout.id}`)} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+    <Card testID={`workout-${workout.id}`} onPress={() => router.push(`/workouts/${workout.id}`)} style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.md }}>
+      <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: colors.surfaceHigh, alignItems: 'center', justifyContent: 'center' }}>
+        <Icon name={sportCode ? sportIcon(sportCode) : 'fitness-center'} color={colors.primary} size={20} />
+      </View>
       <View style={{ flex: 1 }}>
-        <Txt variant="title">{`${formatDate(workout.performedAt, locale)} · ${formatDuration(workout.durationS)}`}</Txt>
+        <Txt variant="title" numberOfLines={1}>{`${formatDate(workout.performedAt, locale)} · ${formatDuration(workout.durationS)}`}</Txt>
         {subtitle ? <Txt variant="small" color={colors.outline}>{subtitle}</Txt> : null}
       </View>
-      <View style={{ borderWidth: 1, borderColor: color, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 }}>
-        <Txt variant="small" color={color} style={{ fontWeight: '700' }}>{label}</Txt>
-      </View>
+      <StatusPill testID={`workout-${workout.id}-status`} label={label} color={color} />
     </Card>
   );
 }
