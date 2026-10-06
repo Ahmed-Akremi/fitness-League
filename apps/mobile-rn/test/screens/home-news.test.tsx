@@ -1,5 +1,7 @@
 import { fireEvent, waitFor } from 'expo-router/testing-library';
 
+import { Text } from 'react-native';
+
 import { translate } from '../../src/core/i18n';
 import { HomeScreen } from '../../src/features/home/screen';
 import { notificationRoute, notificationText } from '../../src/features/notifications/api';
@@ -16,6 +18,15 @@ const me = {
 };
 
 const news = { id: 'a1', body: 'Final this Saturday in Tunis', imageUrl: null, imageWidth: null, imageHeight: null, createdAt: new Date(Date.now() - 2 * 3_600_000).toISOString(), likeCount: 3, likedByMe: false };
+
+type Node = { children?: (Node | string)[] | null } | string | null;
+/** Rendered strings in document order (to check where a section sits on the screen). */
+function texts(node: Node | Node[]): string[] {
+  if (node == null) return [];
+  if (typeof node === 'string') return [node];
+  if (Array.isArray(node)) return node.flatMap(texts);
+  return (node.children ?? []).flatMap(texts);
+}
 
 function home(backend = new FakeBackend()) {
   return backend
@@ -63,6 +74,30 @@ describe('home news', () => {
     const screen = await renderScreen(HomeScreen, home().on('GET', '/announcements', [200, page([])]));
     expect(await screen.findByText('1234')).toBeTruthy();
     expect(screen.queryByText('News')).toBeNull();
+  });
+
+  it('shows current competitions in a banner carousel right under the LP card, and opens one', async () => {
+    const comp = { id: 'c1', title: 'Carthage Throwdown', status: 'REGISTRATION_OPEN', eventStart: '2026-11-14T08:00:00Z', city: 'Tunis', coverUrl: null };
+    const backend = home()
+      .on('GET', '/announcements', [200, page([])])
+      .on('GET', '/competitions', (req) => [200, req.query.get('filter') === 'CURRENT' ? [comp] : []]);
+    const screen = await renderScreen(HomeScreen, backend, { routes: { 'competitions/[id]': () => <Text>Competition page</Text> } });
+
+    expect(await screen.findByText('Carthage Throwdown')).toBeTruthy();
+    expect(backend.calls('GET', '/competitions')[0].query.get('filter')).toBe('CURRENT');
+    const order = texts(screen.toJSON());
+    expect(order.indexOf('1234')).toBeLessThan(order.indexOf('Carthage Throwdown'));
+    expect(order.indexOf('Carthage Throwdown')).toBeLessThan(order.indexOf('#12'));
+
+    await fireEvent.press(screen.getByTestId('home-comp-c1'));
+    expect(await screen.findByText('Competition page')).toBeTruthy();
+  });
+
+  it('hides the carousel when no competition is running', async () => {
+    const backend = home().on('GET', '/announcements', [200, page([])]).on('GET', '/competitions', [200, []]);
+    const screen = await renderScreen(HomeScreen, backend);
+    expect(await screen.findByText('1234')).toBeTruthy();
+    expect(screen.queryByTestId('home-competitions')).toBeNull();
   });
 
   it('describes a news notification and opens the home screen', () => {

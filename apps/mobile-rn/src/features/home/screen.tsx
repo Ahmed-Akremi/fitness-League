@@ -17,6 +17,7 @@ import { formatWodScore, useGymWods } from '../gym-wods/api';
 import { useGym, useMyGyms } from '../gyms/api';
 import { meKey, useHomeDashboard, useMe, type Me } from '../me/api';
 import { NewsSection } from '../announcements/news';
+import { CompetitionCarousel } from './competition-carousel';
 import { NotificationBell } from '../notifications/screens';
 import { useRecords } from '../progress/api';
 import { useApi } from '../../core/services';
@@ -110,6 +111,7 @@ function HomeBody({ me }: { me: Me }) {
           <Txt style={{ fontWeight: '700' }}>{t('weekStreak', { count: streak.currentWeeks ?? 0 })}</Txt>
         </View>
       </Pressable>
+      <CompetitionCarousel />
       {calibrating && (
         <Card style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
           <Icon name="tune" />

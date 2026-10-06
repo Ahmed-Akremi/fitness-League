@@ -38,6 +38,14 @@ describe('demo backend (offline build)', () => {
     await expect(api().get('/me/notification-preferences')).resolves.toEqual({ categories: {}, quietHours: null });
   });
 
+  it('answers the home carousel and the news feed', async () => {
+    const current = await api().get<{ id: string; status: string }[]>('/competitions', { filter: 'CURRENT' });
+    expect(current.length).toBeGreaterThan(0);
+    const news = await api().get<{ data: { id: string; likeCount: number }[] }>('/announcements', { limit: 5 });
+    expect(news.data.length).toBeGreaterThanOrEqual(2);
+    await expect(api().put(`/announcements/${news.data[0].id}/like`)).resolves.toBeDefined();
+  });
+
   it('accepts writes without storing them and 404s the unknown', async () => {
     await expect(api().post('/workouts/sync', { items: [] })).resolves.toEqual({ results: [] });
     await expect(api().get('/nowhere')).rejects.toMatchObject({ status: 404 });
