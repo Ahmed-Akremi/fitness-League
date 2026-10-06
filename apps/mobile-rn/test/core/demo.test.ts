@@ -29,6 +29,11 @@ describe('demo backend (offline build)', () => {
     await expect(api().get('/judge/athletes')).rejects.toMatchObject({ status: 404 }); // judges use the admin panel
   });
 
+  it('answers the challenge lists (Goals tab) with an empty list', async () => {
+    await expect(api().get('/challenges', { status: 'ACTIVE' })).resolves.toEqual([]);
+    await expect(api().get('/challenges', { status: 'ENDED' })).resolves.toEqual([]);
+  });
+
   it('accepts writes without storing them and 404s the unknown', async () => {
     await expect(api().post('/workouts/sync', { items: [] })).resolves.toEqual({ results: [] });
     await expect(api().get('/nowhere')).rejects.toMatchObject({ status: 404 });
