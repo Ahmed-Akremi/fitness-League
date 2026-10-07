@@ -19,7 +19,8 @@ services:
   redis:
     image: redis:7-alpine
     command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:-fl_redis_dev}"]
-    ports: ["6379:6379"]
+    # Reachable from this machine only: the development password is public.
+    ports: ["127.0.0.1:6379:6379"]
     volumes: [redisdata:/data]
     healthcheck:
       test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-fl_redis_dev}", "--no-auth-warning", "ping"]
@@ -32,8 +33,9 @@ services:
     command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_uca1400_ai_ci"]
     environment:
       MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD:-fl_root_dev}
-    # 3307 on the host: 3306 is often taken by a local MySQL.
-    ports: ["3307:3306"]
+    # 3307 on the host: 3306 is often taken by a local MySQL. Reachable from this machine only: the
+    # development passwords are public.
+    ports: ["127.0.0.1:3307:3306"]
     volumes:
       - mariadbdata:/var/lib/mysql
       - ./mariadb/init:/docker-entrypoint-initdb.d:ro

@@ -1,0 +1,4 @@
+# Always LF, whatever the machine's git settings. The migration files are embedded in the binary and
+# identified by a checksum of their bytes: a checkout that rewrites line endings would make the API
+# refuse a database migrated from another machine.
+* text=auto eol=lf
