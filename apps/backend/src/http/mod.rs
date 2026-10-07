@@ -100,7 +100,8 @@ fn api() -> Api {
     let api = modules::health::routes(Api::new());
     let api = modules::reference::routes(api);
     let api = modules::auth::routes(api);
-    modules::admin_auth::routes(api)
+    let api = modules::admin_auth::routes(api);
+    modules::me::routes(api)
 }
 
 /// `(method, path)` of every registered route.
