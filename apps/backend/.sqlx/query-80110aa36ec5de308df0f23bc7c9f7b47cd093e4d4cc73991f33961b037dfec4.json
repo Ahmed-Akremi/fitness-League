@@ -1,0 +1,677 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT u.username, u.email, u.email_verified_at, u.role AS \"role: Role\", u.date_of_birth,\n                  p.full_name, p.bio, p.gender, p.country_code, p.experience_level_declared,\n                  p.planned_training_days_per_week, p.calibration_ends_at, p.onboarding_completed_at,\n                  g.id AS \"governorate_id: Uuid\", g.code AS governorate_code,\n                  g.name_fr AS governorate_fr, g.name_en AS governorate_en, g.name_ar AS governorate_ar,\n                  c.id AS \"city_id: Uuid\", c.name_fr AS city_fr, c.name_en AS city_en, c.name_ar AS city_ar,\n                  s.locale, s.theme, s.reduced_motion AS \"reduced_motion: bool\", s.default_visibility,\n                  s.show_age_bracket AS \"show_age_bracket: bool\",\n                  s.show_on_leaderboards AS \"show_on_leaderboards: bool\", s.streak_freeze_days_per_week,\n                  t.xp_total, t.level, t.xp_into_level, t.xp_for_next_level, t.season_lp, t.division_code,\n                  t.leaderboard_eligible AS \"leaderboard_eligible: bool\",\n                  k.current_weeks, k.longest_weeks, k.current_days\n           FROM users u\n           JOIN profiles p ON p.user_id = u.id\n           JOIN governorates g ON g.id = p.governorate_id\n           JOIN cities c ON c.id = p.city_id\n           JOIN user_settings s ON s.user_id = u.id\n           JOIN user_stats t ON t.user_id = u.id\n           JOIN user_streaks k ON k.user_id = u.id\n           WHERE u.id = ?",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "username",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | UNIQUE_KEY | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 80
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.users",
+            "name": "username"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "email",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | UNIQUE_KEY | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 1016
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.users",
+            "name": "email"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "email_verified_at",
+        "type_info": {
+          "type": "Datetime",
+          "flags": "BINARY",
+          "collation": 63,
+          "max_size": 26
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.users",
+            "name": "email_verified_at"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "role: Role",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | ENUM",
+          "collation": 224,
+          "max_size": 44
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.users",
+            "name": "role"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "date_of_birth",
+        "type_info": {
+          "type": "Date",
+          "flags": "NOT_NULL | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 10
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.users",
+            "name": "date_of_birth"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "full_name",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 320
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.profiles",
+            "name": "full_name"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "bio",
+        "type_info": {
+          "type": "VarString",
+          "flags": "",
+          "collation": 224,
+          "max_size": 1120
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.profiles",
+            "name": "bio"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "gender",
+        "type_info": {
+          "type": "String",
+          "flags": "ENUM",
+          "collation": 224,
+          "max_size": 44
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.profiles",
+            "name": "gender"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "country_code",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | MULTIPLE_KEY | BINARY",
+          "collation": 224,
+          "max_size": 8
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.profiles",
+            "name": "country_code"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "experience_level_declared",
+        "type_info": {
+          "type": "String",
+          "flags": "ENUM",
+          "collation": 224,
+          "max_size": 48
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.profiles",
+            "name": "experience_level_declared"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "planned_training_days_per_week",
+        "type_info": {
+          "type": "Tiny",
+          "flags": "NOT_NULL",
+          "collation": 63,
+          "max_size": 4
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.profiles",
+            "name": "planned_training_days_per_week"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "calibration_ends_at",
+        "type_info": {
+          "type": "Datetime",
+          "flags": "BINARY",
+          "collation": 63,
+          "max_size": 26
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.profiles",
+            "name": "calibration_ends_at"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "onboarding_completed_at",
+        "type_info": {
+          "type": "Datetime",
+          "flags": "BINARY",
+          "collation": 63,
+          "max_size": 26
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.profiles",
+            "name": "onboarding_completed_at"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "governorate_id: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | PRIMARY_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.governorates",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 14,
+        "name": "governorate_code",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | UNIQUE_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 64
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.governorates",
+            "name": "code"
+          }
+        }
+      },
+      {
+        "ordinal": 15,
+        "name": "governorate_fr",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 320
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.governorates",
+            "name": "name_fr"
+          }
+        }
+      },
+      {
+        "ordinal": 16,
+        "name": "governorate_en",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 320
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.governorates",
+            "name": "name_en"
+          }
+        }
+      },
+      {
+        "ordinal": 17,
+        "name": "governorate_ar",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 320
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.governorates",
+            "name": "name_ar"
+          }
+        }
+      },
+      {
+        "ordinal": 18,
+        "name": "city_id: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | PRIMARY_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.cities",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 19,
+        "name": "city_fr",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 320
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.cities",
+            "name": "name_fr"
+          }
+        }
+      },
+      {
+        "ordinal": 20,
+        "name": "city_en",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 320
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.cities",
+            "name": "name_en"
+          }
+        }
+      },
+      {
+        "ordinal": 21,
+        "name": "city_ar",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 320
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.cities",
+            "name": "name_ar"
+          }
+        }
+      },
+      {
+        "ordinal": 22,
+        "name": "locale",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | ENUM",
+          "collation": 224,
+          "max_size": 8
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.user_settings",
+            "name": "locale"
+          }
+        }
+      },
+      {
+        "ordinal": 23,
+        "name": "theme",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | ENUM",
+          "collation": 224,
+          "max_size": 24
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.user_settings",
+            "name": "theme"
+          }
+        }
+      },
+      {
+        "ordinal": 24,
+        "name": "reduced_motion: bool",
+        "type_info": {
+          "type": "Tiny",
+          "flags": "",
+          "collation": 63,
+          "max_size": 1
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.user_settings",
+            "name": "reduced_motion"
+          }
+        }
+      },
+      {
+        "ordinal": 25,
+        "name": "default_visibility",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | ENUM",
+          "collation": 224,
+          "max_size": 28
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.user_settings",
+            "name": "default_visibility"
+          }
+        }
+      },
+      {
+        "ordinal": 26,
+        "name": "show_age_bracket: bool",
+        "type_info": {
+          "type": "Tiny",
+          "flags": "NOT_NULL",
+          "collation": 63,
+          "max_size": 1
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.user_settings",
+            "name": "show_age_bracket"
+          }
+        }
+      },
+      {
+        "ordinal": 27,
+        "name": "show_on_leaderboards: bool",
+        "type_info": {
+          "type": "Tiny",
+          "flags": "NOT_NULL",
+          "collation": 63,
+          "max_size": 1
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.user_settings",
+            "name": "show_on_leaderboards"
+          }
+        }
+      },
+      {
+        "ordinal": 28,
+        "name": "streak_freeze_days_per_week",
+        "type_info": {
+          "type": "Tiny",
+          "flags": "NOT_NULL",
+          "collation": 63,
+          "max_size": 4
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.user_settings",
+            "name": "streak_freeze_days_per_week"
+          }
+        }
+      },
+      {
+        "ordinal": 29,
+        "name": "xp_total",
+        "type_info": {
+          "type": "LongLong",
+          "flags": "NOT_NULL",
+          "collation": 63,
+          "max_size": 20
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.user_stats",
+            "name": "xp_total"
+          }
+        }
+      },
+      {
+        "ordinal": 30,
+        "name": "level",
+        "type_info": {
+          "type": "Long",
+          "flags": "NOT_NULL",
+          "collation": 63,
+          "max_size": 11
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.user_stats",
+            "name": "level"
+          }
+        }
+      },
+      {
+        "ordinal": 31,
+        "name": "xp_into_level",
+        "type_info": {
+          "type": "Long",
+          "flags": "NOT_NULL",
+          "collation": 63,
+          "max_size": 11
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.user_stats",
+            "name": "xp_into_level"
+          }
+        }
+      },
+      {
+        "ordinal": 32,
+        "name": "xp_for_next_level",
+        "type_info": {
+          "type": "Long",
+          "flags": "NOT_NULL",
+          "collation": 63,
+          "max_size": 11
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.user_stats",
+            "name": "xp_for_next_level"
+          }
+        }
+      },
+      {
+        "ordinal": 33,
+        "name": "season_lp",
+        "type_info": {
+          "type": "Long",
+          "flags": "NOT_NULL",
+          "collation": 63,
+          "max_size": 11
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.user_stats",
+            "name": "season_lp"
+          }
+        }
+      },
+      {
+        "ordinal": 34,
+        "name": "division_code",
+        "type_info": {
+          "type": "VarString",
+          "flags": "BINARY",
+          "collation": 224,
+          "max_size": 64
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.user_stats",
+            "name": "division_code"
+          }
+        }
+      },
+      {
+        "ordinal": 35,
+        "name": "leaderboard_eligible: bool",
+        "type_info": {
+          "type": "Tiny",
+          "flags": "NOT_NULL",
+          "collation": 63,
+          "max_size": 1
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.user_stats",
+            "name": "leaderboard_eligible"
+          }
+        }
+      },
+      {
+        "ordinal": 36,
+        "name": "current_weeks",
+        "type_info": {
+          "type": "Long",
+          "flags": "NOT_NULL",
+          "collation": 63,
+          "max_size": 11
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.user_streaks",
+            "name": "current_weeks"
+          }
+        }
+      },
+      {
+        "ordinal": 37,
+        "name": "longest_weeks",
+        "type_info": {
+          "type": "Long",
+          "flags": "NOT_NULL",
+          "collation": 63,
+          "max_size": 11
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.user_streaks",
+            "name": "longest_weeks"
+          }
+        }
+      },
+      {
+        "ordinal": 38,
+        "name": "current_days",
+        "type_info": {
+          "type": "Long",
+          "flags": "NOT_NULL",
+          "collation": 63,
+          "max_size": 11
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.user_streaks",
+            "name": "current_days"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      true,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "80110aa36ec5de308df0f23bc7c9f7b47cd093e4d4cc73991f33961b037dfec4"
+}

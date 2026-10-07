@@ -1,5 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
+use backend::types::Role;
+use serde_json::{Value, json};
 use sqlx::{
     AssertSqlSafe, MySqlPool,
     mysql::{MySqlConnectOptions, MySqlPoolOptions},
@@ -238,4 +240,125 @@ async fn the_app_account_cannot_change_the_schema_or_the_audit_trail(
         .execute(&admin)
         .await
         .unwrap();
+}
+
+#[sqlx::test]
+async fn the_email_column_confuses_what_the_application_refuses(
+    opts: MySqlPoolOptions,
+    conn: MySqlConnectOptions,
+) {
+    let db = backend::db::pool(opts, conn);
+    insert_user(&db, "ahmed@example.com", "ahmed")
+        .await
+        .unwrap();
+    // To the unique index these are the address above: the collation ignores a soft hyphen and a
+    // zero-width space, and trailing spaces do not count.
+    let twins = [
+        "ah\u{00AD}med@example.com",
+        "ah\u{200B}med@example.com",
+        "ahmed@example.com ",
+    ];
+    for (i, twin) in twins.iter().enumerate() {
+        let err = insert_user(&db, twin, &format!("twin{i}"))
+            .await
+            .expect_err(twin);
+        assert_eq!(
+            backend::db::duplicate_key(&err),
+            Some("uq_users_email"),
+            "{twin:?}"
+        );
+        // What reaches the column went through this function first.
+        assert_ne!(
+            backend::validate::normalise_email(twin).as_deref(),
+            Some(*twin),
+            "{twin:?}"
+        );
+    }
+    // An accent makes another letter, as the spec promises.
+    insert_user(&db, "ahm\u{00E9}d@example.com", "ahmed2")
+        .await
+        .unwrap();
+    // A second username collides on its own index.
+    let err = insert_user(&db, "other@example.com", "ahmed")
+        .await
+        .unwrap_err();
+    assert_eq!(backend::db::duplicate_key(&err), Some("uq_users_username"));
+}
+
+#[sqlx::test]
+async fn a_database_error_is_described_without_its_values(
+    opts: MySqlPoolOptions,
+    conn: MySqlConnectOptions,
+) {
+    let db = backend::db::pool(opts, conn);
+    insert_user(&db, "secret.address@example.com", "first")
+        .await
+        .unwrap();
+    let err = insert_user(&db, "secret.address@example.com", "second")
+        .await
+        .unwrap_err();
+    assert!(
+        err.to_string().contains("secret.address"),
+        "the raw message quotes the value"
+    );
+    let line = backend::db::describe(&err);
+    assert!(
+        line.contains("1062") && line.contains("uq_users_email"),
+        "{line}"
+    );
+    assert!(!line.contains("secret.address"), "{line}");
+    assert_eq!(backend::db::duplicate_key(&sqlx::Error::RowNotFound), None);
+    // An error that does not come from the server is described by its kind, never by its own
+    // text, which may quote a value as well.
+    let decode = sqlx::Error::ColumnDecode {
+        index: "email".into(),
+        source: "secret.address@example.com is not valid".into(),
+    };
+    let line = backend::db::describe(&decode);
+    assert!(!line.contains("secret.address"), "{line}");
+    assert!(line.contains("email"), "the column is named: {line}");
+    assert_eq!(
+        backend::db::describe(&sqlx::Error::RowNotFound),
+        "row not found"
+    );
+}
+
+#[sqlx::test]
+async fn an_audit_entry_records_the_actor_the_action_and_the_request(
+    opts: MySqlPoolOptions,
+    conn: MySqlConnectOptions,
+) {
+    let db = backend::db::pool(opts, conn);
+    let user = Uuid::now_v7();
+    let event = backend::audit::Event {
+        actor: Some((user, Role::Admin)),
+        action: "ROLE_CHANGED",
+        user_id: user,
+        after: Some(json!({"to": "ADMIN"})),
+    };
+    backend::error::REQUEST_ID
+        .scope("req-42".to_owned(), backend::audit::record(&db, event))
+        .await
+        .unwrap();
+    let (role, action, entity, after, request): (String, String, String, String, String) =
+        sqlx::query_as(
+            "SELECT actor_role, action, entity_type, after_json, request_id FROM audit_log WHERE entity_id = ?",
+        )
+        .bind(user)
+        .fetch_one(&db)
+        .await
+        .unwrap();
+    assert_eq!(
+        (
+            role.as_str(),
+            action.as_str(),
+            entity.as_str(),
+            request.as_str()
+        ),
+        ("ADMIN", "ROLE_CHANGED", "user", "req-42")
+    );
+    assert_eq!(
+        serde_json::from_str::<Value>(&after).unwrap(),
+        json!({"to": "ADMIN"})
+    );
 }

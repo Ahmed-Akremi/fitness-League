@@ -1,0 +1,133 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT id AS \"id: Uuid\", password_hash, role AS \"role: Role\", status, session_version,\n                  locked_until, suspended_until\n           FROM users WHERE email = ?",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | PRIMARY_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.users",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "password_hash",
+        "type_info": {
+          "type": "VarString",
+          "flags": "BINARY",
+          "collation": 224,
+          "max_size": 1020
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.users",
+            "name": "password_hash"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "role: Role",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | ENUM",
+          "collation": 224,
+          "max_size": 44
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.users",
+            "name": "role"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "status",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | MULTIPLE_KEY | ENUM",
+          "collation": 224,
+          "max_size": 36
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.users",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "session_version",
+        "type_info": {
+          "type": "Long",
+          "flags": "NOT_NULL",
+          "collation": 63,
+          "max_size": 11
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.users",
+            "name": "session_version"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "locked_until",
+        "type_info": {
+          "type": "Datetime",
+          "flags": "BINARY",
+          "collation": 63,
+          "max_size": 26
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.users",
+            "name": "locked_until"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "suspended_until",
+        "type_info": {
+          "type": "Datetime",
+          "flags": "BINARY",
+          "collation": 63,
+          "max_size": 26
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.users",
+            "name": "suspended_until"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      true,
+      false,
+      false,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "141ee3a35ba02d25c9ac539847b3ead4ed2b2f55186fa4b64b717be13ab1f5b8"
+}

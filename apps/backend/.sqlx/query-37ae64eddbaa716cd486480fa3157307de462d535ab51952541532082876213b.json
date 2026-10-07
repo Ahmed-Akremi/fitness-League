@@ -1,0 +1,31 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT config FROM rule_sets WHERE status = 'ACTIVE'",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "config",
+        "type_info": {
+          "type": "Blob",
+          "flags": "NOT_NULL | BLOB | BINARY | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 4294967295
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.rule_sets",
+            "name": "config"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "37ae64eddbaa716cd486480fa3157307de462d535ab51952541532082876213b"
+}

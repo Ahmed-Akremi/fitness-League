@@ -1,9 +1,13 @@
+pub mod audit;
 pub mod config;
 pub mod db;
 pub mod devkeys;
 pub mod error;
 pub mod http;
+pub mod jobs;
+pub mod mail;
 pub mod modules;
+pub mod rules;
 pub mod security;
 pub mod seed;
 pub mod state;

@@ -28,6 +28,7 @@ Every constraint of plan 1a still holds (toolchain, lints, SQL as bound paramete
 - **Where commands run:** from `apps/backend`, after `. "$HOME/.cargo/env"`, with `CARGO_TARGET_DIR="$HOME/.cache/fitness-league/target"`. The stack must be up: `docker compose -f infra/docker-compose.yml up -d --wait mariadb redis mailpit` (from the repository root).
 - **Offline query data:** after adding or changing a `sqlx::query!` in `src/`, run `cargo sqlx prepare` (command in Task 1, Step 9) and commit `apps/backend/.sqlx/`.
 - **Crate API drift:** the code below was written against the pinned versions and the code of plan 1a, but not compiled. If a call does not compile, read the documentation of the pinned version and adapt the call. Never change what a test expects, or a behaviour, to make code compile.
+- **Reading a SQL condition in a test:** `x IS NOT NULL` comes back as an integer. If sqlx refuses to read it as `bool`, read it as `i64` and compare with 0; this is a change to how the test reads, not to what it expects.
 - **Tests:** every test file starts with `#![allow(clippy::unwrap_used, clippy::expect_used)]`. Integration tests use `#[sqlx::test]` with the `(opts, conn)` arguments and build a `TestApp`. A test is written and seen failing before the code that makes it pass.
 - **Files containing SQL keywords that look destructive** (a test that sends `DROP TABLE` as a name, for instance) are created with the editor tools, never through a shell heredoc: the command guard of this machine refuses such a command.
 - **Per-address limits** are keyed by `ClientIp::subject()`. The address itself is private on purpose.
@@ -523,7 +524,7 @@ In `hash`, replace `password.as_bytes()` with `normalise(&password).as_bytes()`;
 CARGO_TARGET_DIR="$HOME/.cache/fitness-league/target" cargo test --lib 2>&1 | tail -5
 ```
 
-Expected: `test result: ok.` with 64 tests (58 before, 6 added).
+Expected: `test result: ok.` with 65 tests (58 before, 7 added).
 
 - [ ] **Step 6: Write the failing database tests**
 
@@ -1022,6 +1023,12 @@ Expected: does not compile, `could not find jobs in backend`.
 
 - [ ] **Step 3: Write the queue**
 
+A job is written as JSON with its user id, so the `uuid` crate needs its `serde` feature. In `apps/backend/Cargo.toml`:
+
+```toml
+uuid = { version = "1", features = ["serde", "v7"] }
+```
+
 Add `pub mod jobs;` to `src/lib.rs`. Create `src/jobs.rs`:
 
 ```rust
@@ -1303,7 +1310,8 @@ Two identical jobs waiting for the same retry are one entry of the waiting list 
 - [ ] **Step 4: Run the tests**
 
 ```bash
-CARGO_TARGET_DIR="$HOME/.cache/fitness-league/target" cargo test --test jobs --lib jobs 2>&1 | grep -E "^test |test result"
+CARGO_TARGET_DIR="$HOME/.cache/fitness-league/target" cargo test --test jobs 2>&1 | grep -E "^test |test result"
+CARGO_TARGET_DIR="$HOME/.cache/fitness-league/target" cargo test --lib jobs:: 2>&1 | grep -E "^test |test result"
 ```
 
 Expected: 4 integration tests and 2 unit tests pass.
@@ -1991,7 +1999,9 @@ APP_LINK_BASE_URL=http://localhost:8081
 - [ ] **Step 6: Run the tests**
 
 ```bash
-CARGO_TARGET_DIR="$HOME/.cache/fitness-league/target" cargo test --test mail --test emails --lib mail --lib config 2>&1 | grep -E "^test |test result"
+CARGO_TARGET_DIR="$HOME/.cache/fitness-league/target" cargo test --test mail --test emails 2>&1 | grep -E "^test |test result"
+CARGO_TARGET_DIR="$HOME/.cache/fitness-league/target" cargo test --lib mail:: 2>&1 | grep -E "^test |test result"
+CARGO_TARGET_DIR="$HOME/.cache/fitness-league/target" cargo test --lib config:: 2>&1 | grep -E "test result"
 ```
 
 Expected: `mail` 2 passed, `emails` 4 passed, the unit tests of `mail` (2) and `config` pass.
@@ -2002,12 +2012,9 @@ If `a_mail_goes_out_over_smtp` fails on the `token` assertion only, the library 
 
 With `SMTP_URL=smtp://127.0.0.1:1025` in `.env`:
 
-```bash
-CARGO_TARGET_DIR="$HOME/.cache/fitness-league/target" cargo run -q -- worker &
-sleep 2 && kill %1
-```
+Start `cargo run -q -- worker` in a second terminal (or in the background, noting its process id), wait for its first log line, then send it the TERM signal: `kill <pid>`.
 
-Expected: one log line `worker started`, and the process ends on the TERM signal within a second. (There is no account yet to send a mail to; the first real mail is checked by hand in Task 5.)
+Expected: one log line `worker started`, and the process ends within a second of the signal. (There is no account yet to send a mail to; the first real mail is checked by hand in Task 5.)
 
 - [ ] **Step 8: Prepare, lint, commit**
 
@@ -2875,7 +2882,8 @@ The refresh route counts the request before it looks at the token, so a refused 
 - [ ] **Step 7: Run the tests**
 
 ```bash
-CARGO_TARGET_DIR="$HOME/.cache/fitness-league/target" cargo test --test sessions --lib accounts 2>&1 | grep -E "^test |test result"
+CARGO_TARGET_DIR="$HOME/.cache/fitness-league/target" cargo test --test sessions 2>&1 | grep -E "^test |test result"
+CARGO_TARGET_DIR="$HOME/.cache/fitness-league/target" cargo test --lib accounts:: 2>&1 | grep -E "^test |test result"
 ```
 
 Expected: 12 integration tests and 1 unit test pass.
@@ -2886,4 +2894,2862 @@ Message: `feat(backend): sessions with single-use refresh tokens, the AppUser an
 
 ---
 
-<!-- END -->
+### Task 5: Registration
+
+**Files:**
+- Modify: `apps/backend/src/types.rs`, `src/modules/auth/mod.rs`, `src/modules/auth/accounts.rs`, `apps/backend/tests/common/mod.rs`, `apps/backend/tests/http_shell.rs`
+- Test: unit test in `src/modules/auth/mod.rs`; `apps/backend/tests/register.rs`
+
+**Interfaces:**
+- Consumes: `normalise_email`, `password_problem`, `Passwords::hash`, `Rules::active`, `policy::{age_in_years, business_today}`, `db::duplicate_key`, `audit::record`, `sessions::{issue, Holder, Session}`, `jobs::enqueue`, `rate_limit::REGISTER_IP`.
+- Produces:
+  - `types::Gender { Male, Female, Undisclosed }` and `types::Locale { Fr, En, Ar }`, each with `as_str`
+  - `accounts::Registration { … }` and `accounts::register(state, registration) -> Result<Session, AppError>`
+  - Route `POST /api/v1/auth/register` → 201 and a session
+  - Test helpers: `common::registration(app, name) -> Value`, `common::register(app, name) -> Value`, `common::post_from(app, ip, path, body) -> Reply`, `common::host_port(url) -> &str`, `common::seeded_with_cuttable_redis(opts, conn, tweak) -> (TestApp, JoinHandle<()>)`
+
+The body, as the app sends it (`phone`, `gender`, `locale` and `consents.marketing` are optional):
+
+```json
+{"username": "ahmed_fit", "fullName": "Ahmed Ben Salah", "email": "ahmed@example.com", "password": "…",
+ "dateOfBirth": "1998-04-12", "countryCode": "TN", "governorateId": "…", "cityId": "…", "locale": "fr",
+ "consents": {"terms": true, "privacy": true, "healthData": false, "documentVersion": "2026-09"}}
+```
+
+| Rule | Answer |
+|---|---|
+| `username`: 3 to 20 of `a-z 0-9 _ .` | 422 field `username`, code `MATCHES` |
+| `fullName`: 2 to 80 characters once trimmed, no control character | `fullName`: `MINLENGTH`, `MAXLENGTH` or `MATCHES` |
+| `email`: see ruling 1 | `email`: `ISEMAIL` |
+| `password`: 10 to 128 characters; not on the common list, not the email, not the username | `password`: `MINLENGTH`, `MAXLENGTH` or `TOO_COMMON` |
+| `dateOfBirth`: `YYYY-MM-DD`, a real date, 1900 or later | `dateOfBirth`: `ISISO8601` |
+| `countryCode`: two capital letters | `countryCode`: `MATCHES` |
+| `phone`: `+` and 8 to 15 digits, not starting with 0 | `phone`: `MATCHES` |
+| `consents.terms` and `consents.privacy` are `true` | `consents.terms`, `consents.privacy`: `EQUALS` |
+| `consents.documentVersion`: 1 to 20 characters | `consents.documentVersion`: `MINLENGTH` or `MAXLENGTH` |
+| A value of the wrong type, or not one of an enumeration | the field, code `INVALID` |
+| A field that is not in the list | the field, code `UNKNOWN_FIELD` |
+| Younger than the minimum age of the active rule set | 422 `UNDER_AGE` with `minAgeYears`; nothing is stored |
+| The city is not in the governorate, or the country is not open | 422 field `cityId`, code `NOT_IN_GOVERNORATE` |
+| The email, the username or the phone is taken | 409 `EMAIL_TAKEN`, `USERNAME_TAKEN`, `PHONE_TAKEN` |
+| More than 5 registrations in an hour from one address | 429 `RATE_LIMITED` |
+
+- [ ] **Step 1: Add the shared helpers**
+
+In `tests/http_shell.rs`, delete the local `host_port` function and import it: `use common::{TestApp, host_port, request};`.
+
+Append to `tests/common/mod.rs` (add `use serde_json::json;` to its imports):
+
+```rust
+/// `host:port` of a `scheme://[credentials@]host:port[/path]` URL.
+pub fn host_port(url: &str) -> &str {
+    let rest = url.split_once("://").map_or(url, |(_, rest)| rest);
+    let rest = rest.rsplit_once('@').map_or(rest, |(_, rest)| rest);
+    rest.split('/').next().unwrap_or(rest)
+}
+
+/// A seeded app whose Redis goes through a relay. Abort the returned task and await it: Redis is gone.
+pub async fn seeded_with_cuttable_redis(
+    opts: MySqlPoolOptions,
+    conn: MySqlConnectOptions,
+    tweak: impl FnOnce(&mut HashMap<String, String>),
+) -> (TestApp, tokio::task::JoinHandle<()>) {
+    let real = std::env::var("TEST_REDIS_URL").expect("TEST_REDIS_URL");
+    let target = host_port(&real).to_owned();
+    let (address, relay) = relay("127.0.0.1:0", target.clone()).await;
+    let app = seeded_with(opts, conn, |vars| {
+        vars.insert(
+            "REDIS_URL".into(),
+            real.replacen(&target, &address.to_string(), 1),
+        );
+        tweak(vars);
+    })
+    .await;
+    (app, relay)
+}
+
+/// A JSON POST that comes from `ip`.
+pub async fn post_from(app: &TestApp, ip: [u8; 4], path: &str, body: Value) -> Reply {
+    app.send(
+        request(Method::POST, path)
+            .extension(from_ip(ip))
+            .header("content-type", "application/json")
+            .body(Body::from(body.to_string()))
+            .unwrap(),
+    )
+    .await
+}
+
+/// A registration body that passes every rule. A test changes the field it is about.
+pub async fn registration(app: &TestApp, name: &str) -> Value {
+    let (governorate, city) = a_place(app).await;
+    json!({
+        "username": name,
+        "fullName": format!("Athlete {name}"),
+        "email": format!("{name}@example.com"),
+        "password": PASSWORD,
+        "dateOfBirth": "1995-05-05",
+        "countryCode": "TN",
+        "governorateId": governorate.to_string(),
+        "cityId": city.to_string(),
+        "locale": "fr",
+        "consents": {"terms": true, "privacy": true, "healthData": false, "documentVersion": "2026-09"}
+    })
+}
+
+/// Registers `name` through the API and returns the session.
+pub async fn register(app: &TestApp, name: &str) -> Value {
+    let reply = app
+        .post("/api/v1/auth/register", registration(app, name).await)
+        .await;
+    assert_eq!(reply.status, StatusCode::CREATED, "{}", reply.json);
+    reply.json
+}
+```
+
+- [ ] **Step 2: Write the failing tests**
+
+Create `apps/backend/tests/register.rs` with the editor (it contains SQL keywords as test data):
+
+```rust
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+mod common;
+
+use axum::http::{Method, StatusCode};
+use backend::security::policy::business_today;
+use chrono::{Days, Months, Utc};
+use common::{
+    PASSWORD, TestApp, deliver_mail, post_from, register, registration, seeded, seeded_with,
+    seeded_with_cuttable_redis,
+};
+use serde_json::{Value, json};
+use sqlx::mysql::{MySqlConnectOptions, MySqlPoolOptions};
+
+const REGISTER: &str = "/api/v1/auth/register";
+
+async fn count(app: &TestApp, table: &str) -> i64 {
+    sqlx::query_scalar(sqlx::AssertSqlSafe(format!("SELECT COUNT(*) FROM {table}")))
+        .fetch_one(&app.db)
+        .await
+        .unwrap()
+}
+
+/// `registration` with some fields replaced.
+async fn body_with(app: &TestApp, name: &str, changes: Value) -> Value {
+    let mut body = registration(app, name).await;
+    for (key, value) in changes.as_object().unwrap() {
+        body[key] = value.clone();
+    }
+    body
+}
+
+fn codes(reply: &common::Reply) -> Vec<(String, String)> {
+    reply.json["errors"]
+        .as_array()
+        .unwrap_or_else(|| panic!("no field errors in {} {}", reply.status, reply.json))
+        .iter()
+        .map(|e| (e["field"].as_str().unwrap().to_owned(), e["code"].as_str().unwrap().to_owned()))
+        .collect()
+}
+
+#[sqlx::test]
+async fn a_registration_opens_a_session_and_creates_every_row(
+    opts: MySqlPoolOptions,
+    conn: MySqlConnectOptions,
+) {
+    let app = seeded(opts, conn).await;
+    let body = body_with(
+        &app,
+        "ahmed",
+        json!({"email": "  Ahmed@Example.COM ", "fullName": "  Ahmed Ben Salah ", "consents": {"terms": true, "privacy": true, "healthData": true, "documentVersion": "2026-09"}}),
+    )
+    .await;
+    let reply = app.post(REGISTER, body).await;
+    assert_eq!(reply.status, StatusCode::CREATED, "{}", reply.json);
+    assert_eq!(reply.json.as_object().unwrap().len(), 4);
+    let user = reply.json["userId"].as_str().unwrap().to_owned();
+
+    let (email, role, status, verified, hash): (String, String, String, bool, String) = sqlx::query_as(
+        "SELECT email, role, status, email_verified_at IS NOT NULL, password_hash FROM users",
+    )
+    .fetch_one(&app.db)
+    .await
+    .unwrap();
+    assert_eq!((email.as_str(), role.as_str(), status.as_str(), verified), ("ahmed@example.com", "USER", "ACTIVE", false));
+    assert!(hash.starts_with("$argon2id$"), "{hash}");
+    assert!(!hash.contains(PASSWORD));
+
+    let (name, country, locale, level, division): (String, String, String, i32, Option<String>) = sqlx::query_as(
+        "SELECT p.full_name, p.country_code, s.locale, t.level, t.division_code \
+         FROM profiles p JOIN user_settings s USING (user_id) JOIN user_stats t USING (user_id) JOIN user_streaks k USING (user_id)",
+    )
+    .fetch_one(&app.db)
+    .await
+    .unwrap();
+    assert_eq!((name.as_str(), country.as_str(), locale.as_str(), level, division), ("Ahmed Ben Salah", "TN", "fr", 1, None));
+
+    let consents: Vec<(String, bool, String)> =
+        sqlx::query_as("SELECT type, granted, document_version FROM consents ORDER BY type")
+            .fetch_all(&app.db)
+            .await
+            .unwrap();
+    let granted: Vec<(&str, bool)> = consents.iter().map(|(t, g, _)| (t.as_str(), *g)).collect();
+    assert_eq!(granted, [("TERMS", true), ("PRIVACY", true), ("HEALTH_DATA", true), ("MARKETING", false)]);
+    assert!(consents.iter().all(|(_, _, version)| version == "2026-09"));
+
+    let audited: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM audit_log WHERE action = 'USER_REGISTERED' AND HEX(entity_id) = REPLACE(UPPER(?), '-', '')")
+        .bind(&user)
+        .fetch_one(&app.db)
+        .await
+        .unwrap();
+    assert_eq!(audited, 1);
+
+    // The verification mail is the worker's business.
+    let mails = deliver_mail(&app).await;
+    assert_eq!(mails.len(), 1);
+    assert_eq!(mails[0].to, "ahmed@example.com");
+
+    // The session works at once.
+    let logout = app
+        .call(
+            Method::POST,
+            "/api/v1/auth/logout",
+            reply.json["accessToken"].as_str(),
+            Some(json!({"refreshToken": reply.json["refreshToken"]})),
+        )
+        .await;
+    assert_eq!(logout.status, StatusCode::NO_CONTENT);
+}
+
+#[sqlx::test]
+async fn a_taken_email_or_username_is_named(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let app = seeded(opts, conn).await;
+    register(&app, "ahmed").await;
+
+    let same_email = body_with(&app, "other", json!({"email": "AHMED@example.com"})).await;
+    let reply = app.post(REGISTER, same_email).await;
+    assert_eq!((reply.status, reply.json["code"].as_str()), (StatusCode::CONFLICT, Some("EMAIL_TAKEN")));
+
+    let same_username = body_with(&app, "ahmed", json!({"email": "someone.else@example.com"})).await;
+    let reply = app.post(REGISTER, same_username).await;
+    assert_eq!((reply.status, reply.json["code"].as_str()), (StatusCode::CONFLICT, Some("USERNAME_TAKEN")));
+
+    // Both taken: the email is named.
+    let reply = app.post(REGISTER, registration(&app, "ahmed").await).await;
+    assert_eq!(reply.json["code"], "EMAIL_TAKEN");
+
+    let with_phone = body_with(&app, "leila", json!({"phone": "+21620123456"})).await;
+    assert_eq!(app.post(REGISTER, with_phone).await.status, StatusCode::CREATED);
+    let same_phone = body_with(&app, "sami", json!({"phone": "+21620123456"})).await;
+    assert_eq!(app.post(REGISTER, same_phone).await.json["code"], "PHONE_TAKEN");
+
+    assert_eq!(count(&app, "users").await, 2);
+    assert_eq!(count(&app, "profiles").await, 2);
+}
+
+#[sqlx::test]
+async fn someone_under_the_minimum_age_is_refused_and_nothing_is_stored(
+    opts: MySqlPoolOptions,
+    conn: MySqlConnectOptions,
+) {
+    let app = seeded(opts, conn).await;
+    // Today in Tunisia, which is where the age is counted.
+    let today = business_today(Utc::now(), 60);
+    let eighteen_tomorrow = (today + Days::new(1)) - Months::new(18 * 12);
+    let eighteen_today = today - Months::new(18 * 12);
+
+    let too_young = body_with(&app, "young", json!({"dateOfBirth": eighteen_tomorrow.to_string()})).await;
+    let reply = app.post(REGISTER, too_young).await;
+    assert_eq!(reply.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(reply.json["code"], "UNDER_AGE");
+    assert_eq!(reply.json["minAgeYears"], 18);
+    for table in ["users", "profiles", "consents", "audit_log", "refresh_tokens"] {
+        assert_eq!(count(&app, table).await, 0, "{table}");
+    }
+    assert!(deliver_mail(&app).await.is_empty());
+
+    let born_tomorrow = body_with(&app, "unborn", json!({"dateOfBirth": (today + Days::new(1)).to_string()})).await;
+    assert_eq!(app.post(REGISTER, born_tomorrow).await.json["code"], "UNDER_AGE");
+
+    let just_old_enough = body_with(&app, "adult", json!({"dateOfBirth": eighteen_today.to_string()})).await;
+    assert_eq!(app.post(REGISTER, just_old_enough).await.status, StatusCode::CREATED);
+}
+
+#[sqlx::test]
+async fn every_field_is_checked_and_all_the_problems_come_at_once(
+    opts: MySqlPoolOptions,
+    conn: MySqlConnectOptions,
+) {
+    let app = seeded(opts, conn).await;
+    let bad = body_with(
+        &app,
+        "ahmed",
+        json!({
+            "username": "Ahmed!",
+            "fullName": " A ",
+            "email": "ren\u{00E9}@example.com",
+            "password": "short",
+            "dateOfBirth": "12/04/1998",
+            "countryCode": "tn",
+            "phone": "0620123456",
+            "consents": {"terms": false, "privacy": false, "healthData": false, "documentVersion": ""}
+        }),
+    )
+    .await;
+    let reply = app.post(REGISTER, bad).await;
+    assert_eq!(reply.status, StatusCode::UNPROCESSABLE_ENTITY);
+    let expected = [
+        ("username", "MATCHES"),
+        ("fullName", "MINLENGTH"),
+        ("email", "ISEMAIL"),
+        ("password", "MINLENGTH"),
+        ("dateOfBirth", "ISISO8601"),
+        ("countryCode", "MATCHES"),
+        ("phone", "MATCHES"),
+        ("consents.terms", "EQUALS"),
+        ("consents.privacy", "EQUALS"),
+        ("consents.documentVersion", "MINLENGTH"),
+    ];
+    let got = codes(&reply);
+    let got: Vec<(&str, &str)> = got.iter().map(|(f, c)| (f.as_str(), c.as_str())).collect();
+    assert_eq!(got, expected);
+
+    // One problem at a time, for the rules the list above does not reach.
+    let one = |changes: Value| {
+        let app = &app;
+        async move {
+            let reply = app.post(REGISTER, body_with(app, "ahmed", changes).await).await;
+            assert_eq!(reply.status, StatusCode::UNPROCESSABLE_ENTITY, "{}", reply.json);
+            codes(&reply)
+        }
+    };
+    let single = |field: &str, code: &str| vec![(field.to_owned(), code.to_owned())];
+    assert_eq!(one(json!({"role": "ADMIN"})).await, single("role", "UNKNOWN_FIELD"));
+    assert_eq!(one(json!({"password": "1234567890"})).await, single("password", "TOO_COMMON"));
+    assert_eq!(one(json!({"password": "Ahmed@Example.com"})).await, single("password", "TOO_COMMON"));
+    assert_eq!(one(json!({"password": "x".repeat(129)})).await, single("password", "MAXLENGTH"));
+    assert_eq!(one(json!({"gender": "ROBOT"})).await, single("gender", "INVALID"));
+    assert_eq!(one(json!({"governorateId": "not-an-id"})).await, single("governorateId", "INVALID"));
+    assert_eq!(one(json!({"dateOfBirth": "2001-02-30"})).await, single("dateOfBirth", "ISISO8601"));
+    assert_eq!(one(json!({"dateOfBirth": "1899-12-31"})).await, single("dateOfBirth", "ISISO8601"));
+    assert_eq!(one(json!({"fullName": "Ahmed\u{0007}Bell"})).await, single("fullName", "MATCHES"));
+
+    // A city of another governorate.
+    let (_, elsewhere): (uuid::Uuid, uuid::Uuid) = sqlx::query_as(
+        "SELECT g.id, c.id FROM cities c JOIN governorates g ON g.id = c.governorate_id ORDER BY g.code DESC, c.code LIMIT 1",
+    )
+    .fetch_one(&app.db)
+    .await
+    .unwrap();
+    assert_eq!(one(json!({"cityId": elsewhere.to_string()})).await, single("cityId", "NOT_IN_GOVERNORATE"));
+    assert_eq!(one(json!({"countryCode": "FR"})).await, single("cityId", "NOT_IN_GOVERNORATE"));
+
+    assert_eq!(count(&app, "users").await, 0);
+}
+
+#[sqlx::test]
+async fn text_is_stored_exactly_as_it_was_sent(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let app = seeded(opts, conn).await;
+    let names = [
+        "Robert'); DROP TABLE users;-- ",
+        "\" OR \"1\"=\"1",
+        "أحمد بن صالح",
+        "Zoë 💪 \\ %_",
+    ];
+    for (i, name) in names.iter().enumerate() {
+        let body = body_with(&app, &format!("user{i}"), json!({"fullName": name})).await;
+        assert_eq!(app.post(REGISTER, body).await.status, StatusCode::CREATED, "{name}");
+    }
+    let stored: Vec<String> = sqlx::query_scalar("SELECT full_name FROM profiles ORDER BY created_at, user_id")
+        .fetch_all(&app.db)
+        .await
+        .unwrap();
+    let expected: Vec<&str> = names.iter().map(|name| name.trim()).collect();
+    assert_eq!(stored, expected);
+    assert_eq!(count(&app, "users").await, 4);
+}
+
+#[sqlx::test]
+async fn registration_is_limited_per_address(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let app = seeded_with(opts, conn, |vars| {
+        vars.insert("RATE_LIMIT_ENABLED".into(), "true".into());
+    })
+    .await;
+    let mut statuses = Vec::new();
+    for i in 0..8 {
+        let body = registration(&app, &format!("user{i}")).await;
+        statuses.push(post_from(&app, [5, 5, 5, 5], REGISTER, body).await.status);
+    }
+    assert_eq!(statuses[..5], [StatusCode::CREATED; 5]);
+    // The count is a sliding estimate: the refusal comes with the sixth or just after.
+    assert!(statuses[5..].contains(&StatusCode::TOO_MANY_REQUESTS), "{statuses:?}");
+    // Another address is not affected.
+    let body = registration(&app, "elsewhere").await;
+    assert_eq!(post_from(&app, [6, 6, 6, 6], REGISTER, body).await.status, StatusCode::CREATED);
+}
+
+#[sqlx::test]
+async fn a_queue_that_is_down_does_not_undo_a_registration(
+    opts: MySqlPoolOptions,
+    conn: MySqlConnectOptions,
+) {
+    // With the limits off, the queue is the only thing that needs Redis.
+    let (app, redis) = seeded_with_cuttable_redis(opts, conn, |_| {}).await;
+    redis.abort();
+    let _ = redis.await;
+
+    let reply = app.post(REGISTER, registration(&app, "ahmed").await).await;
+    assert_eq!(reply.status, StatusCode::CREATED, "{}", reply.json);
+    assert_eq!(count(&app, "users").await, 1);
+}
+```
+
+The unit tests of the date and phone rules are written with the code, in Step 4.
+
+- [ ] **Step 3: Run them to see them fail**
+
+```bash
+CARGO_TARGET_DIR="$HOME/.cache/fitness-league/target" cargo test --test register 2>&1 | grep -E "^test |test result" | head -12
+```
+
+Expected: the tests compile and fail with `404` where `201` or `422` was expected (the route does not exist yet).
+
+- [ ] **Step 4: Write the value sets, the body and its rules**
+
+`src/types.rs`, after `Role`:
+
+```rust
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum Gender {
+    Male,
+    Female,
+    Undisclosed,
+}
+
+impl Gender {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Gender::Male => "MALE",
+            Gender::Female => "FEMALE",
+            Gender::Undisclosed => "UNDISCLOSED",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Locale {
+    Fr,
+    En,
+    Ar,
+}
+
+impl Locale {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Locale::Fr => "fr",
+            Locale::En => "en",
+            Locale::Ar => "ar",
+        }
+    }
+}
+```
+
+`src/modules/auth/mod.rs`: add the route `.post("/api/v1/auth/register", register)` to `routes`, and:
+
+```rust
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct ConsentsBody {
+    terms: bool,
+    privacy: bool,
+    health_data: bool,
+    marketing: Option<bool>,
+    document_version: String,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct RegisterBody {
+    username: String,
+    full_name: String,
+    email: String,
+    password: String,
+    date_of_birth: String,
+    country_code: String,
+    governorate_id: Uuid,
+    city_id: Uuid,
+    phone: Option<String>,
+    gender: Option<Gender>,
+    locale: Option<Locale>,
+    consents: ConsentsBody,
+}
+
+/// A calendar date written `YYYY-MM-DD`, in 1900 or later.
+fn parse_date(raw: &str) -> Option<NaiveDate> {
+    let shaped = raw.len() == 10
+        && raw.bytes().enumerate().all(|(i, b)| match i {
+            4 | 7 => b == b'-',
+            _ => b.is_ascii_digit(),
+        });
+    if !shaped {
+        return None;
+    }
+    NaiveDate::parse_from_str(raw, "%Y-%m-%d")
+        .ok()
+        .filter(|date| date.year() >= 1900)
+}
+
+/// `+` and 8 to 15 digits, the first of which is not 0 (E.164).
+fn is_phone(raw: &str) -> bool {
+    raw.strip_prefix('+').is_some_and(|digits| {
+        (8..=15).contains(&digits.len())
+            && !digits.starts_with('0')
+            && digits.bytes().all(|b| b.is_ascii_digit())
+    })
+}
+
+impl Validate for RegisterBody {
+    fn validate(&self, check: &mut Check) {
+        let username_ok = (3..=20).contains(&self.username.len())
+            && self
+                .username
+                .bytes()
+                .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_' || b == b'.');
+        check.ensure("username", username_ok, "MATCHES");
+        check.length("fullName", self.full_name.trim(), 2, 80);
+        check.ensure(
+            "fullName",
+            !self.full_name.chars().any(char::is_control),
+            "MATCHES",
+        );
+        check.ensure("email", normalise_email(&self.email).is_some(), "ISEMAIL");
+        check.length(
+            "password",
+            &self.password,
+            password::MIN_LENGTH,
+            password::MAX_LENGTH,
+        );
+        check.ensure(
+            "dateOfBirth",
+            parse_date(&self.date_of_birth).is_some(),
+            "ISISO8601",
+        );
+        let country_ok =
+            self.country_code.len() == 2 && self.country_code.bytes().all(|b| b.is_ascii_uppercase());
+        check.ensure("countryCode", country_ok, "MATCHES");
+        if let Some(phone) = &self.phone {
+            check.ensure("phone", is_phone(phone), "MATCHES");
+        }
+        check.ensure("consents.terms", self.consents.terms, "EQUALS");
+        check.ensure("consents.privacy", self.consents.privacy, "EQUALS");
+        check.length(
+            "consents.documentVersion",
+            &self.consents.document_version,
+            1,
+            20,
+        );
+    }
+}
+
+impl RegisterBody {
+    /// The validated body in the form the account module works with.
+    fn into_registration(self) -> Result<Registration, AppError> {
+        Ok(Registration {
+            email: normalise_email(&self.email).ok_or_else(|| AppError::field("email", "ISEMAIL"))?,
+            date_of_birth: parse_date(&self.date_of_birth)
+                .ok_or_else(|| AppError::field("dateOfBirth", "ISISO8601"))?,
+            username: self.username,
+            full_name: self.full_name.trim().to_owned(),
+            password: self.password,
+            country_code: self.country_code,
+            governorate_id: self.governorate_id,
+            city_id: self.city_id,
+            phone: self.phone,
+            gender: self.gender,
+            locale: self.locale.unwrap_or(Locale::Fr),
+            health_data: self.consents.health_data,
+            marketing: self.consents.marketing.unwrap_or(false),
+            document_version: self.consents.document_version,
+        })
+    }
+}
+
+async fn register(
+    State(state): State<AppState>,
+    client: ClientIp,
+    ValidJson(body): ValidJson<RegisterBody>,
+) -> Result<(StatusCode, Json<Session>), AppError> {
+    rate_limit::check(&state, &rate_limit::REGISTER_IP, &client.subject()).await?;
+    let session = accounts::register(&state, body.into_registration()?).await?;
+    Ok((StatusCode::CREATED, Json(session)))
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used)]
+    use super::*;
+
+    #[test]
+    fn a_date_is_ten_characters_and_a_real_day() {
+        assert_eq!(
+            parse_date("1998-04-12"),
+            NaiveDate::from_ymd_opt(1998, 4, 12)
+        );
+        for bad in ["1998-4-12", "98-04-12", "1998/04/12", "1998-04-12T00:00:00Z", "1998-13-01", "2001-02-29", "1899-12-31", ""] {
+            assert_eq!(parse_date(bad), None, "{bad}");
+        }
+    }
+
+    #[test]
+    fn a_phone_number_is_international() {
+        assert!(is_phone("+21620123456"));
+        for bad in ["21620123456", "+0620123456", "+2162012", "+21620123456789012", "+2162012345a", "+"] {
+            assert!(!is_phone(bad), "{bad}");
+        }
+    }
+}
+```
+
+Extend the imports of the file: `use chrono::{Datelike, NaiveDate};`, `use uuid::Uuid;`, `use self::accounts::Registration;`, and in the `crate::{…}` list `security::password`, `types::{Gender, Locale}`, `validate::normalise_email`.
+
+- [ ] **Step 5: Write `accounts::register`**
+
+In `src/modules/auth/accounts.rs`, extend the imports:
+
+```rust
+use chrono::{NaiveDate, NaiveDateTime, Utc};
+use serde_json::json;
+use uuid::Uuid;
+
+use super::sessions::{self, Holder, Session};
+use crate::{
+    audit, db,
+    error::AppError,
+    jobs::{self, JobKind},
+    rules::Rules,
+    security::{password::password_problem, policy, tokens::Audience},
+    state::AppState,
+    types::{Gender, Locale, Role, iso},
+};
+```
+
+and add:
+
+```rust
+/// A registration whose every field passed its own rule.
+pub struct Registration {
+    pub username: String,
+    pub full_name: String,
+    /// Normalised: see `validate::normalise_email`.
+    pub email: String,
+    pub password: String,
+    pub date_of_birth: NaiveDate,
+    pub country_code: String,
+    pub governorate_id: Uuid,
+    pub city_id: Uuid,
+    pub phone: Option<String>,
+    pub gender: Option<Gender>,
+    pub locale: Locale,
+    pub health_data: bool,
+    pub marketing: bool,
+    pub document_version: String,
+}
+
+pub async fn register(state: &AppState, r: Registration) -> Result<Session, AppError> {
+    if let Some(code) = password_problem(&r.password, &r.email, &r.username) {
+        return Err(AppError::field("password", code));
+    }
+    // The age gate comes before anything is stored about the person.
+    let rules = Rules::active(&state.db).await?;
+    let today = policy::business_today(Utc::now(), state.cfg.business_utc_offset_minutes);
+    if policy::age_in_years(r.date_of_birth, today) < rules.min_age_years {
+        return Err(AppError::new(
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "UNDER_AGE",
+            "Minimum age not reached",
+        )
+        .with("minAgeYears", rules.min_age_years));
+    }
+    let places = sqlx::query_scalar!(
+        r#"SELECT COUNT(*) AS "n!: i64"
+           FROM cities c
+           JOIN governorates g ON g.id = c.governorate_id
+           JOIN countries k ON k.code = g.country_code
+           WHERE c.id = ? AND g.id = ? AND g.country_code = ? AND k.enabled"#,
+        r.city_id,
+        r.governorate_id,
+        r.country_code
+    )
+    .fetch_one(&state.db)
+    .await?;
+    if places != 1 {
+        return Err(AppError::field("cityId", "NOT_IN_GOVERNORATE"));
+    }
+
+    let password_hash = state.passwords.hash(r.password).await?;
+    let id = Uuid::now_v7();
+    let mut tx = state.db.begin().await?;
+    let inserted = sqlx::query!(
+        "INSERT INTO users (id, email, username, password_hash, date_of_birth, phone_e164) VALUES (?, ?, ?, ?, ?, ?)",
+        id,
+        r.email,
+        r.username,
+        password_hash,
+        r.date_of_birth,
+        r.phone
+    )
+    .execute(&mut *tx)
+    .await;
+    if let Err(e) = inserted {
+        // Which one is taken is what the database says: its idea of "the same email" is the one
+        // that counts, and two registrations at the same instant are settled by its index.
+        let taken = db::duplicate_key(&e).map(str::to_owned);
+        return Err(match taken.as_deref() {
+            Some("uq_users_email") => AppError::conflict("EMAIL_TAKEN"),
+            Some("uq_users_username") => AppError::conflict("USERNAME_TAKEN"),
+            Some("uq_users_phone") => AppError::conflict("PHONE_TAKEN"),
+            _ => e.into(),
+        });
+    }
+    sqlx::query!(
+        "INSERT INTO profiles (user_id, full_name, gender, country_code, governorate_id, city_id) VALUES (?, ?, ?, ?, ?, ?)",
+        id,
+        r.full_name,
+        r.gender.map(Gender::as_str),
+        r.country_code,
+        r.governorate_id,
+        r.city_id
+    )
+    .execute(&mut *tx)
+    .await?;
+    sqlx::query!(
+        "INSERT INTO user_settings (user_id, locale) VALUES (?, ?)",
+        id,
+        r.locale.as_str()
+    )
+    .execute(&mut *tx)
+    .await?;
+    sqlx::query!("INSERT INTO user_stats (user_id) VALUES (?)", id)
+        .execute(&mut *tx)
+        .await?;
+    sqlx::query!("INSERT INTO user_streaks (user_id) VALUES (?)", id)
+        .execute(&mut *tx)
+        .await?;
+    for (kind, granted) in [
+        ("TERMS", true),
+        ("PRIVACY", true),
+        ("HEALTH_DATA", r.health_data),
+        ("MARKETING", r.marketing),
+    ] {
+        sqlx::query!(
+            "INSERT INTO consents (id, user_id, type, document_version, granted) VALUES (?, ?, ?, ?, ?)",
+            Uuid::now_v7(),
+            id,
+            kind,
+            r.document_version,
+            granted
+        )
+        .execute(&mut *tx)
+        .await?;
+    }
+    let event = audit::Event {
+        actor: Some((id, Role::User)),
+        action: "USER_REGISTERED",
+        user_id: id,
+        after: Some(json!({"via": "PASSWORD"})),
+    };
+    audit::record(&mut *tx, event).await?;
+    let holder = Holder {
+        id,
+        role: Role::User,
+        session_version: 1,
+    };
+    let session =
+        sessions::issue(state, &mut *tx, holder, Uuid::now_v7(), Uuid::now_v7(), Audience::App).await?;
+    tx.commit().await?;
+
+    // The mail is the worker's business. A queue that is down must not undo a registration: the
+    // person can ask for another link once signed in.
+    if jobs::enqueue(state, JobKind::EmailVerify, id).await.is_err() {
+        tracing::warn!(user_id = %id, "the verification email could not be queued");
+    }
+    Ok(session)
+}
+```
+
+The country of the profile is a foreign key, so a code with no row in `countries` cannot be stored even if the query above were wrong.
+
+- [ ] **Step 6: Run the tests**
+
+```bash
+CARGO_TARGET_DIR="$HOME/.cache/fitness-league/target" cargo test --test register 2>&1 | grep -E "^test |test result"
+CARGO_TARGET_DIR="$HOME/.cache/fitness-league/target" cargo test --lib modules::auth 2>&1 | grep -E "^test |test result"
+```
+
+Expected: 7 integration tests and 3 unit tests pass (`accounts` has one, `auth` two).
+
+- [ ] **Step 7: Register from the command line and read the mail**
+
+In two terminals, from `apps/backend`: `cargo run -q -- serve` and `cargo run -q -- worker`. Then:
+
+```bash
+G=$(curl -s http://127.0.0.1:3100/api/v1/ref/governorates | python3 -c "import json,sys; print(json.load(sys.stdin)[0]['id'])")
+C=$(curl -s "http://127.0.0.1:3100/api/v1/ref/cities?governorateId=$G" | python3 -c "import json,sys; print(json.load(sys.stdin)[0]['id'])")
+curl -s -X POST http://127.0.0.1:3100/api/v1/auth/register -H 'content-type: application/json' -d "{\"username\":\"plan1b\",\"fullName\":\"Plan One B\",\"email\":\"plan1b@example.com\",\"password\":\"a long enough passphrase\",\"dateOfBirth\":\"1995-05-05\",\"countryCode\":\"TN\",\"governorateId\":\"$G\",\"cityId\":\"$C\",\"consents\":{\"terms\":true,\"privacy\":true,\"healthData\":false,\"documentVersion\":\"2026-09\"}}"
+curl -s http://127.0.0.1:8025/api/v1/messages | python3 -c "import json,sys; m=json.load(sys.stdin)['messages'][0]; print(m['To'][0]['Address'], '|', m['Subject'])"
+```
+
+Expected: the second command prints a session (four keys); the third prints `plan1b@example.com | Fitness League : confirme ton adresse email`. Stop both processes (by process id, not by name).
+
+- [ ] **Step 8: Prepare, lint, commit**
+
+Message: `feat(backend): registration with the age gate, consents, and the taken-name answers decided by the database`
+
+---
+
+### Task 6: Sign-in with lockout
+
+**Files:**
+- Modify: `apps/backend/src/modules/auth/mod.rs`, `src/modules/auth/accounts.rs`
+- Test: `apps/backend/tests/login.rs`
+
+**Interfaces:**
+- Consumes: `Passwords::verify`, `policy::lock_minutes`, `accounts::refuse_if_barred`, `sessions::{start, Holder}`, `audit::record`, `jobs::enqueue`, `rate_limit::{LOGIN_IP, LOGIN_ACCOUNT}`.
+- Produces:
+  - `accounts::check_credentials(state, email: &str, password: String) -> Result<Holder, AppError>` (`email` already normalised)
+  - `modules::auth::LoginBody { pub email: String, pub password: String }`
+  - `modules::auth::sign_in(state, client: &ClientIp, body: LoginBody) -> Result<Holder, AppError>`: both rate limits, then the credentials. The admin panel's sign-in (Task 8) calls it too.
+  - Route `POST /api/v1/auth/login` → 200 and a session
+
+| Situation | Answer |
+|---|---|
+| Unknown email, deleted account, wrong password | 401 `INVALID_CREDENTIALS`, title `Invalid email or password`, identical in every case |
+| Account locked | 423 `ACCOUNT_LOCKED` with `lockedUntil` and a `Retry-After` header, whatever the password |
+| Right password, account banned | 403 `ACCOUNT_BANNED` |
+| Right password, account suspended | 403 `ACCOUNT_SUSPENDED` with `suspendedUntil` |
+| Right password, judge account | 403 `JUDGE_ACCOUNT`, detail `Judge accounts sign in to the admin panel.` |
+| More than 10 a minute from one address, or 5 in 15 minutes for one account | 429 `RATE_LIMITED` |
+
+Every fifth wrong password in a row locks the account: 15 minutes, then 30, 60… up to 24 hours (`policy::lock_minutes`). The lock is written in MariaDB, so it does not depend on Redis. A successful sign-in clears the counter.
+
+- [ ] **Step 1: Write the failing tests**
+
+Create `apps/backend/tests/login.rs`:
+
+```rust
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+mod common;
+
+use axum::http::StatusCode;
+use backend::types::Role;
+use common::{PASSWORD, Reply, TestApp, create_user, deliver_mail, post_from, register, seeded, seeded_with};
+use serde_json::json;
+use sqlx::mysql::{MySqlConnectOptions, MySqlPoolOptions};
+use uuid::Uuid;
+
+const LOGIN: &str = "/api/v1/auth/login";
+
+async fn login(app: &TestApp, email: &str, password: &str) -> Reply {
+    app.post(LOGIN, json!({"email": email, "password": password}))
+        .await
+}
+
+async fn set(app: &TestApp, user: Uuid, assignment: &str) {
+    sqlx::query(sqlx::AssertSqlSafe(format!(
+        "UPDATE users SET {assignment} WHERE id = ?"
+    )))
+    .bind(user)
+    .execute(&app.db)
+    .await
+    .unwrap();
+}
+
+fn retry_after(reply: &Reply) -> u64 {
+    reply.headers["retry-after"].to_str().unwrap().parse().unwrap()
+}
+
+#[sqlx::test]
+async fn the_right_password_opens_a_session(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let app = seeded(opts, conn).await;
+    let registered = register(&app, "ahmed").await;
+
+    let reply = login(&app, "  Ahmed@Example.com ", PASSWORD).await;
+    assert_eq!(reply.status, StatusCode::OK, "{}", reply.json);
+    assert_eq!(reply.json["userId"], registered["userId"]);
+    assert_eq!(reply.json["expiresIn"], 900);
+    assert_ne!(reply.json["refreshToken"], registered["refreshToken"]);
+
+    let seen: bool = sqlx::query_scalar("SELECT last_login_at IS NOT NULL FROM users")
+        .fetch_one(&app.db)
+        .await
+        .unwrap();
+    assert!(seen);
+}
+
+#[sqlx::test]
+async fn an_unknown_email_and_a_wrong_password_get_the_same_answer(
+    opts: MySqlPoolOptions,
+    conn: MySqlConnectOptions,
+) {
+    let app = seeded(opts, conn).await;
+    register(&app, "ahmed").await;
+
+    let mut wrong = login(&app, "ahmed@example.com", "not the password").await;
+    let mut unknown = login(&app, "nobody@example.com", "not the password").await;
+    assert_eq!(wrong.status, StatusCode::UNAUTHORIZED);
+    assert_eq!(wrong.json["code"], "INVALID_CREDENTIALS");
+    // The trace id is the only thing that may differ.
+    for reply in [&mut wrong, &mut unknown] {
+        reply.json.as_object_mut().unwrap().remove("traceId");
+    }
+    assert_eq!(wrong.status, unknown.status);
+    assert_eq!(wrong.json, unknown.json);
+    assert_eq!(
+        wrong.headers.contains_key("retry-after"),
+        unknown.headers.contains_key("retry-after")
+    );
+}
+
+#[sqlx::test]
+async fn the_fifth_failure_locks_and_the_lock_doubles(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let app = seeded(opts, conn).await;
+    let user: Uuid = register(&app, "ahmed").await["userId"].as_str().unwrap().parse().unwrap();
+    deliver_mail(&app).await; // the verification mail, out of the way
+
+    for _ in 0..5 {
+        let reply = login(&app, "ahmed@example.com", "wrong").await;
+        assert_eq!(reply.json["code"], "INVALID_CREDENTIALS");
+    }
+    // Locked: even the right password is refused, and the answer says until when.
+    let locked = login(&app, "ahmed@example.com", PASSWORD).await;
+    assert_eq!(locked.status, StatusCode::LOCKED);
+    assert_eq!(locked.json["code"], "ACCOUNT_LOCKED");
+    assert!(locked.json["lockedUntil"].is_string());
+    assert!((880..=900).contains(&retry_after(&locked)), "{}", retry_after(&locked));
+
+    let (minutes,): (String,) = sqlx::query_as(
+        "SELECT JSON_VALUE(after_json, '$.minutes') FROM audit_log WHERE action = 'ACCOUNT_LOCKED' AND entity_id = ?",
+    )
+    .bind(user)
+    .fetch_one(&app.db)
+    .await
+    .unwrap();
+    assert_eq!(minutes, "15");
+    let mails = deliver_mail(&app).await;
+    assert_eq!(mails.len(), 1);
+    assert!(mails[0].subject.contains("bloquée"), "{}", mails[0].subject);
+
+    // The lock ends; five more failures lock for twice as long.
+    set(&app, user, "locked_until = UTC_TIMESTAMP(6) - INTERVAL 1 SECOND").await;
+    for _ in 0..5 {
+        assert_eq!(login(&app, "ahmed@example.com", "wrong").await.status, StatusCode::UNAUTHORIZED);
+    }
+    let longer = login(&app, "ahmed@example.com", PASSWORD).await;
+    assert_eq!(longer.status, StatusCode::LOCKED);
+    assert!((1780..=1800).contains(&retry_after(&longer)), "{}", retry_after(&longer));
+
+    // Once it is over, the right password signs in and the count starts again from zero.
+    set(&app, user, "locked_until = UTC_TIMESTAMP(6) - INTERVAL 1 SECOND").await;
+    assert_eq!(login(&app, "ahmed@example.com", PASSWORD).await.status, StatusCode::OK);
+    let (failures, locked): (i32, bool) =
+        sqlx::query_as("SELECT failed_login_count, locked_until IS NOT NULL FROM users WHERE id = ?")
+            .bind(user)
+            .fetch_one(&app.db)
+            .await
+            .unwrap();
+    assert_eq!((failures, locked), (0, false));
+}
+
+#[sqlx::test]
+async fn the_state_of_an_account_is_only_told_to_its_owner(
+    opts: MySqlPoolOptions,
+    conn: MySqlConnectOptions,
+) {
+    let app = seeded(opts, conn).await;
+    let banned = create_user(&app, "banned", Role::User).await;
+    let suspended = create_user(&app, "suspended", Role::User).await;
+    let deleted = create_user(&app, "deleted", Role::User).await;
+    let judge = create_user(&app, "judge", Role::HeadJudge).await;
+    set(&app, banned, "status = 'BANNED'").await;
+    set(&app, suspended, "status = 'SUSPENDED', suspended_until = UTC_TIMESTAMP(6) + INTERVAL 7 DAY").await;
+    set(&app, deleted, "status = 'DELETED'").await;
+    let _ = judge;
+
+    // Without the password, all four look like any other account.
+    for name in ["banned", "suspended", "deleted", "judge"] {
+        let reply = login(&app, &format!("{name}@example.com"), "not the password").await;
+        assert_eq!((reply.status, reply.json["code"].as_str()), (StatusCode::UNAUTHORIZED, Some("INVALID_CREDENTIALS")), "{name}");
+    }
+
+    let reply = login(&app, "banned@example.com", PASSWORD).await;
+    assert_eq!((reply.status, reply.json["code"].as_str()), (StatusCode::FORBIDDEN, Some("ACCOUNT_BANNED")));
+    let reply = login(&app, "suspended@example.com", PASSWORD).await;
+    assert_eq!((reply.status, reply.json["code"].as_str()), (StatusCode::FORBIDDEN, Some("ACCOUNT_SUSPENDED")));
+    assert!(reply.json["suspendedUntil"].is_string());
+    // A deleted account does not exist any more, even for its former owner.
+    let reply = login(&app, "deleted@example.com", PASSWORD).await;
+    assert_eq!((reply.status, reply.json["code"].as_str()), (StatusCode::UNAUTHORIZED, Some("INVALID_CREDENTIALS")));
+
+    let reply = login(&app, "judge@example.com", PASSWORD).await;
+    assert_eq!((reply.status, reply.json["code"].as_str()), (StatusCode::FORBIDDEN, Some("JUDGE_ACCOUNT")));
+    assert_eq!(reply.json["detail"], "Judge accounts sign in to the admin panel.");
+    let sessions: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM refresh_tokens")
+        .fetch_one(&app.db)
+        .await
+        .unwrap();
+    assert_eq!(sessions, 0, "none of these sign-ins opened a session");
+}
+
+#[sqlx::test]
+async fn signing_in_cancels_a_deletion_that_was_waiting(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let app = seeded(opts, conn).await;
+    let user = create_user(&app, "ahmed", Role::User).await;
+    sqlx::query("INSERT INTO deletion_requests (id, user_id, scheduled_for) VALUES (?, ?, UTC_TIMESTAMP(6) + INTERVAL 30 DAY)")
+        .bind(Uuid::now_v7())
+        .bind(user)
+        .execute(&app.db)
+        .await
+        .unwrap();
+
+    assert_eq!(login(&app, "ahmed@example.com", PASSWORD).await.status, StatusCode::OK);
+    let status: String = sqlx::query_scalar("SELECT status FROM deletion_requests WHERE user_id = ?")
+        .bind(user)
+        .fetch_one(&app.db)
+        .await
+        .unwrap();
+    assert_eq!(status, "CANCELLED");
+}
+
+#[sqlx::test]
+async fn the_body_of_a_sign_in_is_checked(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let app = seeded(opts, conn).await;
+    let errors = |body| {
+        let app = &app;
+        async move {
+            let reply = app.post(LOGIN, body).await;
+            assert_eq!(reply.status, StatusCode::UNPROCESSABLE_ENTITY, "{}", reply.json);
+            reply.json["errors"].clone()
+        }
+    };
+    assert_eq!(errors(json!({"email": "nope", "password": "x"})).await, json!([{"field": "email", "code": "ISEMAIL"}]));
+    assert_eq!(errors(json!({"email": "a@example.com"})).await, json!([{"field": "password", "code": "REQUIRED"}]));
+    assert_eq!(
+        errors(json!({"email": "a@example.com", "password": "x".repeat(129)})).await,
+        json!([{"field": "password", "code": "MAXLENGTH"}])
+    );
+    assert_eq!(
+        errors(json!({"email": "a@example.com", "password": "x", "admin": true})).await,
+        json!([{"field": "admin", "code": "UNKNOWN_FIELD"}])
+    );
+}
+
+#[sqlx::test]
+async fn sign_in_is_limited_per_account_and_per_address(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let app = seeded_with(opts, conn, |vars| {
+        vars.insert("RATE_LIMIT_ENABLED".into(), "true".into());
+    })
+    .await;
+    create_user(&app, "ahmed", Role::User).await;
+
+    // One account, a new address every time: 5 in 15 minutes.
+    let mut statuses = Vec::new();
+    for i in 0..8u8 {
+        let body = json!({"email": "ahmed@example.com", "password": "wrong"});
+        statuses.push(post_from(&app, [20, 0, 0, i], LOGIN, body).await.status);
+    }
+    assert_eq!(statuses[..5], [StatusCode::UNAUTHORIZED; 5]);
+    assert!(statuses[5..].contains(&StatusCode::TOO_MANY_REQUESTS), "{statuses:?}");
+
+    // One address, a new account every time: 10 a minute.
+    let mut statuses = Vec::new();
+    for i in 0..14 {
+        let body = json!({"email": format!("nobody{i}@example.com"), "password": "wrong"});
+        let reply = post_from(&app, [30, 0, 0, 1], LOGIN, body).await;
+        if reply.status == StatusCode::TOO_MANY_REQUESTS {
+            assert!(reply.headers.contains_key("retry-after"));
+        }
+        statuses.push(reply.status);
+    }
+    assert_eq!(statuses[..10], [StatusCode::UNAUTHORIZED; 10]);
+    assert!(statuses[10..].contains(&StatusCode::TOO_MANY_REQUESTS), "{statuses:?}");
+}
+```
+
+- [ ] **Step 2: Run them to see them fail**
+
+```bash
+CARGO_TARGET_DIR="$HOME/.cache/fitness-league/target" cargo test --test login 2>&1 | grep -E "^test |test result" | head -10
+```
+
+Expected: every test fails with `404` (the route does not exist yet).
+
+- [ ] **Step 3: Write the credentials check**
+
+In `src/modules/auth/accounts.rs` add `use chrono::Duration;` to the `chrono` import, `error::AppError` is already there, and append:
+
+```rust
+/// Checks an email and a password, with the lockout. Shared by the app and the admin panel.
+/// `email` is already normalised. What the account is (banned, suspended) is only told to someone
+/// who gave the right password.
+pub async fn check_credentials(
+    state: &AppState,
+    email: &str,
+    password: String,
+) -> Result<Holder, AppError> {
+    let wrong = || AppError::unauthenticated("INVALID_CREDENTIALS", "Invalid email or password");
+    let user = sqlx::query!(
+        r#"SELECT id AS "id: Uuid", password_hash, role AS "role: Role", status, session_version,
+                  locked_until, suspended_until
+           FROM users WHERE email = ?"#,
+        email
+    )
+    .fetch_optional(&state.db)
+    .await?;
+    let Some(user) = user.filter(|user| user.status != "DELETED") else {
+        // The same work as for a real account: the time taken must not tell which emails exist.
+        state.passwords.verify(None, password).await;
+        return Err(wrong());
+    };
+    let now = Utc::now().naive_utc();
+    if let Some(until) = user.locked_until.filter(|until| *until > now) {
+        let seconds = u64::try_from((until - now).num_seconds()).unwrap_or(0) + 1;
+        return Err(AppError::new(
+            StatusCode::LOCKED,
+            "ACCOUNT_LOCKED",
+            "Account temporarily locked",
+        )
+        .with("lockedUntil", iso(until))
+        .retry_after(seconds));
+    }
+    if !state.passwords.verify(user.password_hash, password).await {
+        record_failure(state, user.id).await?;
+        return Err(wrong());
+    }
+    refuse_if_barred(&user.status, user.suspended_until, now)?;
+    Ok(Holder {
+        id: user.id,
+        role: user.role,
+        session_version: user.session_version,
+    })
+}
+
+/// Counts a wrong password. Every fifth in a row locks the account, for longer each time.
+async fn record_failure(state: &AppState, user: Uuid) -> Result<(), AppError> {
+    let mut tx = state.db.begin().await?;
+    // The update holds the row until the commit: two failures at the same instant count as two.
+    sqlx::query!(
+        "UPDATE users SET failed_login_count = failed_login_count + 1 WHERE id = ?",
+        user
+    )
+    .execute(&mut *tx)
+    .await?;
+    let failures = sqlx::query_scalar!("SELECT failed_login_count FROM users WHERE id = ?", user)
+        .fetch_one(&mut *tx)
+        .await?;
+    let lock = policy::lock_minutes(u32::try_from(failures).unwrap_or(u32::MAX));
+    if let Some(minutes) = lock {
+        let until = Utc::now().naive_utc() + Duration::minutes(i64::from(minutes));
+        sqlx::query!("UPDATE users SET locked_until = ? WHERE id = ?", until, user)
+            .execute(&mut *tx)
+            .await?;
+        let event = audit::Event {
+            actor: None,
+            action: "ACCOUNT_LOCKED",
+            user_id: user,
+            after: Some(json!({"minutes": minutes, "failedLoginCount": failures})),
+        };
+        audit::record(&mut *tx, event).await?;
+    }
+    tx.commit().await?;
+    // The owner is told by mail. If the queue is down the lock still holds.
+    if lock.is_some() && jobs::enqueue(state, JobKind::AccountLocked, user).await.is_err() {
+        tracing::warn!(user_id = %user, "the lock notice could not be queued");
+    }
+    Ok(())
+}
+```
+
+- [ ] **Step 4: Write the route**
+
+In `src/modules/auth/mod.rs`, add `.post("/api/v1/auth/login", login)` to `routes`, `use self::sessions::Holder;` to the imports, and:
+
+```rust
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LoginBody {
+    pub email: String,
+    pub password: String,
+}
+
+impl Validate for LoginBody {
+    fn validate(&self, check: &mut Check) {
+        check.ensure("email", normalise_email(&self.email).is_some(), "ISEMAIL");
+        // No minimum: a short password is simply a wrong one.
+        check.length("password", &self.password, 0, password::MAX_LENGTH);
+    }
+}
+
+/// What the app's sign-in and the panel's share: both limits, then the credentials.
+pub async fn sign_in(
+    state: &AppState,
+    client: &ClientIp,
+    body: LoginBody,
+) -> Result<Holder, AppError> {
+    let email = normalise_email(&body.email).ok_or_else(|| AppError::field("email", "ISEMAIL"))?;
+    rate_limit::check(state, &rate_limit::LOGIN_IP, &client.subject()).await?;
+    rate_limit::check(state, &rate_limit::LOGIN_ACCOUNT, &email).await?;
+    accounts::check_credentials(state, &email, body.password).await
+}
+
+async fn login(
+    State(state): State<AppState>,
+    client: ClientIp,
+    ValidJson(body): ValidJson<LoginBody>,
+) -> Result<Json<Session>, AppError> {
+    let holder = sign_in(&state, &client, body).await?;
+    // Judges only judge, in the admin panel. Said after the password was checked, like every other
+    // fact about an account.
+    if holder.role.is_judge() {
+        return Err(
+            AppError::new(StatusCode::FORBIDDEN, "JUDGE_ACCOUNT", "Forbidden")
+                .detail("Judge accounts sign in to the admin panel."),
+        );
+    }
+    Ok(Json(sessions::start(&state, holder, Audience::App).await?))
+}
+```
+
+- [ ] **Step 5: Run the tests**
+
+```bash
+CARGO_TARGET_DIR="$HOME/.cache/fitness-league/target" cargo test --test login 2>&1 | grep -E "^test |test result"
+```
+
+Expected: 7 tests pass. They take a few seconds: each attempt runs a real Argon2 verification.
+
+- [ ] **Step 6: Prepare, lint, commit**
+
+Message: `feat(backend): sign-in with lockout, one answer for every wrong attempt, judges sent to the panel`
+
+---
+
+### Task 7: The links sent by email
+
+**Files:**
+- Modify: `apps/backend/src/modules/auth/mod.rs`, `src/modules/auth/emails.rs`
+- Test: `apps/backend/tests/emails.rs` (the API's side, appended to the worker's side of Task 3)
+
+**Interfaces:**
+- Consumes: `emails::handle` (Task 3), `tokens::hash_opaque`, `password_problem`, `Passwords::hash`, `sessions::revoke_all`, `audit::record`, `jobs::enqueue`, `AppUser`, `rate_limit::{VERIFY_IP, RESEND_USER, FORGOT_IP, FORGOT_ACCOUNT, RESET_IP}`.
+- Produces:
+  - `emails::verify_email(state, token: &str) -> Result<(), AppError>`
+  - `emails::request_reset(state, email: &str) -> Result<(), AppError>` (`email` normalised)
+  - `emails::reset_password(state, token: &str, new_password: String) -> Result<(), AppError>`
+  - Routes: `POST /api/v1/auth/email/verify` `{token}` → 204; `POST /api/v1/auth/email/resend` (no body, app session) → 204; `POST /api/v1/auth/password/forgot` `{email}` → 202 always; `POST /api/v1/auth/password/reset` `{token, newPassword}` → 204
+
+A link that is unknown, used, expired or of the other kind gets one answer: 422 `TOKEN_INVALID`, title `Invalid or expired link`. A new password that the policy refuses gets 422 field `newPassword` and leaves the link usable. A reset increments the session version and revokes every refresh token, lifts a lock, and is audited.
+
+- [ ] **Step 1: Write the failing tests**
+
+Append to `tests/emails.rs` (extend its imports with `axum::http::{Method, StatusCode}`, `common::{PASSWORD, post_from, register, seeded_with}` and `serde_json::json`):
+
+```rust
+const VERIFY: &str = "/api/v1/auth/email/verify";
+const RESEND: &str = "/api/v1/auth/email/resend";
+const FORGOT: &str = "/api/v1/auth/password/forgot";
+const RESET: &str = "/api/v1/auth/password/reset";
+const LOGIN: &str = "/api/v1/auth/login";
+
+fn user_id(session: &serde_json::Value) -> Uuid {
+    session["userId"].as_str().unwrap().parse().unwrap()
+}
+
+async fn verified(app: &TestApp, user: Uuid) -> bool {
+    sqlx::query_scalar("SELECT email_verified_at IS NOT NULL FROM users WHERE id = ?")
+        .bind(user)
+        .fetch_one(&app.db)
+        .await
+        .unwrap()
+}
+
+#[sqlx::test]
+async fn the_link_of_the_mail_verifies_the_address_once(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let app = seeded(opts, conn).await;
+    let user = user_id(&register(&app, "ahmed").await);
+    let token = token_in(&deliver_mail(&app).await[0]);
+    assert!(!verified(&app, user).await);
+
+    assert_eq!(app.post(VERIFY, json!({"token": token})).await.status, StatusCode::NO_CONTENT);
+    assert!(verified(&app, user).await);
+
+    let again = app.post(VERIFY, json!({"token": token})).await;
+    assert_eq!(again.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(again.json["code"], "TOKEN_INVALID");
+    let unknown = app.post(VERIFY, json!({"token": "x".repeat(43)})).await;
+    assert_eq!(unknown.json["code"], "TOKEN_INVALID");
+    let short = app.post(VERIFY, json!({"token": "short"})).await;
+    assert_eq!(short.json["errors"], json!([{"field": "token", "code": "MINLENGTH"}]));
+}
+
+#[sqlx::test]
+async fn an_expired_link_or_one_of_the_other_kind_is_refused(
+    opts: MySqlPoolOptions,
+    conn: MySqlConnectOptions,
+) {
+    let app = seeded(opts, conn).await;
+    let user = user_id(&register(&app, "ahmed").await);
+    let verify_token = token_in(&deliver_mail(&app).await[0]);
+    assert_eq!(app.post(FORGOT, json!({"email": "ahmed@example.com"})).await.status, StatusCode::ACCEPTED);
+    let reset_token = token_in(&deliver_mail(&app).await[0]);
+
+    // A reset link does not verify an address, and trying does not use it up.
+    assert_eq!(app.post(VERIFY, json!({"token": reset_token})).await.json["code"], "TOKEN_INVALID");
+    // A verification link does not reset a password.
+    let wrong_kind = app
+        .post(RESET, json!({"token": verify_token, "newPassword": "another long passphrase"}))
+        .await;
+    assert_eq!(wrong_kind.json["code"], "TOKEN_INVALID");
+
+    sqlx::query("UPDATE email_tokens SET expires_at = UTC_TIMESTAMP(6) - INTERVAL 1 SECOND WHERE user_id = ? AND purpose = 'EMAIL_VERIFY'")
+        .bind(user)
+        .execute(&app.db)
+        .await
+        .unwrap();
+    assert_eq!(app.post(VERIFY, json!({"token": verify_token})).await.json["code"], "TOKEN_INVALID");
+    assert!(!verified(&app, user).await);
+
+    let reset = app
+        .post(RESET, json!({"token": reset_token, "newPassword": "another long passphrase"}))
+        .await;
+    assert_eq!(reset.status, StatusCode::NO_CONTENT);
+
+    // A reset link expires as well.
+    app.post(FORGOT, json!({"email": "ahmed@example.com"})).await;
+    let late = token_in(&deliver_mail(&app).await[0]);
+    sqlx::query("UPDATE email_tokens SET expires_at = UTC_TIMESTAMP(6) - INTERVAL 1 SECOND WHERE user_id = ? AND purpose = 'PASSWORD_RESET'")
+        .bind(user)
+        .execute(&app.db)
+        .await
+        .unwrap();
+    let expired = app
+        .post(RESET, json!({"token": late, "newPassword": "yet another passphrase"}))
+        .await;
+    assert_eq!(expired.json["code"], "TOKEN_INVALID");
+}
+
+#[sqlx::test]
+async fn resending_sends_a_new_link_and_cancels_the_old_one(
+    opts: MySqlPoolOptions,
+    conn: MySqlConnectOptions,
+) {
+    let app = seeded(opts, conn).await;
+    let session = register(&app, "ahmed").await;
+    let access = session["accessToken"].as_str().unwrap();
+    let first = token_in(&deliver_mail(&app).await[0]);
+
+    // The app sends no body and no content type with this request.
+    let resend = || app.call(Method::POST, RESEND, Some(access), None);
+    assert_eq!(resend().await.status, StatusCode::NO_CONTENT);
+    let second = token_in(&deliver_mail(&app).await[0]);
+    assert_ne!(first, second);
+    assert_eq!(app.post(VERIFY, json!({"token": first})).await.json["code"], "TOKEN_INVALID");
+    assert_eq!(app.post(VERIFY, json!({"token": second})).await.status, StatusCode::NO_CONTENT);
+
+    // Once verified there is nothing to send, and the answer is the same.
+    assert_eq!(resend().await.status, StatusCode::NO_CONTENT);
+    assert!(deliver_mail(&app).await.is_empty());
+
+    let anonymous = app.call(Method::POST, RESEND, None, None).await;
+    assert_eq!(anonymous.json["code"], "UNAUTHENTICATED");
+}
+
+#[sqlx::test]
+async fn forgot_always_answers_the_same_and_only_real_accounts_get_a_mail(
+    opts: MySqlPoolOptions,
+    conn: MySqlConnectOptions,
+) {
+    let app = seeded(opts, conn).await;
+    register(&app, "ahmed").await;
+    let banned = create_user(&app, "banned", Role::User).await;
+    sqlx::query("UPDATE users SET status = 'BANNED' WHERE id = ?")
+        .bind(banned)
+        .execute(&app.db)
+        .await
+        .unwrap();
+    deliver_mail(&app).await;
+
+    for email in ["Ahmed@Example.com", "nobody@example.com", "banned@example.com"] {
+        let reply = app.post(FORGOT, json!({"email": email})).await;
+        assert_eq!(reply.status, StatusCode::ACCEPTED, "{email}");
+        assert!(reply.json.is_null(), "{email}: the answer has no body");
+    }
+    let mails = deliver_mail(&app).await;
+    assert_eq!(mails.len(), 1);
+    assert_eq!(mails[0].to, "ahmed@example.com");
+    assert!(mails[0].text.contains("/reset-password?token="));
+
+    let bad = app.post(FORGOT, json!({"email": "not an email"})).await;
+    assert_eq!(bad.json["errors"], json!([{"field": "email", "code": "ISEMAIL"}]));
+}
+
+#[sqlx::test]
+async fn a_reset_changes_the_password_and_ends_every_session(
+    opts: MySqlPoolOptions,
+    conn: MySqlConnectOptions,
+) {
+    let app = seeded(opts, conn).await;
+    let session = register(&app, "ahmed").await;
+    let user = user_id(&session);
+    deliver_mail(&app).await;
+    // The account is locked: a reset is how its owner gets back in.
+    sqlx::query("UPDATE users SET failed_login_count = 5, locked_until = UTC_TIMESTAMP(6) + INTERVAL 15 MINUTE WHERE id = ?")
+        .bind(user)
+        .execute(&app.db)
+        .await
+        .unwrap();
+    app.post(FORGOT, json!({"email": "ahmed@example.com"})).await;
+    let token = token_in(&deliver_mail(&app).await[0]);
+
+    // A password the policy refuses does not use the link up.
+    for (weak, code) in [("1234567890", "TOO_COMMON"), ("ahmed@example.com", "TOO_COMMON"), ("short", "MINLENGTH")] {
+        let reply = app.post(RESET, json!({"token": token, "newPassword": weak})).await;
+        assert_eq!(reply.json["errors"], json!([{"field": "newPassword", "code": code}]), "{weak}");
+    }
+
+    let new_password = "a brand new passphrase";
+    let reset = app.post(RESET, json!({"token": token, "newPassword": new_password})).await;
+    assert_eq!(reset.status, StatusCode::NO_CONTENT);
+
+    let old = app.post(LOGIN, json!({"email": "ahmed@example.com", "password": PASSWORD})).await;
+    assert_eq!(old.json["code"], "INVALID_CREDENTIALS");
+    let new = app.post(LOGIN, json!({"email": "ahmed@example.com", "password": new_password})).await;
+    assert_eq!(new.status, StatusCode::OK, "the lock is lifted and the new password works");
+
+    // Everything handed out before the reset is dead.
+    let stale = app
+        .call(Method::POST, RESEND, session["accessToken"].as_str(), None)
+        .await;
+    assert_eq!((stale.status, stale.json["code"].as_str()), (StatusCode::UNAUTHORIZED, Some("TOKEN_INVALID")));
+    let refresh = app
+        .post("/api/v1/auth/refresh", json!({"refreshToken": session["refreshToken"]}))
+        .await;
+    assert_eq!(refresh.json["code"], "TOKEN_INVALID");
+
+    assert_eq!(
+        app.post(RESET, json!({"token": token, "newPassword": new_password})).await.json["code"],
+        "TOKEN_INVALID"
+    );
+    let audited: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM audit_log WHERE action = 'PASSWORD_RESET' AND entity_id = ?")
+        .bind(user)
+        .fetch_one(&app.db)
+        .await
+        .unwrap();
+    assert_eq!(audited, 1);
+}
+
+#[sqlx::test]
+async fn the_email_routes_are_limited(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let app = seeded_with(opts, conn, |vars| {
+        vars.insert("RATE_LIMIT_ENABLED".into(), "true".into());
+    })
+    .await;
+    let session = register(&app, "ahmed").await;
+    let refused_after = |statuses: &[StatusCode], allowed: usize, ok: StatusCode| {
+        assert_eq!(statuses[..allowed], vec![ok; allowed][..], "{statuses:?}");
+        assert!(statuses[allowed..].contains(&StatusCode::TOO_MANY_REQUESTS), "{statuses:?}");
+    };
+
+    // Forgot: 3 an hour for one account, wherever the requests come from.
+    let mut statuses = Vec::new();
+    for i in 0..6u8 {
+        statuses.push(post_from(&app, [40, 0, 0, i], FORGOT, json!({"email": "ahmed@example.com"})).await.status);
+    }
+    refused_after(&statuses, 3, StatusCode::ACCEPTED);
+
+    // Resend: 3 an hour for one user.
+    let mut statuses = Vec::new();
+    for _ in 0..6 {
+        statuses.push(app.call(Method::POST, RESEND, session["accessToken"].as_str(), None).await.status);
+    }
+    refused_after(&statuses, 3, StatusCode::NO_CONTENT);
+
+    // Verify: 20 an hour from one address, whatever the tokens were.
+    let mut statuses = Vec::new();
+    for _ in 0..25 {
+        statuses.push(post_from(&app, [41, 0, 0, 1], VERIFY, json!({"token": "x".repeat(43)})).await.status);
+    }
+    refused_after(&statuses, 20, StatusCode::UNPROCESSABLE_ENTITY);
+
+    // Reset: 10 an hour from one address.
+    let mut statuses = Vec::new();
+    for _ in 0..14 {
+        let body = json!({"token": "x".repeat(43), "newPassword": "a brand new passphrase"});
+        statuses.push(post_from(&app, [42, 0, 0, 1], RESET, body).await.status);
+    }
+    refused_after(&statuses, 10, StatusCode::UNPROCESSABLE_ENTITY);
+
+    // Forgot: 10 an hour from one address, whatever the accounts were.
+    let mut statuses = Vec::new();
+    for i in 0..14 {
+        let body = json!({"email": format!("nobody{i}@example.com")});
+        statuses.push(post_from(&app, [43, 0, 0, 1], FORGOT, body).await.status);
+    }
+    refused_after(&statuses, 10, StatusCode::ACCEPTED);
+}
+```
+
+- [ ] **Step 2: Run them to see them fail**
+
+```bash
+CARGO_TARGET_DIR="$HOME/.cache/fitness-league/target" cargo test --test emails 2>&1 | grep -E "^test |test result"
+```
+
+Expected: the four tests of Task 3 pass; the six new ones fail with `404`.
+
+- [ ] **Step 3: Write the API's side of the links**
+
+Append to `src/modules/auth/emails.rs` (extend the imports with `axum::http::StatusCode`, `sqlx::MySqlConnection`, `super::sessions`, and in the `crate::{…}` list `audit`, `error::AppError`, `jobs`, `security::password::password_problem`, `types::Role`):
+
+```rust
+fn bad_link() -> AppError {
+    AppError::new(
+        StatusCode::UNPROCESSABLE_ENTITY,
+        "TOKEN_INVALID",
+        "Invalid or expired link",
+    )
+}
+
+/// Uses a link up and returns whose it was. One statement decides, so of two requests with the same
+/// link exactly one changes the row.
+async fn consume(tx: &mut MySqlConnection, token: &str, purpose: &str) -> Result<Uuid, AppError> {
+    let hash = tokens::hash_opaque(token);
+    let used = sqlx::query!(
+        "UPDATE email_tokens SET consumed_at = UTC_TIMESTAMP(6) \
+         WHERE token_hash = ? AND purpose = ? AND consumed_at IS NULL AND expires_at > UTC_TIMESTAMP(6)",
+        &hash[..],
+        purpose
+    )
+    .execute(&mut *tx)
+    .await?
+    .rows_affected();
+    if used != 1 {
+        return Err(bad_link());
+    }
+    Ok(sqlx::query_scalar!(
+        r#"SELECT user_id AS "user_id: Uuid" FROM email_tokens WHERE token_hash = ?"#,
+        &hash[..]
+    )
+    .fetch_one(&mut *tx)
+    .await?)
+}
+
+pub async fn verify_email(state: &AppState, token: &str) -> Result<(), AppError> {
+    let mut tx = state.db.begin().await?;
+    let user = consume(&mut *tx, token, "EMAIL_VERIFY").await?;
+    sqlx::query!(
+        "UPDATE users SET email_verified_at = COALESCE(email_verified_at, UTC_TIMESTAMP(6)) WHERE id = ?",
+        user
+    )
+    .execute(&mut *tx)
+    .await?;
+    tx.commit().await?;
+    Ok(())
+}
+
+/// Queues a reset mail when the address belongs to an account that may reset. Nothing here tells
+/// the caller which case it was: the route answers 202 in all of them.
+pub async fn request_reset(state: &AppState, email: &str) -> Result<(), AppError> {
+    let user = sqlx::query_scalar!(
+        r#"SELECT id AS "id: Uuid" FROM users WHERE email = ? AND status NOT IN ('DELETED', 'BANNED')"#,
+        email
+    )
+    .fetch_optional(&state.db)
+    .await?;
+    if let Some(user) = user
+        && jobs::enqueue(state, JobKind::PasswordReset, user).await.is_err()
+    {
+        // An error here would answer differently for an address that exists.
+        tracing::error!(user_id = %user, "the reset email could not be queued");
+    }
+    Ok(())
+}
+
+/// Sets a new password and signs the account out everywhere.
+pub async fn reset_password(
+    state: &AppState,
+    token: &str,
+    new_password: String,
+) -> Result<(), AppError> {
+    let hash = tokens::hash_opaque(token);
+    // Looked at first, used up later: a password the policy refuses must leave the link usable.
+    let owner = sqlx::query!(
+        r#"SELECT u.id AS "id: Uuid", u.email, u.username, u.role AS "role: Role"
+           FROM email_tokens t JOIN users u ON u.id = t.user_id
+           WHERE t.token_hash = ? AND t.purpose = 'PASSWORD_RESET' AND t.consumed_at IS NULL
+             AND t.expires_at > UTC_TIMESTAMP(6) AND u.status NOT IN ('DELETED', 'BANNED')"#,
+        &hash[..]
+    )
+    .fetch_optional(&state.db)
+    .await?
+    .ok_or_else(bad_link)?;
+    if let Some(code) = password_problem(&new_password, &owner.email, &owner.username) {
+        return Err(AppError::field("newPassword", code));
+    }
+    let password_hash = state.passwords.hash(new_password).await?;
+
+    let mut tx = state.db.begin().await?;
+    consume(&mut *tx, token, "PASSWORD_RESET").await?;
+    sqlx::query!(
+        "UPDATE users SET password_hash = ?, session_version = session_version + 1, \
+         failed_login_count = 0, locked_until = NULL WHERE id = ?",
+        password_hash,
+        owner.id
+    )
+    .execute(&mut *tx)
+    .await?;
+    sessions::revoke_all(&mut *tx, owner.id).await?;
+    let event = audit::Event {
+        actor: Some((owner.id, owner.role)),
+        action: "PASSWORD_RESET",
+        user_id: owner.id,
+        after: None,
+    };
+    audit::record(&mut *tx, event).await?;
+    tx.commit().await?;
+    Ok(())
+}
+```
+
+- [ ] **Step 4: Write the four routes**
+
+In `src/modules/auth/mod.rs`, add to `routes`:
+
+```rust
+        .post("/api/v1/auth/email/verify", verify_email)
+        .post("/api/v1/auth/email/resend", resend_verification)
+        .post("/api/v1/auth/password/forgot", forgot_password)
+        .post("/api/v1/auth/password/reset", reset_password)
+```
+
+and (with `jobs::{self, JobKind}` added to the `crate::{…}` imports):
+
+```rust
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct TokenBody {
+    token: String,
+}
+
+impl Validate for TokenBody {
+    fn validate(&self, check: &mut Check) {
+        check.length("token", &self.token, 20, 200);
+    }
+}
+
+async fn verify_email(
+    State(state): State<AppState>,
+    client: ClientIp,
+    ValidJson(body): ValidJson<TokenBody>,
+) -> Result<StatusCode, AppError> {
+    rate_limit::check(&state, &rate_limit::VERIFY_IP, &client.subject()).await?;
+    emails::verify_email(&state, &body.token).await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/// No body: the app sends none. Whether a mail was really queued is not said.
+async fn resend_verification(
+    State(state): State<AppState>,
+    AppUser(user): AppUser,
+) -> Result<StatusCode, AppError> {
+    rate_limit::check(&state, &rate_limit::RESEND_USER, &user.id.to_string()).await?;
+    if !user.email_verified {
+        jobs::enqueue(&state, JobKind::EmailVerify, user.id).await?;
+    }
+    Ok(StatusCode::NO_CONTENT)
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ForgotBody {
+    email: String,
+}
+
+impl Validate for ForgotBody {
+    fn validate(&self, check: &mut Check) {
+        check.ensure("email", normalise_email(&self.email).is_some(), "ISEMAIL");
+    }
+}
+
+async fn forgot_password(
+    State(state): State<AppState>,
+    client: ClientIp,
+    ValidJson(body): ValidJson<ForgotBody>,
+) -> Result<StatusCode, AppError> {
+    let email = normalise_email(&body.email).ok_or_else(|| AppError::field("email", "ISEMAIL"))?;
+    rate_limit::check(&state, &rate_limit::FORGOT_IP, &client.subject()).await?;
+    // Counted by the address that was typed, whether or not an account has it.
+    rate_limit::check(&state, &rate_limit::FORGOT_ACCOUNT, &email).await?;
+    emails::request_reset(&state, &email).await?;
+    Ok(StatusCode::ACCEPTED)
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+struct ResetBody {
+    token: String,
+    new_password: String,
+}
+
+impl Validate for ResetBody {
+    fn validate(&self, check: &mut Check) {
+        check.length("token", &self.token, 20, 200);
+        check.length(
+            "newPassword",
+            &self.new_password,
+            password::MIN_LENGTH,
+            password::MAX_LENGTH,
+        );
+    }
+}
+
+async fn reset_password(
+    State(state): State<AppState>,
+    client: ClientIp,
+    ValidJson(body): ValidJson<ResetBody>,
+) -> Result<StatusCode, AppError> {
+    rate_limit::check(&state, &rate_limit::RESET_IP, &client.subject()).await?;
+    emails::reset_password(&state, &body.token, body.new_password).await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+```
+
+- [ ] **Step 5: Run the tests**
+
+```bash
+CARGO_TARGET_DIR="$HOME/.cache/fitness-league/target" cargo test --test emails 2>&1 | grep -E "^test |test result"
+```
+
+Expected: 10 tests pass.
+
+- [ ] **Step 6: Prepare, lint, commit**
+
+Message: `feat(backend): email verification and password reset through single-use links`
+
+---
+
+### Task 8: Sign-in to the admin panel, and `backend promote`
+
+**Files:**
+- Create: `apps/backend/src/modules/admin_auth.rs`
+- Modify: `apps/backend/src/modules/mod.rs`, `src/modules/auth/accounts.rs`, `src/http/mod.rs`, `src/main.rs`
+- Test: `apps/backend/tests/admin_auth.rs`
+
+**Interfaces:**
+- Consumes: `auth::{LoginBody, RefreshBody, sign_in}`, `sessions::{start, refresh, logout, revoke_all}`, `PanelUser`, `audit::record`, `normalise_email`.
+- Produces:
+  - `modules::admin_auth::routes(api) -> Api`: `POST /api/v1/admin/auth/login` → 200 `{"session": {…}}`; `POST /api/v1/admin/auth/refresh` → 200 session; `POST /api/v1/admin/auth/logout` → 204; `GET /api/v1/admin/me` → 200 `{id, email, username, role}`
+  - `accounts::promote(db: &MySqlPool, email: &str, role: Role) -> Result<(), String>`
+  - The subcommand `backend promote <email> <role>`
+
+The panel's sign-in is the app's with three differences: it accepts the panel roles only (`MODERATOR`, `ADMIN`, `SUPER_ADMIN`, `JUDGE`, `HEAD_JUDGE`; anyone else gets 403 `FORBIDDEN` with the detail `Staff accounts only.`, after the password was checked), its tokens carry the audience `admin`, and every sign-in is audited. The lockout and the rate limits are shared with the app: they count the same failures.
+
+- [ ] **Step 1: Write the failing tests**
+
+Create `apps/backend/tests/admin_auth.rs`:
+
+```rust
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+mod common;
+
+use axum::http::{Method, StatusCode};
+use backend::{modules::auth::accounts, types::Role};
+use common::{PASSWORD, Reply, TestApp, create_user, register, seeded};
+use serde_json::json;
+use sqlx::mysql::{MySqlConnectOptions, MySqlPoolOptions};
+
+const LOGIN: &str = "/api/v1/admin/auth/login";
+const REFRESH: &str = "/api/v1/admin/auth/refresh";
+const LOGOUT: &str = "/api/v1/admin/auth/logout";
+const ME: &str = "/api/v1/admin/me";
+
+async fn login(app: &TestApp, name: &str, password: &str) -> Reply {
+    app.post(LOGIN, json!({"email": format!("{name}@example.com"), "password": password}))
+        .await
+}
+
+#[sqlx::test]
+async fn staff_and_judges_sign_in_to_the_panel(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let app = seeded(opts, conn).await;
+    let panel = [Role::Moderator, Role::Admin, Role::SuperAdmin, Role::Judge, Role::HeadJudge];
+    for (i, role) in panel.into_iter().enumerate() {
+        let name = format!("staff{i}");
+        let user = create_user(&app, &name, role).await;
+        let reply = login(&app, &name, PASSWORD).await;
+        assert_eq!(reply.status, StatusCode::OK, "{role:?}: {}", reply.json);
+        let session = &reply.json["session"];
+        assert_eq!(session.as_object().unwrap().len(), 4, "{role:?}");
+        assert_eq!(session["userId"], user.to_string());
+
+        let me = app.call(Method::GET, ME, session["accessToken"].as_str(), None).await;
+        assert_eq!(me.status, StatusCode::OK);
+        assert_eq!(
+            me.json,
+            json!({"id": user.to_string(), "email": format!("{name}@example.com"), "username": name, "role": role.as_str()})
+        );
+    }
+    let audited: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM audit_log WHERE action = 'ADMIN_LOGIN'")
+        .fetch_one(&app.db)
+        .await
+        .unwrap();
+    assert_eq!(audited, 5);
+}
+
+#[sqlx::test]
+async fn an_athlete_cannot_open_the_panel(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let app = seeded(opts, conn).await;
+    create_user(&app, "athlete", Role::User).await;
+    create_user(&app, "owner", Role::GymAdmin).await;
+
+    for name in ["athlete", "owner"] {
+        // Without the password the answer is the one everybody gets.
+        assert_eq!(login(&app, name, "not the password").await.json["code"], "INVALID_CREDENTIALS");
+        let reply = login(&app, name, PASSWORD).await;
+        assert_eq!((reply.status, reply.json["code"].as_str()), (StatusCode::FORBIDDEN, Some("FORBIDDEN")));
+        assert_eq!(reply.json["detail"], "Staff accounts only.");
+    }
+    let sessions: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM refresh_tokens")
+        .fetch_one(&app.db)
+        .await
+        .unwrap();
+    assert_eq!(sessions, 0);
+}
+
+#[sqlx::test]
+async fn panel_sessions_and_app_sessions_do_not_mix(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let app = seeded(opts, conn).await;
+    create_user(&app, "admin", Role::Admin).await;
+    let panel = login(&app, "admin", PASSWORD).await.json["session"].clone();
+    // An administrator may also use the app, with a session of the app.
+    let in_app = app
+        .post("/api/v1/auth/login", json!({"email": "admin@example.com", "password": PASSWORD}))
+        .await
+        .json;
+
+    let invalid = |reply: Reply| {
+        assert_eq!((reply.status, reply.json["code"].as_str()), (StatusCode::UNAUTHORIZED, Some("TOKEN_INVALID")));
+    };
+    // Access tokens.
+    invalid(app.call(Method::GET, ME, in_app["accessToken"].as_str(), None).await);
+    invalid(
+        app.call(
+            Method::POST,
+            "/api/v1/auth/logout",
+            panel["accessToken"].as_str(),
+            Some(json!({"refreshToken": "x".repeat(43)})),
+        )
+        .await,
+    );
+    // Refresh tokens.
+    invalid(app.post("/api/v1/auth/refresh", json!({"refreshToken": panel["refreshToken"]})).await);
+    invalid(app.post(REFRESH, json!({"refreshToken": in_app["refreshToken"]})).await);
+
+    // Each still works where it belongs.
+    let renewed = app.post(REFRESH, json!({"refreshToken": panel["refreshToken"]})).await;
+    assert_eq!(renewed.status, StatusCode::OK);
+    assert_eq!(renewed.json.as_object().unwrap().len(), 4, "a bare session, as the panel reads it");
+    let me = app.call(Method::GET, ME, renewed.json["accessToken"].as_str(), None).await;
+    assert_eq!(me.status, StatusCode::OK);
+
+    let out = app
+        .call(
+            Method::POST,
+            LOGOUT,
+            renewed.json["accessToken"].as_str(),
+            Some(json!({"refreshToken": renewed.json["refreshToken"]})),
+        )
+        .await;
+    assert_eq!(out.status, StatusCode::NO_CONTENT);
+    invalid(app.post(REFRESH, json!({"refreshToken": renewed.json["refreshToken"]})).await);
+}
+
+#[sqlx::test]
+async fn the_lockout_is_the_same_one_as_in_the_app(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let app = seeded(opts, conn).await;
+    create_user(&app, "admin", Role::Admin).await;
+    for _ in 0..3 {
+        login(&app, "admin", "wrong").await;
+    }
+    for _ in 0..2 {
+        app.post("/api/v1/auth/login", json!({"email": "admin@example.com", "password": "wrong"}))
+            .await;
+    }
+    // Five failures in all, three here and two in the app: the account is locked for both.
+    assert_eq!(login(&app, "admin", PASSWORD).await.status, StatusCode::LOCKED);
+}
+
+#[sqlx::test]
+async fn promote_gives_a_role_and_ends_every_session(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let app = seeded(opts, conn).await;
+    let session = register(&app, "ahmed").await;
+    assert_eq!(login(&app, "ahmed", PASSWORD).await.status, StatusCode::FORBIDDEN);
+
+    accounts::promote(&app.db, " Ahmed@Example.com ", Role::Admin)
+        .await
+        .unwrap();
+
+    let (role, version): (String, i32) = sqlx::query_as("SELECT role, session_version FROM users")
+        .fetch_one(&app.db)
+        .await
+        .unwrap();
+    assert_eq!((role.as_str(), version), ("ADMIN", 2));
+    // What was signed before the change is dead, so the new role is never carried by an old token.
+    let stale = app
+        .call(Method::POST, "/api/v1/auth/email/resend", session["accessToken"].as_str(), None)
+        .await;
+    assert_eq!(stale.json["code"], "TOKEN_INVALID");
+    let refresh = app
+        .post("/api/v1/auth/refresh", json!({"refreshToken": session["refreshToken"]}))
+        .await;
+    assert_eq!(refresh.json["code"], "TOKEN_INVALID");
+
+    let (change,): (String,) = sqlx::query_as("SELECT after_json FROM audit_log WHERE action = 'ROLE_CHANGED'")
+        .fetch_one(&app.db)
+        .await
+        .unwrap();
+    assert_eq!(
+        serde_json::from_str::<serde_json::Value>(&change).unwrap(),
+        json!({"from": "USER", "to": "ADMIN"})
+    );
+    assert_eq!(login(&app, "ahmed", PASSWORD).await.status, StatusCode::OK);
+
+    let missing = accounts::promote(&app.db, "nobody@example.com", Role::Admin).await;
+    assert!(missing.unwrap_err().contains("no account"));
+}
+```
+
+- [ ] **Step 2: Run them to see them fail**
+
+```bash
+CARGO_TARGET_DIR="$HOME/.cache/fitness-league/target" cargo test --test admin_auth 2>&1 | tail -5
+```
+
+Expected: does not compile, `no function promote in accounts`.
+
+- [ ] **Step 3: Write `promote`**
+
+Append to `src/modules/auth/accounts.rs` (add `sqlx::MySqlPool` and `crate::validate::normalise_email` to the imports):
+
+```rust
+/// Gives a role to an account, from the command line. Nobody changes a role through the API in this
+/// part, and never their own. Every session of the account ends: the role is read from the row on
+/// each request anyway, and ending the sessions makes the change visible to the person at once.
+pub async fn promote(db: &MySqlPool, email: &str, role: Role) -> Result<(), String> {
+    let describe = |e: sqlx::Error| db::describe(&e);
+    let email = normalise_email(email).ok_or("not an email address")?;
+    let mut tx = db.begin().await.map_err(describe)?;
+    let user = sqlx::query!(
+        r#"SELECT id AS "id: Uuid", role AS "role: Role" FROM users
+           WHERE email = ? AND status <> 'DELETED' FOR UPDATE"#,
+        email
+    )
+    .fetch_optional(&mut *tx)
+    .await
+    .map_err(describe)?
+    .ok_or("no account with this email")?;
+    sqlx::query!(
+        "UPDATE users SET role = ?, session_version = session_version + 1 WHERE id = ?",
+        role.as_str(),
+        user.id
+    )
+    .execute(&mut *tx)
+    .await
+    .map_err(describe)?;
+    sessions::revoke_all(&mut *tx, user.id)
+        .await
+        .map_err(describe)?;
+    let event = audit::Event {
+        actor: None,
+        action: "ROLE_CHANGED",
+        user_id: user.id,
+        after: Some(json!({"from": user.role.as_str(), "to": role.as_str()})),
+    };
+    audit::record(&mut *tx, event).await.map_err(describe)?;
+    tx.commit().await.map_err(describe)
+}
+```
+
+`src/main.rs`: `USAGE` becomes `"usage: backend <serve|worker|migrate|seed [dir]|promote <email> <role>|keys>"`, add the arm `Some("promote") => promote(args.get(1), args.get(2)).await,` and:
+
+```rust
+/// `backend promote <email> <role>`: how the first staff account comes to exist.
+async fn promote(email: Option<&String>, role: Option<&String>) -> Result<(), String> {
+    let (Some(email), Some(role)) = (email, role) else {
+        return Err(USAGE.to_owned());
+    };
+    let role: backend::types::Role =
+        serde_json::from_value(serde_json::Value::String(role.to_uppercase()))
+            .map_err(|_| format!("unknown role {role}: USER, GYM_ADMIN, MODERATOR, ADMIN, SUPER_ADMIN, JUDGE or HEAD_JUDGE"))?;
+    let cfg = backend::config::Config::from_env()?;
+    let pool = backend::db::connect(cfg.database_url.expose_secret(), 1)
+        .await
+        .map_err(|e| format!("database: {}", backend::db::describe(&e)))?;
+    backend::modules::auth::accounts::promote(&pool, email, role).await?;
+    println!("{email} is now {}", role.as_str());
+    Ok(())
+}
+```
+
+- [ ] **Step 4: Write the panel's routes**
+
+Add `pub mod admin_auth;` to `src/modules/mod.rs`. Create `src/modules/admin_auth.rs`:
+
+```rust
+//! `/admin/auth/*` and `/admin/me`: the session of the admin panel.
+//! Email and password, no second factor (the owner's decision); every sign-in is audited.
+
+use axum::{Json, extract::State, http::StatusCode};
+use serde_json::{Value, json};
+
+use super::auth::{
+    self, LoginBody, RefreshBody,
+    sessions::{self, Session},
+};
+use crate::{
+    audit,
+    error::AppError,
+    http::{
+        Api,
+        auth::PanelUser,
+        rate_limit::{self, ClientIp},
+    },
+    security::tokens::Audience,
+    state::AppState,
+    validate::ValidJson,
+};
+
+pub fn routes(api: Api) -> Api {
+    api.post("/api/v1/admin/auth/login", login)
+        .post("/api/v1/admin/auth/refresh", refresh)
+        .post("/api/v1/admin/auth/logout", logout)
+        .get("/api/v1/admin/me", me)
+}
+
+async fn login(
+    State(state): State<AppState>,
+    client: ClientIp,
+    ValidJson(body): ValidJson<LoginBody>,
+) -> Result<Json<Value>, AppError> {
+    let holder = auth::sign_in(&state, &client, body).await?;
+    if !holder.role.can_open_panel() {
+        return Err(AppError::forbidden().detail("Staff accounts only."));
+    }
+    let session = sessions::start(&state, holder, Audience::Admin).await?;
+    let event = audit::Event {
+        actor: Some((holder.id, holder.role)),
+        action: "ADMIN_LOGIN",
+        user_id: holder.id,
+        after: None,
+    };
+    audit::record(&state.db, event).await?;
+    Ok(Json(json!({"session": session})))
+}
+
+async fn refresh(
+    State(state): State<AppState>,
+    client: ClientIp,
+    ValidJson(body): ValidJson<RefreshBody>,
+) -> Result<Json<Session>, AppError> {
+    rate_limit::check(&state, &rate_limit::REFRESH_IP, &client.subject()).await?;
+    Ok(Json(
+        sessions::refresh(&state, &body.refresh_token, Audience::Admin).await?,
+    ))
+}
+
+async fn logout(
+    State(state): State<AppState>,
+    PanelUser(user): PanelUser,
+    ValidJson(body): ValidJson<RefreshBody>,
+) -> Result<StatusCode, AppError> {
+    sessions::logout(&state, user.id, &body.refresh_token).await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/// What the panel needs to draw itself: who is signed in, and with which role.
+async fn me(
+    State(state): State<AppState>,
+    PanelUser(user): PanelUser,
+) -> Result<Json<Value>, AppError> {
+    let row = sqlx::query!("SELECT email, username FROM users WHERE id = ?", user.id)
+        .fetch_one(&state.db)
+        .await?;
+    Ok(Json(json!({
+        "id": user.id.to_string(),
+        "email": row.email,
+        "username": row.username,
+        "role": user.role.as_str(),
+    })))
+}
+```
+
+In `src/http/mod.rs`, `api()` ends with:
+
+```rust
+    let api = modules::auth::routes(api);
+    modules::admin_auth::routes(api)
+```
+
+- [ ] **Step 5: Run the tests**
+
+```bash
+CARGO_TARGET_DIR="$HOME/.cache/fitness-league/target" cargo test --test admin_auth 2>&1 | grep -E "^test |test result"
+```
+
+Expected: 5 tests pass.
+
+- [ ] **Step 6: Prepare, lint, commit**
+
+Message: `feat(backend): admin panel sign-in with its own audience, and the promote command`
+
+---
+
+### Task 9: `GET /me`
+
+**Files:**
+- Create: `apps/backend/src/modules/me.rs`
+- Modify: `apps/backend/src/modules/mod.rs`, `src/http/mod.rs`
+- Test: `apps/backend/tests/me.rs`
+
+**Interfaces:**
+- Consumes: `AppUser`, `Rules::{active, level_title_key}`, `policy::{age_in_years, age_bracket, business_today}`, `types::iso`.
+- Produces:
+  - `modules::me::routes(api) -> Api`: `GET /api/v1/me` → 200
+  - `modules::me::payload(state: &AppState, user: Uuid) -> Result<serde_json::Value, AppError>`: the profile payload. Plan 1c returns the same payload from `PATCH /me/profile` and `PATCH /me/settings`.
+
+The payload, key for key what the app reads today (`gym` and `division` stay `null` until parts 3 and 2 exist; the date of birth never appears, only the bracket):
+
+```json
+{"id": "…", "username": "ahmed", "email": "ahmed@example.com", "emailVerified": false, "role": "USER", "ageBracket": "25-34",
+ "profile": {"fullName": "…", "bio": null, "gender": null, "countryCode": "TN",
+             "governorate": {"id": "…", "code": "TUN", "name": {"fr": "…", "en": "…", "ar": "…"}},
+             "city": {"id": "…", "name": {"fr": "…", "en": "…", "ar": "…"}},
+             "gym": null, "experienceLevelDeclared": null, "plannedTrainingDaysPerWeek": 3,
+             "calibrationEndsAt": null, "onboardingCompleted": false,
+             "sports": [{"id": "…", "code": "CROSSFIT", "isPrimary": true}]},
+ "settings": {"locale": "fr", "theme": "DARK", "reducedMotion": null, "defaultVisibility": "FRIENDS",
+              "showAgeBracket": false, "showOnLeaderboards": true, "streakFreezeDaysPerWeek": 2},
+ "stats": {"xpTotal": 0, "level": 1, "levelTitleKey": "level.title.beginner", "xpIntoLevel": 0,
+           "xpForNextLevel": 100, "seasonLp": 0, "division": null, "leaderboardEligible": false},
+ "streak": {"currentWeeks": 0, "longestWeeks": 0, "currentDays": 0}}
+```
+
+- [ ] **Step 1: Write the failing tests**
+
+Create `apps/backend/tests/me.rs`:
+
+```rust
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+mod common;
+
+use std::path::Path;
+
+use axum::http::{Method, StatusCode};
+use backend::{security::tokens::Audience, types::Role};
+use common::{TestApp, a_place, assert_same_shape, create_user, open_session, register, seeded};
+use serde_json::{Value, json};
+use sqlx::mysql::{MySqlConnectOptions, MySqlPoolOptions};
+use uuid::Uuid;
+
+const ME: &str = "/api/v1/me";
+
+async fn me(app: &TestApp, session: &Value) -> common::Reply {
+    app.call(Method::GET, ME, session["accessToken"].as_str(), None)
+        .await
+}
+
+#[sqlx::test]
+async fn me_is_the_payload_the_app_reads(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let app = seeded(opts, conn).await;
+    let session = register(&app, "ahmed").await;
+    let (governorate, city) = a_place(&app).await;
+
+    let reply = me(&app, &session).await;
+    assert_eq!(reply.status, StatusCode::OK, "{}", reply.json);
+    let body = &reply.json;
+    // Born on 1995-05-05: between 25 and 34 for the life of this test.
+    let top = json!({
+        "id": session["userId"], "username": "ahmed", "email": "ahmed@example.com",
+        "emailVerified": false, "role": "USER", "ageBracket": "25-34"
+    });
+    for (key, value) in top.as_object().unwrap() {
+        assert_eq!(&body[key], value, "{key}");
+    }
+    assert_eq!(body.as_object().unwrap().len(), 10, "{body}");
+
+    let profile = &body["profile"];
+    assert_eq!(profile["fullName"], "Athlete ahmed");
+    assert_eq!(profile["countryCode"], "TN");
+    assert_eq!(profile["governorate"]["id"], governorate.to_string());
+    assert!(profile["governorate"]["code"].is_string());
+    for language in ["fr", "en", "ar"] {
+        assert!(profile["governorate"]["name"][language].is_string(), "{language}");
+        assert!(profile["city"]["name"][language].is_string(), "{language}");
+    }
+    assert_eq!(profile["city"]["id"], city.to_string());
+    for absent in ["bio", "gender", "gym", "experienceLevelDeclared", "calibrationEndsAt"] {
+        assert!(profile[absent].is_null(), "{absent}");
+        assert!(profile.as_object().unwrap().contains_key(absent), "{absent} must be present, as null");
+    }
+    assert_eq!(profile["plannedTrainingDaysPerWeek"], 3);
+    assert_eq!(profile["onboardingCompleted"], false);
+    assert_eq!(profile["sports"], json!([]));
+
+    assert_eq!(
+        body["settings"],
+        json!({"locale": "fr", "theme": "DARK", "reducedMotion": null, "defaultVisibility": "FRIENDS",
+               "showAgeBracket": false, "showOnLeaderboards": true, "streakFreezeDaysPerWeek": 2})
+    );
+    assert_eq!(
+        body["stats"],
+        json!({"xpTotal": 0, "level": 1, "levelTitleKey": "level.title.beginner", "xpIntoLevel": 0,
+               "xpForNextLevel": 100, "seasonLp": 0, "division": null, "leaderboardEligible": false})
+    );
+    assert_eq!(body["streak"], json!({"currentWeeks": 0, "longestWeeks": 0, "currentDays": 0}));
+
+    // Neither the date of birth nor anything about the password leaves the API.
+    let text = body.to_string();
+    assert!(!text.contains("1995") && !text.contains("argon") && !text.to_lowercase().contains("password"), "{text}");
+}
+
+#[sqlx::test]
+async fn me_has_the_shape_recorded_from_the_old_api(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let app = seeded(opts, conn).await;
+    let session = register(&app, "ahmed").await;
+    let recorded: Value = serde_json::from_str(
+        &std::fs::read_to_string(
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("../mobile-rn/assets/demo/api.json"),
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    assert_same_shape("GET /me", &recorded["GET /me"], &me(&app, &session).await.json);
+    // The session too: the app's offline demo holds one.
+    assert_same_shape("POST /auth/login", &recorded["POST /auth/login"], &session);
+}
+
+#[sqlx::test]
+async fn me_follows_the_account(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let app = seeded(opts, conn).await;
+    let session = register(&app, "ahmed").await;
+    let user: Uuid = session["userId"].as_str().unwrap().parse().unwrap();
+    let sports: Vec<(Uuid, String)> = sqlx::query_as("SELECT id, code FROM sports ORDER BY code LIMIT 2")
+        .fetch_all(&app.db)
+        .await
+        .unwrap();
+    for (i, (sport, _)) in sports.iter().enumerate() {
+        sqlx::query("INSERT INTO user_sports (user_id, sport_id, is_primary) VALUES (?, ?, ?)")
+            .bind(user)
+            .bind(sport)
+            .bind(i == 1)
+            .execute(&app.db)
+            .await
+            .unwrap();
+    }
+    sqlx::query("UPDATE users SET email_verified_at = UTC_TIMESTAMP(6) WHERE id = ?")
+        .bind(user)
+        .execute(&app.db)
+        .await
+        .unwrap();
+    sqlx::query(
+        "UPDATE profiles SET onboarding_completed_at = UTC_TIMESTAMP(6), calibration_ends_at = '2026-11-01 08:00:00.000000', \
+         bio = 'Rx athlete', gender = 'MALE' WHERE user_id = ?",
+    )
+    .bind(user)
+    .execute(&app.db)
+    .await
+    .unwrap();
+    sqlx::query("UPDATE user_stats SET level = 7, xp_total = 5000000000 WHERE user_id = ?")
+        .bind(user)
+        .execute(&app.db)
+        .await
+        .unwrap();
+
+    let body = me(&app, &session).await.json;
+    assert_eq!(body["emailVerified"], true);
+    // The primary sport first.
+    assert_eq!(
+        body["profile"]["sports"],
+        json!([
+            {"id": sports[1].0.to_string(), "code": sports[1].1, "isPrimary": true},
+            {"id": sports[0].0.to_string(), "code": sports[0].1, "isPrimary": false}
+        ])
+    );
+    assert_eq!(body["profile"]["onboardingCompleted"], true);
+    assert_eq!(body["profile"]["calibrationEndsAt"], "2026-11-01T08:00:00.000Z");
+    assert_eq!(body["profile"]["bio"], "Rx athlete");
+    assert_eq!(body["profile"]["gender"], "MALE");
+    assert_eq!(body["stats"]["level"], 7);
+    assert_eq!(body["stats"]["levelTitleKey"], "level.title.rookie");
+    assert_eq!(body["stats"]["xpTotal"], 5_000_000_000_i64);
+}
+
+#[sqlx::test]
+async fn me_is_ones_own_and_needs_an_app_session(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let app = seeded(opts, conn).await;
+    let ahmed = register(&app, "ahmed").await;
+    let leila = register(&app, "leila").await;
+    assert_eq!(me(&app, &ahmed).await.json["username"], "ahmed");
+    assert_eq!(me(&app, &leila).await.json["username"], "leila");
+
+    assert_eq!(app.call(Method::GET, ME, None, None).await.json["code"], "UNAUTHENTICATED");
+    let admin = create_user(&app, "admin", Role::Admin).await;
+    let panel = open_session(&app, admin, Role::Admin, Audience::Admin).await;
+    assert_eq!(me(&app, &panel).await.json["code"], "TOKEN_INVALID");
+    // The same administrator, signed in to the app, has a profile like anyone.
+    let in_app = open_session(&app, admin, Role::Admin, Audience::App).await;
+    assert_eq!(me(&app, &in_app).await.json["role"], "ADMIN");
+}
+```
+
+- [ ] **Step 2: Run them to see them fail**
+
+```bash
+CARGO_TARGET_DIR="$HOME/.cache/fitness-league/target" cargo test --test me 2>&1 | grep -E "^test |test result"
+```
+
+Expected: 4 tests fail with `404`.
+
+- [ ] **Step 3: Write the module**
+
+Add `pub mod me;` to `src/modules/mod.rs`, and end `api()` in `src/http/mod.rs` with:
+
+```rust
+    let api = modules::admin_auth::routes(api);
+    modules::me::routes(api)
+```
+
+Create `src/modules/me.rs`:
+
+```rust
+//! `/me`: what the signed-in athlete sees of their own account.
+//! Every query here carries the user id of the session: there is no way to ask for someone else.
+
+use axum::{Json, extract::State};
+use chrono::Utc;
+use serde_json::{Value, json};
+use uuid::Uuid;
+
+use crate::{
+    error::AppError,
+    http::{Api, auth::AppUser},
+    rules::Rules,
+    security::policy,
+    state::AppState,
+    types::{Role, iso},
+};
+
+pub fn routes(api: Api) -> Api {
+    api.get("/api/v1/me", me)
+}
+
+async fn me(State(state): State<AppState>, AppUser(user): AppUser) -> Result<Json<Value>, AppError> {
+    Ok(Json(payload(&state, user.id).await?))
+}
+
+/// Everything the home screen needs about the signed-in user, in one answer.
+pub async fn payload(state: &AppState, user: Uuid) -> Result<Value, AppError> {
+    let row = sqlx::query!(
+        r#"SELECT u.username, u.email, u.email_verified_at, u.role AS "role: Role", u.date_of_birth,
+                  p.full_name, p.bio, p.gender, p.country_code, p.experience_level_declared,
+                  p.planned_training_days_per_week, p.calibration_ends_at, p.onboarding_completed_at,
+                  g.id AS "governorate_id: Uuid", g.code AS governorate_code,
+                  g.name_fr AS governorate_fr, g.name_en AS governorate_en, g.name_ar AS governorate_ar,
+                  c.id AS "city_id: Uuid", c.name_fr AS city_fr, c.name_en AS city_en, c.name_ar AS city_ar,
+                  s.locale, s.theme, s.reduced_motion AS "reduced_motion: bool", s.default_visibility,
+                  s.show_age_bracket AS "show_age_bracket: bool",
+                  s.show_on_leaderboards AS "show_on_leaderboards: bool", s.streak_freeze_days_per_week,
+                  t.xp_total, t.level, t.xp_into_level, t.xp_for_next_level, t.season_lp, t.division_code,
+                  t.leaderboard_eligible AS "leaderboard_eligible: bool",
+                  k.current_weeks, k.longest_weeks, k.current_days
+           FROM users u
+           JOIN profiles p ON p.user_id = u.id
+           JOIN governorates g ON g.id = p.governorate_id
+           JOIN cities c ON c.id = p.city_id
+           JOIN user_settings s ON s.user_id = u.id
+           JOIN user_stats t ON t.user_id = u.id
+           JOIN user_streaks k ON k.user_id = u.id
+           WHERE u.id = ?"#,
+        user
+    )
+    .fetch_optional(&state.db)
+    .await?
+    .ok_or_else(|| AppError::not_found("Profile"))?;
+    let sports = sqlx::query!(
+        r#"SELECT sp.id AS "id: Uuid", sp.code, us.is_primary AS "is_primary: bool"
+           FROM user_sports us JOIN sports sp ON sp.id = us.sport_id
+           WHERE us.user_id = ?
+           ORDER BY us.is_primary DESC, sp.code"#,
+        user
+    )
+    .fetch_all(&state.db)
+    .await?;
+    let rules = Rules::active(&state.db).await?;
+
+    let today = policy::business_today(Utc::now(), state.cfg.business_utc_offset_minutes);
+    let name = |fr: &str, en: &str, ar: &str| json!({"fr": fr, "en": en, "ar": ar});
+    let sports: Vec<Value> = sports
+        .iter()
+        .map(|sport| json!({"id": sport.id.to_string(), "code": sport.code, "isPrimary": sport.is_primary}))
+        .collect();
+    Ok(json!({
+        "id": user.to_string(),
+        "username": row.username,
+        "email": row.email,
+        "emailVerified": row.email_verified_at.is_some(),
+        "role": row.role.as_str(),
+        // The owner sees their bracket. The date itself never leaves the API.
+        "ageBracket": policy::age_bracket(policy::age_in_years(row.date_of_birth, today)),
+        "profile": {
+            "fullName": row.full_name,
+            "bio": row.bio,
+            "gender": row.gender,
+            "countryCode": row.country_code,
+            "governorate": {
+                "id": row.governorate_id.to_string(),
+                "code": row.governorate_code,
+                "name": name(&row.governorate_fr, &row.governorate_en, &row.governorate_ar),
+            },
+            "city": {
+                "id": row.city_id.to_string(),
+                "name": name(&row.city_fr, &row.city_en, &row.city_ar),
+            },
+            // Gyms arrive with part 3.
+            "gym": null,
+            "experienceLevelDeclared": row.experience_level_declared,
+            "plannedTrainingDaysPerWeek": row.planned_training_days_per_week,
+            "calibrationEndsAt": row.calibration_ends_at.map(iso),
+            "onboardingCompleted": row.onboarding_completed_at.is_some(),
+            "sports": sports,
+        },
+        "settings": {
+            "locale": row.locale,
+            "theme": row.theme,
+            "reducedMotion": row.reduced_motion,
+            "defaultVisibility": row.default_visibility,
+            "showAgeBracket": row.show_age_bracket,
+            "showOnLeaderboards": row.show_on_leaderboards,
+            "streakFreezeDaysPerWeek": row.streak_freeze_days_per_week,
+        },
+        // Created with their defaults at registration; the scoring engine of part 2 fills them.
+        "stats": {
+            "xpTotal": row.xp_total,
+            "level": row.level,
+            "levelTitleKey": rules.level_title_key(row.level),
+            "xpIntoLevel": row.xp_into_level,
+            "xpForNextLevel": row.xp_for_next_level,
+            "seasonLp": row.season_lp,
+            "division": row.division_code,
+            "leaderboardEligible": row.leaderboard_eligible,
+        },
+        "streak": {
+            "currentWeeks": row.current_weeks,
+            "longestWeeks": row.longest_weeks,
+            "currentDays": row.current_days,
+        },
+    }))
+}
+```
+
+- [ ] **Step 4: Run the tests**
+
+```bash
+CARGO_TARGET_DIR="$HOME/.cache/fitness-league/target" cargo test --test me 2>&1 | grep -E "^test |test result"
+```
+
+Expected: 4 tests pass. If `me_has_the_shape_recorded_from_the_old_api` names a key, the payload differs from what the app was recorded reading: fix the payload, not the recording.
+
+- [ ] **Step 5: Prepare, lint, commit**
+
+Message: `feat(backend): GET /me with the profile payload the app reads`
+
+---
+
+### Task 10: The security suite, and the documents
+
+One test per promise of the spec that no earlier task already pins. The promises pinned earlier: the same answer for an unknown email and a wrong password, the lock and its doubling, the judge refused by the app (Task 6); reuse and concurrent refresh, a ban on the next request, an old token dead after a version change (Task 4), after a reset (Task 7), after a role change (Task 8); the two audiences kept apart (Tasks 4 and 8); unknown fields and literal storage of text (Task 5); the rate limits with `Retry-After` (Tasks 4 to 7); links that work once and expire (Task 7); what `fl_app` cannot do to the audit log and the schema (plan 1a).
+
+**Files:**
+- Create: `apps/backend/tests/security.rs`
+- Modify: `README.md`, `handoff.md`, `docs/superpowers/specs/2026-10-06-rust-backend-foundation-design.md`
+
+**Interfaces:**
+- Consumes: `backend::http::route_table()`, every route of this plan, the helpers of `tests/common`.
+- Produces: the list of public routes, `PUBLIC`, in `tests/security.rs`. A route added by a later plan that is not on this list must answer 401 without a session, or the suite fails.
+
+- [ ] **Step 1: Write the suite**
+
+Create `apps/backend/tests/security.rs` with the editor:
+
+```rust
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+mod common;
+
+use axum::{
+    body::Body,
+    http::{Method, StatusCode},
+};
+use backend::{http::route_table, security::tokens::Audience, types::Role};
+use common::{
+    PASSWORD, create_user, open_session, register, registration, request, seeded,
+    seeded_with_cuttable_redis,
+};
+use serde_json::{Value, json};
+use sqlx::mysql::{MySqlConnectOptions, MySqlPoolOptions};
+
+/// Every route that answers without a session. Adding a line here is a security decision: it is
+/// reviewed as one.
+const PUBLIC: [(&str, &str); 14] = [
+    ("GET", "/api/v1/health"),
+    ("GET", "/api/v1/ready"),
+    ("GET", "/api/v1/ref/governorates"),
+    ("GET", "/api/v1/ref/cities"),
+    ("GET", "/api/v1/ref/sports"),
+    ("GET", "/api/v1/ref/exercises"),
+    ("POST", "/api/v1/auth/register"),
+    ("POST", "/api/v1/auth/login"),
+    ("POST", "/api/v1/auth/refresh"),
+    ("POST", "/api/v1/auth/email/verify"),
+    ("POST", "/api/v1/auth/password/forgot"),
+    ("POST", "/api/v1/auth/password/reset"),
+    ("POST", "/api/v1/admin/auth/login"),
+    ("POST", "/api/v1/admin/auth/refresh"),
+];
+
+fn is_public(method: &Method, path: &str) -> bool {
+    PUBLIC.contains(&(method.as_str(), path))
+}
+
+fn protected() -> Vec<(Method, &'static str)> {
+    route_table()
+        .into_iter()
+        .filter(|(method, path)| !is_public(method, path))
+        .collect()
+}
+
+#[sqlx::test]
+async fn every_route_wants_a_session_unless_it_is_on_the_public_list(
+    opts: MySqlPoolOptions,
+    conn: MySqlConnectOptions,
+) {
+    let app = seeded(opts, conn).await;
+    let table = route_table();
+    for (method, path) in &table {
+        let reply = app.call(method.clone(), path, None, None).await;
+        if is_public(method, path) {
+            // It may dislike the empty request, but never for want of a session.
+            assert_ne!(reply.json["code"], "UNAUTHENTICATED", "{method} {path}");
+        } else {
+            assert_eq!(
+                (reply.status, reply.json["code"].as_str()),
+                (StatusCode::UNAUTHORIZED, Some("UNAUTHENTICATED")),
+                "{method} {path} answered without a session"
+            );
+        }
+    }
+    for (method, path) in PUBLIC {
+        assert!(
+            table.iter().any(|(m, p)| m.as_str() == method && *p == path),
+            "{method} {path} is on the public list but is not a route"
+        );
+    }
+    assert!(!protected().is_empty());
+}
+
+/// Who may use a protected route. Routes under `/admin/` belong to the panel, the others to the
+/// app. A later plan that adds a route with a narrower rule (administrators only, say) extends this.
+fn allowed(role: Role, path: &str) -> bool {
+    if path.starts_with("/api/v1/admin/") {
+        role.can_open_panel()
+    } else {
+        !role.is_judge()
+    }
+}
+
+#[sqlx::test]
+async fn every_role_is_tried_against_every_protected_route(
+    opts: MySqlPoolOptions,
+    conn: MySqlConnectOptions,
+) {
+    let app = seeded(opts, conn).await;
+    for (i, role) in Role::ALL.into_iter().enumerate() {
+        let user = create_user(&app, &format!("role{i}"), role).await;
+        let app_token = open_session(&app, user, role, Audience::App).await["accessToken"]
+            .as_str()
+            .unwrap()
+            .to_owned();
+        let panel_token = open_session(&app, user, role, Audience::Admin).await["accessToken"]
+            .as_str()
+            .unwrap()
+            .to_owned();
+        for (method, path) in protected() {
+            let (own, other) = if path.starts_with("/api/v1/admin/") {
+                (&panel_token, &app_token)
+            } else {
+                (&app_token, &panel_token)
+            };
+            // No body: an allowed caller is then refused for the missing body, which is neither 401
+            // nor 403. What is tested here is who gets past the door.
+            let reply = app.call(method.clone(), path, Some(own.as_str()), None).await;
+            let passed = !matches!(reply.status, StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN);
+            assert_eq!(passed, allowed(role, path), "{role:?} on {method} {path}: {} {}", reply.status, reply.json);
+            if !passed {
+                assert_eq!(reply.json["code"], "FORBIDDEN", "{role:?} on {method} {path}");
+            }
+            // A token of the other audience is not a token at all here.
+            let wrong = app.call(method.clone(), path, Some(other.as_str()), None).await;
+            assert_eq!(
+                (wrong.status, wrong.json["code"].as_str()),
+                (StatusCode::UNAUTHORIZED, Some("TOKEN_INVALID")),
+                "{role:?} with the other audience on {method} {path}"
+            );
+        }
+    }
+}
+
+#[sqlx::test]
+async fn identity_routes_refuse_when_redis_is_down_and_the_rest_keeps_working(
+    opts: MySqlPoolOptions,
+    conn: MySqlConnectOptions,
+) {
+    let (app, redis) = seeded_with_cuttable_redis(opts, conn, |vars| {
+        vars.insert("RATE_LIMIT_ENABLED".into(), "true".into());
+    })
+    .await;
+    let session = register(&app, "ahmed").await;
+    let access = session["accessToken"].as_str();
+    create_user(&app, "admin", Role::Admin).await;
+    let fresh = registration(&app, "leila").await;
+
+    redis.abort();
+    let _ = redis.await;
+
+    let token = json!({"token": "x".repeat(43)});
+    let refresh = json!({"refreshToken": "x".repeat(43)});
+    let closed: [(&str, Value); 8] = [
+        ("/api/v1/auth/register", fresh),
+        ("/api/v1/auth/login", json!({"email": "ahmed@example.com", "password": PASSWORD})),
+        ("/api/v1/auth/refresh", refresh.clone()),
+        ("/api/v1/auth/email/verify", token.clone()),
+        ("/api/v1/auth/password/forgot", json!({"email": "ahmed@example.com"})),
+        ("/api/v1/auth/password/reset", json!({"token": "x".repeat(43), "newPassword": "a brand new passphrase"})),
+        ("/api/v1/admin/auth/login", json!({"email": "admin@example.com", "password": PASSWORD})),
+        ("/api/v1/admin/auth/refresh", refresh),
+    ];
+    for (path, body) in closed {
+        let reply = app.post(path, body).await;
+        assert_eq!(
+            (reply.status, reply.json["code"].as_str()),
+            (StatusCode::SERVICE_UNAVAILABLE, Some("SERVICE_UNAVAILABLE")),
+            "{path}"
+        );
+        assert!(!reply.json.to_string().to_lowercase().contains("redis"), "{path}: the answer says why");
+    }
+    // Costly for each use, so it refuses as well.
+    let resend = app.call(Method::POST, "/api/v1/auth/email/resend", access, None).await;
+    assert_eq!(resend.status, StatusCode::SERVICE_UNAVAILABLE);
+
+    // What does not create or prove an identity keeps working: a signed-in athlete still reads
+    // their profile, and the catalog is still served.
+    assert_eq!(app.call(Method::GET, "/api/v1/me", access, None).await.status, StatusCode::OK);
+    assert_eq!(app.get("/api/v1/ref/sports").await.status, StatusCode::OK);
+    // The lockout does not depend on Redis: it lives in MariaDB.
+    let locked: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM users WHERE failed_login_count > 0")
+        .fetch_one(&app.db)
+        .await
+        .unwrap();
+    assert_eq!(locked, 0, "a refused request did not reach the password check");
+}
+
+#[sqlx::test]
+async fn account_routes_refuse_bodies_that_are_too_large_or_not_json(
+    opts: MySqlPoolOptions,
+    conn: MySqlConnectOptions,
+) {
+    let app = seeded(opts, conn).await;
+    for path in ["/api/v1/auth/login", "/api/v1/auth/register", "/api/v1/admin/auth/login"] {
+        let huge = json!({"email": "a@example.com", "password": "x".repeat(300 * 1024)});
+        let reply = app.post(path, huge).await;
+        assert_eq!(reply.status, StatusCode::PAYLOAD_TOO_LARGE, "{path}");
+
+        let form = request(Method::POST, path)
+            .header("content-type", "application/x-www-form-urlencoded")
+            .body(Body::from("email=a%40example.com&password=x"))
+            .unwrap();
+        assert_eq!(app.send(form).await.status, StatusCode::UNSUPPORTED_MEDIA_TYPE, "{path}");
+
+        let array = request(Method::POST, path)
+            .header("content-type", "application/json")
+            .body(Body::from(r#"["a@example.com", "x"]"#))
+            .unwrap();
+        assert_eq!(app.send(array).await.status, StatusCode::UNPROCESSABLE_ENTITY, "{path}");
+    }
+}
+
+#[sqlx::test]
+async fn sql_in_a_credential_is_only_a_wrong_credential(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let app = seeded(opts, conn).await;
+    register(&app, "ahmed").await;
+    for password in ["' OR '1'='1", "\" OR 1=1 -- ", "x'; DROP TABLE users; --", "\\"] {
+        let reply = app
+            .post("/api/v1/auth/login", json!({"email": "ahmed@example.com", "password": password}))
+            .await;
+        assert_eq!(
+            (reply.status, reply.json["code"].as_str()),
+            (StatusCode::UNAUTHORIZED, Some("INVALID_CREDENTIALS")),
+            "{password}"
+        );
+    }
+    // A quote is a legal character of an address: it finds nobody, and breaks nothing.
+    let reply = app
+        .post("/api/v1/auth/login", json!({"email": "o'brien@example.com", "password": PASSWORD}))
+        .await;
+    assert_eq!(reply.json["code"], "INVALID_CREDENTIALS");
+    let users: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM users")
+        .fetch_one(&app.db)
+        .await
+        .unwrap();
+    assert_eq!(users, 1);
+}
+
+#[sqlx::test]
+async fn nothing_secret_is_written_to_redis(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let app = common::seeded_with(opts, conn, |vars| {
+        vars.insert("RATE_LIMIT_ENABLED".into(), "true".into());
+    })
+    .await;
+    let session = register(&app, "ahmed").await;
+    app.post("/api/v1/auth/password/forgot", json!({"email": "ahmed@example.com"}))
+        .await;
+    app.post("/api/v1/auth/login", json!({"email": "ahmed@example.com", "password": PASSWORD}))
+        .await;
+
+    // Everything this application wrote: the rate-limit counters and the two queued jobs.
+    let mut redis = app.state.redis.clone();
+    let keys: Vec<String> = redis::cmd("KEYS")
+        .arg(format!("{}*", app.state.redis_prefix))
+        .query_async(&mut redis)
+        .await
+        .unwrap();
+    let jobs: redis::Value = redis::cmd("XRANGE")
+        .arg(format!("{}jobs", app.state.redis_prefix))
+        .arg("-")
+        .arg("+")
+        .query_async(&mut redis)
+        .await
+        .unwrap();
+    let written = format!("{keys:?} {jobs:?}");
+    assert!(written.contains("EMAIL_VERIFY") && written.contains("PASSWORD_RESET"), "{written}");
+    for secret in [
+        "ahmed@example.com",
+        "example.com",
+        PASSWORD,
+        session["refreshToken"].as_str().unwrap(),
+        session["accessToken"].as_str().unwrap(),
+        "127.0.0.1",
+    ] {
+        assert!(!written.contains(secret), "{secret} is in Redis: {written}");
+    }
+}
+```
+
+- [ ] **Step 2: Run the suite**
+
+```bash
+CARGO_TARGET_DIR="$HOME/.cache/fitness-league/target" cargo test --test security 2>&1 | grep -E "^test |test result"
+```
+
+Expected: 6 tests pass. These tests describe code that already exists, so they are not seen failing first; each was written against a promise, and a failure here is a defect of an earlier task. Fix the code, in the module that owns it, not the test. To see that the suite can fail, remove one line of `PUBLIC` (the first test must fail) and change `!role.is_judge()` to `true` in `src/http/auth.rs` (the second must fail), then put both back.
+
+- [ ] **Step 3: The whole flow, by hand**
+
+With `serve` and `worker` running (two terminals, from `apps/backend`), and `B=http://127.0.0.1:3100/api/v1`:
+
+```bash
+curl -s -X POST $B/auth/login -H 'content-type: application/json' -d '{"email":"plan1b@example.com","password":"a long enough passphrase"}' > /tmp/s.json
+A=$(python3 -c "import json; print(json.load(open('/tmp/s.json'))['accessToken'])")
+curl -s $B/me -H "authorization: Bearer $A" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d['username'], d['emailVerified'], d['stats']['levelTitleKey'])"
+T=$(curl -s http://127.0.0.1:8025/api/v1/messages | python3 -c "import json,sys,urllib.request; m=json.load(sys.stdin)['messages'][0]; print(json.load(urllib.request.urlopen('http://127.0.0.1:8025/api/v1/message/'+m['ID']))['Text'].split('token=')[1].split()[0])")
+curl -s -o /dev/null -w '%{http_code}\n' -X POST $B/auth/email/verify -H 'content-type: application/json' -d "{\"token\":\"$T\"}"
+curl -s $B/me -H "authorization: Bearer $A" | python3 -c "import json,sys; print(json.load(sys.stdin)['emailVerified'])"
+cargo run -q -- promote plan1b@example.com ADMIN
+curl -s -o /dev/null -w '%{http_code}\n' -X POST $B/admin/auth/login -H 'content-type: application/json' -d '{"email":"plan1b@example.com","password":"a long enough passphrase"}'
+```
+
+(The account `plan1b@example.com` is the one of Task 5, Step 7.) Expected, in order: `plan1b False level.title.beginner`; `204`; `True`; `plan1b@example.com is now ADMIN`; `200`. Stop both processes by process id.
+
+- [ ] **Step 4: The documents**
+
+`README.md`, in the Rust backend section, after the commands that are already listed:
+
+````markdown
+```bash
+cargo run -- worker                                   # sends the emails; run one next to the API
+cargo run -- promote someone@example.com ADMIN        # the first staff account; roles are never self-assigned
+```
+
+Accounts (plan 1b): registration, sign-in with lockout, sessions with single-use refresh tokens, email
+verification and password reset through links, the admin panel's sign-in, and `GET /me`. The emails go
+to Mailpit locally: http://localhost:8025.
+````
+
+`docs/superpowers/specs/2026-10-06-rust-backend-foundation-design.md`: replace the paragraph that begins `Part 1 is built by two plans` with:
+
+```markdown
+Part 1 is built by three plans: **1a, foundation** (everything that needs no user account:
+`docs/superpowers/plans/2026-10-06-rust-backend-1a-foundation.md`), **1b, accounts and sessions**
+(`docs/superpowers/plans/2026-10-07-rust-backend-1b-accounts.md`) and **1c, profile and privacy** (profile
+and settings changes, onboarding, export, account deletion with its daily sweep).
+```
+
+and, in "Passwords and sign-in", after the line about the common-password list, add:
+
+```markdown
+- Emails are trimmed, lower-cased and must be printable ASCII; passwords are normalised (NFKC) before
+  hashing. Both rules exist so that two spellings the database or a keyboard treats as one are one here too.
+```
+
+`handoff.md`: in "Current state", replace the sentence saying `there are no accounts yet` with what now exists (the fifteen endpoints, the worker, the promote command, the number of tests of the last run); in "Active files", add the files of this plan's File Structure; in "Next steps", replace the item about plan 1b with plan 1c and keep the open points. Restore the file from `HEAD` first if `git status` shows it modified by line endings only.
+
+- [ ] **Step 5: Everything, once more**
+
+```bash
+cargo fmt --check
+CARGO_TARGET_DIR="$HOME/.cache/fitness-league/target" cargo clippy --all-targets -- -D warnings
+SQLX_OFFLINE=true CARGO_TARGET_DIR="$HOME/.cache/fitness-league/target" cargo clippy --all-targets -- -D warnings
+CARGO_TARGET_DIR="$HOME/.cache/fitness-league/target" cargo test 2>&1 | grep -E "^test result|FAILED"
+cargo audit && cargo deny check
+```
+
+Expected: no output from `fmt`; `Finished` twice; every `test result` line `ok`; no vulnerability; `advisories ok, bans ok, licenses ok, sources ok`. The secret scan has never run on this branch: before the first push, run `gitleaks detect` (or let CI do it on the pull request) and expect the test fixtures of `tests/common/mod.rs` and `src/config.rs` to need an allow-list entry.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git -C ../.. add apps/backend/tests/security.rs README.md handoff.md docs/superpowers/specs/2026-10-06-rust-backend-foundation-design.md
+git -C ../.. commit -m "test(backend): security suite over every route and role; docs for plan 1b"
+```
+
+---
+
+## Done when
+
+- `cargo test` passes with the suites of this plan: `jobs`, `mail`, `emails`, `sessions`, `register`, `login`, `admin_auth`, `me`, `security`, next to those of plan 1a.
+- The flow of Task 10, Step 3 gives the expected lines against a running `serve` and `worker`.
+- The mobile app pointed at the Rust API (`EXPO_PUBLIC_API_URL=http://<this machine>:3100/api/v1`) registers an account and signs in. It then stops at onboarding, whose three endpoints are plan 1c.
+- The admin panel pointed at the Rust API (`VITE_API_URL`, with its origin in `CORS_ORIGINS`) signs in with a promoted account and shows who is signed in. Its pages stay empty: their routes are part 5.
+
+## Left for plan 1c, on purpose
+
+`PATCH /me/profile`, `PATCH /me/settings`, `POST /me/onboarding/sports`, `/baselines`, `/complete`, `GET /me/export`, `DELETE /me`, the daily sweep (anonymising accounts whose 30 days are over, removing expired tokens, behind a Redis lock), and what the review of 1a left open about deletion: what anonymising writes into `users.date_of_birth`, and one pending deletion per account.
+

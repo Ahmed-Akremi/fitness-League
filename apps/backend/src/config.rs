@@ -83,6 +83,18 @@ impl Config {
         if !self.redis_url.expose_secret().starts_with("rediss://") {
             names.push("Redis");
         }
+        // Read the way the mail library reads it: the scheme in any case, and `tls=required` only
+        // as a parameter of its own (not inside a password, another parameter or a fragment).
+        let smtp_in_clear = self.smtp_url.as_ref().is_some_and(|url| {
+            let url = url.expose_secret();
+            let (address, rest) = url.split_once('?').unwrap_or((url, ""));
+            let query = rest.split('#').next().unwrap_or("");
+            let tls_required = query.split('&').any(|pair| pair == "tls=required");
+            !address.to_ascii_lowercase().starts_with("smtps://") && !tls_required
+        });
+        if smtp_in_clear {
+            names.push("SMTP");
+        }
         names
     }
 
@@ -496,5 +508,30 @@ mod tests {
                 .plaintext_backends()
                 .is_empty()
         );
+    }
+
+    #[test]
+    fn a_mail_server_reached_without_tls_is_reported() {
+        let names = |url: &str| {
+            Config::from_map(&with(&[("APP_ENV", "production"), ("SMTP_URL", url)]))
+                .unwrap()
+                .plaintext_backends()
+        };
+        assert!(names("smtp://user:pw@mail.example:25").contains(&"SMTP"));
+        assert!(!names("smtp://user:pw@mail.example:587?tls=required").contains(&"SMTP"));
+        assert!(!names("smtps://user:pw@mail.example:465").contains(&"SMTP"));
+        assert!(!names("SMTPS://user:pw@mail.example:465").contains(&"SMTP"));
+        // The scheme in capitals, or the words `tls=required` anywhere but in their own parameter.
+        for in_clear in [
+            "SMTP://user:pw@mail.example:25",
+            "smtp://user:tls=required@mail.example:25",
+            "smtp://mail.example:25?notls=required",
+            "smtp://mail.example:25?x=1&xtls=required",
+            "smtp://mail.example:25#tls=required",
+            "smtp://mail.example:587?tls=opportunistic",
+        ] {
+            assert!(names(in_clear).contains(&"SMTP"), "{in_clear}");
+        }
+        assert!(!names("smtp://mail.example:587?x=1&tls=required").contains(&"SMTP"));
     }
 }

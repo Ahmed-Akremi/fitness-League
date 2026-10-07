@@ -1,25 +1,15 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 mod common;
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use axum::http::StatusCode;
-use common::{Reply, TestApp};
+use common::{Reply, TestApp, assert_same_shape, seed_dir, seeded};
 use serde_json::{Value, json};
 use sqlx::{
     AssertSqlSafe,
     mysql::{MySqlConnectOptions, MySqlPoolOptions},
 };
-
-fn seed_dir() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../infra/seed-data")
-}
-
-async fn seeded(opts: MySqlPoolOptions, conn: MySqlConnectOptions) -> TestApp {
-    let app = TestApp::new(opts, conn).await;
-    backend::seed::run(&app.db, &seed_dir()).await.unwrap();
-    app
-}
 
 fn items(reply: &Reply) -> &Vec<Value> {
     reply
@@ -46,32 +36,6 @@ async fn count(app: &TestApp, table: &str) -> i64 {
         .fetch_one(&app.db)
         .await
         .unwrap()
-}
-
-/// Every key of `expected` exists in `actual` with the same JSON type. `null` on either side matches
-/// anything; lists are compared by their first element.
-fn assert_same_shape(path: &str, expected: &Value, actual: &Value) {
-    match (expected, actual) {
-        (Value::Null, _) | (_, Value::Null) => {}
-        (Value::Object(e), Value::Object(a)) => {
-            for (key, value) in e {
-                let got = a
-                    .get(key)
-                    .unwrap_or_else(|| panic!("{path}.{key} is missing"));
-                assert_same_shape(&format!("{path}.{key}"), value, got);
-            }
-        }
-        (Value::Array(e), Value::Array(a)) => {
-            if let (Some(first_expected), Some(first_actual)) = (e.first(), a.first()) {
-                assert_same_shape(&format!("{path}[0]"), first_expected, first_actual);
-            }
-        }
-        (e, a) => assert_eq!(
-            std::mem::discriminant(e),
-            std::mem::discriminant(a),
-            "{path}: recorded {e}, answered {a}"
-        ),
-    }
 }
 
 #[sqlx::test]
@@ -399,4 +363,28 @@ async fn answers_have_the_shape_the_mobile_app_recorded(
         assert!(!items(&answer).is_empty(), "{path}");
         assert_same_shape(recorded_route, &recorded(recorded_route), &answer.json);
     }
+}
+
+#[sqlx::test]
+async fn the_active_rule_set_gives_the_minimum_age_and_the_level_titles(
+    opts: MySqlPoolOptions,
+    conn: MySqlConnectOptions,
+) {
+    let app = seeded(opts, conn).await;
+    let rules = backend::rules::Rules::active(&app.db).await.unwrap();
+    assert_eq!(rules.min_age_years, 18);
+    assert_eq!(rules.level_title_key(1), "level.title.beginner");
+    assert_eq!(rules.level_title_key(5), "level.title.beginner");
+    assert_eq!(rules.level_title_key(6), "level.title.rookie");
+    assert_eq!(rules.level_title_key(9999), rules.level_title_key(1000));
+}
+
+#[sqlx::test]
+async fn without_a_rule_set_the_answer_is_an_internal_error(
+    opts: MySqlPoolOptions,
+    conn: MySqlConnectOptions,
+) {
+    let app = TestApp::new(opts, conn).await;
+    let err = backend::rules::Rules::active(&app.db).await.err().unwrap();
+    assert_eq!(err.status, StatusCode::INTERNAL_SERVER_ERROR);
 }

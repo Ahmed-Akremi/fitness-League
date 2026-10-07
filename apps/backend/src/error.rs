@@ -128,7 +128,7 @@ impl AppError {
 
 impl From<sqlx::Error> for AppError {
     fn from(e: sqlx::Error) -> Self {
-        Self::internal(e)
+        Self::internal(crate::db::describe(&e))
     }
 }
 

@@ -1,0 +1,65 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT sp.id AS \"id: Uuid\", sp.code, us.is_primary AS \"is_primary: bool\"\n           FROM user_sports us JOIN sports sp ON sp.id = us.sport_id\n           WHERE us.user_id = ?\n           ORDER BY us.is_primary DESC, sp.code",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | PRIMARY_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.sports",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "code",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | UNIQUE_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 160
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.sports",
+            "name": "code"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "is_primary: bool",
+        "type_info": {
+          "type": "Tiny",
+          "flags": "NOT_NULL",
+          "collation": 63,
+          "max_size": 1
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.user_sports",
+            "name": "is_primary"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "16dce6fdac2be2e816efcf2c8ebfc733f33edb00d1a54a4006c9054d12d5c574"
+}

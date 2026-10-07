@@ -1,0 +1,31 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT failed_login_count FROM users WHERE id = ?",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "failed_login_count",
+        "type_info": {
+          "type": "Long",
+          "flags": "NOT_NULL",
+          "collation": 63,
+          "max_size": 11
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.users",
+            "name": "failed_login_count"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "68785f717e77c0d5fa83897123d35484b4cf07d2d784cae3c7e2a665bc60f31d"
+}

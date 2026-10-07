@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "INSERT INTO consents (id, user_id, type, document_version, granted) VALUES (?, ?, ?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 5
+    },
+    "nullable": []
+  },
+  "hash": "95a9c96fc0a926941459f682bac9e13e010d3f2948a8c121a8babb6da4b30f79"
+}

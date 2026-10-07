@@ -1,0 +1,82 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT u.email, u.status, u.email_verified_at, s.locale FROM users u JOIN user_settings s ON s.user_id = u.id WHERE u.id = ?",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "email",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | UNIQUE_KEY | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 1016
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.users",
+            "name": "email"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "status",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | MULTIPLE_KEY | ENUM",
+          "collation": 224,
+          "max_size": 36
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.users",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "email_verified_at",
+        "type_info": {
+          "type": "Datetime",
+          "flags": "BINARY",
+          "collation": 63,
+          "max_size": 26
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.users",
+            "name": "email_verified_at"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "locale",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | ENUM",
+          "collation": 224,
+          "max_size": 8
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.user_settings",
+            "name": "locale"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "b44527e8ad60cdb026b5f6caf54bc33d0b5f1ac77200b407e3642abbbfd4aead"
+}

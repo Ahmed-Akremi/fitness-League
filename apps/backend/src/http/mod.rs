@@ -1,5 +1,6 @@
 //! The HTTP shell: one route table and one middleware stack for the whole API.
 
+pub mod auth;
 pub mod rate_limit;
 
 use std::{
@@ -97,7 +98,10 @@ impl Api {
 /// The one place where modules join the API.
 fn api() -> Api {
     let api = modules::health::routes(Api::new());
-    modules::reference::routes(api)
+    let api = modules::reference::routes(api);
+    let api = modules::auth::routes(api);
+    let api = modules::admin_auth::routes(api);
+    modules::me::routes(api)
 }
 
 /// `(method, path)` of every registered route.

@@ -1,0 +1,31 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT user_id AS \"user_id: Uuid\" FROM email_tokens WHERE token_hash = ?",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "user_id: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | MULTIPLE_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.email_tokens",
+            "name": "user_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "fb3b4f64edf220bf6f9da84fed420051d5c2076571a0bbe2050779b07f8042b0"
+}

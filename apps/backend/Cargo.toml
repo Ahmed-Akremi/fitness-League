@@ -18,6 +18,7 @@ ipnet = "2"
 # aws_lc_rs rather than rust_crypto: the latter pulls in the `rsa` crate (RUSTSEC-2023-0071, no fix), which this
 # API never uses since tokens are Ed25519 only.
 jsonwebtoken = { version = "11", features = ["aws_lc_rs"] }
+lettre = { version = "0.11", default-features = false, features = ["builder", "smtp-transport", "tokio1-rustls-tls"] }
 redis = { version = "1", features = ["tokio-comp", "connection-manager", "script"] }
 secrecy = "0.10"
 serde = { version = "1", features = ["derive"] }
@@ -29,7 +30,8 @@ tokio = { version = "1", features = ["macros", "net", "rt-multi-thread", "signal
 tower-http = { version = "0.7", features = ["catch-panic", "cors"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
-uuid = { version = "1", features = ["v7"] }
+unicode-normalization = "0.1"
+uuid = { version = "1", features = ["serde", "v7"] }
 
 [dev-dependencies]
 http-body-util = "0.1"

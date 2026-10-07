@@ -7,7 +7,7 @@ use axum::{
     http::header,
     response::{IntoResponse, Response},
 };
-use chrono::{DateTime, NaiveDateTime, SecondsFormat};
+use chrono::DateTime;
 use serde::Deserialize;
 use serde_json::{Map, Value, json};
 use uuid::Uuid;
@@ -16,6 +16,7 @@ use crate::{
     error::AppError,
     http::Api,
     state::AppState,
+    types::iso,
     validate::{ValidQuery, uuid_param},
 };
 
@@ -35,11 +36,6 @@ fn cached(max_age: &'static str, list: Vec<Value>) -> Response {
 
 fn name(fr: &str, en: &str, ar: &str) -> Value {
     json!({"fr": fr, "en": en, "ar": ar})
-}
-
-/// Timestamps leave the API as UTC with milliseconds, like `2026-10-06T09:30:00.000Z`.
-fn iso(at: NaiveDateTime) -> String {
-    at.and_utc().to_rfc3339_opts(SecondsFormat::Millis, true)
 }
 
 async fn governorates(State(state): State<AppState>) -> Result<Response, AppError> {
