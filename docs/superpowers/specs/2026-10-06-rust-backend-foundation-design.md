@@ -13,7 +13,9 @@ Three decisions taken with the owner on 2026-10-06 frame everything below:
    line by line from NestJS or Prisma.
 2. **Same contract.** The routes, JSON shapes and error codes stay the ones the mobile app
    (`apps/mobile-rn`) and the admin panel (`apps/admin`) already use, so neither frontend changes.
-   Scope is what the frontends call (about 160 endpoints), not the 301 routes the old API defines.
+   Scope is what the frontends call (about 166 endpoints), not the 301 routes the old API defines.
+   The count includes the six announcement endpoints the home news added on 2026-10-07; none of them
+   belongs to part 1.
 3. **Redis from the start**, so more than one API instance can run.
 
 The work is too large for one spec. It is cut into six parts, each with its own spec, plan and build:
@@ -22,9 +24,9 @@ The work is too large for one spec. It is cut into six parts, each with its own 
 |---|---|---|
 | 1 | **Foundation and accounts** (this spec) | Project, MariaDB, Redis, security plumbing, sign-up, login, sessions, roles, onboarding, reference data, admin login |
 | 2 | Training loop | Workouts and offline sync, scoring engine and ledger, progress, goals, seasons, leaderboards, badges |
-| 3 | Gyms and social | Gyms, gym WODs, gym wars, duels, battles, challenges, leagues, feed, follows, notifications, push, live socket |
-| 4 | Competitions | Events, registration, WODs, submissions, judging, leaderboard, banner upload |
-| 5 | Admin and moderation | Admin users, seasons, queues, judge accounts, moderation, proofs, anti-cheat |
+| 3 | Gyms and social | Gyms, gym WODs, gym wars, duels, battles, challenges, leagues, feed, follows, notifications (including the `ANNOUNCEMENT` type), push, live socket, home news (`GET /announcements`, `PUT` and `DELETE /announcements/:id/like`) |
+| 4 | Competitions | Events, registration, WODs, submissions, judging, leaderboard, banner upload, list filter `CURRENT` (home carousel) |
+| 5 | Admin and moderation | Admin users, seasons, queues, judge accounts, moderation, proofs, anti-cheat, announcements (`GET` and `POST /admin/announcements` with one photo, `DELETE /admin/announcements/:id`) |
 | 6 | Cut-over | Demo data, frontends pointed at the Rust API, `apps/api` and PostgreSQL removed |
 
 Part 1 is built by two plans: **1a, foundation** (everything that needs no user account:
@@ -298,7 +300,7 @@ The last four mostly matter from part 2 on; they are fixed here so every part fo
 
 | Group | Tables |
 |---|---|
-| Identity | `users` (email, username, password hash, role, status, session version, lockout counters, date of birth), `refresh_tokens`, `email_tokens`, `consents` (history, never updated), `data_requests` (deletion) |
+| Identity | `users` (email, username, password hash, role, status, session version, lockout counters, date of birth), `refresh_tokens`, `email_tokens`, `consents` (history, never updated), `deletion_requests` |
 | Profile | `profiles`, `user_settings`, `user_sports`, `baselines`, `user_stats`, `user_streaks` |
 | Reference | `countries`, `governorates`, `cities`, `sports`, `metric_types`, `exercises`, `rule_sets` |
 | Trail | `audit_log` |
@@ -380,5 +382,5 @@ accounts. Redis gets a password. PostgreSQL stays until part 6, because `apps/ap
 2. **Second factor for admins** was removed at the owner's request and stays removed. It remains the
    strongest missing protection for staff accounts; the token design leaves room to add it later.
 3. **Common-password list:** the 100,000 most common passwords of SecLists (MIT licence), reduced to the
-   9,084 entries of 10 characters or more, since shorter ones are refused by length anyway. It is embedded
+   9,079 entries of 10 characters or more, since shorter ones are refused by length anyway. It is embedded
    in the binary (about 106 kB).
