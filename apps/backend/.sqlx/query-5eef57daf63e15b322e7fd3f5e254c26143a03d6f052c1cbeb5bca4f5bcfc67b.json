@@ -1,0 +1,48 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT id AS \"id: Uuid\", role AS \"role: Role\" FROM users\n           WHERE email = ? AND status <> 'DELETED' FOR UPDATE",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | PRIMARY_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.users",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "role: Role",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | ENUM",
+          "collation": 224,
+          "max_size": 44
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.users",
+            "name": "role"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "5eef57daf63e15b322e7fd3f5e254c26143a03d6f052c1cbeb5bca4f5bcfc67b"
+}

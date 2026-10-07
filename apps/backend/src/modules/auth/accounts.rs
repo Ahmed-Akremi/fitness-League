@@ -3,6 +3,7 @@
 use axum::http::StatusCode;
 use chrono::{Duration, NaiveDate, NaiveDateTime, Utc};
 use serde_json::json;
+use sqlx::MySqlPool;
 use uuid::Uuid;
 
 use super::sessions::{self, Holder, Session};
@@ -14,6 +15,7 @@ use crate::{
     security::{password::password_problem, policy, tokens::Audience},
     state::AppState,
     types::{Gender, Locale, Role, iso},
+    validate::normalise_email,
 };
 
 /// A banned account, or one suspended for now, is refused wherever it proves who it is: at sign-in,
@@ -276,6 +278,43 @@ async fn record_failure(state: &AppState, user: Uuid) -> Result<(), AppError> {
         tracing::warn!(user_id = %user, "the lock notice could not be queued");
     }
     Ok(())
+}
+
+/// Gives a role to an account, from the command line. Nobody changes a role through the API in this
+/// part, and never their own. Every session of the account ends: the role is read from the row on
+/// each request anyway, and ending the sessions makes the change visible to the person at once.
+pub async fn promote(db: &MySqlPool, email: &str, role: Role) -> Result<(), String> {
+    let describe = |e: sqlx::Error| db::describe(&e);
+    let email = normalise_email(email).ok_or("not an email address")?;
+    let mut tx = db.begin().await.map_err(describe)?;
+    let user = sqlx::query!(
+        r#"SELECT id AS "id: Uuid", role AS "role: Role" FROM users
+           WHERE email = ? AND status <> 'DELETED' FOR UPDATE"#,
+        email
+    )
+    .fetch_optional(&mut *tx)
+    .await
+    .map_err(describe)?
+    .ok_or("no account with this email")?;
+    sqlx::query!(
+        "UPDATE users SET role = ? WHERE id = ?",
+        role.as_str(),
+        user.id
+    )
+    .execute(&mut *tx)
+    .await
+    .map_err(describe)?;
+    sessions::end_all(&mut tx, user.id)
+        .await
+        .map_err(describe)?;
+    let event = audit::Event {
+        actor: None,
+        action: "ROLE_CHANGED",
+        user_id: user.id,
+        after: Some(json!({"from": user.role.as_str(), "to": role.as_str()})),
+    };
+    audit::record(&mut *tx, event).await.map_err(describe)?;
+    tx.commit().await.map_err(describe)
 }
 
 #[cfg(test)]

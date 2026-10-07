@@ -2,7 +2,7 @@ use std::process::ExitCode;
 
 use secrecy::ExposeSecret;
 
-const USAGE: &str = "usage: backend <serve|worker|migrate|seed [dir]|keys>";
+const USAGE: &str = "usage: backend <serve|worker|migrate|seed [dir]|promote <email> <role>|keys>";
 
 #[tokio::main]
 async fn main() -> ExitCode {
@@ -18,6 +18,7 @@ async fn main() -> ExitCode {
         Some("worker") => worker().await,
         Some("migrate") => migrate().await,
         Some("seed") => seed(args.get(1)).await,
+        Some("promote") => promote(args.get(1), args.get(2)).await,
         Some("keys") => keys(),
         _ => Err(USAGE.to_owned()),
     };
@@ -152,4 +153,21 @@ async fn worker() -> Result<(), String> {
             }
         }
     }
+}
+
+/// `backend promote <email> <role>`: how the first staff account comes to exist.
+async fn promote(email: Option<&String>, role: Option<&String>) -> Result<(), String> {
+    let (Some(email), Some(role)) = (email, role) else {
+        return Err(USAGE.to_owned());
+    };
+    let role: backend::types::Role =
+        serde_json::from_value(serde_json::Value::String(role.to_uppercase()))
+            .map_err(|_| format!("unknown role {role}: USER, GYM_ADMIN, MODERATOR, ADMIN, SUPER_ADMIN, JUDGE or HEAD_JUDGE"))?;
+    let cfg = backend::config::Config::from_env()?;
+    let pool = backend::db::connect(cfg.database_url.expose_secret(), 1)
+        .await
+        .map_err(|e| format!("database: {}", backend::db::describe(&e)))?;
+    backend::modules::auth::accounts::promote(&pool, email, role).await?;
+    println!("{email} is now {}", role.as_str());
+    Ok(())
 }
