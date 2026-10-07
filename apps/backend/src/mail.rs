@@ -19,7 +19,8 @@ pub struct Sent {
 
 pub enum Mailer {
     Smtp {
-        transport: AsyncSmtpTransport<Tokio1Executor>,
+        /// Boxed: the transport is several hundred bytes, the other variant a few.
+        transport: Box<AsyncSmtpTransport<Tokio1Executor>>,
         from: Mailbox,
     },
     /// Keeps the mails instead of sending them: the tests, and a developer machine with no
@@ -41,7 +42,10 @@ impl Mailer {
             .mail_from
             .parse()
             .map_err(|_| "MAIL_FROM: expected `Name <address>`".to_owned())?;
-        Ok(Self::Smtp { transport, from })
+        Ok(Self::Smtp {
+            transport: Box::new(transport),
+            from,
+        })
     }
 
     pub fn memory() -> Self {
