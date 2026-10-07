@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "INSERT INTO sports (id, code, category, logging_mode, icon, name_fr, name_en, name_ar) VALUES (?, ?, ?, ?, ?, ?, ?, ?)\n             ON DUPLICATE KEY UPDATE category = VALUES(category), logging_mode = VALUES(logging_mode), icon = VALUES(icon),\n                 name_fr = VALUES(name_fr), name_en = VALUES(name_en), name_ar = VALUES(name_ar)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 8
+    },
+    "nullable": []
+  },
+  "hash": "1db2b542976e0da5d6764aa85845aeb4bca563fc5e7e779e7c33bf06068ff545"
+}

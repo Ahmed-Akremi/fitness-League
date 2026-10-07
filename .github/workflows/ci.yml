@@ -5,6 +5,10 @@ on:
     branches: [main]
   pull_request:
 
+# Every job reads the repository and nothing else, unless it says otherwise.
+permissions:
+  contents: read
+
 jobs:
   api:
     runs-on: ubuntu-latest
@@ -26,7 +30,7 @@ jobs:
       DATABASE_URL: postgresql://fl:fl@localhost:5432/fl_test?schema=public
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -47,7 +51,7 @@ jobs:
         working-directory: apps/admin
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -65,7 +69,7 @@ jobs:
         working-directory: apps/mobile-rn
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -75,12 +79,58 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
 
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/backend
+    services:
+      mariadb:
+        image: mariadb:11.4
+        env:
+          MARIADB_ROOT_PASSWORD: fl_root_dev
+          MARIADB_DATABASE: fitness_league
+        ports: ["3307:3306"]
+        options: >-
+          --health-cmd "healthcheck.sh --connect --innodb_initialized" --health-interval 5s --health-retries 20
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 5s --health-retries 10
+    env:
+      # Queries are checked against the committed .sqlx data: the build itself needs no database.
+      SQLX_OFFLINE: "true"
+      # The tests create one throw-away database each.
+      DATABASE_URL: mysql://root:fl_root_dev@127.0.0.1:3307/fitness_league
+      TEST_REDIS_URL: redis://127.0.0.1:6379
+    steps:
+      - uses: actions/checkout@v4
+      # Installs the version pinned in rust-toolchain.toml.
+      - run: rustup toolchain install
+      # Third-party actions are pinned to a commit: a tag can be moved to other code.
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          workspaces: apps/backend
+      - run: cargo fmt --check
+      - run: cargo clippy --all-targets -- -D warnings
+      - run: cargo test
+      - uses: taiki-e/install-action@f7e5d7c961414b23f5b25b2da9294395d08513ad # v2.87.26
+        with:
+          tool: cargo-audit@0.22.2,cargo-deny@0.20.2
+      - run: cargo audit
+      - run: cargo deny check
+
   secrets-scan:
     runs-on: ubuntu-latest
+    # The scanner lists the commits of a pull request.
+    permissions:
+      contents: read
+      pull-requests: read
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: gitleaks/gitleaks-action@v2
+      - uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,31 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT category FROM sports WHERE id = ?",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "category",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | ENUM | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 40
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.sports",
+            "name": "category"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "29c0bb12e32a6e22eb6ea0c18d2e2c94ef2bffb0e08b92c6f586c4a41342a46f"
+}

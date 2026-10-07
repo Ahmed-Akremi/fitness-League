@@ -1,0 +1,31 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT id AS \"id: Uuid\" FROM metric_types WHERE code = ?",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | PRIMARY_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.metric_types",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "ad11db8870257d155771b0971eb70b33c95b37c7a3de2b307fa1532fe5df0d42"
+}

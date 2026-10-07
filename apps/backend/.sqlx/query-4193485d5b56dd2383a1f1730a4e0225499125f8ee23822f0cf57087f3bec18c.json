@@ -1,0 +1,31 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT id AS \"id: Uuid\" FROM sports WHERE code = ?",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | PRIMARY_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.sports",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "4193485d5b56dd2383a1f1730a4e0225499125f8ee23822f0cf57087f3bec18c"
+}

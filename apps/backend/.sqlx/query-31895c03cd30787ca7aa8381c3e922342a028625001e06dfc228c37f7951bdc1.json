@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "INSERT INTO cities (id, governorate_id, code, name_fr, name_en, name_ar) VALUES (?, ?, ?, ?, ?, ?)\n                 ON DUPLICATE KEY UPDATE name_fr = VALUES(name_fr), name_en = VALUES(name_en), name_ar = VALUES(name_ar)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 6
+    },
+    "nullable": []
+  },
+  "hash": "31895c03cd30787ca7aa8381c3e922342a028625001e06dfc228c37f7951bdc1"
+}

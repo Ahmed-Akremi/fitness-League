@@ -1,0 +1,264 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT e.id AS \"id: Uuid\", e.sport_id AS \"sport_id: Uuid\", e.code, e.name_fr, e.name_en, e.name_ar,\n                  e.equipment, e.is_bodyweight AS \"is_bodyweight: bool\", e.exercise_group,\n                  e.description_fr, e.description_en, e.description_ar, e.enabled AS \"enabled: bool\", e.updated_at,\n                  (SELECT GROUP_CONCAT(m.code ORDER BY em.position SEPARATOR ',')\n                     FROM exercise_metrics em JOIN metric_types m ON m.id = em.metric_type_id\n                    WHERE em.exercise_id = e.id) AS \"tracked?: String\"\n           FROM exercises e\n           WHERE (? IS NULL OR e.sport_id = ? OR (? AND e.sport_id IS NULL))\n             AND (CASE WHEN ? IS NULL THEN e.enabled ELSE e.updated_at > ? END)\n           ORDER BY e.code",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | PRIMARY_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.exercises",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "sport_id: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "MULTIPLE_KEY | BINARY",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.exercises",
+            "name": "sport_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "code",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | UNIQUE_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 240
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.exercises",
+            "name": "code"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "name_fr",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 480
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.exercises",
+            "name": "name_fr"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "name_en",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 480
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.exercises",
+            "name": "name_en"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "name_ar",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 480
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.exercises",
+            "name": "name_ar"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "equipment",
+        "type_info": {
+          "type": "VarString",
+          "flags": "",
+          "collation": 224,
+          "max_size": 160
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.exercises",
+            "name": "equipment"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "is_bodyweight: bool",
+        "type_info": {
+          "type": "Tiny",
+          "flags": "NOT_NULL",
+          "collation": 63,
+          "max_size": 1
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.exercises",
+            "name": "is_bodyweight"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "exercise_group",
+        "type_info": {
+          "type": "String",
+          "flags": "ENUM",
+          "collation": 224,
+          "max_size": 52
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.exercises",
+            "name": "exercise_group"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "description_fr",
+        "type_info": {
+          "type": "Blob",
+          "flags": "BLOB",
+          "collation": 224,
+          "max_size": 262140
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.exercises",
+            "name": "description_fr"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "description_en",
+        "type_info": {
+          "type": "Blob",
+          "flags": "BLOB",
+          "collation": 224,
+          "max_size": 262140
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.exercises",
+            "name": "description_en"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "description_ar",
+        "type_info": {
+          "type": "Blob",
+          "flags": "BLOB",
+          "collation": 224,
+          "max_size": 262140
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.exercises",
+            "name": "description_ar"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "enabled: bool",
+        "type_info": {
+          "type": "Tiny",
+          "flags": "NOT_NULL",
+          "collation": 63,
+          "max_size": 1
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.exercises",
+            "name": "enabled"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "updated_at",
+        "type_info": {
+          "type": "Datetime",
+          "flags": "NOT_NULL | MULTIPLE_KEY | BINARY | ON_UPDATE_NOW",
+          "collation": 63,
+          "max_size": 26
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.exercises",
+            "name": "updated_at"
+          }
+        }
+      },
+      {
+        "ordinal": 14,
+        "name": "tracked?: String",
+        "type_info": {
+          "type": "Blob",
+          "flags": "BINARY",
+          "collation": 224,
+          "max_size": 4194304
+        },
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 5
+    },
+    "nullable": [
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "26895db5d077430def87165c16ebc7a0f31f1ae24ba00d1bd5cc69692c2cba94"
+}

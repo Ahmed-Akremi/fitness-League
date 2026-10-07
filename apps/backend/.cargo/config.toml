@@ -1,0 +1,5 @@
+# Tooling defaults for local development. The sqlx macros and `cargo test` need an account that may create
+# throw-away databases. The API itself never keeps this URL: in debug builds `.env` replaces it with fl_app.
+[env]
+DATABASE_URL = "mysql://root:fl_root_dev@127.0.0.1:3307/fitness_league"
+TEST_REDIS_URL = "redis://:fl_redis_dev@127.0.0.1:6379"

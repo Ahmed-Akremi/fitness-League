@@ -1,0 +1,116 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT g.id AS \"id: Uuid\", g.code, g.country_code, g.name_fr, g.name_en, g.name_ar\n           FROM governorates g JOIN countries c ON c.code = g.country_code\n           WHERE c.enabled\n           ORDER BY g.code",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | PRIMARY_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.governorates",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "code",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | UNIQUE_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 64
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.governorates",
+            "name": "code"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "country_code",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | MULTIPLE_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 8
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.governorates",
+            "name": "country_code"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "name_fr",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 320
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.governorates",
+            "name": "name_fr"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "name_en",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 320
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.governorates",
+            "name": "name_en"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "name_ar",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 320
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.governorates",
+            "name": "name_ar"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "da3ba2dfaf5965a7cfc37d2ee9d29cabfbcafeb75c2b1bbc4cfc31ab9b8b1ba7"
+}

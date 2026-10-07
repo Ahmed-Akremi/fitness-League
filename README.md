@@ -14,6 +14,7 @@ The name is configurable (`APP_NAME`).
 apps/api       NestJS API + worker (Prisma, PostgreSQL 16)
 apps/admin     React admin panel (Vite + TypeScript)
 apps/mobile-rn React Native app (Expo: Android, iOS; web build for previews)
+apps/backend   Rust API on MariaDB + Redis; replaces apps/api part by part (in progress)
 infra/         docker-compose + seed data (Tunisia, sports, exercises, rule set v1)
 docs/          architecture document
 ```
@@ -45,6 +46,32 @@ pnpm dev                           # API on http://localhost:3000
 ```
 
 On WSL, keep the repository on the Linux filesystem (`~/…`), not under `/mnt/c`: it is several times faster.
+
+## Rust backend (in progress)
+
+`apps/backend` is the API that will replace `apps/api`. Today it serves the health checks and the public
+reference lists; accounts come next.
+
+One-time setup (Rust 1.99 through `rustup`, Docker for MariaDB, Redis and Mailpit):
+
+```bash
+docker compose -f infra/docker-compose.yml up -d mariadb redis mailpit
+cd apps/backend
+cp .env.example .env
+cargo run -q -- keys >> .env
+printf 'APP_HMAC_SECRET=%s\n' "$(openssl rand -base64 48)" >> .env
+cargo run -- migrate
+cargo run -- seed ../../infra/seed-data
+```
+
+Then `cargo run -- serve` listens on http://localhost:3100/api/v1 and `cargo test` runs the test suites.
+
+- **Database accounts.** `fl_migrate` owns the schema and is used only by `migrate`. The API uses `fl_app`,
+  which can read and write rows but cannot change the schema; the audit log refuses updates and deletes
+  for everyone.
+- **SQL is checked at compile time.** After changing a query, run `cargo sqlx prepare` and commit `.sqlx/`.
+- **If the repository is in a synced folder** (OneDrive, Dropbox), set
+  `CARGO_TARGET_DIR="$HOME/.cache/fitness-league/target"` so the build output stays outside it.
 
 ## Tests
 
