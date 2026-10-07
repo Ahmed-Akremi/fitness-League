@@ -119,14 +119,21 @@ pub async fn revoke_family<'e>(
     .map(|_| ())
 }
 
-/// Ends every session of an account. The caller also increments `users.session_version`, which
-/// kills the access tokens already handed out.
-pub async fn revoke_all<'e>(db: impl MySqlExecutor<'e>, user: Uuid) -> Result<(), sqlx::Error> {
+/// Ends every session of an account at once: the access tokens, through the version they carry,
+/// and the refresh tokens. The two are changed here together and nowhere else for a whole account,
+/// so a password reset or a role change can never leave a refresh token able to mint new access.
+pub async fn end_all(tx: &mut MySqlConnection, user: Uuid) -> Result<(), sqlx::Error> {
+    sqlx::query!(
+        "UPDATE users SET session_version = session_version + 1 WHERE id = ?",
+        user
+    )
+    .execute(&mut *tx)
+    .await?;
     sqlx::query!(
         "UPDATE refresh_tokens SET revoked_at = UTC_TIMESTAMP(6) WHERE user_id = ? AND revoked_at IS NULL",
         user
     )
-    .execute(db)
+    .execute(&mut *tx)
     .await
     .map(|_| ())
 }
@@ -134,14 +141,34 @@ pub async fn revoke_all<'e>(db: impl MySqlExecutor<'e>, user: Uuid) -> Result<()
 /// The token was copied: every session descended from that sign-in ends, and the event is recorded.
 async fn reused(state: &AppState, user: Uuid, family: Uuid) -> AppError {
     let recorded = async {
-        revoke_family(&state.db, family).await?;
+        let mut tx = state.db.begin().await?;
+        let revoked = sqlx::query!(
+            "UPDATE refresh_tokens SET revoked_at = UTC_TIMESTAMP(6) WHERE family_id = ? AND revoked_at IS NULL",
+            family
+        )
+        .execute(&mut *tx)
+        .await?
+        .rows_affected();
+        // The first time the copy is noticed, the access tokens already handed out die with the
+        // family: whoever used the copy is out at once, not when their token expires. The other
+        // devices of the owner renew theirs with their own refresh tokens. Not on a later replay of
+        // the same dead token: its holder could otherwise disturb the account for ever.
+        if revoked > 0 {
+            sqlx::query!(
+                "UPDATE users SET session_version = session_version + 1 WHERE id = ?",
+                user
+            )
+            .execute(&mut *tx)
+            .await?;
+        }
         let event = audit::Event {
             actor: None,
             action: "REFRESH_TOKEN_REUSE_DETECTED",
             user_id: user,
             after: Some(json!({"familyId": family.to_string()})),
         };
-        audit::record(&state.db, event).await
+        audit::record(&mut *tx, event).await?;
+        tx.commit().await
     };
     if let Err(e) = recorded.await {
         return e.into();

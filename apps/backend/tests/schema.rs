@@ -308,6 +308,19 @@ async fn a_database_error_is_described_without_its_values(
     );
     assert!(!line.contains("secret.address"), "{line}");
     assert_eq!(backend::db::duplicate_key(&sqlx::Error::RowNotFound), None);
+    // An error that does not come from the server is described by its kind, never by its own
+    // text, which may quote a value as well.
+    let decode = sqlx::Error::ColumnDecode {
+        index: "email".into(),
+        source: "secret.address@example.com is not valid".into(),
+    };
+    let line = backend::db::describe(&decode);
+    assert!(!line.contains("secret.address"), "{line}");
+    assert!(line.contains("email"), "the column is named: {line}");
+    assert_eq!(
+        backend::db::describe(&sqlx::Error::RowNotFound),
+        "row not found"
+    );
 }
 
 #[sqlx::test]

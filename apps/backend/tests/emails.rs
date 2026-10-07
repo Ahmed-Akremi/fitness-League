@@ -2,7 +2,9 @@
 mod common;
 
 use backend::{
-    jobs::{self, JobKind},
+    jobs::{self, Job, JobKind},
+    mail::Mailer,
+    modules::auth::emails::handle,
     security::tokens::hash_opaque,
     types::Role,
 };
@@ -143,4 +145,41 @@ async fn nothing_is_sent_when_the_job_no_longer_applies(
 
     assert!(deliver_mail(&app).await.is_empty());
     assert!(links(&app, banned, "PASSWORD_RESET").await.is_empty());
+}
+
+#[sqlx::test]
+async fn two_workers_at_once_still_leave_one_working_link(
+    opts: MySqlPoolOptions,
+    conn: MySqlConnectOptions,
+) {
+    let app = seeded(opts, conn).await;
+    let user = create_user(&app, "ahmed", Role::User).await;
+    let job = || Job {
+        kind: JobKind::PasswordReset,
+        user_id: user,
+        attempt: 1,
+    };
+    let (first, second) = (Mailer::memory(), Mailer::memory());
+    // The dangerous moment is when no link is alive: nothing yet makes one worker wait for the
+    // other. Each round starts from there; several rounds, because the overlap is a matter of timing
+    // (in the first one a worker is still opening its connection).
+    for round in 0..8 {
+        sqlx::query("UPDATE email_tokens SET consumed_at = UTC_TIMESTAMP(6) WHERE user_id = ? AND consumed_at IS NULL")
+            .bind(user)
+            .execute(&app.db)
+            .await
+            .unwrap();
+        let (a, b) = tokio::join!(
+            handle(&app.state, &first, job()),
+            handle(&app.state, &second, job())
+        );
+        a.unwrap();
+        b.unwrap();
+        let live = links(&app, user, "PASSWORD_RESET")
+            .await
+            .iter()
+            .filter(|link| !link.2)
+            .count();
+        assert_eq!(live, 1, "round {round}: a new link cancels the older ones");
+    }
 }

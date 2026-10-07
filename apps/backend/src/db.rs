@@ -60,6 +60,18 @@ pub fn describe(e: &sqlx::Error) -> String {
             error.code().unwrap_or("?"),
             duplicate_key(e).unwrap_or("-")
         ),
-        None => e.to_string(),
+        // Not from the server. The kind only: the text of such an error can quote a value too.
+        None => match e {
+            sqlx::Error::RowNotFound => "row not found".to_owned(),
+            sqlx::Error::PoolTimedOut => "no database connection became free in time".to_owned(),
+            sqlx::Error::PoolClosed => "the database pool is closed".to_owned(),
+            sqlx::Error::Io(io) => format!("database connection: {:?}", io.kind()),
+            sqlx::Error::Tls(_) => "database connection: TLS failed".to_owned(),
+            sqlx::Error::ColumnDecode { index, .. } => {
+                format!("column {index} could not be decoded")
+            }
+            sqlx::Error::ColumnNotFound(name) => format!("column {name} not found"),
+            _ => "database client error".to_owned(),
+        },
     }
 }

@@ -54,11 +54,7 @@ async fn migrate() -> Result<(), String> {
 async fn serve() -> Result<(), String> {
     let cfg = backend::config::Config::from_env()?;
     init_logging(&cfg.log_level);
-    if cfg.env == backend::config::AppEnv::Production {
-        for name in cfg.plaintext_backends() {
-            tracing::warn!(backend = name, "reached without TLS");
-        }
-    }
+    warn_plaintext(&cfg);
     let state = backend::state::AppState::connect(cfg).await?;
     let address = std::net::SocketAddr::from(([0, 0, 0, 0], state.cfg.port));
     let listener = tokio::net::TcpListener::bind(address)
@@ -73,6 +69,17 @@ async fn serve() -> Result<(), String> {
     .with_graceful_shutdown(shutdown())
     .await
     .map_err(|e| e.to_string())
+}
+
+/// In production, every backend reached without TLS is named at start, by the API and by the
+/// worker (which is the one that talks to the mail server). On a private network this can be
+/// acceptable, but it has to be a decision and not an accident.
+fn warn_plaintext(cfg: &backend::config::Config) {
+    if cfg.env == backend::config::AppEnv::Production {
+        for name in cfg.plaintext_backends() {
+            tracing::warn!(backend = name, "reached without TLS");
+        }
+    }
 }
 
 /// JSON lines on standard output, at the configured level.
@@ -124,6 +131,7 @@ fn now_ms() -> u64 {
 async fn worker() -> Result<(), String> {
     let cfg = backend::config::Config::from_env()?;
     init_logging(&cfg.log_level);
+    warn_plaintext(&cfg);
     let state = backend::state::AppState::connect(cfg).await?;
     let mailer = backend::mail::Mailer::from_config(&state.cfg)?;
     let consumer = format!("worker-{}", uuid::Uuid::now_v7().simple());

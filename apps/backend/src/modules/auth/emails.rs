@@ -45,7 +45,16 @@ pub async fn handle(state: &AppState, mailer: &Mailer, job: Job) -> Result<(), S
         let (token, hash) = tokens::new_opaque().map_err(|_| "no random bytes".to_owned())?;
         let now = Utc::now().naive_utc();
         let mut tx = state.db.begin().await.map_err(describe)?;
-        // A new link cancels the older ones.
+        // One link at a time per account. The row is held until the commit, so a second worker
+        // running the same job waits, then cancels this link like any older one. Without it, two
+        // workers starting when no link is alive would each leave one.
+        sqlx::query!("SELECT id FROM users WHERE id = ? FOR UPDATE", job.user_id)
+            .fetch_optional(&mut *tx)
+            .await
+            .map_err(describe)?;
+        // A new link cancels the older ones. A link belongs to the account, not to the address it
+        // was sent to: nothing in this part changes an address, and whatever does later must cancel
+        // the links still alive.
         sqlx::query!(
             "UPDATE email_tokens SET consumed_at = ? WHERE user_id = ? AND purpose = ? AND consumed_at IS NULL",
             now,

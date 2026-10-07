@@ -24,6 +24,8 @@ const BLOCK_MS: u64 = 500;
 const BATCH: usize = 10;
 /// A safety valve when no worker runs: the oldest jobs are dropped beyond this many.
 const STREAM_CAPACITY: usize = 100_000;
+/// The dead-letter stream keeps the most recent failures only.
+const DEAD_CAPACITY: usize = 10_000;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -220,6 +222,9 @@ impl Worker {
                         tracing::error!(cause = %cause, "job abandoned");
                         done.cmd("XADD")
                             .arg(&keys.dead)
+                            .arg("MAXLEN")
+                            .arg("~")
+                            .arg(DEAD_CAPACITY)
                             .arg("*")
                             .arg("job")
                             .arg(&raw)

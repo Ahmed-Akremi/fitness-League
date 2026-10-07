@@ -57,6 +57,11 @@ impl Passwords {
     }
 
     pub async fn hash(self: &Arc<Self>, password: String) -> Result<String, AppError> {
+        // Checked here too, before anything is done with the text: a caller that forgot the rule
+        // must not make this process normalise and hash an arbitrarily long string.
+        if password.chars().count() > MAX_LENGTH {
+            return Err(AppError::field("password", "MAXLENGTH"));
+        }
         // The slot moves into the blocking task. A caller that gives up (timeout, closed connection)
         // must not free it while the hash is still running and holding its memory.
         let slot = Arc::clone(&self.slots)
@@ -77,6 +82,13 @@ impl Passwords {
 
     /// `stored = None` (no such account) costs one full verification and always answers `false`.
     pub async fn verify(self: &Arc<Self>, stored: Option<String>, password: String) -> bool {
+        // Nothing this long can have been registered. The work of an ordinary attempt is still
+        // done, on a fixed string, so the answer takes as long as any other.
+        let (stored, password) = if password.chars().count() > MAX_LENGTH {
+            (None, DUMMY_PASSWORD.to_owned())
+        } else {
+            (stored, password)
+        };
         let Ok(slot) = Arc::clone(&self.slots).acquire_owned().await else {
             return false;
         };
@@ -100,12 +112,15 @@ impl Passwords {
 /// Why a new password is refused, as a field code, or `None` when it is acceptable.
 /// Length is what matters (NIST 800-63B): there are no composition rules.
 pub fn password_problem(password: &str, email: &str, username: &str) -> Option<&'static str> {
+    // Both counts matter. Normalising can lengthen what was typed (one ligature becomes several
+    // letters): the short original must not pass for long, nor the long result for short.
+    let typed = password.chars().count();
     let password = normalise(password);
     let length = password.chars().count();
-    if length < MIN_LENGTH {
+    if typed.min(length) < MIN_LENGTH {
         return Some("MINLENGTH");
     }
-    if length > MAX_LENGTH {
+    if typed.max(length) > MAX_LENGTH {
         return Some("MAXLENGTH");
     }
     let lower = password.to_lowercase();
@@ -256,5 +271,33 @@ mod tests {
             ),
             Some("TOO_COMMON")
         );
+    }
+
+    #[test]
+    fn a_character_that_expands_does_not_make_a_short_password_long() {
+        // One keystroke that normalisation turns into eighteen characters.
+        assert_eq!(
+            password_problem("\u{FDFA}", "a@example.com", "ahmed"),
+            Some("MINLENGTH")
+        );
+        // 128 of them are within the limit as typed, and far beyond it once expanded.
+        assert_eq!(
+            password_problem(&"\u{FDFA}".repeat(128), "a@example.com", "ahmed"),
+            Some("MAXLENGTH")
+        );
+    }
+
+    #[tokio::test]
+    async fn an_over_long_password_is_refused_before_any_work_on_it() {
+        let passwords = Arc::new(Passwords::new().unwrap());
+        let huge = "x".repeat(MAX_LENGTH + 1);
+        assert!(passwords.hash(huge.clone()).await.is_err());
+        // Even against a hash of that very string: nothing so long can have been registered.
+        let its_hash = passwords
+            .argon
+            .hash_password(huge.as_bytes())
+            .unwrap()
+            .to_string();
+        assert!(!passwords.verify(Some(its_hash), huge).await);
     }
 }

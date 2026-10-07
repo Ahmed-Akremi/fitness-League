@@ -402,3 +402,72 @@ async fn the_limits_of_a_user_and_of_the_refresh_route(
         "{statuses:?}"
     );
 }
+
+#[sqlx::test]
+async fn ending_all_sessions_kills_access_and_refresh_tokens_together(
+    opts: MySqlPoolOptions,
+    conn: MySqlConnectOptions,
+) {
+    let app = seeded(opts, conn).await;
+    let (user, session) = signed_in(&app, "ahmed").await;
+
+    let mut tx = app.db.begin().await.unwrap();
+    sessions::end_all(&mut tx, user).await.unwrap();
+    tx.commit().await.unwrap();
+
+    let stale = logout(
+        &app,
+        &text(&session, "accessToken"),
+        &text(&session, "refreshToken"),
+    )
+    .await;
+    assert_eq!(
+        (stale.status, stale.json["code"].as_str()),
+        (StatusCode::UNAUTHORIZED, Some("TOKEN_INVALID"))
+    );
+    let renewed = refresh(&app, &text(&session, "refreshToken")).await;
+    assert_eq!(renewed.json["code"], "TOKEN_INVALID");
+}
+
+#[sqlx::test]
+async fn a_detected_copy_also_kills_the_access_tokens_already_handed_out(
+    opts: MySqlPoolOptions,
+    conn: MySqlConnectOptions,
+) {
+    let app = seeded(opts, conn).await;
+    let (user, first) = signed_in(&app, "ahmed").await;
+    // The same person, signed in on another device.
+    let other = open_session(&app, user, Role::User, Audience::App).await;
+    let unknown = "x".repeat(43);
+
+    let second = refresh(&app, &text(&first, "refreshToken")).await.json;
+    let replay = refresh(&app, &text(&first, "refreshToken")).await;
+    assert_eq!(replay.json["code"], "TOKEN_REUSED");
+
+    // Whoever holds the token obtained with the copy is out at once, not in fifteen minutes.
+    let thief = logout(&app, &text(&second, "accessToken"), &unknown).await;
+    assert_eq!(
+        (thief.status, thief.json["code"].as_str()),
+        (StatusCode::UNAUTHORIZED, Some("TOKEN_INVALID"))
+    );
+    // The other device keeps its session: its own refresh token gives it a working access token.
+    let renewed = refresh(&app, &text(&other, "refreshToken")).await;
+    assert_eq!(renewed.status, StatusCode::OK);
+    let still_in = logout(&app, &text(&renewed.json, "accessToken"), &unknown).await;
+    assert_eq!(still_in.status, StatusCode::NO_CONTENT);
+
+    // Replaying the dead token again changes nothing more: its holder cannot disturb the account.
+    let version = || async {
+        sqlx::query_scalar::<_, i32>("SELECT session_version FROM users WHERE id = ?")
+            .bind(user)
+            .fetch_one(&app.db)
+            .await
+            .unwrap()
+    };
+    let before = version().await;
+    assert_eq!(
+        refresh(&app, &text(&first, "refreshToken")).await.json["code"],
+        "TOKEN_REUSED"
+    );
+    assert_eq!(version().await, before);
+}

@@ -219,9 +219,13 @@ pub fn normalise_email(raw: &str) -> Option<String> {
                 .bytes()
                 .all(|b| b.is_ascii_alphanumeric() || b == b'-')
     };
+    // The characters real providers issue, not the whole of RFC 5322. Quotes, brackets, commas and
+    // the like mean something else in a mail header or on a web page, and `%` and `!` are old
+    // routing tricks that can send a mail to another domain.
+    let local_ok = |b: u8| b.is_ascii_alphanumeric() || b".#$&'*+/=?^_{|}~-".contains(&b);
     let ok = email.len() <= 254
         && (1..=64).contains(&local.len())
-        && local.bytes().all(|b| b.is_ascii_graphic() && b != b'@')
+        && local.bytes().all(local_ok)
         && !local.starts_with('.')
         && !local.ends_with('.')
         && !local.contains("..")
@@ -470,10 +474,13 @@ mod tests {
             normalise_email("  Ahmed.Ben+Salah@Example.COM \n").as_deref(),
             Some("ahmed.ben+salah@example.com")
         );
-        assert_eq!(
-            normalise_email("o'brien@mail.example.tn").as_deref(),
-            Some("o'brien@mail.example.tn")
-        );
+        for good in [
+            "o'brien@mail.example.tn",
+            "first.last+tag@example.com",
+            "a_b-c@example.com",
+        ] {
+            assert_eq!(normalise_email(good).as_deref(), Some(good));
+        }
         for bad in [
             "",
             "ahmed",
@@ -496,6 +503,19 @@ mod tests {
             "ahmed@ex\u{00E4}mple.com",
             "ah\u{0000}med@example.com",
             "ahmed\t@example.com",
+            // Characters a mail header or a web page would read as something else.
+            "<svg/onload=x>@example.com",
+            "a,b@example.com",
+            "a;b@example.com",
+            "a:b@example.com",
+            "a(b)@example.com",
+            "\"quoted\"@example.com",
+            "a\\b@example.com",
+            "[a]@example.com",
+            "a`b@example.com",
+            // Old routing tricks: the mail could leave for another domain.
+            "victim%other.org@example.com",
+            "other.org!victim@example.com",
         ] {
             assert_eq!(normalise_email(bad), None, "{bad:?}");
         }
