@@ -20,7 +20,10 @@ use ipnet::IpNet;
 use secrecy::ExposeSecret;
 use sha2::Sha256;
 
-use crate::{error::AppError, state::AppState};
+use crate::{
+    error::AppError,
+    state::{AppState, REDIS_DEADLINE},
+};
 
 pub struct Rule {
     /// Part of the Redis key: two rules must never share a name.
@@ -124,15 +127,21 @@ pub async fn check(state: &AppState, rule: &Rule, subject: &str) -> Result<(), A
     );
     let key = |i: u64| format!("{}rl:{}:{}:{}", state.redis_prefix, rule.name, hash, i);
     let mut connection = state.redis.clone();
-    let outcome: Result<i64, String> = SCRIPT
-        .key(key(index))
-        .key(key(index.saturating_sub(1)))
-        .arg(rule.limit)
-        .arg(rule.window_s)
-        .arg(elapsed)
-        .invoke_async(&mut connection)
-        .await
-        .map_err(|e: redis::RedisError| e.to_string());
+    let answer = tokio::time::timeout(
+        REDIS_DEADLINE,
+        SCRIPT
+            .key(key(index))
+            .key(key(index.saturating_sub(1)))
+            .arg(rule.limit)
+            .arg(rule.window_s)
+            .arg(elapsed)
+            .invoke_async::<i64>(&mut connection),
+    )
+    .await;
+    let outcome = match answer {
+        Ok(answer) => answer.map_err(|e| e.to_string()),
+        Err(_) => Err("no answer within the deadline".to_owned()),
+    };
     decide(rule, outcome, rule.window_s - elapsed)
 }
 
@@ -186,8 +195,9 @@ pub fn ip_subject(ip: IpAddr) -> String {
     }
 }
 
-/// The client address of the current request.
-pub struct ClientIp(pub IpAddr);
+/// The client address of the current request. The address itself stays private: a limit keyed by it
+/// would be one an IPv6 client steps around.
+pub struct ClientIp(IpAddr);
 
 impl ClientIp {
     /// What every per-address rule counts by. Never the raw address: see `ip_subject`.
@@ -204,12 +214,13 @@ impl FromRequestParts<AppState> for ClientIp {
             .extensions
             .get::<ConnectInfo<SocketAddr>>()
             .map_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED), |info| info.0.ip());
-        // A proxy may append its entry as a second header line: read them all, in order.
-        let lines: Vec<&str> = parts
+        // A proxy may append its entry as a second header line: read them all, in order. A line holding
+        // a byte that is not text is read too: dropping it would drop the address the proxy appended to it.
+        let lines: Vec<_> = parts
             .headers
             .get_all("x-forwarded-for")
             .iter()
-            .filter_map(|v| v.to_str().ok())
+            .map(|v| String::from_utf8_lossy(v.as_bytes()))
             .collect();
         let forwarded = (!lines.is_empty()).then(|| lines.join(","));
         Ok(Self(client_ip(

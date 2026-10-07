@@ -97,8 +97,10 @@ impl Config {
             problems: Vec::new(),
         };
 
-        let env = match r.get("APP_ENV").unwrap_or("development") {
-            "development" => AppEnv::Development,
+        // No default: a deployment that forgets it would run with the allowances of a developer machine.
+        let env = match r.required("APP_ENV").as_str() {
+            // An empty name was just reported as missing, so this value is never used.
+            "development" | "" => AppEnv::Development,
             "test" => AppEnv::Test,
             "production" => AppEnv::Production,
             other => {
@@ -306,6 +308,7 @@ mod tests {
 
     fn valid() -> HashMap<String, String> {
         [
+            ("APP_ENV", "development".to_owned()),
             (
                 "DATABASE_URL",
                 "mysql://fl_app:db-pass-1234@localhost:3307/fitness_league".to_owned(),
@@ -362,6 +365,16 @@ mod tests {
                 "{key} missing from: {err}"
             );
         }
+    }
+
+    #[test]
+    fn the_environment_name_is_never_guessed() {
+        // A deployment that forgets APP_ENV must not start with the allowances of a developer machine.
+        let mut vars = valid();
+        vars.remove("APP_ENV");
+        let err = Config::from_map(&vars).unwrap_err();
+        assert_eq!(err.matches("APP_ENV").count(), 1, "{err}");
+        assert!(err.contains("APP_ENV: required"), "{err}");
     }
 
     #[test]

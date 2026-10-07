@@ -128,7 +128,7 @@ pub fn parse<T: DeserializeOwned>(bytes: &[u8]) -> Result<T, AppError> {
         );
     }
     let mut de = serde_json::Deserializer::from_slice(bytes);
-    serde_path_to_error::deserialize(&mut de).map_err(|e| {
+    let value = serde_path_to_error::deserialize(&mut de).map_err(|e| {
         let path = e.path().to_string();
         let inner = e.into_inner();
         if !inner.is_data() {
@@ -165,7 +165,16 @@ pub fn parse<T: DeserializeOwned>(bytes: &[u8]) -> Result<T, AppError> {
             return AppError::field(&join(&name), "REQUIRED");
         }
         AppError::field(if path == "." { "body" } else { &path }, "INVALID")
-    })
+    })?;
+    // The object must be the whole body: a second value after it is not silently dropped.
+    de.end().map_err(|_| {
+        AppError::new(
+            StatusCode::BAD_REQUEST,
+            "VALIDATION_FAILED",
+            "Malformed JSON",
+        )
+    })?;
+    Ok(value)
 }
 
 /// A query string parsed into `T`. Query structs keep their fields as `Option<String>` and check them
@@ -347,6 +356,21 @@ mod tests {
                 (status, &answer["errors"]),
                 (StatusCode::UNPROCESSABLE_ENTITY, &expected),
                 "{body}"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn refuses_anything_after_the_object() {
+        let valid = signup("Ahmed Ben Salah");
+        // White space after the object is part of JSON.
+        assert_eq!(call(JSON, format!("{valid}\n ")).await.0, StatusCode::OK);
+        for tail in ["{}", "x", "]", "\"", "{\"role\":\"ADMIN\"}"] {
+            let (status, answer) = call(JSON, format!("{valid}{tail}")).await;
+            assert_eq!(
+                (status, &answer["title"]),
+                (StatusCode::BAD_REQUEST, &json!("Malformed JSON")),
+                "{tail}"
             );
         }
     }

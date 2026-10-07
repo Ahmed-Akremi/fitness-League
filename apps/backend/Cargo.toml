@@ -33,7 +33,7 @@ uuid = { version = "1", features = ["v7"] }
 
 [dev-dependencies]
 http-body-util = "0.1"
-tokio = { version = "1", features = ["test-util"] }
+tokio = { version = "1", features = ["io-util", "test-util"] }
 tower = { version = "0.5", features = ["util"] }
 
 [lints.rust]

@@ -190,6 +190,7 @@ mod tests {
 
     fn config(private: &str, public: &str, extra: &str) -> Config {
         let vars: HashMap<String, String> = [
+            ("APP_ENV", "test"),
             ("DATABASE_URL", "mysql://unused"),
             ("REDIS_URL", "redis://unused"),
             ("JWT_PRIVATE_KEY_B64", private),

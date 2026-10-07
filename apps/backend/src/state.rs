@@ -1,10 +1,14 @@
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
 use redis::aio::ConnectionManager;
 use secrecy::ExposeSecret;
 use sqlx::MySqlPool;
 
 use crate::{config::Config, db};
+
+/// The longest a request waits for Redis. Past it Redis counts as down for that request: left alone,
+/// the connection manager holds the caller for several seconds while it retries.
+pub const REDIS_DEADLINE: Duration = Duration::from_millis(250);
 
 /// Everything a request handler can reach. Cheap to clone.
 #[derive(Clone)]

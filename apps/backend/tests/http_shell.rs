@@ -1,6 +1,8 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 mod common;
 
+use std::time::{Duration, Instant};
+
 use axum::{
     body::Body,
     http::{Method, StatusCode},
@@ -67,6 +69,66 @@ async fn ready_reports_the_database_and_redis(opts: MySqlPoolOptions, conn: MySq
         r.json,
         serde_json::json!({"status": "ready", "checks": {"database": "up", "redis": "up"}})
     );
+}
+
+/// Far more than the deadlines add up to, far less than a request that waits for the outage to end.
+const PROMPT: Duration = Duration::from_secs(4);
+
+/// `host:port` of a `scheme://[credentials@]host:port[/path]` URL.
+fn host_port(url: &str) -> &str {
+    let rest = url.split_once("://").map_or(url, |(_, rest)| rest);
+    let rest = rest.rsplit_once('@').map_or(rest, |(_, rest)| rest);
+    rest.split('/').next().unwrap_or(rest)
+}
+
+#[sqlx::test]
+async fn a_redis_outage_does_not_stall_requests(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let real = std::env::var("TEST_REDIS_URL").unwrap();
+    let (address, relay) = common::relay(host_port(&real).to_owned()).await;
+    let app = TestApp::with(opts, conn, |vars| {
+        vars.insert("RATE_LIMIT_ENABLED".into(), "true".into());
+        vars.insert(
+            "REDIS_URL".into(),
+            real.replacen(host_port(&real), &address.to_string(), 1),
+        );
+    })
+    .await;
+    assert_eq!(app.get("/api/v1/ready").await.status, StatusCode::OK);
+
+    relay.abort();
+    let _ = relay.await;
+    let started = Instant::now();
+    // The per-address rule lets requests through during an outage. It must not make them wait either.
+    assert_eq!(app.get("/api/v1/health").await.status, StatusCode::OK);
+    let ready = app.get("/api/v1/ready").await;
+    assert_eq!(ready.status, StatusCode::SERVICE_UNAVAILABLE);
+    assert_eq!(
+        ready.json["checks"],
+        serde_json::json!({"database": "up", "redis": "down"})
+    );
+    assert!(started.elapsed() < PROMPT, "took {:?}", started.elapsed());
+}
+
+#[sqlx::test]
+async fn a_database_outage_does_not_stall_the_readiness_check(
+    opts: MySqlPoolOptions,
+    conn: MySqlConnectOptions,
+) {
+    let target = format!("{}:{}", conn.get_host(), conn.get_port());
+    let (address, relay) = common::relay(target).await;
+    let app = TestApp::new(opts, conn.host("127.0.0.1").port(address.port())).await;
+    assert_eq!(app.get("/api/v1/ready").await.status, StatusCode::OK);
+
+    relay.abort();
+    let _ = relay.await;
+    let started = Instant::now();
+    let ready = app.get("/api/v1/ready").await;
+    assert_eq!(ready.status, StatusCode::SERVICE_UNAVAILABLE);
+    assert_eq!(
+        ready.json["checks"],
+        serde_json::json!({"database": "down", "redis": "up"})
+    );
+    assert!(started.elapsed() < PROMPT, "took {:?}", started.elapsed());
 }
 
 #[sqlx::test]

@@ -120,6 +120,27 @@ pub fn request(method: Method, path: &str) -> Builder {
     Request::builder().method(method).uri(path)
 }
 
+/// A TCP relay in front of `target` (`host:port`). Aborting the returned task closes every connection
+/// and refuses new ones: an outage that starts after the application is up.
+pub async fn relay(target: String) -> (SocketAddr, tokio::task::JoinHandle<()>) {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+        .await
+        .expect("a free port");
+    let address = listener.local_addr().expect("the relay's address");
+    let task = tokio::spawn(async move {
+        let mut links = tokio::task::JoinSet::new();
+        while let Ok((mut client, _)) = listener.accept().await {
+            let target = target.clone();
+            links.spawn(async move {
+                if let Ok(mut server) = tokio::net::TcpStream::connect(target).await {
+                    let _ = tokio::io::copy_bidirectional(&mut client, &mut server).await;
+                }
+            });
+        }
+    });
+    (address, task)
+}
+
 /// The peer address of a request, as the server sees it. Add it with `.extension(from_ip([…]))`.
 pub fn from_ip(ip: [u8; 4]) -> ConnectInfo<SocketAddr> {
     ConnectInfo(SocketAddr::from((ip, 40000)))

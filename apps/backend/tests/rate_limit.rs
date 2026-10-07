@@ -6,7 +6,7 @@ use std::net::{Ipv6Addr, SocketAddr};
 use axum::{
     body::Body,
     extract::ConnectInfo,
-    http::{Method, Request, StatusCode},
+    http::{HeaderValue, Method, Request, StatusCode},
 };
 use common::{TestApp, from_ip, request};
 use sqlx::mysql::{MySqlConnectOptions, MySqlPoolOptions};
@@ -83,6 +83,38 @@ async fn a_forged_forwarded_for_does_not_reset_the_count(
             .header(
                 "x-forwarded-for",
                 format!("1.{}.{}.{}", n >> 16 & 255, n >> 8 & 255, n & 255),
+            )
+            .body(Body::empty())
+            .unwrap()
+    })
+    .await;
+    assert_eq!(refused.status, StatusCode::TOO_MANY_REQUESTS);
+}
+
+#[sqlx::test]
+async fn a_client_behind_the_proxy_cannot_hide_the_address_the_proxy_saw(
+    opts: MySqlPoolOptions,
+    conn: MySqlConnectOptions,
+) {
+    let app = TestApp::with(opts, conn, |vars| {
+        vars.insert("RATE_LIMIT_ENABLED".into(), "true".into());
+        vars.insert("TRUSTED_PROXIES".into(), "10.0.0.0/8".into());
+    })
+    .await;
+    let mut n = 0u32;
+    // The client sends two header lines: an invented address, new every time, then a byte that is not
+    // text. The proxy appends the address it really saw to the last line.
+    let refused = first_refusal(&app, || {
+        n += 1;
+        request(Method::GET, "/api/v1/health")
+            .extension(from_ip([10, 0, 0, 1]))
+            .header(
+                "x-forwarded-for",
+                format!("6.6.{}.{}", n >> 8 & 255, n & 255),
+            )
+            .header(
+                "x-forwarded-for",
+                HeaderValue::from_bytes(b"caf\xe9, 203.0.113.7").unwrap(),
             )
             .body(Body::empty())
             .unwrap()
