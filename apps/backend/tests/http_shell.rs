@@ -84,7 +84,7 @@ fn host_port(url: &str) -> &str {
 #[sqlx::test]
 async fn a_redis_outage_does_not_stall_requests(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
     let real = std::env::var("TEST_REDIS_URL").unwrap();
-    let (address, relay) = common::relay(host_port(&real).to_owned()).await;
+    let (address, relay) = common::relay("127.0.0.1:0", host_port(&real).to_owned()).await;
     let app = TestApp::with(opts, conn, |vars| {
         vars.insert("RATE_LIMIT_ENABLED".into(), "true".into());
         vars.insert(
@@ -118,6 +118,18 @@ async fn a_redis_outage_does_not_stall_requests(opts: MySqlPoolOptions, conn: My
         }
     }
     assert!(refused, "620 requests were all allowed during the outage");
+
+    // Redis is back: it is used again without a restart. The request that finds it back may itself
+    // still fail, so a few are allowed.
+    let (_, _relay) = common::relay(&address.to_string(), host_port(&real).to_owned()).await;
+    let mut ready = StatusCode::SERVICE_UNAVAILABLE;
+    for _ in 0..5 {
+        ready = app.get("/api/v1/ready").await.status;
+        if ready == StatusCode::OK {
+            break;
+        }
+    }
+    assert_eq!(ready, StatusCode::OK, "Redis was not used again once back");
 }
 
 #[sqlx::test]
@@ -126,7 +138,7 @@ async fn a_database_outage_does_not_stall_the_readiness_check(
     conn: MySqlConnectOptions,
 ) {
     let target = format!("{}:{}", conn.get_host(), conn.get_port());
-    let (address, relay) = common::relay(target).await;
+    let (address, relay) = common::relay("127.0.0.1:0", target).await;
     let app = TestApp::new(opts, conn.host("127.0.0.1").port(address.port())).await;
     assert_eq!(app.get("/api/v1/ready").await.status, StatusCode::OK);
 

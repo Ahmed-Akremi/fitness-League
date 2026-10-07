@@ -223,8 +223,11 @@ Counters live in Redis as sliding windows, updated by one atomic script. A refus
 - The client IP is the socket address. `X-Forwarded-For` is trusted only when the request comes from a
   proxy listed in `TRUSTED_PROXIES`.
 - **If Redis is unreachable**, the routes in the table that create or prove an identity (login, register,
-  refresh, forgot, reset, verify) answer 503: they fail closed. Other routes keep working and the outage is
-  logged. Account lockout does not depend on Redis.
+  refresh, forgot, reset, verify) answer 503: they fail closed. So do the export and the resend of the
+  verification email, whose every use is costly. Other routes keep working: the two general limits are
+  then counted by each process on its own (approximate, but never unlimited) and the outage is logged.
+  A request never waits for Redis to come back: the connection is not retried inside a request, and
+  the first request after Redis returns uses it again. Account lockout does not depend on Redis.
 
 ### Input, output and transport
 

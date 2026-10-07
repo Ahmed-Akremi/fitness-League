@@ -31,8 +31,8 @@ pub struct Rule {
     pub name: &'static str,
     pub limit: u32,
     pub window_s: u64,
-    /// When Redis does not answer: `true` refuses the request (routes that create or prove an identity),
-    /// `false` keeps serving and counts in this process instead.
+    /// When Redis does not answer: `true` refuses the request (routes that create or prove an identity,
+    /// and the two whose every use is costly), `false` keeps serving and counts in this process instead.
     pub fail_closed: bool,
 }
 
@@ -55,8 +55,8 @@ pub const FORGOT_IP: Rule = rule("forgot-ip", 10, 3600, true);
 pub const FORGOT_ACCOUNT: Rule = rule("forgot-account", 3, 3600, true);
 pub const RESET_IP: Rule = rule("reset", 10, 3600, true);
 pub const VERIFY_IP: Rule = rule("email-verify", 20, 3600, true);
-pub const RESEND_USER: Rule = rule("email-resend", 3, 3600, false);
-pub const EXPORT_USER: Rule = rule("export", 3, 86_400, false);
+pub const RESEND_USER: Rule = rule("email-resend", 3, 3600, true);
+pub const EXPORT_USER: Rule = rule("export", 3, 86_400, true);
 
 /// Sliding-window counter: the previous fixed window counts in proportion to how much of it still
 /// overlaps the last `window` seconds. KEYS: current window, previous window. ARGV: limit, window
@@ -95,9 +95,11 @@ fn unix_s() -> u64 {
         .unwrap_or_default()
 }
 
-/// What this process counts while Redis does not answer, so that an outage does not lift the limits:
-/// key → (window index, requests seen in it). Every instance counts alone, so N instances allow N
-/// times the limit, and the window is fixed, not sliding. Good enough for the length of an outage.
+/// What this process counts while Redis does not answer, so that an outage does not lift the two
+/// general limits: key → (window index, requests seen in it). It is an approximation, on purpose: it
+/// starts from zero, knows nothing of what Redis had counted, uses a fixed window, and every instance
+/// counts alone. A client can so get a few times the limit around an outage, never an unlimited
+/// number. The rules where that matters (identity, export, resend) do not use it: they refuse.
 static LOCAL: LazyLock<Mutex<HashMap<String, (u64, u32)>>> = LazyLock::new(Mutex::default);
 
 /// ponytail: one map behind one lock, emptied when it holds this many subjects (about 15 MB). It is
@@ -172,17 +174,15 @@ pub async fn check(state: &AppState, rule: &Rule, subject: &str) -> Result<(), A
     let counter = format!("{}rl:{}:{}", state.redis_prefix, rule.name, hash);
     let key = |i: u64| format!("{counter}:{i}");
     let mut connection = state.redis.clone();
-    let outcome = state
-        .redis_call(
-            SCRIPT
-                .key(key(index))
-                .key(key(index.saturating_sub(1)))
-                .arg(rule.limit)
-                .arg(rule.window_s)
-                .arg(elapsed)
-                .invoke_async::<i64>(&mut connection),
-        )
-        .await;
+    let outcome: Result<i64, String> = SCRIPT
+        .key(key(index))
+        .key(key(index.saturating_sub(1)))
+        .arg(rule.limit)
+        .arg(rule.window_s)
+        .arg(elapsed)
+        .invoke_async(&mut connection)
+        .await
+        .map_err(|e: redis::RedisError| e.to_string());
     decide(rule, outcome, rule.window_s - elapsed, || {
         local_allows(counter.clone(), index, rule.limit)
     })
@@ -410,8 +410,8 @@ mod tests {
             (&FORGOT_ACCOUNT, 3, 3600, true),
             (&RESET_IP, 10, 3600, true),
             (&VERIFY_IP, 20, 3600, true),
-            (&RESEND_USER, 3, 3600, false),
-            (&EXPORT_USER, 3, 86_400, false),
+            (&RESEND_USER, 3, 3600, true),
+            (&EXPORT_USER, 3, 86_400, true),
         ];
         for (rule, limit, window_s, fail_closed) in table {
             assert_eq!(
