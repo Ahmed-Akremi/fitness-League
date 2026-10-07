@@ -118,10 +118,19 @@ fn is_invisible(c: char) -> bool {
     matches!(
         c,
         '\u{00AD}'
+            | '\u{034F}'
+            | '\u{061C}'
+            | '\u{115F}'
+            | '\u{1160}'
+            | '\u{180E}'
             | '\u{200B}'..='\u{200F}'
             | '\u{202A}'..='\u{202E}'
             | '\u{2060}'..='\u{2069}'
+            | '\u{2800}'
+            | '\u{3164}'
             | '\u{FEFF}'
+            | '\u{FFA0}'
+            | '\u{E0000}'..='\u{E007F}'
     )
 }
 
@@ -142,15 +151,15 @@ impl Validate for RegisterBody {
                 .bytes()
                 .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_' || b == b'.');
         check.ensure("username", username_ok, "MATCHES");
-        check.length("fullName", self.full_name.trim(), 2, 80);
-        check.ensure(
-            "fullName",
-            !self
-                .full_name
-                .chars()
-                .any(|c| c.is_control() || is_invisible(c)),
-            "MATCHES",
-        );
+        let name = self.full_name.trim();
+        check.length("fullName", name, 2, 80);
+        // Something a person can read: no character that hides or reorders the others, and at least
+        // two letters or digits. The second rule is what holds when a new invisible character is
+        // missing from the list of the first.
+        let readable = !name.chars().any(|c| c.is_control() || is_invisible(c))
+            && (name.chars().count() < 2
+                || name.chars().filter(|c| c.is_alphanumeric()).count() >= 2);
+        check.ensure("fullName", readable, "MATCHES");
         check.ensure("email", normalise_email(&self.email).is_some(), "ISEMAIL");
         check.length(
             "password",

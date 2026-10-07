@@ -328,6 +328,20 @@ async fn every_field_is_checked_and_all_the_problems_come_at_once(
         one(json!({"fullName": "Ahmed\u{202E}demhA"})).await,
         single("fullName", "MATCHES")
     );
+    // No list of invisible characters is ever complete, so a name must also hold two letters or
+    // digits: a filler nobody sees, a blank braille pattern, punctuation alone.
+    for hollow in [
+        "\u{3164}\u{3164}\u{3164}",
+        "\u{2800}\u{2800}",
+        "-- --",
+        "\u{061C}Ahmed",
+    ] {
+        assert_eq!(
+            one(json!({"fullName": hollow})).await,
+            single("fullName", "MATCHES"),
+            "{hollow:?}"
+        );
+    }
 
     // A city of another governorate.
     let (_, elsewhere): (uuid::Uuid, uuid::Uuid) = sqlx::query_as(
