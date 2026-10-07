@@ -5,7 +5,7 @@ use std::str::FromStr;
 use sqlx::{
     Executor, MySqlPool,
     migrate::Migrator,
-    mysql::{MySqlConnectOptions, MySqlPoolOptions},
+    mysql::{MySqlConnectOptions, MySqlDatabaseError, MySqlPoolOptions},
 };
 
 pub static MIGRATOR: Migrator = sqlx::migrate!("./migrations");
@@ -30,4 +30,36 @@ pub async fn connect(url: &str, max_connections: u32) -> Result<MySqlPool, sqlx:
     );
     sqlx::query("SELECT 1").execute(&pool).await?;
     Ok(pool)
+}
+
+/// The unique index a statement collided with, when that is why it failed (MariaDB error 1062).
+/// The server names it only inside its message: `Duplicate entry '…' for key 'uq_users_email'`.
+/// The quoted value comes first and may contain anything, so the name is read from the end.
+pub fn duplicate_key(e: &sqlx::Error) -> Option<&str> {
+    let error = e
+        .as_database_error()?
+        .try_downcast_ref::<MySqlDatabaseError>()?;
+    if error.number() != 1062 {
+        return None;
+    }
+    let (_, key) = error.message().rsplit_once(" for key '")?;
+    // MySQL writes `table.index`, MariaDB the index alone.
+    key.trim_end_matches('\'').rsplit('.').next()
+}
+
+/// What may be logged about a database error. Never its message: the server quotes the values of
+/// the statement in it (an email, in a duplicate-key error).
+pub fn describe(e: &sqlx::Error) -> String {
+    match e
+        .as_database_error()
+        .and_then(|d| d.try_downcast_ref::<MySqlDatabaseError>())
+    {
+        Some(error) => format!(
+            "database error {} (SQLSTATE {}), key {}",
+            error.number(),
+            error.code().unwrap_or("?"),
+            duplicate_key(e).unwrap_or("-")
+        ),
+        None => e.to_string(),
+    }
 }

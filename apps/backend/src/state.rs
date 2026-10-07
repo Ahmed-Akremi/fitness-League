@@ -4,7 +4,11 @@ use redis::aio::{ConnectionManager, ConnectionManagerConfig};
 use secrecy::ExposeSecret;
 use sqlx::MySqlPool;
 
-use crate::{config::Config, db};
+use crate::{
+    config::Config,
+    db,
+    security::{password::Passwords, tokens::Tokens},
+};
 
 /// The longest Redis is given to accept a connection, and to answer a command.
 const REDIS_DEADLINE: Duration = Duration::from_secs(1);
@@ -17,10 +21,15 @@ pub struct AppState {
     pub redis: ConnectionManager,
     /// Prefix of every Redis key: `fl:` in a deployment, unique per test.
     pub redis_prefix: Arc<str>,
+    pub tokens: Arc<Tokens>,
+    pub passwords: Arc<Passwords>,
 }
 
 impl AppState {
     pub async fn new(cfg: Config, db: MySqlPool, redis_prefix: &str) -> Result<Self, String> {
+        // Both are checked now: a wrong key pair must stop the process, not refuse every sign-in.
+        let tokens = Arc::new(Tokens::new(&cfg)?);
+        let passwords = Arc::new(Passwords::new()?);
         let client = redis::Client::open(cfg.redis_url.expose_secret())
             .map_err(|e| format!("REDIS_URL: {e}"))?;
         // No retry inside a request. The crate's default is six attempts with a growing delay, and
@@ -39,6 +48,8 @@ impl AppState {
             db,
             redis,
             redis_prefix: redis_prefix.into(),
+            tokens,
+            passwords,
         })
     }
 

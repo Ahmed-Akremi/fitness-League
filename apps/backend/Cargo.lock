@@ -187,6 +187,7 @@ dependencies = [
  "tower-http",
  "tracing",
  "tracing-subscriber",
+ "unicode-normalization",
  "uuid",
 ]
 

@@ -203,6 +203,37 @@ pub fn uuid_param(field: &str, value: Option<&str>) -> Result<Option<Uuid>, AppE
         .transpose()
 }
 
+/// An email as it is stored and compared: trimmed and lower-cased. `None` unless it is a plausible
+/// address written in printable ASCII. The database compares these columns more loosely than Rust
+/// compares strings (it ignores a soft hyphen or a zero-width space, and trailing spaces do not
+/// count), so two strings that differ here could be one account to the unique index. Refusing
+/// everything outside ASCII closes that gap.
+pub fn normalise_email(raw: &str) -> Option<String> {
+    let email = raw.trim().to_ascii_lowercase();
+    let (local, domain) = email.rsplit_once('@')?;
+    let label_ok = |label: &str| {
+        !label.is_empty()
+            && !label.starts_with('-')
+            && !label.ends_with('-')
+            && label
+                .bytes()
+                .all(|b| b.is_ascii_alphanumeric() || b == b'-')
+    };
+    let ok = email.len() <= 254
+        && (1..=64).contains(&local.len())
+        && local.bytes().all(|b| b.is_ascii_graphic() && b != b'@')
+        && !local.starts_with('.')
+        && !local.ends_with('.')
+        && !local.contains("..")
+        && domain.contains('.')
+        && domain.split('.').all(label_ok)
+        && domain
+            .rsplit('.')
+            .next()
+            .is_some_and(|tld| tld.len() >= 2 && tld.bytes().all(|b| b.is_ascii_alphabetic()));
+    ok.then_some(email)
+}
+
 #[cfg(test)]
 mod tests {
     #![allow(clippy::unwrap_used, clippy::expect_used)]
@@ -431,5 +462,47 @@ mod tests {
             let err = uuid_param("sportId", Some(bad)).unwrap_err();
             assert_eq!(err.status, StatusCode::UNPROCESSABLE_ENTITY, "{bad:?}");
         }
+    }
+
+    #[test]
+    fn an_email_is_trimmed_lower_cased_and_must_be_plain_ascii() {
+        assert_eq!(
+            normalise_email("  Ahmed.Ben+Salah@Example.COM \n").as_deref(),
+            Some("ahmed.ben+salah@example.com")
+        );
+        assert_eq!(
+            normalise_email("o'brien@mail.example.tn").as_deref(),
+            Some("o'brien@mail.example.tn")
+        );
+        for bad in [
+            "",
+            "ahmed",
+            "@example.com",
+            "ahmed@",
+            "ahmed@example",
+            "ahmed@@example.com",
+            "a b@example.com",
+            "ahmed@exa mple.com",
+            "ahmed@-example.com",
+            "ahmed@example..com",
+            ".ahmed@example.com",
+            "ahmed..b@example.com",
+            "ahmed@example.c",
+            // What the database would treat as the plain address, or as its neighbour.
+            "ah\u{00AD}med@example.com",
+            "ah\u{200B}med@example.com",
+            "\u{FF41}hmed@example.com",
+            "ren\u{00E9}@example.com",
+            "ahmed@ex\u{00E4}mple.com",
+            "ah\u{0000}med@example.com",
+            "ahmed\t@example.com",
+        ] {
+            assert_eq!(normalise_email(bad), None, "{bad:?}");
+        }
+        assert_eq!(
+            normalise_email(&format!("{}@example.com", "a".repeat(65))),
+            None
+        );
+        assert_eq!(normalise_email(&format!("a@{}.com", "b".repeat(250))), None);
     }
 }

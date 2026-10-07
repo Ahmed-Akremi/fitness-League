@@ -83,19 +83,29 @@ impl Tokens {
             .ok_or("JWT_PUBLIC_KEY_B64: required")?;
         let mut decoding = HashMap::new();
         for (kid, pem) in &cfg.jwt_public_keys {
-            decoding.insert(
-                kid.clone(),
-                DecodingKey::from_ed_pem(pem.as_bytes())
-                    .map_err(|e| format!("JWT public key {kid}: {e}"))?,
-            );
+            let key = DecodingKey::from_ed_pem(pem.as_bytes())
+                .map_err(|e| format!("JWT public key {kid}: {e}"))?;
+            if decoding.insert(kid.clone(), key).is_some() {
+                return Err(format!(
+                    "JWT key id {kid} is listed twice: every key needs its own id"
+                ));
+            }
         }
-        Ok(Self {
+        let tokens = Self {
             encoding,
             signing_key_id,
             decoding,
             issuer: cfg.jwt_issuer.clone(),
             ttl_s: cfg.access_token_ttl_s,
-        })
+        };
+        // A pair that does not match would start cleanly and then refuse every token it signs.
+        let (probe, _) = tokens
+            .sign_access(Uuid::nil(), Role::User, 0, Audience::App)
+            .map_err(|_| "JWT_PRIVATE_KEY_B64: cannot sign with this key".to_owned())?;
+        tokens.verify_access(&probe, Audience::App).map_err(|_| {
+            "JWT_PUBLIC_KEY_B64 is not the public half of JWT_PRIVATE_KEY_B64".to_owned()
+        })?;
+        Ok(tokens)
     }
 
     /// Returns the token and the number of seconds until it expires.
@@ -381,5 +391,26 @@ mod tests {
         assert_eq!(a.len(), 43, "32 random bytes in unpadded base64url");
         assert_eq!(hash_opaque(&a), hash_a);
         assert_ne!(hash_opaque(&a), hash_opaque(&b));
+    }
+
+    #[test]
+    fn a_key_pair_that_does_not_match_is_refused_at_start() {
+        let (private, _) = devkeys::generate().unwrap();
+        let (_, other_public) = devkeys::generate().unwrap();
+        let err = Tokens::new(&config(&private, &other_public, ""))
+            .err()
+            .unwrap();
+        assert!(err.contains("not the public half"), "{err}");
+    }
+
+    #[test]
+    fn two_keys_with_the_same_id_are_refused_at_start() {
+        let (private, public) = devkeys::generate().unwrap();
+        let (_, retired) = devkeys::generate().unwrap();
+        // The retired key was given the id of the signing key: it would take its place.
+        let err = Tokens::new(&config(&private, &public, &format!("k1:{retired}")))
+            .err()
+            .unwrap();
+        assert!(err.contains("listed twice"), "{err}");
     }
 }

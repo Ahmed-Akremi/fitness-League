@@ -1,7 +1,12 @@
 //! Shared by every integration test file: the real router on a throw-away database and a private Redis prefix.
 #![allow(dead_code, clippy::unwrap_used, clippy::expect_used)]
 
-use std::{collections::HashMap, net::SocketAddr, sync::OnceLock};
+use std::{
+    collections::HashMap,
+    net::SocketAddr,
+    path::{Path, PathBuf},
+    sync::OnceLock,
+};
 
 use axum::{
     Router,
@@ -13,10 +18,11 @@ use backend::{config::Config, state::AppState};
 use http_body_util::BodyExt;
 use serde_json::Value;
 use sqlx::{
-    MySqlPool,
+    AssertSqlSafe, MySqlPool,
     mysql::{MySqlConnectOptions, MySqlPoolOptions},
 };
 use tower::ServiceExt;
+use uuid::Uuid;
 
 pub struct TestApp {
     pub state: AppState,
@@ -114,6 +120,32 @@ impl TestApp {
         self.send(request(Method::GET, path).body(Body::empty()).unwrap())
             .await
     }
+
+    /// One request. `token` goes in the `Authorization` header; `body` is sent as JSON.
+    pub async fn call(
+        &self,
+        method: Method,
+        path: &str,
+        token: Option<&str>,
+        body: Option<Value>,
+    ) -> Reply {
+        let mut req = request(method, path);
+        if let Some(token) = token {
+            req = req.header("authorization", format!("Bearer {token}"));
+        }
+        let body = match body {
+            Some(json) => {
+                req = req.header("content-type", "application/json");
+                Body::from(json.to_string())
+            }
+            None => Body::empty(),
+        };
+        self.send(req.body(body).unwrap()).await
+    }
+
+    pub async fn post(&self, path: &str, body: Value) -> Reply {
+        self.call(Method::POST, path, None, Some(body)).await
+    }
 }
 
 pub fn request(method: Method, path: &str) -> Builder {
@@ -145,4 +177,110 @@ pub async fn relay(listen: &str, target: String) -> (SocketAddr, tokio::task::Jo
 /// The peer address of a request, as the server sees it. Add it with `.extension(from_ip([…]))`.
 pub fn from_ip(ip: [u8; 4]) -> ConnectInfo<SocketAddr> {
     ConnectInfo(SocketAddr::from((ip, 40000)))
+}
+
+pub fn seed_dir() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../infra/seed-data")
+}
+
+/// A `TestApp` whose database holds the reference catalog and the active rule set.
+pub async fn seeded(opts: MySqlPoolOptions, conn: MySqlConnectOptions) -> TestApp {
+    seeded_with(opts, conn, |_| {}).await
+}
+
+pub async fn seeded_with(
+    opts: MySqlPoolOptions,
+    conn: MySqlConnectOptions,
+    tweak: impl FnOnce(&mut HashMap<String, String>),
+) -> TestApp {
+    let app = TestApp::with(opts, conn, tweak).await;
+    backend::seed::run(&app.db, &seed_dir())
+        .await
+        .expect("the seed data loads");
+    app
+}
+
+/// The password of every account the tests create.
+pub const PASSWORD: &str = "correct horse battery staple";
+
+/// One governorate and one of its cities, from the seeded catalog.
+pub async fn a_place(app: &TestApp) -> (Uuid, Uuid) {
+    sqlx::query_as(
+        "SELECT g.id, c.id FROM cities c JOIN governorates g ON g.id = c.governorate_id \
+         ORDER BY g.code, c.code LIMIT 1",
+    )
+    .fetch_one(&app.db)
+    .await
+    .expect("the catalog is seeded")
+}
+
+/// An account written straight into the database, as a registration leaves it. Its email is
+/// `<name>@example.com`, its username `name` and its password `PASSWORD`.
+pub async fn create_user(app: &TestApp, name: &str, role: backend::types::Role) -> Uuid {
+    let id = Uuid::now_v7();
+    let (governorate, city) = a_place(app).await;
+    let hash = app
+        .state
+        .passwords
+        .hash(PASSWORD.to_owned())
+        .await
+        .expect("a password hash");
+    sqlx::query(
+        "INSERT INTO users (id, email, username, password_hash, role, date_of_birth) \
+         VALUES (?, ?, ?, ?, ?, '1995-05-05')",
+    )
+    .bind(id)
+    .bind(format!("{name}@example.com"))
+    .bind(name)
+    .bind(hash)
+    .bind(role.as_str())
+    .execute(&app.db)
+    .await
+    .expect("the user row");
+    sqlx::query(
+        "INSERT INTO profiles (user_id, full_name, governorate_id, city_id) VALUES (?, ?, ?, ?)",
+    )
+    .bind(id)
+    .bind(format!("Athlete {name}"))
+    .bind(governorate)
+    .bind(city)
+    .execute(&app.db)
+    .await
+    .expect("the profile row");
+    for table in ["user_settings", "user_stats", "user_streaks"] {
+        sqlx::query(AssertSqlSafe(format!(
+            "INSERT INTO {table} (user_id) VALUES (?)"
+        )))
+        .bind(id)
+        .execute(&app.db)
+        .await
+        .expect("the defaults row");
+    }
+    id
+}
+
+/// Every key of `expected` exists in `actual` with the same JSON type. `null` on either side matches
+/// anything; lists are compared by their first element.
+pub fn assert_same_shape(path: &str, expected: &Value, actual: &Value) {
+    match (expected, actual) {
+        (Value::Null, _) | (_, Value::Null) => {}
+        (Value::Object(e), Value::Object(a)) => {
+            for (key, value) in e {
+                let got = a
+                    .get(key)
+                    .unwrap_or_else(|| panic!("{path}.{key} is missing"));
+                assert_same_shape(&format!("{path}.{key}"), value, got);
+            }
+        }
+        (Value::Array(e), Value::Array(a)) => {
+            if let (Some(first_expected), Some(first_actual)) = (e.first(), a.first()) {
+                assert_same_shape(&format!("{path}[0]"), first_expected, first_actual);
+            }
+        }
+        (e, a) => assert_eq!(
+            std::mem::discriminant(e),
+            std::mem::discriminant(a),
+            "{path}: expected {e}, got {a}"
+        ),
+    }
 }
