@@ -107,6 +107,17 @@ async fn a_redis_outage_does_not_stall_requests(opts: MySqlPoolOptions, conn: My
         serde_json::json!({"database": "up", "redis": "down"})
     );
     assert!(started.elapsed() < PROMPT, "took {:?}", started.elapsed());
+
+    // The limit itself still holds, counted by this process while Redis is away. Twice the limit and
+    // a few more: the local window is a fixed minute, and one may end during the loop.
+    let mut refused = false;
+    for _ in 0..620 {
+        refused = app.get("/api/v1/health").await.status == StatusCode::TOO_MANY_REQUESTS;
+        if refused {
+            break;
+        }
+    }
+    assert!(refused, "620 requests were all allowed during the outage");
 }
 
 #[sqlx::test]

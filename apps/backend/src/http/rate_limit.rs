@@ -2,9 +2,13 @@
 //! The limits of the spec are declared here and nowhere else.
 
 use std::{
+    collections::HashMap,
     convert::Infallible,
     net::{IpAddr, Ipv4Addr, SocketAddr},
-    sync::LazyLock,
+    sync::{
+        LazyLock, Mutex, PoisonError,
+        atomic::{AtomicU64, Ordering},
+    },
     time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -20,18 +24,15 @@ use ipnet::IpNet;
 use secrecy::ExposeSecret;
 use sha2::Sha256;
 
-use crate::{
-    error::AppError,
-    state::{AppState, REDIS_DEADLINE},
-};
+use crate::{error::AppError, state::AppState};
 
 pub struct Rule {
     /// Part of the Redis key: two rules must never share a name.
     pub name: &'static str,
     pub limit: u32,
     pub window_s: u64,
-    /// When Redis is unreachable: `true` refuses the request (routes that create or prove an identity),
-    /// `false` lets it through and logs the outage.
+    /// When Redis does not answer: `true` refuses the request (routes that create or prove an identity),
+    /// `false` keeps serving and counts in this process instead.
     pub fail_closed: bool,
 }
 
@@ -87,26 +88,73 @@ fn subject_hash(secret: &[u8], subject: &str) -> String {
     URL_SAFE_NO_PAD.encode(&mac.finalize().into_bytes()[..16])
 }
 
-/// What a check means, given what Redis answered. Pure, so the outage rule is tested without an outage.
-fn decide(rule: &Rule, outcome: Result<i64, String>, retry_after_s: u64) -> Result<(), AppError> {
-    match outcome {
-        Ok(1) => Ok(()),
-        Ok(_) => Err(AppError::new(
+fn unix_s() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or_default()
+}
+
+/// What this process counts while Redis does not answer, so that an outage does not lift the limits:
+/// key → (window index, requests seen in it). Every instance counts alone, so N instances allow N
+/// times the limit, and the window is fixed, not sliding. Good enough for the length of an outage.
+static LOCAL: LazyLock<Mutex<HashMap<String, (u64, u32)>>> = LazyLock::new(Mutex::default);
+
+/// ponytail: one map behind one lock, emptied when it holds this many subjects (about 15 MB). It is
+/// only used while Redis is away; shard it if an outage under a flood ever shows contention.
+const LOCAL_CAPACITY: usize = 100_000;
+
+fn local_allows(key: String, index: u64, limit: u32) -> bool {
+    let mut counts = LOCAL.lock().unwrap_or_else(PoisonError::into_inner);
+    if counts.len() >= LOCAL_CAPACITY && !counts.contains_key(&key) {
+        counts.clear();
+    }
+    let entry = counts.entry(key).or_insert((index, 0));
+    if entry.0 != index {
+        *entry = (index, 0);
+    }
+    entry.1 = entry.1.saturating_add(1);
+    entry.1 <= limit
+}
+
+/// At most one line a second: during an outage every request comes through here.
+fn warn_outage(rule: &Rule, cause: &str) {
+    static LAST_S: AtomicU64 = AtomicU64::new(0);
+    let now = unix_s();
+    if LAST_S.swap(now, Ordering::Relaxed) != now {
+        tracing::warn!(
+            rule = rule.name,
+            cause,
+            "rate limiter unavailable; counting in this process"
+        );
+    }
+}
+
+/// What a check means, given what Redis answered. `local` is asked only when Redis gave no answer and
+/// the rule keeps serving. Pure, so the outage rule is tested without an outage.
+fn decide(
+    rule: &Rule,
+    outcome: Result<i64, String>,
+    retry_after_s: u64,
+    local: impl FnOnce() -> bool,
+) -> Result<(), AppError> {
+    let refused = || {
+        AppError::new(
             StatusCode::TOO_MANY_REQUESTS,
             "RATE_LIMITED",
             "Too many requests",
         )
-        .retry_after(retry_after_s)),
+        .retry_after(retry_after_s)
+    };
+    match outcome {
+        Ok(1) => Ok(()),
+        Ok(_) => Err(refused()),
         Err(cause) if rule.fail_closed => {
             Err(AppError::unavailable(format!("rate limiter: {cause}")))
         }
         Err(cause) => {
-            tracing::warn!(
-                rule = rule.name,
-                cause,
-                "rate limiter unavailable; request allowed"
-            );
-            Ok(())
+            warn_outage(rule, &cause);
+            if local() { Ok(()) } else { Err(refused()) }
         }
     }
 }
@@ -116,33 +164,28 @@ pub async fn check(state: &AppState, rule: &Rule, subject: &str) -> Result<(), A
     if !state.cfg.rate_limit_enabled {
         return Ok(());
     }
-    let now = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_secs())
-        .unwrap_or_default();
-    let (index, elapsed) = window(now, rule.window_s);
+    let (index, elapsed) = window(unix_s(), rule.window_s);
     let hash = subject_hash(
         state.cfg.app_hmac_secret.expose_secret().as_bytes(),
         subject,
     );
-    let key = |i: u64| format!("{}rl:{}:{}:{}", state.redis_prefix, rule.name, hash, i);
+    let counter = format!("{}rl:{}:{}", state.redis_prefix, rule.name, hash);
+    let key = |i: u64| format!("{counter}:{i}");
     let mut connection = state.redis.clone();
-    let answer = tokio::time::timeout(
-        REDIS_DEADLINE,
-        SCRIPT
-            .key(key(index))
-            .key(key(index.saturating_sub(1)))
-            .arg(rule.limit)
-            .arg(rule.window_s)
-            .arg(elapsed)
-            .invoke_async::<i64>(&mut connection),
-    )
-    .await;
-    let outcome = match answer {
-        Ok(answer) => answer.map_err(|e| e.to_string()),
-        Err(_) => Err("no answer within the deadline".to_owned()),
-    };
-    decide(rule, outcome, rule.window_s - elapsed)
+    let outcome = state
+        .redis_call(
+            SCRIPT
+                .key(key(index))
+                .key(key(index.saturating_sub(1)))
+                .arg(rule.limit)
+                .arg(rule.window_s)
+                .arg(elapsed)
+                .invoke_async::<i64>(&mut connection),
+        )
+        .await;
+    decide(rule, outcome, rule.window_s - elapsed, || {
+        local_allows(counter.clone(), index, rule.limit)
+    })
 }
 
 /// The address a request really comes from. `X-Forwarded-For` is believed only when the peer is a
@@ -323,16 +366,31 @@ mod tests {
     }
 
     #[test]
-    fn a_redis_outage_closes_identity_routes_and_leaves_the_rest_open() {
-        let closed = decide(&LOGIN_IP, Err("connection refused".into()), 10).unwrap_err();
+    fn a_redis_outage_closes_identity_routes_and_counts_the_rest_in_this_process() {
+        let down = || Err("connection refused".to_owned());
+        let closed = decide(&LOGIN_IP, down(), 10, || true).unwrap_err();
         assert_eq!(closed.status, StatusCode::SERVICE_UNAVAILABLE);
-        assert!(decide(&GLOBAL_IP, Err("connection refused".into()), 10).is_ok());
+        assert!(decide(&GLOBAL_IP, down(), 10, || true).is_ok());
+        let over = decide(&GLOBAL_IP, down(), 10, || false).unwrap_err();
+        assert_eq!(over.status, StatusCode::TOO_MANY_REQUESTS);
+    }
+
+    #[test]
+    fn the_local_count_holds_the_limit_and_starts_again_with_each_window() {
+        let key = || "unit-test:local:a".to_owned();
+        assert!((0..3).all(|_| local_allows(key(), 7, 3)));
+        assert!(!local_allows(key(), 7, 3));
+        assert!(
+            local_allows("unit-test:local:b".to_owned(), 7, 3),
+            "another subject is not affected"
+        );
+        assert!(local_allows(key(), 8, 3), "a new window starts from zero");
     }
 
     #[test]
     fn a_refusal_is_a_429_and_an_allowance_passes() {
-        assert!(decide(&LOGIN_IP, Ok(1), 10).is_ok());
-        let refused = decide(&LOGIN_IP, Ok(0), 10).unwrap_err();
+        assert!(decide(&LOGIN_IP, Ok(1), 10, || false).is_ok());
+        let refused = decide(&LOGIN_IP, Ok(0), 10, || true).unwrap_err();
         assert_eq!(
             (refused.status, refused.code),
             (StatusCode::TOO_MANY_REQUESTS, "RATE_LIMITED")

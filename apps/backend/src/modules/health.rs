@@ -9,10 +9,7 @@ use axum::{
 use serde_json::{Value, json};
 use tokio::time::timeout;
 
-use crate::{
-    http::Api,
-    state::{AppState, REDIS_DEADLINE},
-};
+use crate::{http::Api, state::AppState};
 
 pub fn routes(api: Api) -> Api {
     api.get("/api/v1/health", health)
@@ -32,12 +29,10 @@ async fn ready(State(state): State<AppState>) -> Response {
     let select = sqlx::query("SELECT 1").execute(&state.db);
     let database = matches!(timeout(DATABASE_DEADLINE, select).await, Ok(Ok(_)));
     let mut connection = state.redis.clone();
-    let pong = timeout(
-        REDIS_DEADLINE,
-        redis::cmd("PING").query_async::<String>(&mut connection),
-    )
-    .await;
-    let cache = matches!(pong, Ok(Ok(_)));
+    let cache = state
+        .redis_call(redis::cmd("PING").query_async::<String>(&mut connection))
+        .await
+        .is_ok();
     let word = |up: bool| if up { "up" } else { "down" };
     let ok = database && cache;
     let body = json!({"status": if ok { "ready" } else { "unavailable" }, "checks": {"database": word(database), "redis": word(cache)}});
