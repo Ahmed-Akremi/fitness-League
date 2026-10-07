@@ -319,6 +319,15 @@ async fn every_field_is_checked_and_all_the_problems_come_at_once(
         one(json!({"fullName": "Ahmed\u{0007}Bell"})).await,
         single("fullName", "MATCHES")
     );
+    // Characters nobody sees: a name made of nothing, or one that reads backwards on screen.
+    assert_eq!(
+        one(json!({"fullName": "\u{200B}\u{200B}\u{200B}"})).await,
+        single("fullName", "MATCHES")
+    );
+    assert_eq!(
+        one(json!({"fullName": "Ahmed\u{202E}demhA"})).await,
+        single("fullName", "MATCHES")
+    );
 
     // A city of another governorate.
     let (_, elsewhere): (uuid::Uuid, uuid::Uuid) = sqlx::query_as(

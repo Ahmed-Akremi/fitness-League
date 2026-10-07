@@ -112,6 +112,19 @@ fn parse_date(raw: &str) -> Option<NaiveDate> {
         .filter(|date| date.year() >= 1900)
 }
 
+/// Characters that change how text is shown without being seen: the zero-width ones, the direction
+/// overrides, the soft hyphen. In a name they serve to pass for someone else, or for nobody.
+fn is_invisible(c: char) -> bool {
+    matches!(
+        c,
+        '\u{00AD}'
+            | '\u{200B}'..='\u{200F}'
+            | '\u{202A}'..='\u{202E}'
+            | '\u{2060}'..='\u{2069}'
+            | '\u{FEFF}'
+    )
+}
+
 /// `+` and 8 to 15 digits, the first of which is not 0 (E.164).
 fn is_phone(raw: &str) -> bool {
     raw.strip_prefix('+').is_some_and(|digits| {
@@ -132,7 +145,10 @@ impl Validate for RegisterBody {
         check.length("fullName", self.full_name.trim(), 2, 80);
         check.ensure(
             "fullName",
-            !self.full_name.chars().any(char::is_control),
+            !self
+                .full_name
+                .chars()
+                .any(|c| c.is_control() || is_invisible(c)),
             "MATCHES",
         );
         check.ensure("email", normalise_email(&self.email).is_some(), "ISEMAIL");
