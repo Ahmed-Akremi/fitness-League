@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "UPDATE deletion_requests SET status = 'CANCELLED' WHERE user_id = ? AND status = 'PENDING'",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "594ae3c6c746cadabd8924e91770626b911ac001f336dc377c9f28553e051394"
+}

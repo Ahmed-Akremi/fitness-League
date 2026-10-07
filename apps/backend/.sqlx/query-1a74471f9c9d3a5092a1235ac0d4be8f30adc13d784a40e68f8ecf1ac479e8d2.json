@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "UPDATE refresh_tokens SET revoked_at = ?, replaced_by_id = ? WHERE id = ? AND revoked_at IS NULL",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "1a74471f9c9d3a5092a1235ac0d4be8f30adc13d784a40e68f8ecf1ac479e8d2"
+}

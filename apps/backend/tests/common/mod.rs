@@ -315,3 +315,21 @@ pub fn token_in(mail: &backend::mail::Sent) -> String {
         .unwrap()
         .to_owned()
 }
+
+/// A session opened for an existing account, as a sign-in would open it.
+pub async fn open_session(
+    app: &TestApp,
+    user: Uuid,
+    role: backend::types::Role,
+    audience: backend::security::tokens::Audience,
+) -> Value {
+    let holder = backend::modules::auth::sessions::Holder {
+        id: user,
+        role,
+        session_version: 1,
+    };
+    let session = backend::modules::auth::sessions::start(&app.state, holder, audience)
+        .await
+        .expect("a session");
+    serde_json::to_value(session).unwrap()
+}
