@@ -29,9 +29,10 @@ The work is too large for one spec. It is cut into six parts, each with its own 
 | 5 | Admin and moderation | Admin users, seasons, queues, judge accounts, moderation, proofs, anti-cheat, announcements (`GET` and `POST /admin/announcements` with one photo, `DELETE /admin/announcements/:id`) |
 | 6 | Cut-over | Demo data, frontends pointed at the Rust API, `apps/api` and PostgreSQL removed |
 
-Part 1 is built by two plans: **1a, foundation** (everything that needs no user account:
-`docs/superpowers/plans/2026-10-06-rust-backend-1a-foundation.md`) and **1b, accounts**, written once 1a
-compiles.
+Part 1 is built by three plans: **1a, foundation** (everything that needs no user account:
+`docs/superpowers/plans/2026-10-06-rust-backend-1a-foundation.md`), **1b, accounts and sessions**
+(`docs/superpowers/plans/2026-10-07-rust-backend-1b-accounts.md`) and **1c, profile and privacy** (profile
+and settings changes, onboarding, export, account deletion with its daily sweep).
 
 **Part 1 is done when:** a new user can register in the mobile app against the Rust API, receive the
 verification email in Mailpit, sign in, finish onboarding and see their profile; a staff account can sign in
@@ -159,6 +160,8 @@ Part 1 has two kinds of background work:
 - Passwords found in a built-in list of common passwords, or equal to the username or email, are refused
   with field code `TOO_COMMON`. This is the one addition to the contract; the app shows unknown field
   codes as a generic invalid-field message.
+- Emails are trimmed, lower-cased and must be printable ASCII; passwords are normalised (NFKC) before
+  hashing. Both rules exist so that two spellings the database or a keyboard treats as one are one here too.
 - Hashing runs off the async threads with a cap on concurrent hashes, so a burst of logins cannot exhaust
   memory.
 - An unknown email costs the same Argon2 verification as a known one and returns the same
@@ -177,7 +180,8 @@ Part 1 has two kinds of background work:
   rotated without signing everyone out.
 - **Refresh token:** 256 random bits, 30 days, stored only as a SHA-256 hash, **single use**. Each use
   returns a new one. Presenting a token that was already used means it was copied: the whole family (every
-  token descended from that login) is revoked and the event is audited. Two simultaneous refreshes with the
+  token descended from that login) is revoked, the access tokens already handed out stop working at
+  the next request, and the event is audited. Two simultaneous refreshes with the
   same token: one wins, the other triggers the same revocation.
 - **Audiences are separate.** An app token is refused by admin routes and the reverse; each refresh
   endpoint only accepts its own kind.

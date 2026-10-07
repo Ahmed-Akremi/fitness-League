@@ -49,8 +49,8 @@ On WSL, keep the repository on the Linux filesystem (`~/…`), not under `/mnt/c
 
 ## Rust backend (in progress)
 
-`apps/backend` is the API that will replace `apps/api`. Today it serves the health checks and the public
-reference lists; accounts come next.
+`apps/backend` is the API that will replace `apps/api`. Today it serves the health checks, the public
+reference lists and the accounts; profile changes, onboarding and the rest of the app come next.
 
 One-time setup (Rust 1.99 through `rustup`, Docker for MariaDB, Redis and Mailpit):
 
@@ -65,6 +65,15 @@ cargo run -- seed ../../infra/seed-data
 ```
 
 Then `cargo run -- serve` listens on http://localhost:3100/api/v1 and `cargo test` runs the test suites.
+
+```bash
+cargo run -- worker                                   # sends the emails; run one next to the API
+cargo run -- promote someone@example.com ADMIN        # the first staff account; roles are never self-assigned
+```
+
+Accounts (plan 1b): registration, sign-in with lockout, sessions with single-use refresh tokens, email
+verification and password reset through links, the admin panel's sign-in, and `GET /me`. The emails go
+to Mailpit locally: http://localhost:8025.
 
 - **Database accounts.** `fl_migrate` owns the schema and is used only by `migrate`. The API uses `fl_app`,
   which can read and write rows but cannot change the schema; the audit log refuses updates and deletes
