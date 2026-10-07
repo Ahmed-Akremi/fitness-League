@@ -20,6 +20,7 @@ use crate::{
         auth::AppUser,
         rate_limit::{self, ClientIp},
     },
+    jobs::{self, JobKind},
     security::{password, tokens::Audience},
     state::AppState,
     types::{Gender, Locale},
@@ -31,6 +32,10 @@ pub fn routes(api: Api) -> Api {
         .post("/api/v1/auth/login", login)
         .post("/api/v1/auth/refresh", refresh)
         .post("/api/v1/auth/logout", logout)
+        .post("/api/v1/auth/email/verify", verify_email)
+        .post("/api/v1/auth/email/resend", resend_verification)
+        .post("/api/v1/auth/password/forgot", forgot_password)
+        .post("/api/v1/auth/password/reset", reset_password)
 }
 
 #[derive(Deserialize)]
@@ -235,6 +240,94 @@ async fn login(
         );
     }
     Ok(Json(sessions::start(&state, holder, Audience::App).await?))
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct TokenBody {
+    token: String,
+}
+
+impl Validate for TokenBody {
+    fn validate(&self, check: &mut Check) {
+        check.length("token", &self.token, 20, 200);
+    }
+}
+
+async fn verify_email(
+    State(state): State<AppState>,
+    client: ClientIp,
+    ValidJson(body): ValidJson<TokenBody>,
+) -> Result<StatusCode, AppError> {
+    rate_limit::check(&state, &rate_limit::VERIFY_IP, &client.subject()).await?;
+    emails::verify_email(&state, &body.token).await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/// No body: the app sends none. Whether a mail was really queued is not said.
+async fn resend_verification(
+    State(state): State<AppState>,
+    AppUser(user): AppUser,
+) -> Result<StatusCode, AppError> {
+    rate_limit::check(&state, &rate_limit::RESEND_USER, &user.id.to_string()).await?;
+    if !user.email_verified {
+        jobs::enqueue(&state, JobKind::EmailVerify, user.id).await?;
+    }
+    Ok(StatusCode::NO_CONTENT)
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ForgotBody {
+    email: String,
+}
+
+impl Validate for ForgotBody {
+    fn validate(&self, check: &mut Check) {
+        check.ensure("email", normalise_email(&self.email).is_some(), "ISEMAIL");
+    }
+}
+
+async fn forgot_password(
+    State(state): State<AppState>,
+    client: ClientIp,
+    ValidJson(body): ValidJson<ForgotBody>,
+) -> Result<StatusCode, AppError> {
+    let email = normalise_email(&body.email).ok_or_else(|| AppError::field("email", "ISEMAIL"))?;
+    rate_limit::check(&state, &rate_limit::FORGOT_IP, &client.subject()).await?;
+    // Counted by the address that was typed, whether or not an account has it.
+    rate_limit::check(&state, &rate_limit::FORGOT_ACCOUNT, &email).await?;
+    emails::request_reset(&state, &email).await?;
+    Ok(StatusCode::ACCEPTED)
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+struct ResetBody {
+    token: String,
+    new_password: String,
+}
+
+impl Validate for ResetBody {
+    fn validate(&self, check: &mut Check) {
+        check.length("token", &self.token, 20, 200);
+        check.length(
+            "newPassword",
+            &self.new_password,
+            password::MIN_LENGTH,
+            password::MAX_LENGTH,
+        );
+    }
+}
+
+async fn reset_password(
+    State(state): State<AppState>,
+    client: ClientIp,
+    ValidJson(body): ValidJson<ResetBody>,
+) -> Result<StatusCode, AppError> {
+    rate_limit::check(&state, &rate_limit::RESET_IP, &client.subject()).await?;
+    emails::reset_password(&state, &body.token, body.new_password).await?;
+    Ok(StatusCode::NO_CONTENT)
 }
 
 #[cfg(test)]

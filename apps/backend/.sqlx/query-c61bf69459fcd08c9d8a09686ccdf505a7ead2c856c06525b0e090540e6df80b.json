@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "UPDATE email_tokens SET consumed_at = UTC_TIMESTAMP(6) WHERE token_hash = ? AND purpose = ? AND consumed_at IS NULL AND expires_at > UTC_TIMESTAMP(6)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "c61bf69459fcd08c9d8a09686ccdf505a7ead2c856c06525b0e090540e6df80b"
+}
