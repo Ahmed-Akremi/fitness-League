@@ -57,27 +57,26 @@ function Banner({ competition: c, width }: { competition: Json; width: number })
   const t = useT();
   const locale = useLocale();
   const { colors } = useTheme();
-  const height = Math.round(width * COVER_RATIO) + 64;
   return (
     <Pressable
       testID={`home-comp-${c.id}`}
       accessibilityRole="button"
       accessibilityLabel={c.title}
       onPress={() => router.push(`/competitions/${c.id}`)}
-      style={({ pressed }) => ({ width, height, borderRadius: radius.card, overflow: 'hidden', backgroundColor: colors.surface, opacity: pressed ? 0.9 : 1 })}
+      style={({ pressed }) => ({ width, borderRadius: radius.card, overflow: 'hidden', backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.9 : 1 })}
     >
-      <Image source={c.coverUrl ? { uri: c.coverUrl } : DEFAULT_COVER} accessibilityIgnoresInvertColors resizeMode="cover" style={{ width, height }} />
-      {/* Dark band so white text stays readable on any banner. */}
-      <View style={{ position: 'absolute', start: 0, end: 0, bottom: 0, padding: space.md, gap: space.xs, backgroundColor: 'rgba(8,9,12,0.72)' }}>
-        <Txt numberOfLines={1} style={[displayText(26), { color: '#FFFFFF', textTransform: 'uppercase' }]}>{c.title}</Txt>
+      {/* The whole banner stays visible: organizers often put text on it. */}
+      <Image source={c.coverUrl ? { uri: c.coverUrl } : DEFAULT_COVER} accessibilityIgnoresInvertColors resizeMode="cover" style={{ width: width - 2, height: Math.round((width - 2) * COVER_RATIO) }} />
+      <View style={{ padding: space.md, gap: space.sm }}>
+        <Txt numberOfLines={2} style={[displayText(24), { textTransform: 'uppercase' }]}>{c.title}</Txt>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, flexWrap: 'wrap' }}>
-          <StatusPill label={statusLabelForCompetition(t, c.status)} color={c.status === 'REGISTRATION_OPEN' ? colors.primary : '#FFFFFF'} />
-          <Icon name="event" size={16} color="#FFFFFFCC" />
-          <Txt variant="small" color="#FFFFFFCC">{formatDate(c.eventStart, locale)}</Txt>
+          <StatusPill label={statusLabelForCompetition(t, c.status)} color={c.status === 'REGISTRATION_OPEN' ? colors.primary : colors.outline} />
+          <Icon name="event" size={16} color={colors.outline} />
+          <Txt variant="small" color={colors.outline}>{formatDate(c.eventStart, locale)}</Txt>
           {c.city ? (
             <>
-              <Icon name="place" size={16} color="#FFFFFFCC" />
-              <Txt variant="small" color="#FFFFFFCC">{c.city}</Txt>
+              <Icon name="place" size={16} color={colors.outline} />
+              <Txt variant="small" color={colors.outline}>{c.city}</Txt>
             </>
           ) : null}
         </View>

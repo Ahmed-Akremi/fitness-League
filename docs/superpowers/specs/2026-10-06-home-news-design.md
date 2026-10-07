@@ -72,7 +72,7 @@ model AnnouncementLike {
 | `DELETE /announcements/:id/like` | utilisateur de l'app | Idempotent ; renvoie `{ likeCount, likedByMe: false }`. |
 
 - Aucune route de commentaire (c'est la garantie « pas de commentaire »).
-- **Notification** : le gestionnaire de l'événement `AnnouncementPublished` (dans le worker) crée, par lots de 1000 (`createMany`), une notification `ANNOUNCEMENT` `{ announcementId, excerpt }` (80 premiers caractères du texte) pour chaque utilisateur `role = USER`, `status = ACTIVE`, `deletedAt = null`. Pas d'événement `NotificationCreated` par ligne (pas de push configuré) ; la cloche se met à jour à son rafraîchissement.
+- **Notification** : le gestionnaire de l'événement `AnnouncementPublished` (dans le worker) crée, par lots de 1000 (`createMany`), une notification `ANNOUNCEMENT` `{ announcementId, excerpt }` (80 premiers caractères du texte) pour chaque compte de l’app (`role` ∈ {`USER`, `GYM_ADMIN`} — les propriétaires de salle s’entraînent aussi), `status = ACTIVE`, `deletedAt = null`. Pas d'événement `NotificationCreated` par ligne (pas de push configuré) ; la cloche se met à jour à son rafraîchissement.
 - **Compétitions** : `GET /competitions?filter=CURRENT` → statut ∉ {`DRAFT`, `FINISHED`, `CANCELLED`}, tri par `eventStart` croissant (même carte que la liste : `coverUrl`, `title`, `status`, `eventStart`, `city`…).
 
 ## 3. Panneau admin (`apps/admin`)

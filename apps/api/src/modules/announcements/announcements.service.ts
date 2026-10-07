@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { Announcement, Media } from '@prisma/client';
+import type { Announcement, Media, Role } from '@prisma/client';
 import { AuditService } from '../../common/audit/audit.service';
 import type { AuthUser } from '../../common/auth/auth-user';
 import { AppException } from '../../common/errors/app-exception';
@@ -13,6 +13,8 @@ import { encodeAnnouncementImage } from './announcement-image';
 import { ANNOUNCEMENT_BODY_MAX, excerpt, normalizeBody } from './announcement-rules';
 
 const FAN_OUT_BATCH = 1000;
+/** Accounts that use the app (gym owners train too); staff and judges never get the bell notification. */
+const APP_ROLES: Role[] = ['USER', 'GYM_ADMIN'];
 
 export interface AnnouncementView {
   id: string;
@@ -95,8 +97,8 @@ export class AnnouncementsService {
   }
 
   /**
-   * Bell notification for every active athlete (worker, after commit). Judges, staff and suspended accounts are
-   * skipped. Safe to replay: athletes who already have it are left alone. No push yet (FCM is not configured),
+   * Bell notification for every active app account (worker, after commit). Judges, staff and suspended accounts
+   * are skipped. Safe to replay: athletes who already have it are left alone. No push yet (FCM is not configured),
    * so no NotificationCreated event per row — the app refreshes the bell itself.
    */
   async fanOut(announcementId: string): Promise<number> {
@@ -107,7 +109,7 @@ export class AnnouncementsService {
     let after: string | undefined;
     for (;;) {
       const users = await this.prisma.user.findMany({
-        where: { role: 'USER', status: 'ACTIVE', deletedAt: null, ...(after && { id: { gt: after } }) },
+        where: { role: { in: APP_ROLES }, status: 'ACTIVE', deletedAt: null, ...(after && { id: { gt: after } }) },
         orderBy: { id: 'asc' },
         take: FAN_OUT_BATCH,
         select: { id: true },

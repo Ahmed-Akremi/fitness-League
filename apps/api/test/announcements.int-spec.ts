@@ -123,6 +123,7 @@ describe('Announcements (integration)', () => {
     const admin = await panelUser('ADMIN');
     const judge = await panelUser('JUDGE');
     const a = await athlete();
+    const gymOwner = await athlete('GYM_ADMIN'); // gym owners train in the app too
     const suspended = await athlete();
     await prisma.user.update({ where: { id: suspended.id }, data: { status: 'SUSPENDED' } });
 
@@ -133,6 +134,7 @@ describe('Announcements (integration)', () => {
     const notes = await prisma.notification.findMany({ where: { type: 'ANNOUNCEMENT', payload: { path: ['announcementId'], equals: created.body.id } } });
     const users = notes.map((n) => n.userId);
     expect(users.filter((u) => u === a.id)).toHaveLength(1);
+    expect(users).toContain(gymOwner.id);
     expect(users).not.toContain(judge.id);
     expect(users).not.toContain(admin.id);
     expect(users).not.toContain(suspended.id);
