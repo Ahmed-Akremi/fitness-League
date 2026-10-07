@@ -1,11 +1,11 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { useNavigation } from 'expo-router';
-import { useEffect, useLayoutEffect, useState, type ComponentProps, type ReactNode } from 'react';
+import { Children, Fragment, isValidElement, useEffect, useLayoutEffect, useState, type ComponentProps, type ReactNode } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View, type StyleProp, type TextInputProps, type ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { create } from 'zustand';
 
-import { fonts, radius, useTheme } from '../theme';
+import { fonts, radius, space, useTheme } from '../theme';
 
 export type IconName = ComponentProps<typeof MaterialIcons>['name'];
 
@@ -94,7 +94,8 @@ export function TextField({ label, error, icon, style, ...props }: { label?: str
 
 export function Card({ children, onPress, style, testID }: { children: ReactNode; onPress?: () => void; style?: StyleProp<ViewStyle>; testID?: string }) {
   const { colors } = useTheme();
-  const base = [{ backgroundColor: colors.surface, borderRadius: radius.card, padding: 16 }, style];
+  // Hairline border: relief on the dark surface without shadows.
+  const base = [{ backgroundColor: colors.surface, borderRadius: radius.card, padding: space.lg, borderWidth: 1, borderColor: colors.border }, style];
   return onPress ? (
     <Pressable testID={testID} accessibilityRole="button" onPress={onPress} style={({ pressed }) => [base, pressed && { opacity: 0.85 }]}>
       {children}
@@ -122,11 +123,11 @@ export function Chip({ label, selected, onPress, icon, testID }: { label: string
   );
 }
 
-/** Segmented tabs (league scopes, filters). */
-export function Segmented<K extends string>({ options, value, onChange }: { options: { key: K; label: string }[]; value: K; onChange: (k: K) => void }) {
+/** Segmented tabs (league scopes, filters). `flush`: inside an already padded container (forms, settings), no side padding. */
+export function Segmented<K extends string>({ options, value, onChange, flush }: { options: { key: K; label: string }[]; value: K; onChange: (k: K) => void; flush?: boolean }) {
   return (
     // flexGrow 0: a horizontal ScrollView in a column would otherwise take all the leftover height.
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={{ gap: 8, paddingHorizontal: 16, paddingVertical: 8 }}>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={{ gap: space.sm, paddingHorizontal: flush ? 0 : space.lg, paddingVertical: space.sm }}>
       {options.map((o) => (
         <Chip key={o.key} testID={`tab-${o.key}`} label={o.label} selected={o.key === value} onPress={() => onChange(o.key)} />
       ))}
@@ -136,11 +137,12 @@ export function Segmented<K extends string>({ options, value, onChange }: { opti
 
 export function Screen({ children, scroll = true, padded = true, edges = ['bottom'] }: { children: ReactNode; scroll?: boolean; padded?: boolean; edges?: ('top' | 'bottom')[] }) {
   const { colors } = useTheme();
-  const pad = padded ? { padding: 16 } : null;
+  // The header title already gives air above: the content starts close to it.
+  const pad = padded ? { padding: space.lg, paddingTop: space.sm } : null;
   return (
     <SafeAreaView edges={edges} style={{ flex: 1, backgroundColor: colors.background }}>
       {scroll ? (
-        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[pad, { gap: 12, paddingBottom: 32 }]}>
+        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[pad, { gap: space.md, paddingBottom: 32 }]}>
           {children}
         </ScrollView>
       ) : (
@@ -174,13 +176,43 @@ export function ListRow({ icon, leading, title, subtitle, trailing, onPress, tes
   const { colors } = useTheme();
   return (
     <Pressable testID={testID} accessibilityRole={onPress ? 'button' : undefined} disabled={!onPress} onPress={onPress} style={({ pressed }) => [styles.row, pressed && { opacity: 0.7 }]}>
-      {leading ?? (icon ? <Icon name={icon} color={danger ? colors.error : colors.text} /> : null)}
+      {leading ?? (icon ? <Icon name={icon} color={danger ? colors.error : colors.outline} /> : null)}
       <View style={{ flex: 1 }}>
         <Txt color={danger ? colors.error : undefined} style={{ fontSize: 16 }}>{title}</Txt>
         {subtitle ? <Txt variant="small" color={colors.outline}>{subtitle}</Txt> : null}
       </View>
       {trailing}
       {chevron && <Icon name="chevron-right" color={colors.outline} />}
+    </Pressable>
+  );
+}
+
+/**
+ * Rows grouped in one card with hairline dividers (settings style). Empty children (`cond && …`) are skipped.
+ * `inset`: where dividers start — after the icon by default; pass `space.sm` for rows without an icon.
+ */
+export function ListGroup({ children, inset = 48, style, testID }: { children: ReactNode; inset?: number; style?: StyleProp<ViewStyle>; testID?: string }) {
+  const { colors } = useTheme();
+  const rows = Children.toArray(children).filter(isValidElement);
+  return (
+    <Card testID={testID} style={[{ paddingVertical: space.xs, paddingHorizontal: space.sm }, style]}>
+      {rows.map((row, i) => (
+        <Fragment key={row.key ?? i}>
+          {/* marginStart: the inset follows the reading direction (right in Arabic). */}
+          {i > 0 && <View testID="list-divider" style={{ height: 1, backgroundColor: colors.border, marginStart: inset }} />}
+          {row}
+        </Fragment>
+      ))}
+    </Card>
+  );
+}
+
+/** Compact text action (section headers, inline links): no button height. */
+export function LinkButton({ label, onPress, testID }: { label: string; onPress?: () => void; testID?: string }) {
+  const { colors } = useTheme();
+  return (
+    <Pressable testID={testID} accessibilityRole="button" onPress={onPress} disabled={!onPress} hitSlop={12} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
+      <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 14 }}>{label}</Text>
     </Pressable>
   );
 }
@@ -333,5 +365,5 @@ const styles = StyleSheet.create({
   button: { minHeight: 50, borderRadius: radius.pill, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   field: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: radius.field, borderWidth: 1, paddingHorizontal: 12 },
   chip: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 8 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 16, paddingVertical: 12, paddingHorizontal: 8, minHeight: 52 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 16, paddingVertical: 10, paddingHorizontal: 8, minHeight: 48 },
 });

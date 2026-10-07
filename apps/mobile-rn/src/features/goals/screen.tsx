@@ -8,9 +8,9 @@ import { useLocale, useT } from '../../core/prefs';
 import { useApi } from '../../core/services';
 import { useTheme } from '../../core/theme';
 import { formatMetric, localized } from '../../core/utils/format';
-import { EmptyState, Loading, StatCard, XpBar } from '../../core/widgets/common';
+import { EmptyState, Loading, StatCard, StatusPill, XpBar } from '../../core/widgets/common';
 import { ErrorText, ErrorView } from '../../core/widgets/error';
-import { Button, Chip, Fab, IconButton, Txt } from '../../core/widgets/kit';
+import { Button, Fab, IconButton, Txt } from '../../core/widgets/kit';
 import { Select } from '../../core/widgets/pickers';
 import { useMe } from '../me/api';
 import { useExercises } from '../reference/api';
@@ -52,7 +52,7 @@ export function GoalsList() {
                       }}
                     />
                   ) : (
-                    <Chip label={g.status} />
+                    <StatusPill label={g.status} color={colors.outline} />
                   )
                 }
               >

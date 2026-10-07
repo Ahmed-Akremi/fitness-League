@@ -10,7 +10,7 @@ import { useApi } from '../../core/services';
 import { displayText, useTheme } from '../../core/theme';
 import { EmptyState, Loading, RankRow, SectionHeader, SkeletonList } from '../../core/widgets/common';
 import { ErrorText, ErrorView, errorMessage } from '../../core/widgets/error';
-import { Button, Card, Fab, Icon, IconButton, ListRow, Screen, Segmented, SwitchRow, TextField, Txt, toast } from '../../core/widgets/kit';
+import { Button, Card, Fab, Icon, IconButton, ListGroup, ListRow, Screen, Segmented, SwitchRow, TextField, Txt, toast } from '../../core/widgets/kit';
 import { leagueKeys, leaguesApi, useLeague, useLeagueBoard, useLeagues } from './api';
 
 export const leaguePresetLabel = (t: T, preset: string) =>
@@ -125,7 +125,7 @@ export function LeagueDetailScreen({ id }: { id: string }) {
       <Txt style={displayText(30)}>{lg.name}</Txt>
       <Txt color={colors.outline}>{`${leaguePresetLabel(t, lg.scoringPreset)} · ${t('membersOf', { count: lg.members, max: lg.maxMembers })}`}</Txt>
       {code && (
-        <Card style={{ paddingVertical: 4 }}>
+        <ListGroup>
           <ListRow
             icon="key"
             title={code}
@@ -141,7 +141,7 @@ export function LeagueDetailScreen({ id }: { id: string }) {
               />
             }
           />
-        </Card>
+        </ListGroup>
       )}
       {lg.isMember !== true && lg.status !== 'ENDED' && <Button testID="league-join" label={t('leagueJoin')} busy={busy} onPress={() => run(() => repo.join(id).then(() => Promise.all([league.refetch(), board.refetch()])))} />}
       <SectionHeader title={t('leaderboard')} />
@@ -198,9 +198,9 @@ export function NewLeagueScreen() {
       <TextField testID="league-name" label={t('leagueName')} value={name} onChangeText={setName} maxLength={60} />
       <SwitchRow title={`${t('leaguePublic')} — ${t('leaguePublicHint')}`} value={isPublic} onChange={setPublic} />
       <SectionHeader title={t('leagueRanking')} />
-      <Segmented value={preset} onChange={setPreset} options={(['STANDARD', 'CONSISTENCY', 'PROGRESS'] as const).map((p) => ({ key: p, label: leaguePresetLabel(t, p) }))} />
+      <Segmented flush value={preset} onChange={setPreset} options={(['STANDARD', 'CONSISTENCY', 'PROGRESS'] as const).map((p) => ({ key: p, label: leaguePresetLabel(t, p) }))} />
       <SectionHeader title={t('battleDuration')} />
-      <Segmented value={weeks} onChange={setWeeks} options={(['4', '8', '12'] as const).map((w) => ({ key: w, label: t('weeksCount', { count: Number(w) }) }))} />
+      <Segmented flush value={weeks} onChange={setWeeks} options={(['4', '8', '12'] as const).map((w) => ({ key: w, label: t('weeksCount', { count: Number(w) }) }))} />
       <ErrorText error={error} />
       <Button testID="league-create" label={t('createLeague')} busy={busy} disabled={name.trim().length < 3} onPress={create} style={{ marginTop: 12 }} />
     </Screen>

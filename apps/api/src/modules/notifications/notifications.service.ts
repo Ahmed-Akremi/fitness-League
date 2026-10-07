@@ -40,7 +40,8 @@ export type NotificationType =
   | 'COMPETITION_SCORE_MODIFIED'
   | 'COMPETITION_SCORE_NEEDS_CORRECTION'
   | 'COMPETITION_APPEAL_DECIDED'
-  | 'COMPETITION_LEADERBOARD_FINAL';
+  | 'COMPETITION_LEADERBOARD_FINAL'
+  | 'ANNOUNCEMENT';
 
 /**
  * In-app notifications (Phase 1: list only). ASSUMPTION Q-17: push (FCM), per-type preferences and quiet hours

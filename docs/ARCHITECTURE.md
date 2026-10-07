@@ -83,6 +83,7 @@ Each backend module = `controller → service → repository` + its DTOs, events
 | `moderation` | Reports, evidence, actions, appeals, public log | 3 (held-workout queue in 1) |
 | `audit` | AuditLog writer (used by every module) | 1 |
 | `admin` | Admin-only controllers aggregating other modules' services | 1 |
+| `announcements` | Admin news on the app home screen: text and/or one photo (never video), likes only (no comments), bell notification fan-out in the worker | 2026-10 |
 | `integrations` | `DataSourceAdapter` interface only; adapters in Phase 4 | 1 (interface) / 4 |
 
 ### 2.2 Dependency graph (arrows = "depends on")
@@ -544,6 +545,7 @@ Standard codes: `VALIDATION_FAILED` 422, `UNAUTHENTICATED` 401, `TOKEN_EXPIRED` 
 - **P2** `/duels/queue` (POST join, DELETE leave, GET status); `/gym-wars/current`, `/gym-wars/{id}`, `/gyms/{id}/wars`, `POST /gyms/{id}/wars/registration` (GA); `/leagues` CRUD, `/leagues/{id}/join`, `/leagues/join-by-code`, `/leagues/{id}/leaderboard`; `/challenges` CRUD, `/challenges/{id}/join`; `/badges`, `/me/badges`; `/feed?cursor=`, `/activities/{id}/reactions`, `/activities/{id}/comments`; `/me/devices` (FCM token), `/me/notification-preferences`; WebSocket namespace `/ws` events `battle.score`, `leaderboard.move`, `notification.new`.
 - **P3** `/workouts/{id}/proofs` (upload-url/confirm); `/reports` POST, `/me/reports`, `/me/reports/{id}`; `/me/sanctions`, `/me/sanctions/{id}/appeal`; `/moderation-log` (public, anonymised); `/admin/moderation/queue`, `/admin/reports/{id}/decide`; gym admin dashboard `/gyms/{id}/dashboard`, `/gyms/{id}/challenges`.
 - **P4** `/integrations/{provider}/connect|callback|disconnect`, `/coach/...`, `/billing/...`.
+- **Home news (2026-10)** — app: `GET /announcements?cursor=` (newest first: `id, body, imageUrl, imageWidth, imageHeight, createdAt, likeCount, likedByMe`), `PUT|DELETE /announcements/{id}/like` (idempotent, returns `{ likeCount, likedByMe }`); there is deliberately no comment route. Admin panel (ADMIN, SUPER_ADMIN): `POST /admin/announcements` (multipart `body?` ≤ 2000 chars, `file?` PNG/JPEG/WebP ≤ 5 MB → WebP ≤ 1440 px wide; 422 when both are empty, 415 for anything that is not an image), `GET /admin/announcements`, `DELETE /admin/announcements/{id}` (soft delete, photo file removed). Each publication enqueues `AnnouncementPublished`; the worker writes one `ANNOUNCEMENT` notification (`{ announcementId, excerpt }`) per active app account (`USER`, `GYM_ADMIN`) in batches of 1000 (replay-safe). Home carousel: `GET /competitions?filter=CURRENT` (every status except DRAFT, FINISHED, CANCELLED, by event date).
 
 ---
 

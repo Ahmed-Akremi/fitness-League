@@ -11,7 +11,7 @@ import { displayText, useTheme } from '../../core/theme';
 import { localized } from '../../core/utils/format';
 import { AvatarBadge, EmptyState, Loading, SectionHeader, SkeletonList, StatCard } from '../../core/widgets/common';
 import { ErrorView, errorMessage } from '../../core/widgets/error';
-import { Button, Card, Chip, Dialog, IconButton, ListRow, Menu, Segmented, TextField, Txt, toast, useHeader } from '../../core/widgets/kit';
+import { Button, Card, Chip, Dialog, IconButton, ListGroup, ListRow, Menu, Segmented, TextField, Txt, toast, useHeader } from '../../core/widgets/kit';
 import { useMe } from '../me/api';
 import { ReportSheet, type ReportTarget } from '../moderation/report-sheet';
 import { socialApi, socialKeys, useFriendRequests, useFriends, usePublicProfile } from './api';
@@ -283,14 +283,14 @@ export function PublicProfileScreen({ username }: { username: string }) {
           ))}
         </View>
         {p.gym && (
-          <Card style={{ paddingVertical: 4 }}>
+          <ListGroup>
             <ListRow icon="fitness-center" title={p.gym.name} chevron onPress={() => router.push(`/gyms/${p.gym.id}`)} />
-          </Card>
+          </ListGroup>
         )}
         {p.governorate && (
-          <Card style={{ paddingVertical: 4 }}>
+          <ListGroup>
             <ListRow icon="place" title={localized(p.governorate.name, locale)} />
-          </Card>
+          </ListGroup>
         )}
       </ScrollView>
       {action && <View style={{ padding: 16, paddingTop: 8 }}>{action}</View>}

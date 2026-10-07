@@ -90,10 +90,11 @@ export class StatusDto {
 }
 
 export class ListCompetitionsQueryDto {
-  @ApiPropertyOptional({ enum: ['ALL', 'REGISTRATION_OPEN', 'UPCOMING', 'ACTIVE', 'FINISHED'] })
+  /** CURRENT: published and not over (home carousel). */
+  @ApiPropertyOptional({ enum: ['ALL', 'CURRENT', 'REGISTRATION_OPEN', 'UPCOMING', 'ACTIVE', 'FINISHED'] })
   @IsOptional()
-  @IsIn(['ALL', 'REGISTRATION_OPEN', 'UPCOMING', 'ACTIVE', 'FINISHED'])
-  filter?: 'ALL' | 'REGISTRATION_OPEN' | 'UPCOMING' | 'ACTIVE' | 'FINISHED';
+  @IsIn(['ALL', 'CURRENT', 'REGISTRATION_OPEN', 'UPCOMING', 'ACTIVE', 'FINISHED'])
+  filter?: 'ALL' | 'CURRENT' | 'REGISTRATION_OPEN' | 'UPCOMING' | 'ACTIVE' | 'FINISHED';
   @ApiPropertyOptional() @IsOptional() @IsIn(['true', 'false']) mine?: 'true' | 'false';
 }
 

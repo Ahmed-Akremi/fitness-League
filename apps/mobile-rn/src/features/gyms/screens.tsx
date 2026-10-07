@@ -7,12 +7,12 @@ import { FlatList, Image, Pressable, RefreshControl, ScrollView, View } from 're
 import type { Json, UploadFile } from '../../core/api/client';
 import { useLocale, useT } from '../../core/prefs';
 import { useApi } from '../../core/services';
-import { displayText, useTheme } from '../../core/theme';
+import { displayText, space, useTheme } from '../../core/theme';
 import { formatDate, localized } from '../../core/utils/format';
 import { pickImage, type PickResult } from '../../core/utils/pick-image';
 import { AvatarBadge, EmptyState, GymLogo, Loading, RankRow, SectionHeader, SkeletonList, SportChip, StatCard } from '../../core/widgets/common';
 import { ErrorText, ErrorView, errorMessage } from '../../core/widgets/error';
-import { Button, Card, Dialog, Icon, IconButton, ListRow, Menu, Screen, Segmented, TextField, Txt, toast, useHeader } from '../../core/widgets/kit';
+import { Button, Card, Dialog, Icon, IconButton, ListGroup, ListRow, Menu, Screen, Segmented, TextField, Txt, toast, useHeader } from '../../core/widgets/kit';
 import { Select } from '../../core/widgets/pickers';
 import { GymWarsSection } from '../gym-wars/screens';
 import { GymWodsSection } from '../gym-wods/screens';
@@ -260,7 +260,7 @@ export function GymProfileScreen({ id }: { id: string }) {
         {(gym.addressLine || Object.keys(links).length > 0) && (
           <>
             <SectionHeader title={t('gymInfo')} />
-            <Card style={{ paddingVertical: 4 }}>
+            <ListGroup>
               {gym.addressLine ? <ListRow icon="place" title={gym.addressLine} /> : null}
               {Object.entries(links).map(([k, v]) => (
                 <ListRow
@@ -274,7 +274,7 @@ export function GymProfileScreen({ id }: { id: string }) {
                   }}
                 />
               ))}
-            </Card>
+            </ListGroup>
           </>
         )}
         <GymWodsSection gymId={id} isMember={status === 'APPROVED'} isCoach={membership.role === 'COACH' || canManage} />
@@ -549,7 +549,8 @@ export function GymMembersScreen({ id }: { id: string }) {
           ]}
         />
       </View>
-      <ScrollView contentContainerStyle={{ padding: 8 }}>{body}</ScrollView>
+      {/* Requests and members are row arrays; loading, error and empty states are single elements. */}
+      <ScrollView contentContainerStyle={{ padding: space.lg, paddingTop: space.sm }}>{Array.isArray(body) ? <ListGroup>{body}</ListGroup> : body}</ScrollView>
       <Dialog
         visible={removing != null}
         title={t('removeMember')}
@@ -621,15 +622,21 @@ export function GymDashboardScreen({ id }: { id: string }) {
       )}
       <SectionHeader title={t('dashboardToNudge')} />
       {nudge.length === 0 && <Txt>{t('dashboardNobodyToNudge')}</Txt>}
-      {nudge.map((n, i) => (
-        <ListRow key={i} icon="notifications-paused" title={n.name ?? ''} subtitle={n.lastWorkoutAt == null ? t('dashboardNeverTrained') : formatDate(n.lastWorkoutAt, locale)} />
-      ))}
+      {nudge.length > 0 && (
+        <ListGroup>
+          {nudge.map((n, i) => (
+            <ListRow key={i} icon="notifications-paused" title={n.name ?? ''} subtitle={n.lastWorkoutAt == null ? t('dashboardNeverTrained') : formatDate(n.lastWorkoutAt, locale)} />
+          ))}
+        </ListGroup>
+      )}
       {wods.length > 0 && (
         <>
           <SectionHeader title={t('gymWods')} />
-          {wods.map((w, i) => (
-            <ListRow key={i} title={w.title} trailing={<Txt>{t('dashboardScores', { count: w.scores ?? 0 })}</Txt>} />
-          ))}
+          <ListGroup inset={space.sm}>
+            {wods.map((w, i) => (
+              <ListRow key={i} title={w.title} trailing={<Txt>{t('dashboardScores', { count: w.scores ?? 0 })}</Txt>} />
+            ))}
+          </ListGroup>
         </>
       )}
       <SectionHeader title={t('gymWars')} />

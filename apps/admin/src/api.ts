@@ -70,6 +70,10 @@ export class AdminApi {
   delete<T = void>(path: string): Promise<T> {
     return this.request<T>('DELETE', path);
   }
+  /** Multipart POST (text fields and an optional file). */
+  postForm<T>(path: string, form: FormData): Promise<T> {
+    return this.request<T>('POST', path, form);
+  }
   /** Multipart PUT with a single `file` field (images). */
   upload<T>(path: string, file: Blob, name = 'file'): Promise<T> {
     const form = new FormData();

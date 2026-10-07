@@ -9,7 +9,7 @@ import { displayText, useTheme } from '../../core/theme';
 import { localized } from '../../core/utils/format';
 import { CountdownText, GymLogo, SectionHeader, SkeletonList, XpBar } from '../../core/widgets/common';
 import { ErrorView, errorMessage } from '../../core/widgets/error';
-import { Card, Icon, ListRow, SwitchRow, Txt, toast } from '../../core/widgets/kit';
+import { Card, Icon, ListGroup, ListRow, SwitchRow, Txt, toast } from '../../core/widgets/kit';
 import { gymWarsApi, useGymWar, useGymWarHistory } from './api';
 
 /** One Gym War: both gyms side by side, live or final scores and what makes them (docs §6.2). */
@@ -125,7 +125,7 @@ export function GymWarsSection({ gymId, canManage }: { gymId: string; canManage:
   return (
     <View>
       <SectionHeader title={t('gymWars')} />
-      <Card style={{ paddingVertical: 4 }}>
+      <ListGroup>
         <ListRow
           leading={<Icon name="shield" color={colors.primary} />}
           title={t('gymWarRecord', { wins: record.wins ?? 0, losses: record.losses ?? 0, draws: record.draws ?? 0 })}
@@ -142,7 +142,7 @@ export function GymWarsSection({ gymId, canManage }: { gymId: string; canManage:
             onPress={() => router.push(`/gym-wars/${w.id}`)}
           />
         ))}
-      </Card>
+      </ListGroup>
     </View>
   );
 }

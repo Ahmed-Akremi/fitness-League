@@ -67,7 +67,7 @@ export function HyroxRaceSheet({ visible, exercises, onClose, onAdd }: { visible
           </View>
           <ScrollView contentContainerStyle={{ padding: 20, gap: 8 }} keyboardShouldPersistTaps="handled">
             {races.length > 1 && raceId && (
-              <Segmented options={races.map((r) => ({ key: r.id, label: localized(r.name, locale) }))} value={raceId} onChange={setRaceId} />
+              <Segmented flush options={races.map((r) => ({ key: r.id, label: localized(r.name, locale) }))} value={raceId} onChange={setRaceId} />
             )}
             {stations.map((s, i) => (
               <TimeField

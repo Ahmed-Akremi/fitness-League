@@ -9,7 +9,7 @@ import { useSession } from '../../core/auth/session';
 import { config } from '../../core/config';
 import { useLocale, useT } from '../../core/prefs';
 import { useServices } from '../../core/services';
-import { useTheme } from '../../core/theme';
+import { fonts, useTheme } from '../../core/theme';
 import { Loading } from '../../core/widgets/common';
 import { ErrorView } from '../../core/widgets/error';
 import { ToastHost } from '../../core/widgets/kit';
@@ -85,6 +85,7 @@ export function AppRoot() {
         screenOptions={{
           headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.text,
+          headerTitleStyle: { fontFamily: fonts.display, fontSize: 26 },
           headerShadowVisible: false,
           contentStyle: { backgroundColor: colors.background },
           title: config.appName,

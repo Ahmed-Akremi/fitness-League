@@ -2,7 +2,7 @@ import { fireEvent, waitFor } from 'expo-router/testing-library';
 
 import { BadgesScreen } from '../../src/features/badges/screen';
 import { ChallengeScreen } from '../../src/features/challenges/screens';
-import { HomeScreen } from '../../src/features/home/screen';
+import { HomeScreen, ProfileScreen } from '../../src/features/home/screen';
 import { NotificationsScreen } from '../../src/features/notifications/screens';
 import { BodyScreen } from '../../src/features/progress/screens';
 import { PrivacySection } from '../../src/features/settings/screen';
@@ -36,6 +36,17 @@ describe('home', () => {
     expect(screen.getByText('2/3')).toBeTruthy();
     expect(screen.getByText('3-week streak')).toBeTruthy();
     expect(await screen.findByText('4')).toBeTruthy();
+  });
+});
+
+describe('profile', () => {
+  it('groups the menu under Progress, Social and Account', async () => {
+    const backend = new FakeBackend().on('GET', '/me', [200, me]).on('GET', '/me/records', [200, []]).on('GET', '/gyms/mine', [200, []]);
+    const screen = await renderScreen(ProfileScreen, backend);
+    expect(await screen.findByText('Progress')).toBeTruthy();
+    expect(screen.getByText('Social')).toBeTruthy();
+    expect(screen.getByText('Account')).toBeTruthy();
+    expect(screen.getByText('Friends')).toBeTruthy();
   });
 });
 

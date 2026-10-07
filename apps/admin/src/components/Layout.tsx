@@ -47,6 +47,7 @@ function StaffLinks({ admin }: { admin: boolean }) {
       {admin && <NavLink to="/gyms">Salles à vérifier</NavLink>}
       {admin && <NavLink to="/rule-sets">Règles de scoring</NavLink>}
       {admin && <NavLink to="/seasons">Saisons</NavLink>}
+      {admin && <NavLink to="/announcements">Publications</NavLink>}
       {admin && <NavLink to="/competitions">Compétitions</NavLink>}
       {admin && <NavLink to="/judges">Comptes juges</NavLink>}
       {admin && <NavLink to="/audit">Journal d’audit</NavLink>}

@@ -4,7 +4,7 @@ import type { ComponentProps } from 'react';
 import type { ColorValue } from 'react-native';
 
 import { useT } from '../../core/prefs';
-import { useTheme } from '../../core/theme';
+import { fonts, useTheme } from '../../core/theme';
 
 type Name = ComponentProps<typeof MaterialIcons>['name'];
 const icon = (outline: Name, filled: Name) => ({ focused, color }: { focused: boolean; color: ColorValue }) => (
@@ -20,6 +20,7 @@ export default function TabsLayout() {
       screenOptions={{
         headerStyle: { backgroundColor: colors.background },
         headerTintColor: colors.text,
+        headerTitleStyle: { fontFamily: fonts.display, fontSize: 26 },
         headerShadowVisible: false,
         tabBarStyle: { backgroundColor: colors.surface, borderTopColor: colors.surfaceHigh },
         tabBarActiveTintColor: colors.primary,

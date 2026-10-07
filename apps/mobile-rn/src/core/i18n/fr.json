@@ -80,6 +80,9 @@
   "whyThesePoints": "Pourquoi ces points ?",
   "totalXp": "{xp} XP",
   "myProgress": "Ma progression",
+  "profileGroupProgress": "Progression",
+  "profileGroupSocial": "Social",
+  "profileGroupAccount": "Compte",
   "records": "Records personnels",
   "before": "Avant",
   "now": "Maintenant",
@@ -538,5 +541,14 @@
   "compVideoRequired": "Ajoutez le lien YouTube de votre vidéo pour envoyer votre score.",
   "compPointsPerRep": "{points} pt/rép.",
   "compComputedScore": "Score calculé",
-  "compComputedHint": "Répétitions × points par rép., calculé par l’app."
+  "compComputedHint": "Répétitions × points par rép., calculé par l’app.",
+  "newsTitle": "Actualités",
+  "newsMore": "Voir plus",
+  "newsReadMore": "Lire plus",
+  "newsLike": "J’aime",
+  "newsLiked": "Aimé",
+  "notifAnnouncement": "Nouvelle actualité : {excerpt}",
+  "notifAnnouncementPhoto": "Nouvelle photo de la ligue",
+  "homeCompetitionsTitle": "Compétitions",
+  "homeSeeAll": "Tout voir"
 }
