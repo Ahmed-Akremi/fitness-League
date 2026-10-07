@@ -1,9 +1,20 @@
 //! Accounts: who may sign in, and what the answer is when they may not.
 
 use axum::http::StatusCode;
-use chrono::NaiveDateTime;
+use chrono::{NaiveDate, NaiveDateTime, Utc};
+use serde_json::json;
+use uuid::Uuid;
 
-use crate::{error::AppError, types::iso};
+use super::sessions::{self, Holder, Session};
+use crate::{
+    audit, db,
+    error::AppError,
+    jobs::{self, JobKind},
+    rules::Rules,
+    security::{password::password_problem, policy, tokens::Audience},
+    state::AppState,
+    types::{Gender, Locale, Role, iso},
+};
 
 /// A banned account, or one suspended for now, is refused wherever it proves who it is: at sign-in,
 /// at refresh, and on every request.
@@ -27,6 +38,156 @@ pub fn refuse_if_barred(
         .with("suspendedUntil", suspended_until.map(iso))),
         _ => Ok(()),
     }
+}
+
+/// A registration whose every field passed its own rule.
+pub struct Registration {
+    pub username: String,
+    pub full_name: String,
+    /// Normalised: see `validate::normalise_email`.
+    pub email: String,
+    pub password: String,
+    pub date_of_birth: NaiveDate,
+    pub country_code: String,
+    pub governorate_id: Uuid,
+    pub city_id: Uuid,
+    pub phone: Option<String>,
+    pub gender: Option<Gender>,
+    pub locale: Locale,
+    pub health_data: bool,
+    pub marketing: bool,
+    pub document_version: String,
+}
+
+pub async fn register(state: &AppState, r: Registration) -> Result<Session, AppError> {
+    if let Some(code) = password_problem(&r.password, &r.email, &r.username) {
+        return Err(AppError::field("password", code));
+    }
+    // The age gate comes before anything is stored about the person.
+    let rules = Rules::active(&state.db).await?;
+    let today = policy::business_today(Utc::now(), state.cfg.business_utc_offset_minutes);
+    if policy::age_in_years(r.date_of_birth, today) < rules.min_age_years {
+        return Err(AppError::new(
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "UNDER_AGE",
+            "Minimum age not reached",
+        )
+        .with("minAgeYears", rules.min_age_years));
+    }
+    let places = sqlx::query_scalar!(
+        r#"SELECT COUNT(*) AS "n!: i64"
+           FROM cities c
+           JOIN governorates g ON g.id = c.governorate_id
+           JOIN countries k ON k.code = g.country_code
+           WHERE c.id = ? AND g.id = ? AND g.country_code = ? AND k.enabled"#,
+        r.city_id,
+        r.governorate_id,
+        r.country_code
+    )
+    .fetch_one(&state.db)
+    .await?;
+    if places != 1 {
+        return Err(AppError::field("cityId", "NOT_IN_GOVERNORATE"));
+    }
+
+    let password_hash = state.passwords.hash(r.password).await?;
+    let id = Uuid::now_v7();
+    let mut tx = state.db.begin().await?;
+    let inserted = sqlx::query!(
+        "INSERT INTO users (id, email, username, password_hash, date_of_birth, phone_e164) VALUES (?, ?, ?, ?, ?, ?)",
+        id,
+        r.email,
+        r.username,
+        password_hash,
+        r.date_of_birth,
+        r.phone
+    )
+    .execute(&mut *tx)
+    .await;
+    if let Err(e) = inserted {
+        // Which one is taken is what the database says: its idea of "the same email" is the one
+        // that counts, and two registrations at the same instant are settled by its index.
+        let taken = db::duplicate_key(&e).map(str::to_owned);
+        return Err(match taken.as_deref() {
+            Some("uq_users_email") => AppError::conflict("EMAIL_TAKEN"),
+            Some("uq_users_username") => AppError::conflict("USERNAME_TAKEN"),
+            Some("uq_users_phone") => AppError::conflict("PHONE_TAKEN"),
+            _ => e.into(),
+        });
+    }
+    sqlx::query!(
+        "INSERT INTO profiles (user_id, full_name, gender, country_code, governorate_id, city_id) VALUES (?, ?, ?, ?, ?, ?)",
+        id,
+        r.full_name,
+        r.gender.map(Gender::as_str),
+        r.country_code,
+        r.governorate_id,
+        r.city_id
+    )
+    .execute(&mut *tx)
+    .await?;
+    sqlx::query!(
+        "INSERT INTO user_settings (user_id, locale) VALUES (?, ?)",
+        id,
+        r.locale.as_str()
+    )
+    .execute(&mut *tx)
+    .await?;
+    sqlx::query!("INSERT INTO user_stats (user_id) VALUES (?)", id)
+        .execute(&mut *tx)
+        .await?;
+    sqlx::query!("INSERT INTO user_streaks (user_id) VALUES (?)", id)
+        .execute(&mut *tx)
+        .await?;
+    for (kind, granted) in [
+        ("TERMS", true),
+        ("PRIVACY", true),
+        ("HEALTH_DATA", r.health_data),
+        ("MARKETING", r.marketing),
+    ] {
+        sqlx::query!(
+            "INSERT INTO consents (id, user_id, type, document_version, granted) VALUES (?, ?, ?, ?, ?)",
+            Uuid::now_v7(),
+            id,
+            kind,
+            r.document_version,
+            granted
+        )
+        .execute(&mut *tx)
+        .await?;
+    }
+    let event = audit::Event {
+        actor: Some((id, Role::User)),
+        action: "USER_REGISTERED",
+        user_id: id,
+        after: Some(json!({"via": "PASSWORD"})),
+    };
+    audit::record(&mut *tx, event).await?;
+    let holder = Holder {
+        id,
+        role: Role::User,
+        session_version: 1,
+    };
+    let session = sessions::issue(
+        state,
+        &mut tx,
+        holder,
+        Uuid::now_v7(),
+        Uuid::now_v7(),
+        Audience::App,
+    )
+    .await?;
+    tx.commit().await?;
+
+    // The mail is the worker's business. A queue that is down must not undo a registration: the
+    // person can ask for another link once signed in.
+    if jobs::enqueue(state, JobKind::EmailVerify, id)
+        .await
+        .is_err()
+    {
+        tracing::warn!(user_id = %id, "the verification email could not be queued");
+    }
+    Ok(session)
 }
 
 #[cfg(test)]

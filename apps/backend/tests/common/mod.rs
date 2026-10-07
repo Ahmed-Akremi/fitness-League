@@ -16,7 +16,7 @@ use axum::{
 };
 use backend::{config::Config, state::AppState};
 use http_body_util::BodyExt;
-use serde_json::Value;
+use serde_json::{Value, json};
 use sqlx::{
     AssertSqlSafe, MySqlPool,
     mysql::{MySqlConnectOptions, MySqlPoolOptions},
@@ -332,4 +332,69 @@ pub async fn open_session(
         .await
         .expect("a session");
     serde_json::to_value(session).unwrap()
+}
+
+/// `host:port` of a `scheme://[credentials@]host:port[/path]` URL.
+pub fn host_port(url: &str) -> &str {
+    let rest = url.split_once("://").map_or(url, |(_, rest)| rest);
+    let rest = rest.rsplit_once('@').map_or(rest, |(_, rest)| rest);
+    rest.split('/').next().unwrap_or(rest)
+}
+
+/// A seeded app whose Redis goes through a relay. Abort the returned task and await it: Redis is gone.
+pub async fn seeded_with_cuttable_redis(
+    opts: MySqlPoolOptions,
+    conn: MySqlConnectOptions,
+    tweak: impl FnOnce(&mut HashMap<String, String>),
+) -> (TestApp, tokio::task::JoinHandle<()>) {
+    let real = std::env::var("TEST_REDIS_URL").expect("TEST_REDIS_URL");
+    let target = host_port(&real).to_owned();
+    let (address, relay) = relay("127.0.0.1:0", target.clone()).await;
+    let app = seeded_with(opts, conn, |vars| {
+        vars.insert(
+            "REDIS_URL".into(),
+            real.replacen(&target, &address.to_string(), 1),
+        );
+        tweak(vars);
+    })
+    .await;
+    (app, relay)
+}
+
+/// A JSON POST that comes from `ip`.
+pub async fn post_from(app: &TestApp, ip: [u8; 4], path: &str, body: Value) -> Reply {
+    app.send(
+        request(Method::POST, path)
+            .extension(from_ip(ip))
+            .header("content-type", "application/json")
+            .body(Body::from(body.to_string()))
+            .unwrap(),
+    )
+    .await
+}
+
+/// A registration body that passes every rule. A test changes the field it is about.
+pub async fn registration(app: &TestApp, name: &str) -> Value {
+    let (governorate, city) = a_place(app).await;
+    json!({
+        "username": name,
+        "fullName": format!("Athlete {name}"),
+        "email": format!("{name}@example.com"),
+        "password": PASSWORD,
+        "dateOfBirth": "1995-05-05",
+        "countryCode": "TN",
+        "governorateId": governorate.to_string(),
+        "cityId": city.to_string(),
+        "locale": "fr",
+        "consents": {"terms": true, "privacy": true, "healthData": false, "documentVersion": "2026-09"}
+    })
+}
+
+/// Registers `name` through the API and returns the session.
+pub async fn register(app: &TestApp, name: &str) -> Value {
+    let reply = app
+        .post("/api/v1/auth/register", registration(app, name).await)
+        .await;
+    assert_eq!(reply.status, StatusCode::CREATED, "{}", reply.json);
+    reply.json
 }

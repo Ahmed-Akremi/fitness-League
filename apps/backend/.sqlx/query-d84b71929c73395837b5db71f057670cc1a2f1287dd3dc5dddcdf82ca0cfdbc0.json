@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "INSERT INTO profiles (user_id, full_name, gender, country_code, governorate_id, city_id) VALUES (?, ?, ?, ?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 6
+    },
+    "nullable": []
+  },
+  "hash": "d84b71929c73395837b5db71f057670cc1a2f1287dd3dc5dddcdf82ca0cfdbc0"
+}

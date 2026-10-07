@@ -51,6 +51,42 @@ impl Role {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum Gender {
+    Male,
+    Female,
+    Undisclosed,
+}
+
+impl Gender {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Gender::Male => "MALE",
+            Gender::Female => "FEMALE",
+            Gender::Undisclosed => "UNDISCLOSED",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Locale {
+    Fr,
+    En,
+    Ar,
+}
+
+impl Locale {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Locale::Fr => "fr",
+            Locale::En => "en",
+            Locale::Ar => "ar",
+        }
+    }
+}
+
 /// Timestamps leave the API as UTC with milliseconds, like `2026-10-06T09:30:00.000Z`.
 pub fn iso(at: NaiveDateTime) -> String {
     at.and_utc().to_rfc3339_opts(SecondsFormat::Millis, true)

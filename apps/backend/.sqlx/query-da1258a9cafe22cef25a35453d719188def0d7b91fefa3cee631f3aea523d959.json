@@ -1,0 +1,26 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT COUNT(*) AS \"n!: i64\"\n           FROM cities c\n           JOIN governorates g ON g.id = c.governorate_id\n           JOIN countries k ON k.code = g.country_code\n           WHERE c.id = ? AND g.id = ? AND g.country_code = ? AND k.enabled",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "n!: i64",
+        "type_info": {
+          "type": "LongLong",
+          "flags": "NOT_NULL | BINARY",
+          "collation": 63,
+          "max_size": 21
+        },
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "da1258a9cafe22cef25a35453d719188def0d7b91fefa3cee631f3aea523d959"
+}

@@ -7,7 +7,7 @@ use axum::{
     body::Body,
     http::{Method, StatusCode},
 };
-use common::{TestApp, request};
+use common::{TestApp, host_port, request};
 use sqlx::mysql::{MySqlConnectOptions, MySqlPoolOptions};
 
 const SECURITY_HEADERS: [(&str, &str); 6] = [
@@ -73,13 +73,6 @@ async fn ready_reports_the_database_and_redis(opts: MySqlPoolOptions, conn: MySq
 
 /// Far more than the deadlines add up to, far less than a request that waits for the outage to end.
 const PROMPT: Duration = Duration::from_secs(4);
-
-/// `host:port` of a `scheme://[credentials@]host:port[/path]` URL.
-fn host_port(url: &str) -> &str {
-    let rest = url.split_once("://").map_or(url, |(_, rest)| rest);
-    let rest = rest.rsplit_once('@').map_or(rest, |(_, rest)| rest);
-    rest.split('/').next().unwrap_or(rest)
-}
 
 #[sqlx::test]
 async fn a_redis_outage_does_not_stall_requests(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
