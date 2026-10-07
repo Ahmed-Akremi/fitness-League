@@ -2,7 +2,7 @@ use std::process::ExitCode;
 
 use secrecy::ExposeSecret;
 
-const USAGE: &str = "usage: backend <serve|migrate|seed [dir]|keys>";
+const USAGE: &str = "usage: backend <serve|worker|migrate|seed [dir]|keys>";
 
 #[tokio::main]
 async fn main() -> ExitCode {
@@ -15,6 +15,7 @@ async fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let result = match args.first().map(String::as_str) {
         Some("serve") => serve().await,
+        Some("worker") => worker().await,
         Some("migrate") => migrate().await,
         Some("seed") => seed(args.get(1)).await,
         Some("keys") => keys(),
@@ -69,9 +70,7 @@ async fn serve() -> Result<(), String> {
         listener,
         backend::http::app(state).into_make_service_with_connect_info::<std::net::SocketAddr>(),
     )
-    .with_graceful_shutdown(async {
-        let _ = tokio::signal::ctrl_c().await;
-    })
+    .with_graceful_shutdown(shutdown())
     .await
     .map_err(|e| e.to_string())
 }
@@ -96,4 +95,53 @@ async fn seed(dir: Option<&String>) -> Result<(), String> {
     let summary = backend::seed::run(&pool, std::path::Path::new(dir)).await?;
     println!("seeded: {summary:?}");
     Ok(())
+}
+
+/// Ctrl-C, or the TERM signal that `docker stop` and process managers send.
+async fn shutdown() {
+    use tokio::signal::unix::{SignalKind, signal};
+    match signal(SignalKind::terminate()) {
+        Ok(mut term) => {
+            tokio::select! {
+                _ = tokio::signal::ctrl_c() => {}
+                _ = term.recv() => {}
+            }
+        }
+        Err(_) => {
+            let _ = tokio::signal::ctrl_c().await;
+        }
+    }
+}
+
+fn now_ms() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or_default()
+}
+
+/// Runs the background jobs. Any number of workers may run: each job goes to one of them.
+async fn worker() -> Result<(), String> {
+    let cfg = backend::config::Config::from_env()?;
+    init_logging(&cfg.log_level);
+    let state = backend::state::AppState::connect(cfg).await?;
+    let mailer = backend::mail::Mailer::from_config(&state.cfg)?;
+    let consumer = format!("worker-{}", uuid::Uuid::now_v7().simple());
+    let jobs = backend::jobs::Worker::new(state.clone(), &consumer);
+    tracing::info!(consumer, "worker started");
+    let mut stop = std::pin::pin!(shutdown());
+    loop {
+        let tick = jobs.tick(now_ms(), true, async |job| {
+            backend::modules::auth::emails::handle(&state, &mailer, job).await
+        });
+        tokio::select! {
+            () = &mut stop => return Ok(()),
+            outcome = tick => {
+                if let Err(cause) = outcome {
+                    tracing::error!(cause = %cause, "the worker cannot use its queue");
+                    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+                }
+            }
+        }
+    }
 }

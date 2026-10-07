@@ -284,3 +284,34 @@ pub fn assert_same_shape(path: &str, expected: &Value, actual: &Value) {
         ),
     }
 }
+
+/// Runs the worker until its queue is empty and returns the mails it sent.
+pub async fn deliver_mail(app: &TestApp) -> Vec<backend::mail::Sent> {
+    let mailer = backend::mail::Mailer::memory();
+    let worker = backend::jobs::Worker::new(app.state.clone(), "test");
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_millis() as u64;
+    while worker
+        .tick(now, false, async |job| {
+            backend::modules::auth::emails::handle(&app.state, &mailer, job).await
+        })
+        .await
+        .expect("the queue answers")
+        > 0
+    {}
+    mailer.sent()
+}
+
+/// The token carried by the link of a mail.
+pub fn token_in(mail: &backend::mail::Sent) -> String {
+    mail.text
+        .split("token=")
+        .nth(1)
+        .expect("a link with a token")
+        .split_whitespace()
+        .next()
+        .unwrap()
+        .to_owned()
+}

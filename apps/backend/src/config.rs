@@ -83,6 +83,13 @@ impl Config {
         if !self.redis_url.expose_secret().starts_with("rediss://") {
             names.push("Redis");
         }
+        let smtp_in_clear = self.smtp_url.as_ref().is_some_and(|url| {
+            let url = url.expose_secret();
+            url.starts_with("smtp://") && !url.contains("tls=required")
+        });
+        if smtp_in_clear {
+            names.push("SMTP");
+        }
         names
     }
 
@@ -496,5 +503,17 @@ mod tests {
                 .plaintext_backends()
                 .is_empty()
         );
+    }
+
+    #[test]
+    fn a_mail_server_reached_without_tls_is_reported() {
+        let names = |url: &str| {
+            Config::from_map(&with(&[("APP_ENV", "production"), ("SMTP_URL", url)]))
+                .unwrap()
+                .plaintext_backends()
+        };
+        assert!(names("smtp://user:pw@mail.example:25").contains(&"SMTP"));
+        assert!(!names("smtp://user:pw@mail.example:587?tls=required").contains(&"SMTP"));
+        assert!(!names("smtps://user:pw@mail.example:465").contains(&"SMTP"));
     }
 }
