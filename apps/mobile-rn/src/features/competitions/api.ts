@@ -3,7 +3,8 @@ import { useQuery } from '@tanstack/react-query';
 import type { ApiClient, Json } from '../../core/api/client';
 import { useApi } from '../../core/services';
 
-export type CompFilter = 'ALL' | 'REGISTRATION_OPEN' | 'UPCOMING' | 'ACTIVE' | 'FINISHED';
+/** CURRENT: published and not over (home carousel). */
+export type CompFilter = 'ALL' | 'CURRENT' | 'REGISTRATION_OPEN' | 'UPCOMING' | 'ACTIVE' | 'FINISHED';
 
 /** Competitions (organizer-made events): discovery, registration, submissions, leaderboard, judging. */
 export const competitionsApi = (api: ApiClient) => ({

@@ -52,3 +52,12 @@ export function isoDate(d: Date): string {
 export function formatDate(d: Date | string, locale: string, opts: Intl.DateTimeFormatOptions = { dateStyle: 'medium' }): string {
   return new Intl.DateTimeFormat(locale, opts).format(typeof d === 'string' ? new Date(d) : d);
 }
+
+/** "2 hours ago", "il y a 2 heures", "قبل ساعتين" — the largest unit that fits, "now" under a minute. */
+export function timeAgo(d: Date | string, locale: string, now: number = Date.now()): string {
+  const seconds = Math.round(((typeof d === 'string' ? new Date(d) : d).getTime() - now) / 1000);
+  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' });
+  const units: [Intl.RelativeTimeFormatUnit, number][] = [['year', 31_536_000], ['month', 2_592_000], ['week', 604_800], ['day', 86_400], ['hour', 3_600], ['minute', 60]];
+  for (const [unit, size] of units) if (Math.abs(seconds) >= size) return rtf.format(Math.round(seconds / size), unit);
+  return rtf.format(0, 'second');
+}

@@ -541,5 +541,14 @@
   "compVideoRequired": "أضف رابط يوتيوب لفيديو أدائك لإرسال نتيجتك.",
   "compPointsPerRep": "{points} نقطة/تكرار",
   "compComputedScore": "النتيجة المحسوبة",
-  "compComputedHint": "التكرارات × نقاط كل تكرار، يحسبها التطبيق."
+  "compComputedHint": "التكرارات × نقاط كل تكرار، يحسبها التطبيق.",
+  "newsTitle": "الأخبار",
+  "newsMore": "عرض المزيد",
+  "newsReadMore": "اقرأ المزيد",
+  "newsLike": "إعجاب",
+  "newsLiked": "أعجبني",
+  "notifAnnouncement": "خبر جديد: {excerpt}",
+  "notifAnnouncementPhoto": "صورة جديدة من الدوري",
+  "homeCompetitionsTitle": "المسابقات",
+  "homeSeeAll": "عرض الكل"
 }

@@ -190,6 +190,7 @@ enum MediaPurpose {
   GYM_LOGO
   COMPETITION_VIDEO
   COMPETITION_COVER
+  ANNOUNCEMENT_IMAGE
 }
 
 enum BaselineStatus {
@@ -531,6 +532,8 @@ model User {
   leaguesOwned           League[]                  @relation("LeagueOwner")
   leagueMemberships      LeagueMember[]
   activityReactions      ActivityReaction[]
+  announcements          Announcement[]            @relation("AnnouncementAuthor")
+  announcementLikes      AnnouncementLike[]
   activityComments       ActivityComment[]
   mutesMade              Mute[]                    @relation("Muter")
   mutedBy                Mute[]                    @relation("Muted")
@@ -946,6 +949,7 @@ model Media {
   owner             User          @relation(fields: [ownerId], references: [id])
   gymLogos          Gym[]         @relation("GymLogo")
   competitionCovers Competition[] @relation("CompetitionCover")
+  announcement      Announcement? @relation("AnnouncementImage")
   proofs            ProofMedia[]
 
   @@index([ownerId])
@@ -2480,4 +2484,33 @@ model CompetitionHeatLane {
   @@unique([heatId, registrationId])
   @@index([registrationId])
   @@map("competition_heat_lanes")
+}
+
+/// News published by platform admins on the app home screen: text and/or one photo, likes only (no comments).
+model Announcement {
+  id           String             @id @db.Uuid
+  authorId     String             @map("author_id") @db.Uuid
+  /// Up to 2000 characters; null for a photo-only post.
+  body         String?
+  imageMediaId String?            @unique @map("image_media_id") @db.Uuid
+  createdAt    DateTime           @default(now()) @map("created_at") @db.Timestamptz
+  deletedAt    DateTime?          @map("deleted_at") @db.Timestamptz
+  author       User               @relation("AnnouncementAuthor", fields: [authorId], references: [id])
+  image        Media?             @relation("AnnouncementImage", fields: [imageMediaId], references: [id])
+  likes        AnnouncementLike[]
+
+  @@index([createdAt(sort: Desc)])
+  @@map("announcements")
+}
+
+/// One like per athlete per announcement.
+model AnnouncementLike {
+  announcementId String       @map("announcement_id") @db.Uuid
+  userId         String       @map("user_id") @db.Uuid
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([announcementId, userId])
+  @@map("announcement_likes")
 }

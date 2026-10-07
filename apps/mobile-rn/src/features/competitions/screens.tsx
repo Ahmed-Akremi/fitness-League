@@ -92,7 +92,7 @@ function Meta({ icon, text }: { icon: IconName; text: string }) {
   );
 }
 
-function statusLabelForCompetition(t: T, s: string) {
+export function statusLabelForCompetition(t: T, s: string) {
   if (s === 'REGISTRATION_OPEN') return t('compFilterOpen');
   if (s === 'FINAL_LEADERBOARD' || s === 'FINISHED') return t('compFilterFinished');
   if (s === 'DRAFT' || s === 'REGISTRATION_CLOSED') return t('compFilterUpcoming');
@@ -104,7 +104,7 @@ function statusLabelForCompetition(t: T, s: string) {
 type Tab = 'info' | 'wods' | 'leaderboard';
 
 /** Shown when the organizer has not uploaded a banner for this competition. */
-const DEFAULT_COVER = require('../../../assets/competition-cover.jpg');
+export const DEFAULT_COVER = require('../../../assets/competition-cover.jpg');
 const LOGO = require('../../../assets/icon.png');
 
 export function CompetitionScreen({ id }: { id: string }) {
