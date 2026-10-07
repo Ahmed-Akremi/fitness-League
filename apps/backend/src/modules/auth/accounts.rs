@@ -1,7 +1,7 @@
 //! Accounts: who may sign in, and what the answer is when they may not.
 
 use axum::http::StatusCode;
-use chrono::{NaiveDate, NaiveDateTime, Utc};
+use chrono::{Duration, NaiveDate, NaiveDateTime, Utc};
 use serde_json::json;
 use uuid::Uuid;
 
@@ -188,6 +188,94 @@ pub async fn register(state: &AppState, r: Registration) -> Result<Session, AppE
         tracing::warn!(user_id = %id, "the verification email could not be queued");
     }
     Ok(session)
+}
+
+/// Checks an email and a password, with the lockout. Shared by the app and the admin panel.
+/// `email` is already normalised. What the account is (banned, suspended) is only told to someone
+/// who gave the right password.
+pub async fn check_credentials(
+    state: &AppState,
+    email: &str,
+    password: String,
+) -> Result<Holder, AppError> {
+    let wrong = || AppError::unauthenticated("INVALID_CREDENTIALS", "Invalid email or password");
+    let user = sqlx::query!(
+        r#"SELECT id AS "id: Uuid", password_hash, role AS "role: Role", status, session_version,
+                  locked_until, suspended_until
+           FROM users WHERE email = ?"#,
+        email
+    )
+    .fetch_optional(&state.db)
+    .await?;
+    let Some(user) = user.filter(|user| user.status != "DELETED") else {
+        // The same work as for a real account: the time taken must not tell which emails exist.
+        state.passwords.verify(None, password).await;
+        return Err(wrong());
+    };
+    let now = Utc::now().naive_utc();
+    if let Some(until) = user.locked_until.filter(|until| *until > now) {
+        let seconds = u64::try_from((until - now).num_seconds()).unwrap_or(0) + 1;
+        return Err(AppError::new(
+            StatusCode::LOCKED,
+            "ACCOUNT_LOCKED",
+            "Account temporarily locked",
+        )
+        .with("lockedUntil", iso(until))
+        .retry_after(seconds));
+    }
+    if !state.passwords.verify(user.password_hash, password).await {
+        record_failure(state, user.id).await?;
+        return Err(wrong());
+    }
+    refuse_if_barred(&user.status, user.suspended_until, now)?;
+    Ok(Holder {
+        id: user.id,
+        role: user.role,
+        session_version: user.session_version,
+    })
+}
+
+/// Counts a wrong password. Every fifth in a row locks the account, for longer each time.
+async fn record_failure(state: &AppState, user: Uuid) -> Result<(), AppError> {
+    let mut tx = state.db.begin().await?;
+    // The update holds the row until the commit: two failures at the same instant count as two.
+    sqlx::query!(
+        "UPDATE users SET failed_login_count = failed_login_count + 1 WHERE id = ?",
+        user
+    )
+    .execute(&mut *tx)
+    .await?;
+    let failures = sqlx::query_scalar!("SELECT failed_login_count FROM users WHERE id = ?", user)
+        .fetch_one(&mut *tx)
+        .await?;
+    let lock = policy::lock_minutes(u32::try_from(failures).unwrap_or(u32::MAX));
+    if let Some(minutes) = lock {
+        let until = Utc::now().naive_utc() + Duration::minutes(i64::from(minutes));
+        sqlx::query!(
+            "UPDATE users SET locked_until = ? WHERE id = ?",
+            until,
+            user
+        )
+        .execute(&mut *tx)
+        .await?;
+        let event = audit::Event {
+            actor: None,
+            action: "ACCOUNT_LOCKED",
+            user_id: user,
+            after: Some(json!({"minutes": minutes, "failedLoginCount": failures})),
+        };
+        audit::record(&mut *tx, event).await?;
+    }
+    tx.commit().await?;
+    // The owner is told by mail. If the queue is down the lock still holds.
+    if lock.is_some()
+        && jobs::enqueue(state, JobKind::AccountLocked, user)
+            .await
+            .is_err()
+    {
+        tracing::warn!(user_id = %user, "the lock notice could not be queued");
+    }
+    Ok(())
 }
 
 #[cfg(test)]

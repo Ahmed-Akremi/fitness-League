@@ -9,7 +9,10 @@ use chrono::{Datelike, NaiveDate};
 use serde::Deserialize;
 use uuid::Uuid;
 
-use self::{accounts::Registration, sessions::Session};
+use self::{
+    accounts::Registration,
+    sessions::{Holder, Session},
+};
 use crate::{
     error::AppError,
     http::{
@@ -25,6 +28,7 @@ use crate::{
 
 pub fn routes(api: Api) -> Api {
     api.post("/api/v1/auth/register", register)
+        .post("/api/v1/auth/login", login)
         .post("/api/v1/auth/refresh", refresh)
         .post("/api/v1/auth/logout", logout)
 }
@@ -187,6 +191,50 @@ async fn register(
     rate_limit::check(&state, &rate_limit::REGISTER_IP, &client.subject()).await?;
     let session = accounts::register(&state, body.into_registration()?).await?;
     Ok((StatusCode::CREATED, Json(session)))
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LoginBody {
+    pub email: String,
+    pub password: String,
+}
+
+impl Validate for LoginBody {
+    fn validate(&self, check: &mut Check) {
+        check.ensure("email", normalise_email(&self.email).is_some(), "ISEMAIL");
+        // No minimum: a short password is simply a wrong one.
+        check.length("password", &self.password, 0, password::MAX_LENGTH);
+    }
+}
+
+/// What the app's sign-in and the panel's share: both limits, then the credentials.
+pub async fn sign_in(
+    state: &AppState,
+    client: &ClientIp,
+    body: LoginBody,
+) -> Result<Holder, AppError> {
+    let email = normalise_email(&body.email).ok_or_else(|| AppError::field("email", "ISEMAIL"))?;
+    rate_limit::check(state, &rate_limit::LOGIN_IP, &client.subject()).await?;
+    rate_limit::check(state, &rate_limit::LOGIN_ACCOUNT, &email).await?;
+    accounts::check_credentials(state, &email, body.password).await
+}
+
+async fn login(
+    State(state): State<AppState>,
+    client: ClientIp,
+    ValidJson(body): ValidJson<LoginBody>,
+) -> Result<Json<Session>, AppError> {
+    let holder = sign_in(&state, &client, body).await?;
+    // Judges only judge, in the admin panel. Said after the password was checked, like every other
+    // fact about an account.
+    if holder.role.is_judge() {
+        return Err(
+            AppError::new(StatusCode::FORBIDDEN, "JUDGE_ACCOUNT", "Forbidden")
+                .detail("Judge accounts sign in to the admin panel."),
+        );
+    }
+    Ok(Json(sessions::start(&state, holder, Audience::App).await?))
 }
 
 #[cfg(test)]

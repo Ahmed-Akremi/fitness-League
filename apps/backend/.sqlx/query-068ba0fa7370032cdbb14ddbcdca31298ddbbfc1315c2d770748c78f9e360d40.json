@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "UPDATE users SET locked_until = ? WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "068ba0fa7370032cdbb14ddbcdca31298ddbbfc1315c2d770748c78f9e360d40"
+}

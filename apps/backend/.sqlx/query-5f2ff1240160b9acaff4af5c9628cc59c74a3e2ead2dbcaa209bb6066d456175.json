@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "UPDATE users SET failed_login_count = failed_login_count + 1 WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "5f2ff1240160b9acaff4af5c9628cc59c74a3e2ead2dbcaa209bb6066d456175"
+}
