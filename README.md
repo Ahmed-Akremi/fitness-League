@@ -13,6 +13,7 @@ The name is configurable (`APP_NAME`).
 ```
 apps/api       NestJS API + worker (Prisma, PostgreSQL 16)
 apps/admin     React admin panel (Vite + TypeScript)
+apps/landing   Marketing site (Vite + React, EN/FR/AR), static build
 apps/mobile-rn React Native app (Expo: Android, iOS; web build for previews)
 apps/backend   Rust API on MariaDB + Redis; replaces apps/api part by part (in progress)
 infra/         docker-compose + seed data (Tunisia, sports, exercises, rule set v1)
@@ -104,6 +105,15 @@ public base of stored files (CDN in production).
 With the API running: `cd apps/api && pnpm demo-data` (idempotent). Athletes `ahmed`, `yassine`, `nour`, `sami`,
 `karim` `@demo.fitnessleague.test`, password `demo-password-2026`. `ahmed` owns and coaches the fictional gym
 **Bodynade** (Tunis), with an open WOD and a past one; 8 fictional gyms have generated logos.
+
+## Landing page
+
+```bash
+pnpm --filter @fitness-league/landing dev       # http://localhost:5174
+pnpm --filter @fitness-league/landing build     # static site in apps/landing/dist
+```
+
+Contact address, WhatsApp number and store links: `apps/landing/src/config.ts`. Photo credits: `apps/landing/CREDITS.md`.
 
 ## Mobile app
 
