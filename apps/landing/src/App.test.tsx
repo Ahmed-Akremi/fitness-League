@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { App } from './App';
 import { FinalCta } from './components/FinalCta';
@@ -119,4 +119,29 @@ it('shows WhatsApp only once a number is configured', () => {
   expect(screen.queryByRole('link', { name: t.whatsapp.label })).toBeNull();
   rerender(<FinalCta t={t} whatsapp="+216 20 123 456" />);
   expect(screen.getByRole('link', { name: t.whatsapp.label })).toHaveAttribute('href', 'https://wa.me/21620123456?text=Hello%20Fitness%20League!');
+});
+
+it('shows no demo event: the competitions-list screenshot (date, city, fee) is nowhere on the page', () => {
+  const { container } = openIn('en');
+  expect(container.querySelector('[src*="screen-competitions"], [poster*="screen-competitions"]')).toBeNull();
+});
+
+it('replaces a video that fails to load with the text and the download link', () => {
+  const { container } = openIn('en');
+  const c = copies.en.competitions;
+  fireEvent.error(container.querySelector('video source')!);
+  expect(container.querySelector('video')).toBeNull();
+  expect(screen.getByText(c.videoFallback, { exact: false })).toBeVisible();
+  expect(screen.getByRole('link', { name: c.videoDownload })).toHaveAttribute('href', media.tutorial);
+});
+
+it('puts the phone menu next in keyboard order and gives focus back on Escape', async () => {
+  openIn('en');
+  const t = copies.en;
+  const toggle = screen.getByRole('button', { name: t.nav.menu });
+  await userEvent.click(toggle);
+  await userEvent.tab();
+  expect(document.activeElement).toHaveAccessibleName(t.nav.athletes);
+  await userEvent.keyboard('{Escape}');
+  expect(toggle).toHaveFocus();
 });

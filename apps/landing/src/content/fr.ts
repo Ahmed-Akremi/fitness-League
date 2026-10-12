@@ -106,7 +106,7 @@ export const fr: Copy = {
       { title: 'Visibilité', text: "Ta compétition apparaît sur l'accueil de chaque athlète." },
     ],
     photoAlt: "Athlète qui consulte le tableau des scores lors d'une compétition d'haltérophilie",
-    screenAlts: ["Liste des compétitions dans l'application avec date, ville, tarif et nombre d'athlètes"],
+    screenAlts: [],
     cta: 'Organiser mon événement',
   },
   faq: {

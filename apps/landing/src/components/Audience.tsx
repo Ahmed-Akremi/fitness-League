@@ -29,13 +29,15 @@ export function Audience({ id, copy, subject, photo, screens, reverse = false }:
         </div>
         <Reveal className="audience-media">
           <img className="audience-photo" src={photo} alt={copy.photoAlt} loading="lazy" width={1200} height={900} />
-          <div className="audience-phones">
-            {screens.map((src, i) => (
-              <PhoneFrame key={src}>
-                <img src={src} alt={copy.screenAlts[i]} loading="lazy" width={390} height={844} />
-              </PhoneFrame>
-            ))}
-          </div>
+          {screens.length > 0 && (
+            <div className="audience-phones">
+              {screens.map((src, i) => (
+                <PhoneFrame key={src}>
+                  <img src={src} alt={copy.screenAlts[i]} loading="lazy" width={390} height={844} />
+                </PhoneFrame>
+              ))}
+            </div>
+          )}
         </Reveal>
       </div>
     </section>

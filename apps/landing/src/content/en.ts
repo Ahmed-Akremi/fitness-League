@@ -104,7 +104,7 @@ export const en = {
       { title: 'Visibility', text: "Your competition shows up on every athlete's home screen." },
     ],
     photoAlt: 'Athlete checking the scoreboard at a weightlifting competition',
-    screenAlts: ['List of competitions in the app with date, city, fee and number of athletes'],
+    screenAlts: [],
     cta: 'Host my event',
   },
   faq: {

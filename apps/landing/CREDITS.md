@@ -10,7 +10,8 @@ Photos from [Unsplash](https://unsplash.com), free to use under the [Unsplash Li
 | `public/media/organizers.webp` | Putri Ardhia | https://unsplash.com/photos/woman-checks-scores-at-a-weightlifting-competition-81FJsFw2ocM |
 
 Fitness League's own media:
-- `screen-*.webp`: screenshots of the app (offline demo, 2026-10-06).
+- `screen-*.webp`: screenshots of the app (offline demo, 2026-10-06). The competitions list is left out on purpose: it shows a demo event with a date and a fee.
+- `video-poster.webp`: poster of the tutorial video, drawn from the logo (no text, so it suits every language).
 - `logo.svg`, `../favicon.svg`: the app logo (lime rounded square, black lightning bolt), redrawn as a vector on 2026-10-12 from the owner's image; `logo.png` (192 px, Apple touch icon) and `../favicon.png` (64 px) are rendered from it.
 - `tutorial.mp4`: the 73 s competition tutorial. **It shows the Alamy watermarks of the app's default competition banner: replace it before the page goes public** (re-render after replacing `apps/mobile-rn/assets/competition-cover.jpg`).
 

@@ -25,7 +25,7 @@ export function App() {
         <Audience id="athletes" copy={t.athletes} subject={t.mail.athlete} photo={media.athletes} screens={[media.screens.league, media.screens.train]} />
         <Competitions t={t} />
         <Audience id="gyms" copy={t.gyms} subject={t.mail.gym} photo={media.gyms} screens={[media.screens.gym]} reverse />
-        <Audience id="organizers" copy={t.organizers} subject={t.mail.organizer} photo={media.organizers} screens={[media.screens.competitions]} />
+        <Audience id="organizers" copy={t.organizers} subject={t.mail.organizer} photo={media.organizers} screens={[]} />
         <Faq t={t} />
         <FinalCta t={t} />
       </main>

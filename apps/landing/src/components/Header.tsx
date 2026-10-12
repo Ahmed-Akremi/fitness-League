@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Copy, Lang } from '../content';
 import { mailto } from '../links';
 import { media } from '../media';
@@ -6,11 +6,14 @@ import { LangSwitch } from './LangSwitch';
 
 export function Header({ t, lang, onLang }: { t: Copy; lang: Lang; onLang: (lang: Lang) => void }) {
   const [open, setOpen] = useState(false);
+  const toggle = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!open) return;
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false);
+      if (event.key !== 'Escape') return;
+      setOpen(false);
+      toggle.current?.focus();
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
@@ -31,6 +34,10 @@ export function Header({ t, lang, onLang }: { t: Copy; lang: Lang; onLang: (lang
           <img src={media.logo} alt="" width={32} height={32} />
           <span>Fitness League</span>
         </a>
+        {/* Before the menu in the page, so Tab goes from the button into the open menu. Hidden on desktop. */}
+        <button ref={toggle} type="button" className="menu-toggle" aria-expanded={open} aria-controls="site-menu" aria-label={open ? t.nav.closeMenu : t.nav.menu} onClick={() => setOpen((o) => !o)}>
+          <span className="menu-icon" aria-hidden="true" />
+        </button>
         <nav id="site-menu" className={`site-nav ${open ? 'is-open' : ''}`.trim()} aria-label={t.nav.main}>
           <ul>
             {links.map(([href, label]) => (
@@ -46,9 +53,6 @@ export function Header({ t, lang, onLang }: { t: Copy; lang: Lang; onLang: (lang
         <a className="btn btn-primary btn-small header-contact" href={mailto(t.mail.contact)}>
           {t.nav.contact}
         </a>
-        <button type="button" className="menu-toggle" aria-expanded={open} aria-controls="site-menu" aria-label={open ? t.nav.closeMenu : t.nav.menu} onClick={() => setOpen((o) => !o)}>
-          <span className="menu-icon" aria-hidden="true" />
-        </button>
       </div>
     </header>
   );

@@ -139,6 +139,12 @@ html[lang='ar'] .eyebrow {
   letter-spacing: 0;
 }
 
+/* Arabic letters join: letter spacing pulls them apart. */
+html[lang='ar'] .store-note,
+html[lang='ar'] .footer-title {
+  letter-spacing: 0;
+}
+
 .lead {
   max-width: 60ch;
   color: var(--soft);
@@ -546,6 +552,21 @@ html[lang='ar'] .hero-slogan {
 
 .phone-video .phone-screen {
   aspect-ratio: 9 / 16;
+}
+
+.video-fallback {
+  display: grid;
+  place-content: center;
+  height: 100%;
+  margin: 0;
+  padding: 24px;
+  color: var(--soft);
+  text-align: center;
+}
+
+.video-fallback a {
+  color: var(--accent);
+  font-weight: 700;
 }
 
 /* Sections */
