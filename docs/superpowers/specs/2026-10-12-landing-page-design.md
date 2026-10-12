@@ -32,7 +32,7 @@ Date: 2026-10-12 · Status: approved in chat (approach C) · Branch: `feat/landi
 
 | # | Section | Content |
 |---|---|---|
-| 1 | Header | App logo, links Athletes · Gyms · Organizers · Competitions · FAQ, EN/FR/AR switch, "Contact" button. Sticky; a menu button on phones. |
+| 1 | Header | App logo, links in page order Athletes · Competitions · Gyms · Organizers · FAQ, EN/FR/AR switch, "Contact" button. Sticky; a menu button on phones. |
 | 2 | Hero | Full-width licensed workout photo under a dark gradient; headline "Climb the League."; slogan "Compete with yourself. Challenge your friends. Represent your gym. Climb the League."; three buttons *I'm an athlete* / *I run a gym* / *I organize events*; Home screen in a phone frame; App Store / Google Play badges "Coming soon". |
 | 3 | How it works | Three steps: log your training → earn LP for progress, consistency and verified effort (not absolute strength) → climb the ranks (country, city, gym, week). |
 | 4 | For athletes | Season LP and tiers, personal records, goals, streaks, friends and battles, feed; real screenshots. Button: join (email). |
@@ -53,7 +53,7 @@ Email subjects (in the page's language): "Athlete – join Fitness League", "Gym
 - `src/content/index.ts` — `Lang = 'en' | 'fr' | 'ar'`, `copies`, `resolveLang()`.
 - `src/config.ts` — `contactEmail`, `whatsapp` (empty string → button hidden), `stores.appStore` / `stores.googlePlay` (empty → "Coming soon" badge).
 - `src/links.ts` — `mailto(subject)` and `whatsappLink(text)` builders.
-- `src/components/` — `Header`, `Hero`, `HowItWorks`, `Athletes`, `Competitions`, `Gyms`, `Organizers`, `Faq`, `Footer`, `PhoneFrame`, `Cta`, `StoreBadges`, `LangSwitch`.
+- `src/components/` — `Header`, `Hero`, `HowItWorks`, `Audience` (one component for the athletes, gyms and organizers sections, fed by the content), `Competitions`, `Faq`, `FinalCta`, `Footer`, `PhoneFrame`, `Cta`, `StoreBadges`, `LangSwitch`, `Reveal`, `SectionHead`.
 - `src/App.tsx`, `src/main.tsx`, `src/styles.css`, `index.html` (default meta in English, Open Graph image).
 
 **Language**
@@ -63,13 +63,13 @@ Email subjects (in the page's language): "Athlete – join Fitness League", "Gym
 
 **Look**
 - The app's colours: dark background, lime accent (taken from `apps/mobile-rn/src/core/theme/index.ts`), white text, hairline borders.
-- Fonts self-hosted in `public/fonts/`: Barlow Condensed (headings, uppercase) and Inter (text) copied from `apps/mobile-rn/assets/fonts/`; Cairo (SIL Open Font License) for Arabic, which the two others lack.
+- Fonts self-hosted through the `@fontsource` packages (WOFF2 bundled by Vite, smaller than the app's TTF files): Barlow Condensed (headings, uppercase), Inter (text) and Cairo (SIL Open Font License) for Arabic, which the two others lack.
 - Entrance fade/slide on scroll (`IntersectionObserver`), disabled under `prefers-reduced-motion`.
 - Mobile first; one column on phones, two columns (text + phone) from 900 px.
 
 **Media (`public/media/`)**
 - Screenshots: from `Desktop/ui-avant-apres/apres/` and `Desktop/accueil-actualites/`, resized and converted to WebP. Only screens that do not show the default competition banner (it carries Alamy watermarks).
-- Stock photos: 3 to 5 CrossFit / functional fitness photos from Unsplash or Pexels, at most 1600 px wide, WebP. `apps/landing/CREDITS.md` lists for each: file, photographer, source URL, licence. The credits are linked from the footer.
+- Stock photos: 4 functional fitness photos from Unsplash (free, none from Unsplash+), at most 1600 px wide, WebP; photos showing CrossFit, HYROX or Myprotein branding were left out (the licence does not cover trademarks). `apps/landing/CREDITS.md` lists for each: file, photographer, source URL, licence. The credits are linked from the footer.
 - Video: the tutorial video copied as is, `preload="none"`, a screenshot as poster, native controls, plays inside a phone frame; nothing is downloaded until play.
 - Logo: `apps/mobile-rn/assets/icon.png` (resized) and the favicon.
 - Media conversion is a one-time step with `sharp` (already a dependency of `apps/api`); only the outputs are committed.
