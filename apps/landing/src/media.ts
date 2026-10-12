@@ -6,7 +6,10 @@ export const media = {
   athletes: '/media/athletes.webp',
   gyms: '/media/gyms.webp',
   organizers: '/media/organizers.webp',
-  logo: '/media/logo.png',
+  logo: '/media/logo.svg',
+  /** Apple touch icon, used by index.html. */
+  logoPng: '/media/logo.png',
+  faviconSvg: '/favicon.svg',
   favicon: '/favicon.png',
   tutorial: '/media/tutorial.mp4',
   screens: {

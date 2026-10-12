@@ -11,7 +11,7 @@ Photos from [Unsplash](https://unsplash.com), free to use under the [Unsplash Li
 
 Fitness League's own media:
 - `screen-*.webp`: screenshots of the app (offline demo, 2026-10-06).
-- `logo.png`, `../favicon.png`: the app icon.
+- `logo.svg`, `../favicon.svg`: the app logo (lime rounded square, black lightning bolt), redrawn as a vector on 2026-10-12 from the owner's image; `logo.png` (192 px, Apple touch icon) and `../favicon.png` (64 px) are rendered from it.
 - `tutorial.mp4`: the 73 s competition tutorial. **It shows the Alamy watermarks of the app's default competition banner: replace it before the page goes public** (re-render after replacing `apps/mobile-rn/assets/competition-cover.jpg`).
 
 To change a photo: replace the file (WebP, at most 1600 px wide for the hero and 1200 px for the others), then update this table and `src/credits.ts`.

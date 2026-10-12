@@ -55,7 +55,7 @@
 Landing page (`apps/landing`, branch `feat/landing`, 2026-10-12)
 - `src/content/{en,fr,ar}.ts` — every text of the page; `en.ts` defines `Copy`, the two others must match it (typecheck + `content.test.ts`). `src/content/lang.ts` — language choice (`?lang=` → stored choice → browser → English), `dirOf`.
 - `src/config.ts` — contact email, WhatsApp number (empty = hidden), store links (empty = "Coming soon"). `src/links.ts` — `mailto`, `whatsappLink`.
-- `src/media.ts` + `public/media/` — 4 Unsplash photos (WebP), 5 app screenshots without the Alamy banner, `logo.png`, `og.jpg`, `tutorial.mp4` (7.5 MB, `preload="none"`). `src/credits.ts` + `CREDITS.md` — photo credits (keep both in step).
+- `src/media.ts` + `public/media/` — 4 Unsplash photos (WebP), 5 app screenshots without the Alamy banner, `logo.svg` (the app logo redrawn as a vector on 2026-10-12 from the owner's image: lime rounded square, black lightning bolt; also `favicon.svg`, and PNGs rendered from it; 1024 px copy in `Desktop/landing-page/logo/`), `og.jpg`, `tutorial.mp4` (7.5 MB, `preload="none"`). `src/credits.ts` + `CREDITS.md` — photo credits (keep both in step).
 - `src/components/` — `Header` (phone menu: Escape / link closes it), `Hero`, `HowItWorks`, `Audience` (athletes, gyms, organizers), `Competitions` (video), `Faq`, `FinalCta`, `Footer`, `Cta`, `StoreBadges`, `LangSwitch`, `PhoneFrame`, `Reveal`, `SectionHead`, `icons`. `src/useLang.ts` — sets `<html lang dir>`, title, description, `?lang=`.
 - `src/styles.css` — dark palette and lime accent from the app, logical properties for right to left; fonts from `@fontsource` (Barlow Condensed, Inter, Cairo).
 - CI: job `landing` in `.github/workflows/ci.yml`; README section "Landing page".
