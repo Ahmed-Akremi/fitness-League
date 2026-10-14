@@ -168,7 +168,8 @@ export class CompetitionsService {
   }
 
   async create(user: AuthUser, dto: CompetitionDto) {
-    if (!this.judging.isPlatformAdmin(user) && user.role !== 'GYM_ADMIN') throw AppException.forbidden('Organizers only');
+    // Any app account may draft an event (it stays invisible until an admin publishes it); judge-only accounts never organize.
+    if (JUDGE_ROLES.includes(user.role)) throw AppException.forbidden('Judge accounts cannot create competitions');
     this.checkDates(dto);
     return this.prisma.$transaction(async (tx) => {
       if (await tx.competition.findUnique({ where: { slug: dto.slug } })) throw AppException.validation([{ field: 'slug', code: 'TAKEN' }]);
@@ -199,6 +200,8 @@ export class CompetitionsService {
     return this.prisma.$transaction(async (tx) => {
       const c = await tx.competition.findFirst({ where: { id, deletedAt: null } });
       if (!c) throw AppException.notFound('Competition');
+      // Organizer space: the organizer prepares the draft, a platform admin publishes it.
+      if (c.status === 'DRAFT' && !this.judging.isPlatformAdmin(user)) throw AppException.forbidden('An admin publishes the competition');
       if (!NEXT[c.status].includes(status)) throw AppException.conflict(ErrorCode.PRECONDITION_FAILED, `Cannot move from ${c.status} to ${status}`);
       if (status === 'REGISTRATION_OPEN' && (await tx.competitionCategory.count({ where: { competitionId: id, active: true } })) === 0) {
         throw AppException.conflict(ErrorCode.PRECONDITION_FAILED, 'Add at least one active category first');

@@ -88,3 +88,17 @@ export function lastMailToken(mail: InMemoryMailSender, to: string, tag: string)
   if (!match) throw new Error('No token in mail');
   return match[1]!;
 }
+
+/** Admin-panel header of a fresh ADMIN account: publishing a draft competition is an admin action. */
+export async function adminAuth(app: INestApplication, prisma: PrismaClient) {
+  const u = await registerUser(app, prisma);
+  await prisma.user.update({ where: { id: u.session.userId }, data: { role: 'ADMIN' } });
+  return adminBearer(app, prisma, u.session.userId);
+}
+
+/** App-audience header for a user whose role was changed in the database (e.g. a judge-only account). */
+export async function appBearer(app: INestApplication, prisma: PrismaClient, userId: string) {
+  const u = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
+  const { token } = await app.get(TokenService).signAccess({ sub: u.id, role: u.role, sv: u.sessionVersion }, 'app');
+  return { authorization: `Bearer ${token}` };
+}

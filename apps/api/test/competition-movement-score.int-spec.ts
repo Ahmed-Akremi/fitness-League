@@ -2,7 +2,7 @@ import { INestApplication } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import request from 'supertest';
-import { adminBearer, registerUser, setupTestApp } from './helpers';
+import { adminAuth, adminBearer, registerUser, setupTestApp } from './helpers';
 
 /** MOVEMENT_REPS WODs: the athlete gives the reps of each movement, the app computes the score (never typed). */
 describe('Competition WOD scored from reps per movement (integration)', () => {
@@ -50,7 +50,8 @@ describe('Competition WOD scored from reps per movement (integration)', () => {
       .expect(201);
     expect(w.body.movements).toEqual([{ name: 'Burpees', pointsPerRep: 1 }, { name: 'Wall balls', pointsPerRep: 0.5 }]);
 
-    await api().patch(`${base}/status`).set(bearer(organizer.token)).send({ status: 'REGISTRATION_OPEN' }).expect(200);
+    const asAdmin = await adminAuth(app, prisma);
+    await api().patch(`${base.replace('/competitions/', '/admin/competitions/')}/status`).set(asAdmin).send({ status: 'REGISTRATION_OPEN' }).expect(200);
     for (const a of [ahmed, ali]) await api().post(`${base}/register`).set(bearer(a.token)).send({ categoryId }).expect(201);
     await api().patch(`${base}/status`).set(bearer(organizer.token)).send({ status: 'REGISTRATION_CLOSED' }).expect(200);
     await api().patch(`${base}/status`).set(bearer(organizer.token)).send({ status: 'SUBMISSION_OPEN' }).expect(200);
