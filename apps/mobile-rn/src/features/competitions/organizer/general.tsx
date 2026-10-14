@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Image, useWindowDimensions, View } from 'react-native';
 
 import type { Json } from '../../../core/api/client';
@@ -35,6 +35,8 @@ export function GeneralTab({ c }: { c: Json }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<unknown>(null);
   const [deleting, setDeleting] = useState(false);
+  const [confirming, setConfirming] = useState<string | null>(null);
+  const sending = useRef(false);
 
   const onsite = format !== 'ONLINE';
   const priceMillimes = toMillimes(price);
@@ -55,8 +57,19 @@ export function GeneralTab({ c }: { c: Json }) {
     FINISHED: t('orgToFinished'),
   };
 
+  const askLabels: Record<string, string> = {
+    REGISTRATION_OPEN: t('orgAskRegistrationOpen'),
+    REGISTRATION_CLOSED: t('orgAskRegistrationClosed'),
+    ACTIVE: t('orgAskActive'),
+    SUBMISSION_OPEN: t('orgAskSubmissionOpen'),
+    JUDGING: t('orgAskJudging'),
+    PROVISIONAL_LEADERBOARD: t('orgAskProvisional'),
+    FINISHED: t('orgAskFinished'),
+  };
+
   async function run(key: string, fn: () => Promise<unknown>, done?: string) {
-    if (busy) return;
+    if (sending.current) return;
+    sending.current = true;
     setBusy(key);
     setError(null);
     try {
@@ -66,6 +79,7 @@ export function GeneralTab({ c }: { c: Json }) {
       setError(e);
     } finally {
       await refresh();
+      sending.current = false;
       setBusy(null);
     }
   }
@@ -156,10 +170,23 @@ export function GeneralTab({ c }: { c: Json }) {
         <>
           <Txt variant="small" color={colors.outline}>{t('orgNextStep')}</Txt>
           {(ORGANIZER_NEXT[c.status] ?? []).map((s) => (
-            <Button key={s} testID={`org-next-${s}`} kind="outlined" label={nextLabels[s]} busy={busy === s} onPress={() => run(s, () => organizerApi(api).setStatus(c.id, s))} />
+            <Button key={s} testID={`org-next-${s}`} kind="outlined" label={nextLabels[s]} busy={busy === s} onPress={() => setConfirming(s)} />
           ))}
         </>
       )}
+      <Dialog
+        visible={confirming != null}
+        title={confirming ? nextLabels[confirming] : ''}
+        message={confirming ? askLabels[confirming] : undefined}
+        confirmLabel={t('orgConfirm')}
+        cancelLabel={t('cancel')}
+        onConfirm={() => {
+          const s = confirming!;
+          setConfirming(null);
+          void run(s, () => organizerApi(api).setStatus(c.id, s));
+        }}
+        onCancel={() => setConfirming(null)}
+      />
       <Dialog
         visible={deleting}
         title={t('orgDelete')}

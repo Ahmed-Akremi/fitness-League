@@ -4,7 +4,7 @@ import type { Json } from '../../../core/api/client';
 
 export type ManageTab = 'dashboard' | 'general' | 'categories' | 'wods';
 export type ChecklistItem = 'DESCRIPTION' | 'DATES' | 'COVER' | 'CATEGORY' | 'WOD';
-export type PublicationState = 'DRAFT' | 'REQUESTED' | 'RETURNED' | 'PUBLISHED';
+export type PublicationState = 'DRAFT' | 'REQUESTED' | 'RETURNED' | 'PUBLISHED' | 'CANCELLED';
 export type EventFormat = 'ONSITE' | 'ONLINE' | 'HYBRID';
 
 /** Banner limit of the API (PNG, JPEG or WebP). */
@@ -64,6 +64,7 @@ export function missingForPublication(c: Json): ChecklistItem[] {
 }
 
 export function publicationState(c: Json): PublicationState {
+  if (c.status === 'CANCELLED') return 'CANCELLED';
   if (c.status !== 'DRAFT') return 'PUBLISHED';
   if (c.publicationRequestedAt) return 'REQUESTED';
   if (c.publicationNote) return 'RETURNED';
@@ -202,8 +203,9 @@ export function wodBody(d: WodDraft): Json {
     maximumPoints: num(d.max),
     minimumPoints: d.min.trim() ? num(d.min) : 0,
     ...(d.method === 'PLACEMENT_POINTS' ? { placementTable: placements(d.table) } : {}),
-    ...(d.capMin.trim() ? { timeCapS: Math.round(num(d.capMin) * 60) } : {}),
-    ...(d.videoUrl.trim() ? { videoUrl: d.videoUrl.trim() } : {}),
+    // Empty fields are sent as cleared: the server keeps what a PUT leaves out.
+    timeCapS: d.capMin.trim() ? Math.round(num(d.capMin) * 60) : null,
+    videoUrl: d.videoUrl.trim(),
     movements: d.scoreType === 'MOVEMENT_REPS' ? d.movements.filter((m) => m.name.trim()).map((m) => ({ name: m.name.trim(), pointsPerRep: num(m.points) })) : [],
     submissionStart: d.start.toISOString(),
     submissionDeadline: d.end.toISOString(),

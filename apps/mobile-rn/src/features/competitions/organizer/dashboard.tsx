@@ -7,7 +7,7 @@ import { useApi } from '../../../core/services';
 import { space, useTheme } from '../../../core/theme';
 import { formatDate } from '../../../core/utils/format';
 import { Loading, SectionHeader, StatCard } from '../../../core/widgets/common';
-import { ErrorText } from '../../../core/widgets/error';
+import { ErrorText, ErrorView } from '../../../core/widgets/error';
 import { Button, Card, ListGroup, ListRow, Screen, Txt, toast } from '../../../core/widgets/kit';
 import { formatMoney } from '../api';
 import { statusLabelForCompetition } from '../screens';
@@ -33,6 +33,7 @@ export function DashboardTab({ c, onGo }: { c: Json; onGo: (tab: ManageTab) => v
     REQUESTED: t('orgStateRequested'),
     RETURNED: t('orgStateReturned'),
     PUBLISHED: t('orgStatePublished', { status: statusLabelForCompetition(t, c.status) }),
+    CANCELLED: t('orgStateCancelled'),
   }[state];
 
   async function request() {
@@ -70,7 +71,7 @@ export function DashboardTab({ c, onGo }: { c: Json; onGo: (tab: ManageTab) => v
       </Card>
       {state === 'PUBLISHED' ? (
         <Button testID="org-share" kind="outlined" icon="share" label={t('orgShare')} onPress={share} />
-      ) : (
+      ) : state === 'CANCELLED' ? null : (
         <>
           <SectionHeader title={t('orgChecklist')} />
           <ListGroup>
@@ -94,13 +95,17 @@ export function DashboardTab({ c, onGo }: { c: Json; onGo: (tab: ManageTab) => v
         </>
       )}
       <SectionHeader title={t('orgFigures')} />
-      {d ? (
+      {dash.isError ? (
+        <ErrorView error={dash.error} onRetry={() => dash.refetch()} />
+      ) : d ? (
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.md }}>
           <Figure label={t('orgParticipants')} value={String(d.participants)} />
           <Figure label={t('orgPaid')} value={String(d.paidRegistrations)} />
           <Figure label={t('orgToCollect')} value={String(d.pendingPayments)} />
           <Figure label={t('orgRevenue')} value={formatMoney(d.revenue, c.currency, locale)} />
           <Figure label={t('orgToJudge')} value={String(d.pendingJudging)} />
+          <Figure label={t('orgApproved')} value={String(d.approvedSubmissions)} />
+          <Figure label={t('orgRejected')} value={String(d.rejectedSubmissions)} />
         </View>
       ) : (
         <Loading />

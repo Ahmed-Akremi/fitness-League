@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { View } from 'react-native';
 
 import type { Json } from '../../../core/api/client';
@@ -19,12 +19,14 @@ export function CategoriesTab({ c }: { c: Json }) {
   const refresh = useRefreshCompetition();
   const cats: Json[] = [...(c.categories ?? [])].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
   const [edit, setEdit] = useState<CatDraft | null>(null);
+  const sending = useRef(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const genderLabel: Record<string, string> = { MALE: t('orgGenderMale'), FEMALE: t('orgGenderFemale'), MIXED: t('orgGenderMixed') };
 
   async function run(fn: () => Promise<unknown>, after?: () => void) {
-    if (busy) return;
+    if (sending.current) return;
+    sending.current = true;
     setBusy(true);
     setError(null);
     try {
@@ -34,6 +36,7 @@ export function CategoriesTab({ c }: { c: Json }) {
       setError(e);
     } finally {
       await refresh();
+      sending.current = false;
       setBusy(false);
     }
   }

@@ -22,6 +22,16 @@ describe('create an event', () => {
     expect(await screen.findByText('Create page')).toBeTruthy();
   });
 
+  it('tells an unverified account to verify its email', async () => {
+    const backend = new FakeBackend().on('POST', '/competitions', [403, { code: 'EMAIL_NOT_VERIFIED', status: 403 }]);
+    const screen = await renderScreen(CreateEventScreen, backend, { routes: manageRoute });
+    await fireEvent.changeText(screen.getByTestId('org-title'), 'Sousse Summer Throwdown');
+    await fireEvent.changeText(screen.getByTestId('org-description'), 'Two days on site.');
+    await fireEvent.press(screen.getByTestId('org-format-ONLINE'));
+    await fireEvent.press(screen.getByTestId('org-create'));
+    expect(await screen.findByText('Verify your email to create an event.')).toBeTruthy();
+  });
+
   it('creates a draft with a valid address name and opens its organizer space', async () => {
     const backend = new FakeBackend().on('POST', '/competitions', [201, { id: 'new1', status: 'DRAFT' }]);
     const screen = await renderScreen(CreateEventScreen, backend, { routes: manageRoute });
@@ -96,9 +106,16 @@ const organizerBackend = (c: object) => new FakeBackend().on('GET', '/competitio
 
 describe('organizer space', () => {
   it('is reserved to the organizers', async () => {
-    const screen = await renderScreen(() => <ManageScreen id="c9" />, organizerBackend({ ...draft, myRoles: [] }));
+    const screen = await renderScreen(() => <ManageScreen id="c9" />, organizerBackend({ ...draft, status: 'REGISTRATION_OPEN', myRoles: [] }));
     expect(await screen.findByText('Only the organizers of this event can open this page.')).toBeTruthy();
     expect(screen.queryByTestId('org-request')).toBeNull();
+  });
+
+  it('answers « reserved » when the server hides the draft (404)', async () => {
+    const backend = new FakeBackend().on('GET', '/competitions/c9', [404, { code: 'NOT_FOUND', status: 404 }]);
+    const screen = await renderScreen(() => <ManageScreen id="c9" />, backend);
+    expect(await screen.findByText('Only the organizers of this event can open this page.')).toBeTruthy();
+    expect(backend.calls('GET', '/competitions/c9')).toHaveLength(1);
   });
 
   it('lists what the draft misses and keeps the request button off', async () => {
@@ -133,6 +150,25 @@ describe('organizer space', () => {
     expect(await screen.findByText('Sent back by the team. Fix this, then ask again:')).toBeTruthy();
     expect(screen.getByTestId('org-note').props.children).toBe('The banner is blurred.');
     expect(screen.getByTestId('org-request').props.accessibilityState?.disabled).toBe(false);
+  });
+
+  it('shows the dashboard error with a retry', async () => {
+    let fail = true;
+    const backend = organizerBackend(draft).on('GET', '/competitions/c9/dashboard', () => (fail ? [500, { code: 'INTERNAL', status: 500 }] : [200, figures]));
+    const screen = await renderScreen(() => <ManageScreen id="c9" />, backend);
+    expect(await screen.findByText('Retry')).toBeTruthy();
+    fail = false;
+    await fireEvent.press(screen.getByText('Retry'));
+    expect(await screen.findByText('12')).toBeTruthy();
+    expect(screen.getByText('Validated')).toBeTruthy();
+    expect(screen.getByText('Rejected')).toBeTruthy();
+  });
+
+  it('a cancelled event is neither published nor shared', async () => {
+    const screen = await renderScreen(() => <ManageScreen id="c9" />, organizerBackend({ ...complete, status: 'CANCELLED' }));
+    expect(await screen.findByText('This event was cancelled.')).toBeTruthy();
+    expect(screen.queryByTestId('org-share')).toBeNull();
+    expect(screen.queryByTestId('org-request')).toBeNull();
   });
 
   it('once published: no checklist, a share button', async () => {
@@ -197,11 +233,19 @@ describe('organizer space: general', () => {
     expect(backend.calls('DELETE', '/competitions/c9')).toHaveLength(1);
   });
 
-  it('once published: next steps instead of deletion', async () => {
+  it('once published: next steps instead of deletion, after a confirmation', async () => {
     const backend = organizerBackend({ ...complete, status: 'REGISTRATION_OPEN' }).on('PATCH', '/competitions/c9/status', [200, {}]);
     const screen = await renderScreen(() => <ManageScreen id="c9" initialTab="general" />, backend);
     await fireEvent.press(await screen.findByText('Close registration'));
+    expect(await screen.findByText('Close registration? Nobody will be able to sign up.')).toBeTruthy();
+    expect(backend.calls('PATCH', '/competitions/c9/status')).toHaveLength(0);
+    // A double tap on « Confirm » still sends one request.
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('dialog-confirm'));
+      fireEvent.press(screen.getByTestId('dialog-confirm'));
+    });
     await waitFor(() => expect(backend.calls('PATCH', '/competitions/c9/status')[0]?.body).toEqual({ status: 'REGISTRATION_CLOSED' }));
+    expect(backend.calls('PATCH', '/competitions/c9/status')).toHaveLength(1);
     expect(screen.queryByTestId('org-delete')).toBeNull();
   });
 });
@@ -216,6 +260,17 @@ describe('organizer space: categories', () => {
     const backend = organizerBackend(draft).on('POST', '/competitions/c9/categories/templates', [201, {}]);
     const screen = await renderScreen(() => <ManageScreen id="c9" initialTab="categories" />, backend);
     await fireEvent.press(await screen.findByTestId('cat-templates'));
+    await waitFor(() => expect(backend.calls('POST', '/competitions/c9/categories/templates')).toHaveLength(1));
+  });
+
+  it('adds the standard categories once on a double tap', async () => {
+    const backend = organizerBackend(draft).on('POST', '/competitions/c9/categories/templates', [201, {}]);
+    const screen = await renderScreen(() => <ManageScreen id="c9" initialTab="categories" />, backend);
+    const templates = await screen.findByTestId('cat-templates');
+    await act(async () => {
+      fireEvent.press(templates);
+      fireEvent.press(templates);
+    });
     await waitFor(() => expect(backend.calls('POST', '/competitions/c9/categories/templates')).toHaveLength(1));
   });
 

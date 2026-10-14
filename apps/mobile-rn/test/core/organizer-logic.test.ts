@@ -65,6 +65,7 @@ describe('publication', () => {
     expect(publicationState({ ...ready, publicationRequestedAt: '2026-10-14T10:00:00Z' })).toBe('REQUESTED');
     expect(publicationState({ ...ready, publicationNote: 'Blurred banner' })).toBe('RETURNED');
     expect(publicationState({ ...ready, status: 'REGISTRATION_OPEN' })).toBe('PUBLISHED');
+    expect(publicationState({ ...ready, status: 'CANCELLED' })).toBe('CANCELLED');
   });
 });
 
@@ -120,9 +121,13 @@ describe('WODs', () => {
         { name: 'Burpees', pointsPerRep: 1 },
         { name: 'Wall balls', pointsPerRep: 0.5 },
       ],
+      timeCapS: null,
+      videoUrl: '',
       submissionStart: '2026-10-12T08:00:00.000Z',
       submissionDeadline: '2026-10-13T18:00:00.000Z',
     });
+    // Cleared fields are sent as cleared, filled ones as values.
+    expect(wodBody({ ...ok, capMin: '12', videoUrl: ' https://youtu.be/x ' })).toMatchObject({ timeCapS: 720, videoUrl: 'https://youtu.be/x' });
   });
   it('checks points, placement table, cap and dates', () => {
     const base = { ...wodDraft(null, defaults), description: 'For time', scoreType: 'TIME', movements: [] };

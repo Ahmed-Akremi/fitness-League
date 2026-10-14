@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { View } from 'react-native';
 
 import type { Json } from '../../../core/api/client';
@@ -32,13 +32,15 @@ export function WodsTab({ c }: { c: Json }) {
   const refresh = useRefreshCompetition();
   const workouts: Json[] = [...(c.workouts ?? [])].sort((a, b) => a.number - b.number);
   const [edit, setEdit] = useState<WodDraft | null>(null);
+  const sending = useRef(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const labels = scoreLabels(t);
   const defaults = { number: nextWodNumber(workouts), start: new Date(c.eventStart), end: new Date(c.eventEnd) };
 
   async function run(fn: () => Promise<unknown>, after?: () => void) {
-    if (busy) return;
+    if (sending.current) return;
+    sending.current = true;
     setBusy(true);
     setError(null);
     try {
@@ -48,6 +50,7 @@ export function WodsTab({ c }: { c: Json }) {
       setError(e);
     } finally {
       await refresh();
+      sending.current = false;
       setBusy(false);
     }
   }
