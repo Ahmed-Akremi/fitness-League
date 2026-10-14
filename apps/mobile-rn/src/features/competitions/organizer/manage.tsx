@@ -8,12 +8,13 @@ import { EmptyState, Loading } from '../../../core/widgets/common';
 import { ErrorView } from '../../../core/widgets/error';
 import { Chip } from '../../../core/widgets/kit';
 import { useCompetition } from '../api';
+import { CategoriesTab } from './categories';
 import { DashboardTab } from './dashboard';
 import { GeneralTab } from './general';
 import type { ManageTab } from './logic';
 
 /** Tabs of the organizer space, in display order (lot A; lot B adds planning, participants, team, leaderboard, announcements, promo codes). */
-const TABS: ManageTab[] = ['dashboard', 'general'];
+const TABS: ManageTab[] = ['dashboard', 'general', 'categories'];
 
 export function ManageScreen({ id, initialTab = 'dashboard' }: { id: string; initialTab?: ManageTab }) {
   const t = useT();
@@ -36,6 +37,7 @@ export function ManageScreen({ id, initialTab = 'dashboard' }: { id: string; ini
       </ScrollView>
       {tab === 'dashboard' && <DashboardTab c={c} onGo={setTab} />}
       {tab === 'general' && <GeneralTab c={c} />}
+      {tab === 'categories' && <CategoriesTab c={c} />}
     </View>
   );
 }

@@ -205,3 +205,48 @@ describe('organizer space: general', () => {
     expect(screen.queryByTestId('org-delete')).toBeNull();
   });
 });
+
+describe('organizer space: categories', () => {
+  const two = [
+    { id: 'k1', name: 'RX Men', gender: 'MALE', minAge: 18, maxAge: 35, level: 'RX', maxParticipants: 40, registrationPriceOverride: null, active: true, sortOrder: 0 },
+    { id: 'k2', name: 'RX Women', gender: 'FEMALE', minAge: 18, maxAge: 35, level: 'RX', maxParticipants: 40, registrationPriceOverride: 35000, active: true, sortOrder: 1 },
+  ];
+
+  it('adds the standard categories when there is none', async () => {
+    const backend = organizerBackend(draft).on('POST', '/competitions/c9/categories/templates', [201, {}]);
+    const screen = await renderScreen(() => <ManageScreen id="c9" initialTab="categories" />, backend);
+    await fireEvent.press(await screen.findByTestId('cat-templates'));
+    await waitFor(() => expect(backend.calls('POST', '/competitions/c9/categories/templates')).toHaveLength(1));
+  });
+
+  it('creates a category with its ages and price', async () => {
+    const backend = organizerBackend(draft).on('POST', '/competitions/c9/categories', [201, {}]);
+    const screen = await renderScreen(() => <ManageScreen id="c9" initialTab="categories" />, backend);
+    await fireEvent.press(await screen.findByTestId('cat-new'));
+    await fireEvent.changeText(screen.getByTestId('cat-name'), 'RX Men 18-35');
+    await fireEvent.press(screen.getByTestId('cat-gender-MALE'));
+    await fireEvent.changeText(screen.getByTestId('cat-min'), '18');
+    await fireEvent.changeText(screen.getByTestId('cat-max-age'), '35');
+    await fireEvent.changeText(screen.getByTestId('cat-price'), '45');
+    await fireEvent.press(screen.getByTestId('cat-save'));
+    await waitFor(() => expect(backend.calls('POST', '/competitions/c9/categories')).toHaveLength(1));
+    expect(backend.calls('POST', '/competitions/c9/categories')[0].body).toEqual({ name: 'RX Men 18-35', gender: 'MALE', minAge: 18, maxAge: 35, level: '', maxParticipants: null, registrationPriceOverride: 45000, sortOrder: 0 });
+  });
+
+  it('reorders by swapping the two categories', async () => {
+    const backend = organizerBackend({ ...draft, categories: two }).on('PUT', '/competitions/c9/categories/k1', [200, {}]).on('PUT', '/competitions/c9/categories/k2', [200, {}]);
+    const screen = await renderScreen(() => <ManageScreen id="c9" initialTab="categories" />, backend);
+    await fireEvent.press((await screen.findAllByLabelText('Move down'))[0]);
+    await waitFor(() => expect(backend.calls('PUT', '/competitions/c9/categories/k2')).toHaveLength(1));
+    expect(backend.calls('PUT', '/competitions/c9/categories/k1')[0].body).toEqual({ sortOrder: 1 });
+    expect(backend.calls('PUT', '/competitions/c9/categories/k2')[0].body).toEqual({ sortOrder: 0 });
+  });
+
+  it('deactivates a category', async () => {
+    const backend = organizerBackend({ ...draft, categories: two }).on('PUT', '/competitions/c9/categories/k2', [200, {}]);
+    const screen = await renderScreen(() => <ManageScreen id="c9" initialTab="categories" />, backend);
+    await fireEvent.press(await screen.findByTestId('cat-k2'));
+    await fireEvent.press(screen.getByTestId('cat-toggle'));
+    await waitFor(() => expect(backend.calls('PUT', '/competitions/c9/categories/k2')[0]?.body).toEqual({ active: false }));
+  });
+});
