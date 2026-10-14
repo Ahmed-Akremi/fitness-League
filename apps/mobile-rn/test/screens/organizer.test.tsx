@@ -250,3 +250,57 @@ describe('organizer space: categories', () => {
     await waitFor(() => expect(backend.calls('PUT', '/competitions/c9/categories/k2')[0]?.body).toEqual({ active: false }));
   });
 });
+
+describe('organizer space: WODs', () => {
+  const wods = [
+    { id: 'w1', number: 1, name: 'WOD 1', description: 'AMRAP 12', standards: null, scoreType: 'REPS', scoringMethod: 'DIRECT_POINTS', maximumPoints: 100, minimumPoints: 0, placementTable: [], timeCapS: null, videoUrl: null, movements: [], submissionStart: '2026-12-12T08:00:00.000Z', submissionDeadline: '2026-12-13T18:00:00.000Z' },
+    { id: 'w2', number: 2, name: 'WOD 2', description: 'For time', standards: null, scoreType: 'TIME', scoringMethod: 'DIRECT_POINTS', maximumPoints: 100, minimumPoints: 0, placementTable: [], timeCapS: 600, videoUrl: null, movements: [], submissionStart: '2026-12-12T08:00:00.000Z', submissionDeadline: '2026-12-13T18:00:00.000Z' },
+  ];
+
+  it('creates a reps-per-movement WOD inside the event dates', async () => {
+    const backend = organizerBackend(draft).on('POST', '/competitions/c9/wods', [201, {}]);
+    const screen = await renderScreen(() => <ManageScreen id="c9" initialTab="wods" />, backend);
+    await fireEvent.press(await screen.findByTestId('wod-new'));
+    await fireEvent.changeText(screen.getByTestId('wod-description'), 'AMRAP 12: burpees, wall balls');
+    // A movement without a name cannot count.
+    expect(screen.getByTestId('wod-save').props.accessibilityState?.disabled).toBe(true);
+    await fireEvent.changeText(screen.getByTestId('wod-move-name-0'), 'Burpees');
+    await fireEvent.press(screen.getByTestId('wod-move-add'));
+    await fireEvent.changeText(screen.getByTestId('wod-move-name-1'), 'Wall balls');
+    await fireEvent.changeText(screen.getByTestId('wod-move-points-1'), '0,5');
+    await fireEvent.press(screen.getByTestId('wod-save'));
+    await waitFor(() => expect(backend.calls('POST', '/competitions/c9/wods')).toHaveLength(1));
+    expect(backend.calls('POST', '/competitions/c9/wods')[0].body).toMatchObject({
+      number: 1,
+      name: 'WOD 1',
+      scoreType: 'MOVEMENT_REPS',
+      movements: [
+        { name: 'Burpees', pointsPerRep: 1 },
+        { name: 'Wall balls', pointsPerRep: 0.5 },
+      ],
+      submissionStart: '2026-12-12T08:00:00.000Z',
+      submissionDeadline: '2026-12-13T18:00:00.000Z',
+    });
+  });
+
+  it('edits a WOD with its whole description and keeps its number', async () => {
+    const backend = organizerBackend({ ...draft, workouts: wods }).on('PUT', '/competitions/c9/wods/w2', [200, {}]);
+    const screen = await renderScreen(() => <ManageScreen id="c9" initialTab="wods" />, backend);
+    await fireEvent.press(await screen.findByTestId('wod-w2'));
+    await fireEvent.changeText(screen.getByTestId('wod-name'), 'Final sprint');
+    await fireEvent.press(screen.getByTestId('wod-save'));
+    await waitFor(() => expect(backend.calls('PUT', '/competitions/c9/wods/w2')).toHaveLength(1));
+    expect(backend.calls('PUT', '/competitions/c9/wods/w2')[0].body).toMatchObject({ number: 2, name: 'Final sprint', scoreType: 'TIME', timeCapS: 600, movements: [] });
+  });
+
+  it('reorders and deletes', async () => {
+    const backend = organizerBackend({ ...draft, workouts: wods }).on('POST', '/competitions/c9/wods/reorder', [200, []]).on('DELETE', '/competitions/c9/wods/w1', [200, {}]);
+    const screen = await renderScreen(() => <ManageScreen id="c9" initialTab="wods" />, backend);
+    await fireEvent.press((await screen.findAllByLabelText('Move down'))[0]);
+    await waitFor(() => expect(backend.calls('POST', '/competitions/c9/wods/reorder')[0]?.body).toEqual({ workoutIds: ['w2', 'w1'] }));
+    await fireEvent.press(screen.getByTestId('wod-w1'));
+    await fireEvent.press(screen.getByTestId('wod-delete'));
+    await fireEvent.press(screen.getByTestId('dialog-confirm'));
+    await waitFor(() => expect(backend.calls('DELETE', '/competitions/c9/wods/w1')).toHaveLength(1));
+  });
+});
