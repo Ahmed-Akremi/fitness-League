@@ -133,6 +133,11 @@ export function CompetitionScreen({ id }: { id: string }) {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <Stack.Screen options={{ title: c.title }} />
+      {(c.myRoles ?? []).includes('ORGANIZER') ? (
+        <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
+          <Button testID="comp-manage" kind="outlined" icon="tune" label={t('orgManage')} onPress={() => router.push(`/competitions/${c.id}/manage`)} />
+        </View>
+      ) : null}
       <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: colors.surfaceHigh }}>
         {([['info', t('compEventInfo')], ['wods', t('compWods')], ['leaderboard', t('leaderboard')]] as const).map(([key, label]) => (
           <Pressable key={key} testID={`comp-tab-${key}`} accessibilityRole="tab" accessibilityState={{ selected: tab === key }} onPress={() => setTab(key)} style={{ flex: 1, alignItems: 'center', paddingVertical: 14, borderBottomWidth: 3, borderBottomColor: tab === key ? colors.primary : 'transparent' }}>
