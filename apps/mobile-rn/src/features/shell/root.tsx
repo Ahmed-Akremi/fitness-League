@@ -132,6 +132,7 @@ export function AppRoot() {
           <Stack.Screen name="gyms/[id]/wods/[wodId]" options={{ title: t('gymWods') }} />
           <Stack.Screen name="gym-wars/[id]" options={{ title: t('gymWar') }} />
           <Stack.Screen name="competitions/index" options={{ title: t('competitions') }} />
+          <Stack.Screen name="competitions/new" options={{ title: t('createEvent') }} />
           <Stack.Screen name="competitions/[id]/index" options={{ title: t('competitions') }} />
           <Stack.Screen name="competitions/[id]/register" options={{ title: t('compRegister') }} />
           <Stack.Screen name="competitions/[id]/wods/[wodId]/submit" options={{ title: t('compSubmitScore') }} />

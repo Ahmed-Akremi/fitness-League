@@ -38,8 +38,9 @@ export function CompetitionsScreen() {
           { key: 'FINISHED', label: t('compFilterFinished') },
         ]}
       />
-      <View style={{ flexDirection: 'row', paddingHorizontal: 16 }}>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 16 }}>
         <Chip testID="comp-mine" icon="person" label={t('competitionsMine')} selected={mine} onPress={() => setMine(!mine)} />
+        <Chip testID="comp-create" icon="add" label={t('createEvent')} onPress={() => router.push('/competitions/new')} />
       </View>
       <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }} refreshControl={<RefreshControl refreshing={false} onRefresh={() => list.refetch()} tintColor={colors.primary} />}>
         {list.isError ? (
