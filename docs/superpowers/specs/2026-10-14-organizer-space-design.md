@@ -54,7 +54,7 @@ Un écran, champs :
    - « Demander la publication » : actif quand la check-list est complète et la compétition en brouillon sans demande en cours.
    - Chiffres (`GET /:id/dashboard`) : inscrits, payés, à encaisser, revenu, scores en attente de jugement, validés, refusés.
    - Répartition par catégorie et femmes / hommes, courbe des inscriptions par jour (calculées depuis `GET /:id/registrations`, lot B).
-   - Une fois publié : « Partager » (feuille de partage native) avec un texte : nom, dates, ville et le lien de l'app `fitness-league://competitions/<id>` (pas encore de page web par événement).
+   - Une fois publié : « Partager » (feuille de partage native) avec un texte : nom, dates, ville et le lien de l'app `fitnessleague://competitions/<id>` (pas encore de page web par événement).
 2. **Général** : modifier nom, description, format, lieu, dates, prix, places (`PUT /:id`) ; bannière : choisir une image, aperçu, envoyer (`PUT /:id/cover`, 1440×596), supprimer (`DELETE /:id/cover`) ; supprimer l'événement (`DELETE /:id`) tant qu'il est en brouillon ; après publication, boutons des statuts suivants autorisés par le serveur (fermer les inscriptions, rouvrir, ouvrir les soumissions…).
 3. **Catégories** : liste ordonnée (monter / descendre → `PUT` de `sortOrder`), « Ajouter les catégories modèles » (`POST /:id/categories/templates`), créer / modifier (nom, genre, âge min / max, niveau, places, prix spécifique), activer / désactiver.
 4. **WODs** : liste ordonnée (`POST /:id/wods/reorder`), créer / modifier (nom, description, standards, type de score, méthode de points, cap, points max / min, mouvements + points par répétition pour le type « reps par mouvement », vidéo, fenêtre de soumission, spécifique par catégorie), supprimer.
