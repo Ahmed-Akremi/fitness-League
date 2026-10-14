@@ -1,11 +1,16 @@
 import { Text } from 'react-native';
+import { router } from 'expo-router';
 import { act, fireEvent, waitFor } from 'expo-router/testing-library';
 
 import { CompetitionScreen, CompetitionsScreen } from '../../src/features/competitions/screens';
 import { CreateEventScreen } from '../../src/features/competitions/organizer/create';
 import { ManageScreen } from '../../src/features/competitions/organizer/manage';
+import { pickImage } from '../../src/core/utils/pick-image';
 import { FakeBackend } from '../fake-api';
 import { renderScreen } from '../harness';
+
+jest.mock('../../src/core/utils/pick-image', () => ({ pickImage: jest.fn() }));
+const pick = pickImage as jest.Mock;
 
 const manageRoute = { 'competitions/[id]/manage': () => <Text>Manage page</Text> };
 
@@ -136,13 +141,67 @@ describe('organizer space', () => {
     expect(screen.queryByTestId('org-request')).toBeNull();
   });
 
-  it('the competition page offers « Manage » to its organizer only', async () => {
-    const page = await renderScreen(() => <CompetitionScreen id="c9" />, organizerBackend(complete), { routes: manageRoute });
+  // Navigation itself is checked through router.push: rendering the organizer space on top of a live competition page leaked act scopes into the next tests.
+  it('the competition page offers « Manage » to its organizer', async () => {
+    const push = jest.spyOn(router, 'push').mockImplementation(() => undefined);
+    const page = await renderScreen(() => <CompetitionScreen id="c9" />, organizerBackend(complete));
     await fireEvent.press(await page.findByTestId('comp-manage'));
-    expect(await page.findByText('Manage page')).toBeTruthy();
-    page.unmount();
+    expect(push).toHaveBeenCalledWith('/competitions/c9/manage');
+    push.mockRestore();
+  });
+
+  it('… but not to an athlete', async () => {
     const athlete = await renderScreen(() => <CompetitionScreen id="c9" />, organizerBackend({ ...complete, status: 'REGISTRATION_OPEN', myRoles: [] }));
     await athlete.findByText('Sousse Summer Throwdown');
     expect(athlete.queryByTestId('comp-manage')).toBeNull();
+  });
+});
+
+describe('organizer space: general', () => {
+  beforeEach(() => pick.mockReset());
+
+  it('the checklist leads to the tab that fixes the item', async () => {
+    const screen = await renderScreen(() => <ManageScreen id="c9" />, organizerBackend(draft));
+    await fireEvent.press(await screen.findByTestId('check-COVER'));
+    expect(await screen.findByTestId('org-banner-pick')).toBeTruthy();
+  });
+
+  it('saves the edited info', async () => {
+    const backend = organizerBackend(draft).on('PUT', '/competitions/c9', [200, draft]);
+    const screen = await renderScreen(() => <ManageScreen id="c9" initialTab="general" />, backend);
+    await fireEvent.changeText(await screen.findByTestId('org-title'), 'Sousse Summer Throwdown 2026');
+    await fireEvent.changeText(screen.getByTestId('org-price'), '45,5');
+    await fireEvent.press(screen.getByTestId('org-save'));
+    await waitFor(() => expect(backend.calls('PUT', '/competitions/c9')).toHaveLength(1));
+    expect(backend.calls('PUT', '/competitions/c9')[0].body).toMatchObject({ title: 'Sousse Summer Throwdown 2026', registrationPrice: 45500, city: 'Sousse', location: 'Bodynade', format: 'ONSITE' });
+  });
+
+  it('refuses a banner over 5 MB without sending it, uploads a valid one', async () => {
+    const backend = organizerBackend(draft).on('PUT', '/competitions/c9/cover', [200, { coverUrl: 'https://cdn.test/new.webp' }]);
+    const screen = await renderScreen(() => <ManageScreen id="c9" initialTab="general" />, backend);
+    pick.mockResolvedValueOnce({ tooLarge: true });
+    await fireEvent.press(await screen.findByTestId('org-banner-pick'));
+    expect(await screen.findByText('This image is larger than 5 MB.')).toBeTruthy();
+    expect(backend.calls('PUT', '/competitions/c9/cover')).toHaveLength(0);
+    pick.mockResolvedValueOnce({ file: { uri: 'file:///banner.jpg', name: 'banner.jpg', type: 'image/jpeg' } });
+    await fireEvent.press(screen.getByTestId('org-banner-pick'));
+    await waitFor(() => expect(backend.calls('PUT', '/competitions/c9/cover')).toHaveLength(1));
+  });
+
+  it('deletes the draft after confirmation', async () => {
+    const backend = organizerBackend(draft).on('DELETE', '/competitions/c9', [200, {}]);
+    const screen = await renderScreen(() => <ManageScreen id="c9" initialTab="general" />, backend, { routes: { 'competitions/index': () => <Text>Competitions list</Text> } });
+    await fireEvent.press(await screen.findByTestId('org-delete'));
+    await fireEvent.press(screen.getByTestId('dialog-confirm'));
+    expect(await screen.findByText('Competitions list')).toBeTruthy();
+    expect(backend.calls('DELETE', '/competitions/c9')).toHaveLength(1);
+  });
+
+  it('once published: next steps instead of deletion', async () => {
+    const backend = organizerBackend({ ...complete, status: 'REGISTRATION_OPEN' }).on('PATCH', '/competitions/c9/status', [200, {}]);
+    const screen = await renderScreen(() => <ManageScreen id="c9" initialTab="general" />, backend);
+    await fireEvent.press(await screen.findByText('Close registration'));
+    await waitFor(() => expect(backend.calls('PATCH', '/competitions/c9/status')[0]?.body).toEqual({ status: 'REGISTRATION_CLOSED' }));
+    expect(screen.queryByTestId('org-delete')).toBeNull();
   });
 });
