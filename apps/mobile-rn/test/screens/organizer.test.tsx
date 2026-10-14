@@ -304,3 +304,14 @@ describe('organizer space: WODs', () => {
     await waitFor(() => expect(backend.calls('DELETE', '/competitions/c9/wods/w1')).toHaveLength(1));
   });
 });
+
+describe('my competitions: drafts', () => {
+  it('shows the publication state and opens the organizer space', async () => {
+    const card = { id: 'c9', title: 'Sousse Summer Throwdown', status: 'DRAFT', city: 'Sousse', eventStart: '2026-12-12T08:00:00.000Z', registrationEnd: '2026-12-01T22:00:00.000Z', registrationPrice: 40000, currency: 'TND', participants: 0, publicationRequestedAt: '2026-10-14T10:00:00.000Z', publicationNote: null };
+    const backend = new FakeBackend().on('GET', '/competitions', [200, [card]]);
+    const screen = await renderScreen(CompetitionsScreen, backend, { routes: manageRoute });
+    expect(await screen.findByText('Publication requested')).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('comp-c9'));
+    expect(await screen.findByText('Manage page')).toBeTruthy();
+  });
+});

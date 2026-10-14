@@ -50,4 +50,12 @@ describe('demo backend (offline build)', () => {
     await expect(api().post('/workouts/sync', { items: [] })).resolves.toEqual({ results: [] });
     await expect(api().get('/nowhere')).rejects.toMatchObject({ status: 404 });
   });
+
+  it('answers a recorded write: creating an event returns the demo draft', async () => {
+    const created = await api().post<{ id: string; status: string; myRoles: string[] }>('/competitions', { title: 'x' });
+    expect(created).toMatchObject({ id: '01a10804-0000-7000-8000-00000000d001', status: 'DRAFT', myRoles: ['ORGANIZER'] });
+    const mine = await api().get<{ id: string }[]>('/competitions', { filter: 'ALL', mine: 'true' });
+    expect(mine.some((c) => c.id === created.id)).toBe(true);
+    expect(await api().get(`/competitions/${created.id}/dashboard`)).toMatchObject({ participants: 0 });
+  });
 });

@@ -40,7 +40,9 @@ function answer(recorded: Recorded, method: string, path: string, query: URLSear
     for (const [k, v] of Object.entries(recorded)) if (k === prefix || k.startsWith(`${prefix}?`)) return [200, v];
     return [404, { code: 'NOT_FOUND', title: 'Not available in the offline demo', status: 404 }];
   }
-  // Writes: accepted but not stored.
+  // Writes: accepted but not stored; a recorded answer (the demo draft for POST /competitions) is returned as is.
+  const write = recorded[`${method} ${path}`];
+  if (write != null) return [method === 'POST' ? 201 : 200, write];
   if (method === 'POST' && path === '/workouts') return [201, firstWorkout(recorded)];
   if (method === 'POST' && path === '/workouts/sync') return [200, { results: [] }];
   return [200, {}];

@@ -14,6 +14,7 @@ import { EmptyState, Loading, SectionHeader, SkeletonList, StatCard, StatusPill,
 import { ErrorText, ErrorView, errorMessage } from '../../core/widgets/error';
 import { Button, Card, Chip, Icon, ListGroup, ListRow, Screen, Segmented, TextField, Txt, toast, type IconName } from '../../core/widgets/kit';
 import { compKeys, competitionsApi, formatMoney, useCompetition, useCompetitions, useCompLeaderboard, useHeats, useMySubmissions, youtubeId, type CompFilter } from './api';
+import { publicationState } from './organizer/logic';
 
 const statusLabel = (t: T, s: string) => (t as (k: string) => string)(`compStatus${s}`);
 
@@ -62,7 +63,7 @@ function CompetitionCard({ c }: { c: Json }) {
   const locale = useLocale();
   const { colors } = useTheme();
   return (
-    <Card testID={`comp-${c.id}`} onPress={() => router.push(`/competitions/${c.id}`)} style={{ gap: space.sm }}>
+    <Card testID={`comp-${c.id}`} onPress={() => router.push(c.status === 'DRAFT' ? `/competitions/${c.id}/manage` : `/competitions/${c.id}`)} style={{ gap: space.sm }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
         <Icon name="emoji-events" color={colors.primary} />
         <Txt variant="title" style={{ flex: 1, fontWeight: '800' }}>{c.title}</Txt>
@@ -75,7 +76,7 @@ function CompetitionCard({ c }: { c: Json }) {
         <Meta icon="groups" text={t('compAthletes', { count: c.participants })} />
       </View>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
-        <StatusPill label={statusLabelForCompetition(t, c.status)} color={c.status === 'REGISTRATION_OPEN' ? colors.primary : colors.outline} />
+        <StatusPill label={c.status === 'DRAFT' ? draftLabel(t, c) : statusLabelForCompetition(t, c.status)} color={c.status === 'REGISTRATION_OPEN' ? colors.primary : colors.outline} />
         {c.status === 'REGISTRATION_OPEN' && <Txt variant="small" color={colors.outline}>{t('compDeadline', { date: formatDate(c.registrationEnd, locale) })}</Txt>}
       </View>
     </Card>
@@ -98,6 +99,12 @@ export function statusLabelForCompetition(t: T, s: string) {
   if (s === 'FINAL_LEADERBOARD' || s === 'FINISHED') return t('compFilterFinished');
   if (s === 'DRAFT' || s === 'REGISTRATION_CLOSED') return t('compFilterUpcoming');
   return t('compFilterActive');
+}
+
+/** Only organizers see drafts: the card tells where the publication stands. */
+function draftLabel(t: T, c: Json) {
+  const s = publicationState(c);
+  return s === 'REQUESTED' ? t('orgCardRequested') : s === 'RETURNED' ? t('orgCardReturned') : t('orgCardDraft');
 }
 
 // ───────────── Detail ─────────────
