@@ -309,7 +309,9 @@ export class CompetitionsService {
 
   async removeCategory(user: AuthUser, competitionId: string, categoryId: string) {
     await this.judging.requireRole(user, competitionId, ['ORGANIZER']);
-    if (await this.prisma.competitionRegistration.count({ where: { categoryId } })) throw AppException.conflict(ErrorCode.PRECONDITION_FAILED, 'Athletes are registered: deactivate it instead');
+    // Scoped to the competition in the URL: an organizer must not reach another event's rows.
+    if (!(await this.prisma.competitionCategory.findFirst({ where: { id: categoryId, competitionId }, select: { id: true } }))) throw AppException.notFound('Category');
+    if (await this.prisma.competitionRegistration.count({ where: { categoryId, competitionId } })) throw AppException.conflict(ErrorCode.PRECONDITION_FAILED, 'Athletes are registered: deactivate it instead');
     await this.prisma.competitionCategory.delete({ where: { id: categoryId } });
     await this.audit.log({ actorId: user.id, actorRole: user.role, action: 'competition.category.deleted', entityType: 'CompetitionCategory', entityId: categoryId });
   }
@@ -350,7 +352,8 @@ export class CompetitionsService {
 
   async removeWorkout(user: AuthUser, competitionId: string, workoutId: string) {
     await this.judging.requireRole(user, competitionId, ['ORGANIZER']);
-    if (await this.prisma.competitionSubmission.count({ where: { workoutId } })) throw AppException.conflict(ErrorCode.PRECONDITION_FAILED, 'Scores exist: deactivate the WOD instead');
+    if (!(await this.prisma.competitionWorkout.findFirst({ where: { id: workoutId, competitionId }, select: { id: true } }))) throw AppException.notFound('WOD');
+    if (await this.prisma.competitionSubmission.count({ where: { workoutId, workout: { competitionId } } })) throw AppException.conflict(ErrorCode.PRECONDITION_FAILED, 'Scores exist: deactivate the WOD instead');
     await this.prisma.competitionWorkout.delete({ where: { id: workoutId } });
     await this.audit.log({ actorId: user.id, actorRole: user.role, action: 'competition.wod.deleted', entityType: 'CompetitionWorkout', entityId: workoutId });
   }

@@ -138,4 +138,35 @@ describe('Organizer space (integration)', () => {
     const list = await api().get('/api/v1/admin/competitions').set(admin).expect(200);
     expect(list.body.find((c: { id: string }) => c.id === id).publicationRequestedAt).toEqual(expect.any(String));
   });
+  it("an organizer cannot delete another event's category or WOD through their own draft", async () => {
+    const victim = await readyDraft();
+    const other = await athlete();
+    const mine = (await api().post('/api/v1/competitions').set(bearer(other.token)).send(draft()).expect(201)).body.id;
+    const cat = await prisma.competitionCategory.findFirstOrThrow({ where: { competitionId: victim } });
+    const wod = await prisma.competitionWorkout.findFirstOrThrow({ where: { competitionId: victim } });
+    await api().delete(`/api/v1/competitions/${mine}/categories/${cat.id}`).set(bearer(other.token)).expect(404);
+    await api().delete(`/api/v1/competitions/${mine}/wods/${wod.id}`).set(bearer(other.token)).expect(404);
+    expect(await prisma.competitionCategory.count({ where: { id: cat.id } })).toBe(1);
+    expect(await prisma.competitionWorkout.count({ where: { id: wod.id } })).toBe(1);
+    // Their own rows still go.
+    await api().delete(`/api/v1/competitions/${victim}/categories/${cat.id}`).set(bearer(user.token)).expect(204);
+    await api().delete(`/api/v1/competitions/${victim}/wods/${wod.id}`).set(bearer(user.token)).expect(204);
+  });
+
+  it('a head judge cannot publish the leaderboard of a draft', async () => {
+    const id = (await api().post('/api/v1/competitions').set(bearer(user.token)).send(draft()).expect(201)).body.id;
+    const hj = await athlete();
+    await prisma.competitionStaff.create({ data: { id: crypto.randomUUID(), competitionId: id, userId: hj.id, role: 'HEAD_JUDGE' } });
+    const res = await api().post(`/api/v1/competitions/${id}/publish-leaderboard`).set(bearer(hj.token)).expect(403);
+    expect(res.body.detail).toBe('An admin publishes the competition');
+    expect((await prisma.competition.findUniqueOrThrow({ where: { id } })).status).toBe('DRAFT');
+  });
+
+  it('the return note is measured once trimmed', async () => {
+    const id = await readyDraft();
+    await api().post(`/api/v1/competitions/${id}/publication-request`).set(bearer(user.token)).expect(200);
+    const url = `/api/v1/admin/competitions/${id}/publication-request/return`;
+    await api().post(url).set(admin).send({ note: '  ab  ' }).expect(422);
+    await api().post(url).set(admin).send({ note: '  abc  ' }).expect(200);
+  });
 });

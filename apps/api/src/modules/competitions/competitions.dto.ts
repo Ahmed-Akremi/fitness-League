@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
 import {
   CategoryGender,
   CompetitionFormat,
@@ -90,7 +91,7 @@ export class StatusDto {
 }
 
 export class ReturnToDraftDto {
-  @ApiProperty({ example: 'The banner is blurred.' }) @IsString() @Length(3, 500) @Matches(/\S/) note!: string;
+  @ApiProperty({ example: 'The banner is blurred.' }) @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value)) @IsString() @Length(3, 500) @Matches(/\S/) note!: string;
 }
 
 export class ListCompetitionsQueryDto {
