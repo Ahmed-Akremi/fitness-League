@@ -1,5 +1,6 @@
 import { INestApplication } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
+import sharp from 'sharp';
 import request from 'supertest';
 import { adminAuth, appBearer, registerUser, setupTestApp } from './helpers';
 
@@ -66,5 +67,75 @@ describe('Organizer space (integration)', () => {
     expect(denied.body.detail).toBe('An admin publishes the competition');
     await api().patch(`/api/v1/admin/competitions/${c.id}/status`).set(admin).send({ status: 'REGISTRATION_OPEN' }).expect(200);
     await api().patch(`/api/v1/competitions/${c.id}/status`).set(bearer(user.token)).send({ status: 'REGISTRATION_CLOSED' }).expect(200);
+  });
+
+  const banner = () => sharp({ create: { width: 1600, height: 700, channels: 3, background: '#c6f432' } }).jpeg().toBuffer();
+
+  /** A draft with its banner, one active category and one WOD. */
+  async function readyDraft(owner = user): Promise<string> {
+    const id = (await api().post('/api/v1/competitions').set(bearer(owner.token)).send(draft()).expect(201)).body.id;
+    const base = `/api/v1/competitions/${id}`;
+    await api().put(`${base}/cover`).set(bearer(owner.token)).attach('file', await banner(), 'cover.jpg').expect(200);
+    await api().post(`${base}/categories`).set(bearer(owner.token)).send({ name: 'RX Mixed', gender: 'MIXED' }).expect(201);
+    await api()
+      .post(`${base}/wods`)
+      .set(bearer(owner.token))
+      .send({ number: 1, name: 'WOD 1', description: 'AMRAP 12', scoreType: 'REPS', scoringMethod: 'DIRECT_POINTS', maximumPoints: 100, submissionStart: h(72), submissionDeadline: h(90) })
+      .expect(201);
+    return id;
+  }
+
+  it('a publication request lists what the draft still misses', async () => {
+    const id = (await api().post('/api/v1/competitions').set(bearer(user.token)).send(draft()).expect(201)).body.id;
+    const res = await api().post(`/api/v1/competitions/${id}/publication-request`).set(bearer(user.token)).expect(409);
+    expect(res.body.code).toBe('PRECONDITION_FAILED');
+    expect(res.body.missing).toEqual(['COVER', 'CATEGORY', 'WOD']);
+  });
+
+  it('only an organizer asks for publication', async () => {
+    const id = await readyDraft();
+    const other = await athlete();
+    await api().post(`/api/v1/competitions/${id}/publication-request`).set(bearer(other.token)).expect(403);
+  });
+
+  it('request → edits keep it → sent back with a note → asked again → published', async () => {
+    const id = await readyDraft();
+    const base = `/api/v1/competitions/${id}`;
+    const asked = await api().post(`${base}/publication-request`).set(bearer(user.token)).expect(200);
+    expect(asked.body.publicationRequestedAt).toEqual(expect.any(String));
+    // Asking twice is harmless.
+    await api().post(`${base}/publication-request`).set(bearer(user.token)).expect(200);
+    // Editing the draft keeps the request: the admin publishes the current version.
+    // The app always sends the dates with an edit (a PUT without them is refused by the existing date check).
+    const { registrationStart, registrationEnd, eventStart, eventEnd } = draft();
+    await api().put(base).set(bearer(user.token)).send({ title: 'Sousse Summer Throwdown 2026', registrationStart, registrationEnd, eventStart, eventEnd }).expect(200);
+    expect((await api().get(base).set(bearer(user.token)).expect(200)).body.publicationRequestedAt).toEqual(expect.any(String));
+
+    const adminBase = `/api/v1/admin/competitions/${id}`;
+    await api().post(`${adminBase}/publication-request/return`).set(admin).send({}).expect(422);
+    await api().post(`${adminBase}/publication-request/return`).set(admin).send({ note: '      ' }).expect(422);
+    const back = await api().post(`${adminBase}/publication-request/return`).set(admin).send({ note: 'The banner is blurred.' }).expect(200);
+    expect(back.body).toMatchObject({ publicationRequestedAt: null, publicationNote: 'The banner is blurred.' });
+    // A second admin acting on the same request: already handled.
+    await api().post(`${adminBase}/publication-request/return`).set(admin).send({ note: 'Fix the dates.' }).expect(409);
+    // The organizer sees the note in the detail and in "my competitions".
+    expect((await api().get(base).set(bearer(user.token)).expect(200)).body.publicationNote).toBe('The banner is blurred.');
+    const mine = await api().get('/api/v1/competitions').query({ filter: 'ALL', mine: 'true' }).set(bearer(user.token)).expect(200);
+    expect(mine.body.find((c: { id: string }) => c.id === id)).toMatchObject({ status: 'DRAFT', publicationNote: 'The banner is blurred.' });
+
+    const again = await api().post(`${base}/publication-request`).set(bearer(user.token)).expect(200);
+    expect(again.body).toMatchObject({ publicationNote: null, publicationRequestedAt: expect.any(String) });
+    await api().patch(`${adminBase}/status`).set(admin).send({ status: 'REGISTRATION_OPEN' }).expect(200);
+    const published = (await api().get(base).set(bearer(user.token)).expect(200)).body;
+    expect(published).toMatchObject({ status: 'REGISTRATION_OPEN', publicationRequestedAt: null, publicationNote: null });
+    // Published: no more request.
+    await api().post(`${base}/publication-request`).set(bearer(user.token)).expect(409);
+  });
+
+  it('the admin list shows the waiting request', async () => {
+    const id = await readyDraft();
+    await api().post(`/api/v1/competitions/${id}/publication-request`).set(bearer(user.token)).expect(200);
+    const list = await api().get('/api/v1/admin/competitions').set(admin).expect(200);
+    expect(list.body.find((c: { id: string }) => c.id === id).publicationRequestedAt).toEqual(expect.any(String));
   });
 });

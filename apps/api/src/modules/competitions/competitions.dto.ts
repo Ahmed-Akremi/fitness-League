@@ -89,6 +89,10 @@ export class StatusDto {
   @ApiProperty({ enum: STATUSES }) @IsIn(STATUSES) status!: CompetitionStatus;
 }
 
+export class ReturnToDraftDto {
+  @ApiProperty({ example: 'The banner is blurred.' }) @IsString() @Length(3, 500) @Matches(/\S/) note!: string;
+}
+
 export class ListCompetitionsQueryDto {
   /** CURRENT: published and not over (home carousel). */
   @ApiPropertyOptional({ enum: ['ALL', 'CURRENT', 'REGISTRATION_OPEN', 'UPCOMING', 'ACTIVE', 'FINISHED'] })

@@ -206,7 +206,8 @@ export class CompetitionsService {
       if (status === 'REGISTRATION_OPEN' && (await tx.competitionCategory.count({ where: { competitionId: id, active: true } })) === 0) {
         throw AppException.conflict(ErrorCode.PRECONDITION_FAILED, 'Add at least one active category first');
       }
-      const updated = await tx.competition.update({ where: { id }, data: { status } });
+      // Leaving the draft (an admin publishing it) closes the publication request.
+      const updated = await tx.competition.update({ where: { id }, data: { status, ...(c.status === 'DRAFT' ? { publicationRequestedAt: null, publicationNote: null } : {}) } });
       await this.audit.log({ actorId: user.id, actorRole: user.role, action: 'competition.status', entityType: 'Competition', entityId: id, before: { status: c.status }, after: { status } }, tx);
       if (status === 'SUBMISSION_OPEN' || status === 'ACTIVE') {
         const athletes = await tx.competitionRegistration.findMany({ where: { competitionId: id, registrationStatus: 'CONFIRMED' }, select: { userId: true } });
@@ -215,6 +216,35 @@ export class CompetitionsService {
       return updated;
     });
   }
+  /** Organizer → admins: the draft is ready. Banner, an active category and an active WOD are checked first. */
+  async requestPublication(user: AuthUser, id: string) {
+    await this.judging.requireRole(user, id, ['ORGANIZER']);
+    return this.prisma.$transaction(async (tx) => {
+      const c = await tx.competition.findFirst({ where: { id, deletedAt: null }, include: { cover: true } });
+      if (!c) throw AppException.notFound('Competition');
+      if (c.status !== 'DRAFT') throw AppException.conflict(ErrorCode.PRECONDITION_FAILED, 'Only a draft can be submitted for publication');
+      const missing: ('COVER' | 'CATEGORY' | 'WOD')[] = [];
+      if (!c.cover || c.cover.status === 'DELETED') missing.push('COVER');
+      if ((await tx.competitionCategory.count({ where: { competitionId: id, active: true } })) === 0) missing.push('CATEGORY');
+      if ((await tx.competitionWorkout.count({ where: { competitionId: id, active: true } })) === 0) missing.push('WOD');
+      if (missing.length) throw AppException.conflict(ErrorCode.PRECONDITION_FAILED, 'The draft is not complete', { missing });
+      if (c.publicationRequestedAt) return this.card(c, 0);
+      const updated = await tx.competition.update({ where: { id }, data: { publicationRequestedAt: this.clock.now(), publicationNote: null }, include: { cover: true } });
+      await this.audit.log({ actorId: user.id, actorRole: user.role, action: 'competition.publication.requested', entityType: 'Competition', entityId: id }, tx);
+      return this.card(updated, 0);
+    });
+  }
+
+  /** Admin → organizer: the draft goes back with what to fix. A second admin acting on the same request gets 409. */
+  async returnToDraft(user: AuthUser, id: string, note: string) {
+    return this.prisma.$transaction(async (tx) => {
+      const done = await tx.competition.updateMany({ where: { id, deletedAt: null, status: 'DRAFT', publicationRequestedAt: { not: null } }, data: { publicationRequestedAt: null, publicationNote: note.trim() } });
+      if (done.count === 0) throw AppException.conflict(ErrorCode.PRECONDITION_FAILED, 'No publication request is waiting');
+      await this.audit.log({ actorId: user.id, actorRole: user.role, action: 'competition.publication.returned', entityType: 'Competition', entityId: id, after: { note: note.trim() } }, tx);
+      return this.card(await tx.competition.findFirstOrThrow({ where: { id }, include: { cover: true } }), 0);
+    });
+  }
+
 
   async remove(user: AuthUser, id: string) {
     await this.judging.requireRole(user, id, ['ORGANIZER']);
@@ -615,6 +645,8 @@ export class CompetitionsService {
       currency: c.currency,
       maxParticipants: c.maxParticipants,
       participants,
+      publicationRequestedAt: c.publicationRequestedAt,
+      publicationNote: c.publicationNote,
     };
   }
 
