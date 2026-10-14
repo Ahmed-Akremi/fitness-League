@@ -2,7 +2,7 @@ import { INestApplication } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import request from 'supertest';
 import { randomUUID } from 'node:crypto';
-import { adminBearer, registerUser, setupTestApp } from './helpers';
+import { adminAuth, adminBearer, registerUser, setupTestApp } from './helpers';
 
 /** The §57 scenario end to end: admin → athlete → judge → system → head judge. */
 describe('Competitions (integration)', () => {
@@ -93,7 +93,8 @@ describe('Competitions (integration)', () => {
 
     // Registration cannot open on a draft without being asked; it opens explicitly.
     await api().post(`${base}/register`).set(bearer(ahmed.token)).send({ categoryId: rxMale }).expect(409);
-    await api().patch(`${base}/status`).set(bearer(organizer.token)).send({ status: 'REGISTRATION_OPEN' }).expect(200);
+    const asAdmin = await adminAuth(app, prisma);
+    await api().patch(`${base.replace('/competitions/', '/admin/competitions/')}/status`).set(asAdmin).send({ status: 'REGISTRATION_OPEN' }).expect(200);
     const d = await api().get(base).set(bearer(ahmed.token)).expect(200);
     expect(d.body.categories.find((x: { id: string }) => x.id === rxMale).price).toBe(40_000);
     expect(d.body.categories.find((x: { id: string }) => x.id === rxFemale).price).toBe(35_000);

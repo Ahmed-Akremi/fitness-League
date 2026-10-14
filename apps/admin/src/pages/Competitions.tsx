@@ -3,6 +3,8 @@ import { Link, useParams } from 'react-router-dom';
 import { errorText } from '../api';
 import { useAuth } from '../auth';
 import { useFetch } from '../components/useFetch';
+import { waitingFirst } from './publication';
+import { PublicationPanel } from './PublicationPanel';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type J = Record<string, any>;
@@ -58,12 +60,15 @@ export function Competitions() {
           </tr>
         </thead>
         <tbody>
-          {(data ?? []).map((c) => (
+          {waitingFirst(data ?? []).map((c) => (
             <tr key={c.id}>
               <td>
                 <Link to={`/competitions/${c.id}`}>{c.title}</Link>
               </td>
-              <td>{c.status}</td>
+              <td>
+                {c.status}
+                {c.publicationRequestedAt ? <span className="badge">Publication demandée</span> : null}
+              </td>
               <td>{new Date(c.eventStart).toLocaleDateString('fr-FR')}</td>
               <td>{money(c.registrationPrice, c.currency)}</td>
               <td>{c.participants}</td>
@@ -182,6 +187,7 @@ export function CompetitionDetail() {
         </button>
       </p>
       {message ? <p className="message">{message}</p> : null}
+      <PublicationPanel competition={c} onDone={() => comp.reload()} onMessage={setMessage} />
       <Panel title="Bannière">
         <p>Affichée en haut de la page de la compétition dans l’app. Change-la pour chaque nouvelle compétition ou finale (PNG, JPEG ou WebP, 5 Mo max ; recadrée en 1440 × 596).</p>
         {c.coverUrl ? <img src={c.coverUrl} alt="Bannière de la compétition" style={{ width: '100%', maxWidth: 720, aspectRatio: '1440 / 596', objectFit: 'cover', borderRadius: 8, display: 'block' }} /> : <p>Aucune bannière : l’app affiche la bannière par défaut.</p>}

@@ -7,7 +7,7 @@ import sharp from 'sharp';
 import request from 'supertest';
 import { OutboxDispatcher } from '../src/common/outbox/outbox-dispatcher';
 import { AnnouncementsService } from '../src/modules/announcements/announcements.service';
-import { adminBearer, registerUser, setupTestApp } from './helpers';
+import { adminAuth, adminBearer, registerUser, setupTestApp } from './helpers';
 
 describe('Announcements (integration)', () => {
   let app: INestApplication;
@@ -164,7 +164,8 @@ describe('Announcements (integration)', () => {
       ).body.id as string;
     const open = await create('Open Throwdown');
     await api().post(`/api/v1/competitions/${open}/categories`).set(bearer(organizer.token)).send({ name: 'Open', gender: 'MIXED' }).expect(201);
-    await api().patch(`/api/v1/competitions/${open}/status`).set(bearer(organizer.token)).send({ status: 'REGISTRATION_OPEN' }).expect(200);
+    const asAdmin = await adminAuth(app, prisma);
+    await api().patch(`/api/v1/admin/competitions/${open}/status`).set(asAdmin).send({ status: 'REGISTRATION_OPEN' }).expect(200);
     const draft = await create('Draft Games');
     const finished = await create('Finished Cup');
     await prisma.competition.update({ where: { id: finished }, data: { status: 'FINISHED' } });

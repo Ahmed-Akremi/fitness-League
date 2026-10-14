@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
 import {
   CategoryGender,
   CompetitionFormat,
@@ -87,6 +88,10 @@ export class UpdateCompetitionDto implements Partial<CompetitionDto> {
 
 export class StatusDto {
   @ApiProperty({ enum: STATUSES }) @IsIn(STATUSES) status!: CompetitionStatus;
+}
+
+export class ReturnToDraftDto {
+  @ApiProperty({ example: 'The banner is blurred.' }) @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value)) @IsString() @Length(3, 500) @Matches(/\S/) note!: string;
 }
 
 export class ListCompetitionsQueryDto {

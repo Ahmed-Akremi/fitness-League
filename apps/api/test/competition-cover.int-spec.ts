@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import sharp from 'sharp';
 import request from 'supertest';
-import { adminBearer, registerUser, setupTestApp } from './helpers';
+import { adminAuth, adminBearer, registerUser, setupTestApp } from './helpers';
 
 describe('Competition banner upload (integration)', () => {
   let app: INestApplication;
@@ -40,7 +40,8 @@ describe('Competition banner upload (integration)', () => {
       .expect(201);
     const base = `/api/v1/competitions/${c.body.id}`;
     await api().post(`${base}/categories`).set(bearer(organizer.token)).send({ name: 'Open', gender: 'MIXED' }).expect(201);
-    await api().patch(`${base}/status`).set(bearer(organizer.token)).send({ status: 'REGISTRATION_OPEN' }).expect(200);
+    const asAdmin = await adminAuth(app, prisma);
+    await api().patch(`${base.replace('/competitions/', '/admin/competitions/')}/status`).set(asAdmin).send({ status: 'REGISTRATION_OPEN' }).expect(200);
 
     // Only the organizer (or an admin) changes it, and only images are accepted.
     await api().put(`${base}/cover`).set(bearer(athlete.token)).attach('file', await image('#c6f432'), 'cover.jpg').expect(403);

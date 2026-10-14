@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 
+import { ApiError } from '../../core/api/errors';
 import type { ApiClient, Json } from '../../core/api/client';
 import { useApi } from '../../core/services';
 
@@ -34,7 +35,7 @@ export function useCompetitions(filter: CompFilter, mine: boolean) {
 
 export function useCompetition(id: string) {
   const api = useApi();
-  return useQuery({ queryKey: compKeys.detail(id), queryFn: () => competitionsApi(api).get(id) });
+  return useQuery({ queryKey: compKeys.detail(id), queryFn: () => competitionsApi(api).get(id), retry: (n, e) => n < 1 && !(e instanceof ApiError && e.kind === 'client') });
 }
 
 export function useMySubmissions(id: string, enabled: boolean) {

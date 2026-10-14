@@ -26,6 +26,7 @@ import {
   RegisterDto,
   ReorderDto,
   StaffDto,
+  ReturnToDraftDto,
   StatusDto,
   SubmissionDto,
   UpdateCategoryDto,
@@ -89,6 +90,13 @@ export class CompetitionsController {
   @Patch(':id/status')
   status(@CurrentUser() user: AuthUser, @id() competitionId: string, @Body() dto: StatusDto) {
     return this.competitions.setStatus(user, competitionId, dto.status);
+  }
+
+  /** Organizer space: ask the admins to publish this draft. */
+  @Post(':id/publication-request')
+  @HttpCode(HttpStatus.OK)
+  requestPublication(@CurrentUser() user: AuthUser, @id() competitionId: string) {
+    return this.competitions.requestPublication(user, competitionId);
   }
 
   @Delete(':id')
@@ -488,6 +496,9 @@ export class AdminCompetitionsController {
   }
   @Patch(':id/status') status(@CurrentUser() u: AuthUser, @id() cid: string, @Body() dto: StatusDto) {
     return this.competitions.setStatus(u, cid, dto.status);
+  }
+  @Post(':id/publication-request/return') @HttpCode(HttpStatus.OK) returnToDraft(@CurrentUser() u: AuthUser, @id() cid: string, @Body() dto: ReturnToDraftDto) {
+    return this.competitions.returnToDraft(u, cid, dto.note);
   }
   @Get(':id/dashboard') dashboard(@CurrentUser() u: AuthUser, @id() cid: string) {
     return this.competitions.dashboard(u, cid);

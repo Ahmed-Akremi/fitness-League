@@ -424,6 +424,8 @@ export class JudgingService {
     if (!roles.has('HEAD_JUDGE') && !this.isPlatformAdmin(user)) throw AppException.forbidden('Head judge only');
     return this.prisma.$transaction(async (tx) => {
       const competition = await tx.competition.findUniqueOrThrow({ where: { id: competitionId } });
+      // Organizer space: a draft leaves DRAFT only through an admin (same rule as the status route).
+      if (competition.status === 'DRAFT') throw AppException.forbidden('An admin publishes the competition');
       if (await tx.competitionAppeal.count({ where: { status: 'PENDING', submission: { workout: { competitionId } } } })) {
         throw new AppException(HttpStatus.CONFLICT, ErrorCode.PRECONDITION_FAILED, 'Resolve pending appeals first');
       }
