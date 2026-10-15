@@ -14,6 +14,7 @@ import { EmptyState, Loading, SectionHeader, SkeletonList, StatCard, StatusPill,
 import { ErrorText, ErrorView, errorMessage } from '../../core/widgets/error';
 import { Button, Card, Chip, Icon, ListGroup, ListRow, Screen, Segmented, TextField, Txt, toast, type IconName } from '../../core/widgets/kit';
 import { compKeys, competitionsApi, formatMoney, useCompetition, useCompetitions, useCompLeaderboard, useHeats, useMySubmissions, youtubeId, type CompFilter } from './api';
+import { CompetitionAnnouncements } from './organizer/announcements';
 import { publicationState } from './organizer/logic';
 
 const statusLabel = (t: T, s: string) => (t as (k: string) => string)(`compStatus${s}`);
@@ -211,6 +212,7 @@ export function CompetitionScreen({ id }: { id: string }) {
                 <ListRow icon="groups" title={t('compAthletes', { count: c.participants })} />
               </ListGroup>
               <HeatSchedule id={id} />
+              <CompetitionAnnouncements id={id} />
 
               {categories.length > 0 && (
                 <View onLayout={anchor('categories')} style={{ gap: space.md }}>
