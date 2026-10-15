@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 
 import type { Json } from '../../../core/api/client';
-import { useT } from '../../../core/prefs';
+import { useLocale, useT } from '../../../core/prefs';
 import { useApi } from '../../../core/services';
 import { space, useTheme } from '../../../core/theme';
 import { Loading, SectionHeader } from '../../../core/widgets/common';
@@ -12,11 +12,12 @@ import { useMe } from '../../me/api';
 import { socialApi } from '../../social/api';
 import { organizerApi, useRefreshCompetition, useStaff } from './api';
 import { exportCsv } from './export';
-import { csvFileName, personName, STAFF_ORDER, staffByRole, staffCsv } from './logic-b';
+import { csvFileName, csvSeparator, personName, STAFF_ORDER, staffByRole, staffCsv } from './logic-b';
 
 /** « Équipe » (spec §1.3 item 7): organizers, head judges and judges; co-organizers are added or removed here, judges stay with the admin panel. */
 export function TeamTab({ c }: { c: Json }) {
   const t = useT();
+  const locale = useLocale();
   const { colors } = useTheme();
   const api = useApi();
   const refresh = useRefreshCompetition();
@@ -98,7 +99,7 @@ export function TeamTab({ c }: { c: Json }) {
       <Txt color={colors.outline}>{t('orgTeamJudgesHint')}</Txt>
       <ErrorText error={error} />
       <Button testID="team-add" icon="person-add" label={t('orgTeamAdd')} busy={busy} onPress={() => setAdding(true)} />
-      <Button testID="team-export" kind="outlined" icon="file-download" label={t('orgExport')} disabled={staff.data.length === 0} onPress={() => exportCsv(csvFileName(c, 'team'), staffCsv(staff.data))} />
+      <Button testID="team-export" kind="outlined" icon="file-download" label={t('orgExport')} disabled={staff.data.length === 0} onPress={() => exportCsv(csvFileName(c, 'team'), staffCsv(staff.data, csvSeparator(locale)))} />
       <Dialog
         visible={removing != null}
         title={t('orgTeamRemove')}

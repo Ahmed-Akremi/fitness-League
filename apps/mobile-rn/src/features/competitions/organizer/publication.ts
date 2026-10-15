@@ -1,5 +1,4 @@
 import { useRef, useState } from 'react';
-import { Share } from 'react-native';
 
 import type { Json } from '../../../core/api/client';
 import { useLocale, useT } from '../../../core/prefs';
@@ -7,6 +6,7 @@ import { useApi } from '../../../core/services';
 import { formatDate } from '../../../core/utils/format';
 import { toast } from '../../../core/widgets/kit';
 import { organizerApi, useRefreshCompetition } from './api';
+import { shareOrCopy } from './export';
 import { missingForPublication, publicationState } from './logic';
 
 /** Asking for publication and sharing the event: used by the dashboard and by the top bar on a computer. */
@@ -39,9 +39,11 @@ export function usePublication(c: Json) {
     }
   }
 
-  function share() {
+  async function share() {
     const text = t('orgShareText', { title: c.title, date: formatDate(c.eventStart, locale), place: c.city ?? c.location ?? '' });
-    void Share.share({ message: `${text}\nfitnessleague://competitions/${c.id}` });
+    const done = await shareOrCopy(`${text}\nfitnessleague://competitions/${c.id}`);
+    if (done === 'copied') toast(t('orgCopied'));
+    else if (done === 'failed') toast(t('errorGeneric'));
   }
 
   return { state, missing, canRequest, busy, error, request, share };

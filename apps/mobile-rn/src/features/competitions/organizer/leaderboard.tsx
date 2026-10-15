@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { View } from 'react-native';
 
 import type { Json } from '../../../core/api/client';
-import { useT } from '../../../core/prefs';
+import { useLocale, useT } from '../../../core/prefs';
 import { space, useTheme } from '../../../core/theme';
 import { EmptyState, Loading, RankRow, StatusPill } from '../../../core/widgets/common';
 import { ErrorView } from '../../../core/widgets/error';
@@ -11,11 +11,12 @@ import { useCompLeaderboard } from '../api';
 import { exportCsv } from './export';
 import { Guide } from './guide';
 import type { ManageTab } from './logic';
-import { csvFileName, leaderboardCsv } from './logic-b';
+import { csvFileName, csvSeparator, leaderboardCsv } from './logic-b';
 
 /** « Classement » (spec §1.3 item 8): the ranking per category. Read only: the server lets only the head judge (admin panel) publish the final leaderboard. */
 export function LeaderboardTab({ c, onGo }: { c: Json; onGo?: (tab: ManageTab) => void }) {
   const t = useT();
+  const locale = useLocale();
   const { colors } = useTheme();
   const categories: Json[] = (c.categories ?? []).filter((k: Json) => k.active !== false);
   const [categoryId, setCategoryId] = useState<string | undefined>(categories[0]?.id);
@@ -44,7 +45,7 @@ export function LeaderboardTab({ c, onGo }: { c: Json; onGo?: (tab: ManageTab) =
             icon="file-download"
             label={t('orgExport')}
             disabled={board.data.rows.length === 0}
-            onPress={() => exportCsv(csvFileName(c, 'leaderboard'), leaderboardCsv(board.data.rows, categories.find((k) => k.id === categoryId)?.name ?? ''))}
+            onPress={() => exportCsv(csvFileName(c, 'leaderboard'), leaderboardCsv(board.data.rows, categories.find((k) => k.id === categoryId)?.name ?? '', csvSeparator(locale)))}
           />
           {board.data.rows.length === 0 ? (
             <EmptyState icon="leaderboard" message={t('orgBoardEmpty')} />

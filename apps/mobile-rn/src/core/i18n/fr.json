@@ -828,5 +828,6 @@
   "orgNeedCategory": "Crée d'abord une catégorie : les heats et le classement s'y rattachent.",
   "orgNeedWod": "Ajoute d'abord un WOD : les heats et le classement en ont besoin.",
   "orgGoCategories": "Aller aux catégories",
-  "orgGoWods": "Aller aux WODs"
+  "orgGoWods": "Aller aux WODs",
+  "orgCopied": "Copié : colle-le où tu veux."
 }

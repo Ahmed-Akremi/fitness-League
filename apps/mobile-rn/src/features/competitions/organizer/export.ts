@@ -20,6 +20,27 @@ export function downloadCsv(fileName: string, text: string, doc: CsvDoc = docume
   setTimeout(() => urls.revokeObjectURL(url), 1000);
 }
 
+export type ShareEnv = { os: string; nav?: { share?: unknown; clipboard?: { writeText(text: string): Promise<void> } } };
+
+/** The share sheet; a browser without one (most computers) gets the text copied instead. A cancelled share is not copied. */
+export async function shareOrCopy(message: string, env: ShareEnv = { os: Platform.OS, nav: (globalThis as { navigator?: ShareEnv['nav'] }).navigator }): Promise<'shared' | 'copied' | 'failed'> {
+  if (env.os !== 'web' || env.nav?.share) {
+    try {
+      await Share.share({ message });
+      return 'shared';
+    } catch (e) {
+      if (env.os !== 'web' || (e as Error)?.name === 'AbortError') return 'failed';
+    }
+  }
+  if (!env.nav?.clipboard) return 'failed';
+  try {
+    await env.nav.clipboard.writeText(message);
+    return 'copied';
+  } catch {
+    return 'failed';
+  }
+}
+
 /** One export for every organizer list: a file on the web, the share sheet on a phone (the app has no file library). */
 export function exportCsv(fileName: string, text: string) {
   if (Platform.OS === 'web') downloadCsv(fileName, text);

@@ -828,5 +828,6 @@
   "orgNeedCategory": "Create a category first: heats and the leaderboard belong to one.",
   "orgNeedWod": "Add a WOD first: heats and the leaderboard need one.",
   "orgGoCategories": "Go to categories",
-  "orgGoWods": "Go to WODs"
+  "orgGoWods": "Go to WODs",
+  "orgCopied": "Copied: paste it wherever you like."
 }

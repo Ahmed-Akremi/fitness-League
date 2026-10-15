@@ -3,6 +3,7 @@ import { act, fireEvent, waitFor } from 'expo-router/testing-library';
 import { Share } from 'react-native';
 
 import type { ManageTab } from '../../src/features/competitions/organizer/logic';
+import * as exportModule from '../../src/features/competitions/organizer/export';
 import { ManageScreen } from '../../src/features/competitions/organizer/manage';
 import { renderScreen } from '../harness';
 import { event, orgBackend } from '../organizer-fixtures';
@@ -99,5 +100,13 @@ describe('organizer space on a computer', () => {
     const screen = await renderScreen(open(), orgBackend({ ...event, myRoles: [] }));
     expect(await screen.findByText('Only the organizers of this event can open this page.')).toBeTruthy();
     expect(screen.queryByTestId('org-menu')).toBeNull();
+  });
+
+  it('« Share » on a computer without a share sheet copies the link and says so', async () => {
+    const copy = jest.spyOn(exportModule, 'shareOrCopy').mockResolvedValue('copied');
+    const screen = await renderScreen(open(), orgBackend());
+    await fireEvent.press(await screen.findByTestId('org-top-share'));
+    expect(copy.mock.calls[0][0]).toMatch(/fitnessleague:\/\/competitions\/c9$/);
+    expect(await screen.findByText('Copied: paste it wherever you like.')).toBeTruthy();
   });
 });

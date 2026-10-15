@@ -1,4 +1,4 @@
-import { couponsCsv, csvFileName, heatsCsv, leaderboardCsv, registrationsCsv, staffCsv } from '../../src/features/competitions/organizer/logic-b';
+import { couponsCsv, csvFileName, csvSeparator, heatsCsv, leaderboardCsv, registrationsCsv, staffCsv } from '../../src/features/competitions/organizer/logic-b';
 import { contentWidth, FORM_WIDTH, isWideWeb, menuMarks, ORG_MENU, WIDE_WIDTH } from '../../src/features/competitions/organizer/web';
 import { event, regs } from '../organizer-fixtures';
 
@@ -78,5 +78,16 @@ describe('exports', () => {
       'name,username,category,registration,payment,amount,currency,registered_at',
       'Sami Ben Ali,sami_rx,RX Men,PENDING,PENDING,40.000,TND,2026-10-21T09:00:00.000Z',
     ]);
+  });
+});
+
+describe('spreadsheets of every language', () => {
+  it('French and Arabic spreadsheets split columns on « ; », English ones on « , »', () => {
+    expect([csvSeparator('fr'), csvSeparator('ar'), csvSeparator('en')]).toEqual([';', ';', ',']);
+    expect(registrationsCsv([regs[0]], ';').split('\n')).toEqual([
+      'name;username;category;registration;payment;amount;currency;registered_at',
+      'Sami Ben Ali;sami_rx;RX Men;PENDING;PENDING;40.000;TND;2026-10-21T09:00:00.000Z',
+    ]);
+    expect(staffCsv([{ role: 'ORGANIZER', user: { username: 'a', profile: { fullName: 'Ben Ali; Amel' } } }], ';').split('\n')[1]).toBe('ORGANIZER;"Ben Ali; Amel";a');
   });
 });

@@ -52,8 +52,11 @@ const csvCell = (v: unknown) => {
   return /[",;\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 };
 
-/** One CSV text: the header line, then one line per row; every cell goes through `csvCell`. */
-export const toCsv = (head: string[], rows: unknown[][]) => [head.join(','), ...rows.map((r) => r.map(csvCell).join(','))].join('\n');
+/** Column separator a spreadsheet of that language expects: French and Arabic Excel split on « ; » (their decimal mark is the comma). */
+export const csvSeparator = (locale: string) => (locale === 'en' ? ',' : ';');
+
+/** One CSV text: the header line, then one line per row; every cell goes through `csvCell` (which quotes « , » and « ; »). */
+export const toCsv = (head: string[], rows: unknown[][], sep = ',') => [head.join(sep), ...rows.map((r) => r.map(csvCell).join(sep))].join('\n');
 
 /** Amount in currency units: 3 decimals for TND (millimes), 2 otherwise. */
 const units = (amount: unknown, currency: string) => {
@@ -62,15 +65,16 @@ const units = (amount: unknown, currency: string) => {
 };
 
 /** Spreadsheet export: one line per registration; amounts in currency units, dates in ISO. */
-export function registrationsCsv(rows: Json[]): string {
+export function registrationsCsv(rows: Json[], sep = ','): string {
   return toCsv(
     ['name', 'username', 'category', 'registration', 'payment', 'amount', 'currency', 'registered_at'],
     rows.map((r) => [personName(r), r.user?.username ?? '', r.category?.name ?? '', r.registrationStatus, r.paymentStatus, units(r.finalPrice, r.currency), r.currency, r.registeredAt]),
+    sep,
   );
 }
 
 /** Lane sheet to print for the floor: one line per lane of every heat, free lanes included. */
-export function heatsCsv(heats: Json[]): string {
+export function heatsCsv(heats: Json[], sep = ','): string {
   const rows: unknown[][] = [];
   for (const h of heats) {
     const byLane = new Map<number, Json>((h.lanes ?? []).map((l: Json) => [l.lane, l]));
@@ -79,10 +83,10 @@ export function heatsCsv(heats: Json[]): string {
       rows.push([h.name, h.startsAt ?? '', h.workout?.name ?? '', h.category?.name ?? '', n, l ? personName(l) : '', l?.athlete?.username ?? '']);
     }
   }
-  return toCsv(['heat', 'starts_at', 'wod', 'category', 'lane', 'athlete', 'username'], rows);
+  return toCsv(['heat', 'starts_at', 'wod', 'category', 'lane', 'athlete', 'username'], rows, sep);
 }
 
-export function couponsCsv(coupons: Json[], categories: Json[], currency: string): string {
+export function couponsCsv(coupons: Json[], categories: Json[], currency: string, sep = ','): string {
   const names = new Map(categories.map((k) => [k.id, k.name]));
   return toCsv(
     ['code', 'type', 'value', 'category', 'used', 'max_uses', 'expires_at', 'active'],
@@ -96,16 +100,17 @@ export function couponsCsv(coupons: Json[], categories: Json[], currency: string
       k.expiresAt ?? '',
       k.active ? 'yes' : 'no',
     ]),
+    sep,
   );
 }
 
-export const staffCsv = (rows: Json[]) => {
+export const staffCsv = (rows: Json[], sep = ',') => {
   const groups = staffByRole(rows);
-  return toCsv(['role', 'name', 'username'], STAFF_ORDER.flatMap((role) => groups[role].map((s) => [role, personName(s), s.user?.username ?? ''])));
+  return toCsv(['role', 'name', 'username'], STAFF_ORDER.flatMap((role) => groups[role].map((s) => [role, personName(s), s.user?.username ?? ''])), sep);
 };
 
-export const leaderboardCsv = (rows: Json[], category: string) =>
-  toCsv(['category', 'rank', 'name', 'username', 'points', 'pending'], rows.map((r) => [category, r.rank, r.athlete?.fullName || r.athlete?.username || '', r.athlete?.username ?? '', r.totalPoints, r.pending ?? 0]));
+export const leaderboardCsv = (rows: Json[], category: string, sep = ',') =>
+  toCsv(['category', 'rank', 'name', 'username', 'points', 'pending'], rows.map((r) => [category, r.rank, r.athlete?.fullName || r.athlete?.username || '', r.athlete?.username ?? '', r.totalPoints, r.pending ?? 0]), sep);
 
 /** `<address name>-<list>.csv`, so the organizer's downloads stay apart. */
 export const csvFileName = (c: Json, list: string) => `${c.slug || 'event'}-${list}.csv`;

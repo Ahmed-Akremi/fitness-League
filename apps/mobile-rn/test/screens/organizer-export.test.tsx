@@ -58,4 +58,10 @@ describe('organizer space: one export everywhere', () => {
     const screen = await renderScreen(open('leaderboard'), orgBackend().on('GET', '/competitions/c9/leaderboard', [200, board([])]));
     expect((await screen.findByTestId('board-export')).props.accessibilityState?.disabled).toBe(true);
   });
+
+  it('in French the columns are split by « ; » (French Excel)', async () => {
+    const screen = await renderScreen(open('participants'), orgBackend(), { locale: 'fr' });
+    await fireEvent.press(await screen.findByTestId('reg-csv'));
+    expect(sent().head).toBe('name;username;category;registration;payment;amount;currency;registered_at');
+  });
 });

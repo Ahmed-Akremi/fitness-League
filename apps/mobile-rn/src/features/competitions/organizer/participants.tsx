@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { FlatList, Share, View } from 'react-native';
+import { FlatList, View } from 'react-native';
 
 import type { Json } from '../../../core/api/client';
 import { ApiError } from '../../../core/api/errors';
@@ -9,11 +9,11 @@ import { space, useTheme } from '../../../core/theme';
 import { formatDate } from '../../../core/utils/format';
 import { EmptyState, Loading, StatusPill } from '../../../core/widgets/common';
 import { ErrorText, ErrorView } from '../../../core/widgets/error';
-import { Button, Chip, Dialog, ListRow, Segmented, TextField, Txt } from '../../../core/widgets/kit';
+import { Button, Chip, Dialog, ListRow, Segmented, TextField, Txt, toast } from '../../../core/widgets/kit';
 import { formatMoney } from '../api';
 import { organizerApi, useRefreshCompetition, useRegistrations } from './api';
-import { exportCsv } from './export';
-import { csvFileName, filterRegistrations, personName, registrationsCsv, toCollect, type PaymentFilter } from './logic-b';
+import { exportCsv, shareOrCopy } from './export';
+import { csvFileName, csvSeparator, filterRegistrations, personName, registrationsCsv, toCollect, type PaymentFilter } from './logic-b';
 
 const PAYMENTS: PaymentFilter[] = ['ALL', 'PENDING', 'PAID', 'FREE'];
 const standing = (r: Json) => r.registrationStatus !== 'CANCELLED' && r.registrationStatus !== 'REFUNDED';
@@ -91,7 +91,7 @@ export function ParticipantsTab({ c }: { c: Json }) {
               <Chip key={k.id} testID={`reg-cat-${k.id}`} label={k.name} selected={categoryId === k.id} onPress={() => setCategoryId(k.id)} />
             ))}
           </View>
-          <Button testID="reg-csv" kind="outlined" icon="file-download" label={t('orgExport')} disabled={rows.length === 0} onPress={() => exportCsv(csvFileName(c, 'participants'), registrationsCsv(rows))} />
+          <Button testID="reg-csv" kind="outlined" icon="file-download" label={t('orgExport')} disabled={rows.length === 0} onPress={() => exportCsv(csvFileName(c, 'participants'), registrationsCsv(rows, csvSeparator(locale)))} />
         </>
       ) : (
         <Txt color={colors.outline}>{t('orgRegCollectHint')}</Txt>
@@ -149,7 +149,11 @@ export function ParticipantsTab({ c }: { c: Json }) {
         onConfirm={() => {
           const text = receipt;
           setReceipt(null);
-          if (text) void Share.share({ message: text });
+          if (text)
+            void shareOrCopy(text).then((done) => {
+              if (done === 'copied') toast(t('orgCopied'));
+              else if (done === 'failed') toast(t('errorGeneric'));
+            });
         }}
         onCancel={() => setReceipt(null)}
       />
