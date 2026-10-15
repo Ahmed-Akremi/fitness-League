@@ -13,17 +13,18 @@ import { CategoriesTab } from './categories';
 import { DashboardTab } from './dashboard';
 import { GeneralTab } from './general';
 import type { ManageTab } from './logic';
+import { PlanningTab } from './planning';
 import { WodsTab } from './wods';
 
-/** Tabs of the organizer space, in display order (lot A; lot B adds planning, participants, team, leaderboard, announcements, promo codes). */
-const TABS: ManageTab[] = ['dashboard', 'general', 'categories', 'wods'];
+/** Tabs of the organizer space, in display order. */
+const TABS: ManageTab[] = ['dashboard', 'general', 'categories', 'wods', 'planning'];
 
 export function ManageScreen({ id, initialTab = 'dashboard' }: { id: string; initialTab?: ManageTab }) {
   const t = useT();
   const { colors } = useTheme();
   const comp = useCompetition(id);
   const [tab, setTab] = useState<ManageTab>(initialTab);
-  const labels: Record<ManageTab, string> = { dashboard: t('orgTabDashboard'), general: t('orgTabGeneral'), categories: t('orgTabCategories'), wods: t('orgTabWods') };
+  const labels: Record<ManageTab, string> = { dashboard: t('orgTabDashboard'), general: t('orgTabGeneral'), categories: t('orgTabCategories'), wods: t('orgTabWods'), planning: t('orgTabPlanning') };
 
   // The server answers 404 (a draft) or 403 to anyone who is not on the staff.
   if (comp.error instanceof ApiError && (comp.error.status === 404 || comp.error.status === 403)) return <EmptyState icon="lock" message={t('orgOnly')} />;
@@ -43,6 +44,7 @@ export function ManageScreen({ id, initialTab = 'dashboard' }: { id: string; ini
       {tab === 'general' && <GeneralTab c={c} />}
       {tab === 'categories' && <CategoriesTab c={c} />}
       {tab === 'wods' && <WodsTab c={c} />}
+      {tab === 'planning' && <PlanningTab c={c} />}
     </View>
   );
 }
