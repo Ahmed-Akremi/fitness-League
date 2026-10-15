@@ -129,6 +129,9 @@ export function catBody(d: CatDraft): Json {
 // ───────────── WODs ─────────────
 
 export type WodMovement = { name: string; points: string };
+/** A category's own version of a WOD (server `variants`): description, standards and time cap. */
+export type WodVariant = { categoryId: string; description: string; standards: string; capMin: string };
+
 export type WodDraft = {
   id?: string;
   number: number;
@@ -145,6 +148,8 @@ export type WodDraft = {
   movements: WodMovement[];
   start: Date;
   end: Date;
+  variants: WodVariant[];
+  releaseAt: Date | null;
 };
 
 const DEFAULT_TABLE = '100, 95, 90, 85, 80';
@@ -152,7 +157,7 @@ const placements = (s: string) => s.split(',').map((x) => x.trim()).filter(Boole
 
 export function wodDraft(w: Json | null, defaults: { number: number; start: Date; end: Date }): WodDraft {
   if (!w) {
-    return { number: defaults.number, name: `WOD ${defaults.number}`, description: '', standards: '', scoreType: 'MOVEMENT_REPS', method: 'DIRECT_POINTS', table: DEFAULT_TABLE, max: '100', min: '0', capMin: '', videoUrl: '', movements: [{ name: '', points: '1' }], start: defaults.start, end: defaults.end };
+    return { number: defaults.number, name: `WOD ${defaults.number}`, description: '', standards: '', scoreType: 'MOVEMENT_REPS', method: 'DIRECT_POINTS', table: DEFAULT_TABLE, max: '100', min: '0', capMin: '', videoUrl: '', movements: [{ name: '', points: '1' }], start: defaults.start, end: defaults.end, variants: [], releaseAt: null };
   }
   return {
     id: w.id,
@@ -170,6 +175,8 @@ export function wodDraft(w: Json | null, defaults: { number: number; start: Date
     movements: (w.movements ?? []).map((m: Json) => ({ name: m.name, points: String(m.pointsPerRep) })),
     start: new Date(w.submissionStart ?? defaults.start),
     end: new Date(w.submissionDeadline ?? defaults.end),
+    variants: (w.variants ?? []).map((v: Json) => ({ categoryId: v.categoryId, description: v.description ?? '', standards: v.standards ?? '', capMin: v.timeCapS ? String(v.timeCapS / 60) : '' })),
+    releaseAt: w.releaseAt ? new Date(w.releaseAt) : null,
   };
 }
 
@@ -189,6 +196,7 @@ export function wodValid(d: WodDraft): boolean {
     const ms = d.movements.filter((m) => m.name.trim());
     if (!ms.length || ms.some((m) => !(num(m.points) > 0))) return false;
   }
+  if (d.variants.some((v) => !v.description.trim() || v.description.trim().length > 5000 || (v.capMin.trim() && !(num(v.capMin) >= 1)))) return false;
   return true;
 }
 
@@ -209,5 +217,14 @@ export function wodBody(d: WodDraft): Json {
     movements: d.scoreType === 'MOVEMENT_REPS' ? d.movements.filter((m) => m.name.trim()).map((m) => ({ name: m.name.trim(), pointsPerRep: num(m.points) })) : [],
     submissionStart: d.start.toISOString(),
     submissionDeadline: d.end.toISOString(),
+    // Sent every time: the server replaces the WOD's versions with this list (an empty one clears them).
+    variants: d.variants.map((v) => ({
+      categoryId: v.categoryId,
+      description: v.description.trim(),
+      ...(v.standards.trim() ? { standards: v.standards.trim() } : {}),
+      ...(v.capMin.trim() ? { timeCapS: Math.round(num(v.capMin) * 60) } : {}),
+    })),
+    // The server keeps a release date it is not sent; it cannot be cleared, only moved (« Show it now »).
+    ...(d.releaseAt ? { releaseAt: d.releaseAt.toISOString() } : {}),
   };
 }
