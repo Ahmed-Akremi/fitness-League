@@ -12,6 +12,7 @@ import { useCompetition } from '../api';
 import { CategoriesTab } from './categories';
 import { DashboardTab } from './dashboard';
 import { GeneralTab } from './general';
+import { LeaderboardTab } from './leaderboard';
 import type { ManageTab } from './logic';
 import { ParticipantsTab } from './participants';
 import { PlanningTab } from './planning';
@@ -19,14 +20,14 @@ import { TeamTab } from './team';
 import { WodsTab } from './wods';
 
 /** Tabs of the organizer space, in display order. */
-const TABS: ManageTab[] = ['dashboard', 'general', 'categories', 'wods', 'planning', 'participants', 'team'];
+const TABS: ManageTab[] = ['dashboard', 'general', 'categories', 'wods', 'planning', 'participants', 'team', 'leaderboard'];
 
 export function ManageScreen({ id, initialTab = 'dashboard' }: { id: string; initialTab?: ManageTab }) {
   const t = useT();
   const { colors } = useTheme();
   const comp = useCompetition(id);
   const [tab, setTab] = useState<ManageTab>(initialTab);
-  const labels: Record<ManageTab, string> = { dashboard: t('orgTabDashboard'), general: t('orgTabGeneral'), categories: t('orgTabCategories'), wods: t('orgTabWods'), planning: t('orgTabPlanning'), participants: t('orgTabParticipants'), team: t('orgTabTeam') };
+  const labels: Record<ManageTab, string> = { dashboard: t('orgTabDashboard'), general: t('orgTabGeneral'), categories: t('orgTabCategories'), wods: t('orgTabWods'), planning: t('orgTabPlanning'), participants: t('orgTabParticipants'), team: t('orgTabTeam'), leaderboard: t('orgTabLeaderboard') };
 
   // The server answers 404 (a draft) or 403 to anyone who is not on the staff.
   if (comp.error instanceof ApiError && (comp.error.status === 404 || comp.error.status === 403)) return <EmptyState icon="lock" message={t('orgOnly')} />;
@@ -49,6 +50,7 @@ export function ManageScreen({ id, initialTab = 'dashboard' }: { id: string; ini
       {tab === 'planning' && <PlanningTab c={c} />}
       {tab === 'participants' && <ParticipantsTab c={c} />}
       {tab === 'team' && <TeamTab c={c} />}
+      {tab === 'leaderboard' && <LeaderboardTab c={c} />}
     </View>
   );
 }
