@@ -729,11 +729,11 @@
   "orgNextHeat": "Suivant : {name} à {time}",
   "orgHeatsDone": "{done} heats terminés sur {total}",
   "orgDelay": "Retard",
-  "orgDelayAsk": "De combien de minutes décaler les {count} heats pas encore commencés ?",
+  "orgDelayAsk": "De combien de minutes décaler les {count} heats du {day} pas encore commencés ?",
   "orgDelayMinutes": "Minutes (1 à 600)",
   "orgDelayConfirm": "Décaler",
   "orgDelayTitle": "Planning décalé de {minutes} min",
-  "orgDelayBody": "Tous les heats pas encore commencés démarrent {minutes} minutes plus tard.",
+  "orgDelayBody": "Tous les heats du {day} pas encore commencés démarrent {minutes} minutes plus tard.",
   "orgDelayDone": "{count} heats décalés de {minutes} min, annonce publiée.",
   "orgDelayFailed": "Non décalés : {names}.",
   "orgRegAll": "Tous ({count})",
@@ -810,5 +810,8 @@
   "orgRelease": "Publication du WOD",
   "orgReleaseAt": "Visible par les athlètes à partir du",
   "orgReleaseNow": "Dès l'enregistrement",
-  "orgReleaseNowButton": "Le montrer maintenant"
+  "orgReleaseNowButton": "Le montrer maintenant",
+  "orgDelayNotAnnounced": "{count} heats décalés de {minutes} min, mais l'annonce n'a pas été publiée.",
+  "orgDelayPostAnnouncement": "Publier l'annonce",
+  "orgTeamAddConfirm": "{name} pourra tout modifier dans cet événement, comme toi."
 }

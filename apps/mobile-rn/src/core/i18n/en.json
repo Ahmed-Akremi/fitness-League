@@ -729,11 +729,11 @@
   "orgNextHeat": "Next: {name} at {time}",
   "orgHeatsDone": "{done} of {total} heats done",
   "orgDelay": "Delay",
-  "orgDelayAsk": "Move the {count} heats that have not started by how many minutes?",
+  "orgDelayAsk": "Move the {count} heats of {day} that have not started by how many minutes?",
   "orgDelayMinutes": "Minutes (1 to 600)",
   "orgDelayConfirm": "Move",
   "orgDelayTitle": "Schedule moved by {minutes} min",
-  "orgDelayBody": "Every heat that has not started yet starts {minutes} minutes later.",
+  "orgDelayBody": "Every heat of {day} that has not started yet starts {minutes} minutes later.",
   "orgDelayDone": "{count} heats moved by {minutes} min, announcement posted.",
   "orgDelayFailed": "Not moved: {names}.",
   "orgRegAll": "All ({count})",
@@ -810,5 +810,8 @@
   "orgRelease": "Release",
   "orgReleaseAt": "Visible to athletes from",
   "orgReleaseNow": "As soon as it is saved",
-  "orgReleaseNowButton": "Show it now"
+  "orgReleaseNowButton": "Show it now",
+  "orgDelayNotAnnounced": "{count} heats moved by {minutes} min, but the announcement was not posted.",
+  "orgDelayPostAnnouncement": "Post the announcement",
+  "orgTeamAddConfirm": "{name} will be able to change everything in this event, like you."
 }

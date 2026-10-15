@@ -43,9 +43,13 @@ describe('organizer space: team', () => {
     expect(screen.getByText('Already an organizer')).toBeTruthy();
     await fireEvent.press(screen.getByTestId('team-pick-u-2'));
     expect(backend.calls('POST', '/competitions/c9/staff')).toHaveLength(0);
+    await fireEvent.press(screen.getByTestId('team-pick-u-7'));
+    // Full rights for someone else: asked first.
+    expect(screen.getByText('Amira Trabelsi will be able to change everything in this event, like you.')).toBeTruthy();
+    expect(backend.calls('POST', '/competitions/c9/staff')).toHaveLength(0);
     await act(async () => {
-      fireEvent.press(screen.getByTestId('team-pick-u-7'));
-      fireEvent.press(screen.getByTestId('team-pick-u-7'));
+      fireEvent.press(screen.getByTestId('dialog-confirm'));
+      fireEvent.press(screen.getByTestId('dialog-confirm'));
     });
     await waitFor(() => expect(backend.calls('POST', '/competitions/c9/staff')).toHaveLength(1));
     expect(backend.calls('POST', '/competitions/c9/staff')[0].body).toEqual({ userId: 'u-7', role: 'ORGANIZER' });

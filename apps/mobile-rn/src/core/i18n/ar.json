@@ -729,11 +729,11 @@
   "orgNextHeat": "التالي: {name} على {time}",
   "orgHeatsDone": "انتهت {done} من {total} دفعات",
   "orgDelay": "تأخير",
-  "orgDelayAsk": "بكم دقيقة تُؤخَّر الدفعات الـ{count} التي لم تبدأ؟",
+  "orgDelayAsk": "بكم دقيقة تُؤخَّر الدفعات الـ{count} ليوم {day} التي لم تبدأ؟",
   "orgDelayMinutes": "الدقائق (1 إلى 600)",
   "orgDelayConfirm": "تأخير",
   "orgDelayTitle": "تأخير الجدول {minutes} دقيقة",
-  "orgDelayBody": "كل دفعة لم تبدأ بعد ستبدأ متأخرة {minutes} دقيقة.",
+  "orgDelayBody": "كل دفعة ليوم {day} لم تبدأ بعد ستبدأ متأخرة {minutes} دقيقة.",
   "orgDelayDone": "تم تأخير {count} دفعات {minutes} دقيقة ونُشر إعلان.",
   "orgDelayFailed": "لم تُؤخَّر: {names}.",
   "orgRegAll": "الكل ({count})",
@@ -810,5 +810,8 @@
   "orgRelease": "نشر التمرين",
   "orgReleaseAt": "يظهر للرياضيين ابتداءً من",
   "orgReleaseNow": "فور الحفظ",
-  "orgReleaseNowButton": "إظهاره الآن"
+  "orgReleaseNowButton": "إظهاره الآن",
+  "orgDelayNotAnnounced": "تم تأخير {count} دفعات {minutes} دقيقة، لكن الإعلان لم يُنشر.",
+  "orgDelayPostAnnouncement": "نشر الإعلان",
+  "orgTeamAddConfirm": "سيتمكن {name} من تعديل كل شيء في هذا الحدث، مثلك."
 }

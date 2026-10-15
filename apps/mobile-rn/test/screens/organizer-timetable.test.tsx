@@ -42,7 +42,7 @@ describe('organizer space: clock and delay', () => {
     expect(backend.calls('PUT', '/competitions/c9/heats/c').map((r) => r.body)).toEqual([{ startsAt: '2026-12-12T10:15:00.000Z' }]);
     expect(backend.calls('PUT', '/competitions/c9/heats/e').map((r) => r.body)).toEqual([{ startsAt: '2026-12-12T11:15:00.000Z' }]);
     for (const id of ['a', 'b', 'd']) expect(backend.calls('PUT', `/competitions/c9/heats/${id}`)).toHaveLength(0);
-    expect(backend.calls('POST', '/competitions/c9/announcements').map((r) => r.body)).toEqual([{ title: 'Schedule moved by 15 min', body: 'Every heat that has not started yet starts 15 minutes later.' }]);
+    expect(backend.calls('POST', '/competitions/c9/announcements').map((r) => r.body)).toEqual([{ title: 'Schedule moved by 15 min', body: 'Every heat of Saturday, December 12 that has not started yet starts 15 minutes later.' }]);
   });
 
   it('lists the heats that did not move and retries only those; the announcement waits for all', async () => {
@@ -56,11 +56,47 @@ describe('organizer space: clock and delay', () => {
     await delayBy(screen, '15');
     expect(await screen.findByText('Not moved: Heat C.')).toBeTruthy();
     expect(backend.calls('POST', '/competitions/c9/announcements')).toHaveLength(0);
+    // « Delay » again would move E a second time: only « Retry » is offered.
+    expect(screen.getByTestId('delay').props.accessibilityState?.disabled).toBe(true);
     await fireEvent.press(screen.getByTestId('delay-retry'));
     expect(await screen.findByText('2 heats moved by 15 min, announcement posted.')).toBeTruthy();
     expect(backend.calls('PUT', '/competitions/c9/heats/c').map((r) => r.body)).toEqual([{ startsAt: '2026-12-12T10:15:00.000Z' }, { startsAt: '2026-12-12T10:15:00.000Z' }]);
     expect(backend.calls('PUT', '/competitions/c9/heats/e')).toHaveLength(1);
     expect(backend.calls('POST', '/competitions/c9/announcements')).toHaveLength(1);
+  });
+
+  it('the announcement failed after every heat moved: it is posted alone, the heats never move twice', async () => {
+    let posts = 0;
+    const backend = orgBackend()
+      .on('GET', '/competitions/c9/heats', [200, day])
+      .on('PUT', '/competitions/c9/heats/c', [200, {}])
+      .on('PUT', '/competitions/c9/heats/e', [200, {}])
+      .on('POST', '/competitions/c9/announcements', () => (++posts === 1 ? [500, { code: 'INTERNAL', status: 500 }] : [201, {}]));
+    const screen = await renderScreen(open, backend);
+    await delayBy(screen, '15');
+    expect(await screen.findByText('2 heats moved by 15 min, but the announcement was not posted.')).toBeTruthy();
+    expect(screen.getByTestId('delay').props.accessibilityState?.disabled).toBe(true);
+    await fireEvent.press(screen.getByTestId('delay-announce'));
+    expect(await screen.findByText('2 heats moved by 15 min, announcement posted.')).toBeTruthy();
+    expect(backend.calls('POST', '/competitions/c9/announcements')).toHaveLength(2);
+    expect(backend.calls('PUT', '/competitions/c9/heats/c')).toHaveLength(1);
+    expect(backend.calls('PUT', '/competitions/c9/heats/e')).toHaveLength(1);
+  });
+
+  it('moves the heats from their latest start times, read again before the delay', async () => {
+    // A co-organizer already moved C and E by 20 minutes from another phone.
+    const moved = day.map((h) => (h.id === 'c' ? { ...h, startsAt: '2026-12-12T10:20:00.000Z' } : h.id === 'e' ? { ...h, startsAt: '2026-12-12T11:20:00.000Z' } : h));
+    let reads = 0;
+    const backend = orgBackend()
+      .on('GET', '/competitions/c9/heats', () => [200, ++reads === 1 ? day : moved])
+      .on('PUT', '/competitions/c9/heats/c', [200, {}])
+      .on('PUT', '/competitions/c9/heats/e', [200, {}])
+      .on('POST', '/competitions/c9/announcements', [201, {}]);
+    const screen = await renderScreen(open, backend);
+    await delayBy(screen, '15');
+    expect(await screen.findByText('2 heats moved by 15 min, announcement posted.')).toBeTruthy();
+    expect(backend.calls('PUT', '/competitions/c9/heats/c').map((r) => r.body)).toEqual([{ startsAt: '2026-12-12T10:35:00.000Z' }]);
+    expect(backend.calls('PUT', '/competitions/c9/heats/e').map((r) => r.body)).toEqual([{ startsAt: '2026-12-12T11:35:00.000Z' }]);
   });
 
   it('refuses a delay that is not 1 to 600 minutes', async () => {

@@ -23,6 +23,7 @@ export function TeamTab({ c }: { c: Json }) {
   const me = useMe().data;
   const [adding, setAdding] = useState(false);
   const [removing, setRemoving] = useState<Json | null>(null);
+  const [picked, setPicked] = useState<{ id: string; name: string } | null>(null);
   const sending = useRef(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
@@ -49,7 +50,25 @@ export function TeamTab({ c }: { c: Json }) {
   const groups = staffByRole(staff.data);
   if (adding) {
     const organizers = new Set(groups.ORGANIZER.map((s) => s.userId as string));
-    return <AddOrganizer organizers={organizers} busy={busy} error={error} onPick={(userId) => run(() => organizerApi(api).addOrganizer(c.id, userId), () => setAdding(false))} onCancel={() => setAdding(false)} />;
+    return (
+      <>
+        <AddOrganizer organizers={organizers} busy={busy} error={error} onPick={setPicked} onCancel={() => setAdding(false)} />
+        {/* A co-organizer gets every right on the event: asked first, like a removal. */}
+        <Dialog
+          visible={picked != null}
+          title={t('orgTeamAdd')}
+          message={picked ? t('orgTeamAddConfirm', { name: picked.name }) : undefined}
+          confirmLabel={t('orgTeamAdd')}
+          cancelLabel={t('cancel')}
+          onConfirm={() => {
+            const p = picked;
+            setPicked(null);
+            if (p) void run(() => organizerApi(api).addOrganizer(c.id, p.id), () => setAdding(false));
+          }}
+          onCancel={() => setPicked(null)}
+        />
+      </>
+    );
   }
   const titles = { ORGANIZER: t('orgTeamOrganizers'), HEAD_JUDGE: t('orgTeamHeadJudges'), JUDGE: t('orgTeamJudges') };
   return (
@@ -97,7 +116,7 @@ export function TeamTab({ c }: { c: Json }) {
 }
 
 /** Athlete search (2 characters or more, debounced, same as the app's search screen); people already organizing cannot be picked. */
-function AddOrganizer({ organizers, busy, error, onPick, onCancel }: { organizers: Set<string>; busy: boolean; error: unknown; onPick: (userId: string) => void; onCancel: () => void }) {
+function AddOrganizer({ organizers, busy, error, onPick, onCancel }: { organizers: Set<string>; busy: boolean; error: unknown; onPick: (person: { id: string; name: string }) => void; onCancel: () => void }) {
   const t = useT();
   const { colors } = useTheme();
   const api = useApi();
@@ -138,7 +157,7 @@ function AddOrganizer({ organizers, busy, error, onPick, onCancel }: { organizer
       ) : (
         <ListGroup>
           {results.rows.map((a) => (
-            <ListRow key={a.id} testID={`team-pick-${a.id}`} icon="person" title={a.fullName || a.username} subtitle={organizers.has(a.id) ? t('orgTeamAlready') : `@${a.username}`} onPress={organizers.has(a.id) ? undefined : () => onPick(a.id)} />
+            <ListRow key={a.id} testID={`team-pick-${a.id}`} icon="person" title={a.fullName || a.username} subtitle={organizers.has(a.id) ? t('orgTeamAlready') : `@${a.username}`} onPress={organizers.has(a.id) ? undefined : () => onPick({ id: a.id, name: a.fullName || a.username })} />
           ))}
         </ListGroup>
       )}

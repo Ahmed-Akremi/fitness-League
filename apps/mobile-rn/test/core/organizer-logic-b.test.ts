@@ -238,3 +238,22 @@ describe('dashboard breakdown', () => {
     ]);
   });
 });
+
+describe('review fixes', () => {
+  it('« Retard » moves only the day being run: the next day keeps its times', () => {
+    const twoDays = [heat('a', '2026-12-12T10:00:00.000Z', 12), heat('b', '2026-12-13T09:00:00.000Z', 12), heat('c', '2026-12-12T15:00:00.000Z', 12)];
+    expect(delayTargets(twoDays, at('2026-12-12T09:00:00Z')).map((h) => h.id)).toEqual(['a', 'c']);
+    // Once the first day is over, the next day is the one being run.
+    expect(delayTargets(twoDays, at('2026-12-12T20:00:00Z')).map((h) => h.id)).toEqual(['b']);
+  });
+
+  it('editing a heat: a WOD, category or duration set back to none is sent as cleared', () => {
+    const d = { ...heatDraft(heat('h', '2026-12-12T08:00:00.000Z', 12)), workoutId: null, categoryId: null, duration: '' };
+    expect(heatBody(d)).toEqual({ name: 'Heat H', workoutId: null, categoryId: null, startsAt: '2026-12-12T08:00:00.000Z', durationMin: null, laneCount: 4 });
+  });
+
+  it('CSV: a cell a spreadsheet would read as a formula stays text', () => {
+    const evil = { ...regs[0], user: { username: '@sami', profile: { fullName: '=HYPERLINK("http://x","y")' } } };
+    expect(registrationsCsv([evil]).split('\n')[1]).toBe(`"'=HYPERLINK(""http://x"",""y"")",'@sami,RX Men,PENDING,PENDING,40.000,TND,2026-10-21T09:00:00.000Z`);
+  });
+});

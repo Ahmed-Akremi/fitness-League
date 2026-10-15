@@ -46,8 +46,10 @@ export function toCollect(rows: Json[]): Json[] {
 }
 
 const csvCell = (v: unknown) => {
-  const s = v == null ? '' : String(v);
-  return /[",;\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  const raw = v == null ? '' : String(v);
+  // Athletes choose their names: a cell that starts like a formula is kept as text in the spreadsheet.
+  const s = /^[=+\-@\t\r]/.test(raw) ? `'${raw}` : raw;
+  return /[",;\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 };
 
 /** Spreadsheet export: one line per registration; amounts in currency units (3 decimals for TND, 2 otherwise), dates in ISO. */
@@ -102,9 +104,11 @@ export function timetable(heats: Json[], now: number): Timetable {
   };
 }
 
-/** « Retard »: the heats that start after now, in running order (started heats and heats without a time stay where they are). */
+/** « Retard »: the heats of the day being run that start after now, in running order (started heats, heats without a time and the other days stay where they are). */
 export function delayTargets(heats: Json[], now: number): Json[] {
-  return heats.filter((h) => startOf(h) > now).sort((a, b) => startOf(a) - startOf(b));
+  const later = heats.filter((h) => startOf(h) > now).sort((a, b) => startOf(a) - startOf(b));
+  const day = later.length ? localDay(later[0].startsAt) : null;
+  return later.filter((h) => localDay(h.startsAt) === day);
 }
 
 export const shiftedStart = (h: Json, minutes: number) => new Date(startOf(h) + minutes * 60_000).toISOString();
@@ -143,16 +147,19 @@ export function heatDraft(h: Json | null): HeatDraft {
 /** The server's heat rules: name up to 80, duration 1 to 600 minutes, 1 to 40 lanes. */
 export const heatValid = (d: HeatDraft) => d.name.trim().length <= 80 && optInt(d.duration, 1, 600) && isInt(d.lanes, 1, 40);
 
-/** Only what is filled is sent: the server keeps the fields a `PUT` leaves out. */
+/** A new heat gets only what is filled; an edit sends the WOD, category and duration set back to none as `null` (the server keeps the fields a `PUT` leaves out). */
 export function heatBody(d: HeatDraft): Json {
-  return {
+  const cleared = d.id ? null : undefined;
+  const body: Json = {
     ...(d.name.trim() ? { name: d.name.trim() } : {}),
-    ...(d.workoutId ? { workoutId: d.workoutId } : {}),
-    ...(d.categoryId ? { categoryId: d.categoryId } : {}),
+    workoutId: d.workoutId ?? cleared,
+    categoryId: d.categoryId ?? cleared,
     ...(d.start ? { startsAt: d.start.toISOString() } : {}),
-    ...(d.duration.trim() ? { durationMin: Number(d.duration) } : {}),
+    durationMin: d.duration.trim() ? Number(d.duration) : cleared,
     laneCount: Number(d.lanes),
   };
+  for (const k of Object.keys(body)) if (body[k] === undefined) delete body[k];
+  return body;
 }
 
 export type AutoDraft = { categoryId: string | null; workoutId: string | null; lanes: string; start: Date | null; interval: string };
