@@ -13,6 +13,7 @@ import { DateField, Select, type Option } from '../../../core/widgets/pickers';
 import { useHeats } from '../api';
 import { organizerApi, useRefreshCompetition, useRegistrations } from './api';
 import { autoBody, autoValid, filterHeats, freeLanes, heatBody, heatDays, heatDraft, heatValid, laneCandidates, personName, type AutoDraft, type HeatDraft, type HeatFilter } from './logic-b';
+import { TimetableCard } from './timetable';
 
 const when = (iso: string, locale: string) => formatDate(iso, locale, { weekday: 'short', hour: '2-digit', minute: '2-digit' });
 
@@ -105,6 +106,7 @@ export function PlanningTab({ c }: { c: Json }) {
   const shown = filterHeats(all, filter);
   return (
     <Screen>
+      <TimetableCard c={c} heats={all} />
       <View style={{ flexDirection: 'row', gap: space.sm }}>
         <View style={{ flex: 1 }}>
           <Button testID="heat-new" icon="add" label={t('orgHeatNew')} onPress={() => setEdit(heatDraft(null))} />
