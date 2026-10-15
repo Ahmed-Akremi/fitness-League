@@ -11,7 +11,7 @@ import { fakeServices, testQueryClient } from '../harness';
 
 const stub = (label: string) => () => <Text>{label}</Text>;
 
-async function boot(backend: FakeBackend, refreshToken: string | null) {
+async function boot(backend: FakeBackend, refreshToken: string | null, initialUrl = '/') {
   usePrefs.setState({ locale: 'en', themeMode: 'dark' });
   setAuthStatus('unknown');
   const services = fakeServices(backend);
@@ -34,8 +34,9 @@ async function boot(backend: FakeBackend, refreshToken: string | null) {
       '(tabs)/index': stub('home'),
       'workouts/new': stub('log'),
       'workouts/[id]': stub('detail'),
+      'competitions/[id]/manage': stub('manage'),
     },
-    { initialUrl: '/' },
+    { initialUrl },
   );
 }
 
@@ -61,5 +62,13 @@ describe('startup guard', () => {
       .on('GET', '/me', [200, { id: 'u1', username: 'ahmed', profile: { onboardingCompleted: true } }]);
     const r = await boot(backend, 'refresh-1');
     expect(await r.findByText('home')).toBeTruthy();
+  });
+
+  it('opens the page of a link (web address, shared app link) once the session is back, not the home tab', async () => {
+    const backend = new FakeBackend()
+      .on('POST', '/auth/refresh', [200, session('2')])
+      .on('GET', '/me', [200, { id: 'u1', username: 'ahmed', profile: { onboardingCompleted: true } }]);
+    const r = await boot(backend, 'refresh-1', '/competitions/c9/manage');
+    expect(await r.findByText('manage')).toBeTruthy();
   });
 });
