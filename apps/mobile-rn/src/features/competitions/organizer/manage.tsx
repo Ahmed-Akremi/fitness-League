@@ -19,15 +19,18 @@ import type { ManageTab } from './logic';
 import { ParticipantsTab } from './participants';
 import { PlanningTab } from './planning';
 import { TeamTab } from './team';
+import { useWideWeb } from './web';
+import { OrganizerWeb } from './web-shell';
 import { WodsTab } from './wods';
 
-/** Tabs of the organizer space, in display order. */
+/** Tabs of the organizer space on a phone, in display order (the computer layout groups them, `ORG_MENU`). */
 const TABS: ManageTab[] = ['dashboard', 'general', 'categories', 'wods', 'planning', 'participants', 'team', 'leaderboard', 'announcements', 'coupons'];
 
 export function ManageScreen({ id, initialTab = 'dashboard' }: { id: string; initialTab?: ManageTab }) {
   const t = useT();
   const { colors } = useTheme();
   const comp = useCompetition(id);
+  const wide = useWideWeb();
   const [tab, setTab] = useState<ManageTab>(initialTab);
   const labels: Record<ManageTab, string> = { dashboard: t('orgTabDashboard'), general: t('orgTabGeneral'), categories: t('orgTabCategories'), wods: t('orgTabWods'), planning: t('orgTabPlanning'), participants: t('orgTabParticipants'), team: t('orgTabTeam'), leaderboard: t('orgTabLeaderboard'), announcements: t('orgTabAnnouncements'), coupons: t('orgTabCoupons') };
 
@@ -37,14 +40,8 @@ export function ManageScreen({ id, initialTab = 'dashboard' }: { id: string; ini
   const c = comp.data;
   if (!c) return <Loading />;
   if (!(c.myRoles ?? []).includes('ORGANIZER')) return <EmptyState icon="lock" message={t('orgOnly')} />;
-  return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <Stack.Screen options={{ title: c.title }} />
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 8, gap: 8 }}>
-        {TABS.map((k) => (
-          <Chip key={k} testID={`org-tab-${k}`} label={labels[k]} selected={tab === k} onPress={() => setTab(k)} />
-        ))}
-      </ScrollView>
+  const page = (
+    <>
       {tab === 'dashboard' && <DashboardTab c={c} onGo={setTab} />}
       {tab === 'general' && <GeneralTab c={c} />}
       {tab === 'categories' && <CategoriesTab c={c} />}
@@ -55,6 +52,29 @@ export function ManageScreen({ id, initialTab = 'dashboard' }: { id: string; ini
       {tab === 'leaderboard' && <LeaderboardTab c={c} onGo={setTab} />}
       {tab === 'announcements' && <AnnouncementsTab c={c} />}
       {tab === 'coupons' && <CouponsTab c={c} />}
+    </>
+  );
+
+  if (wide) {
+    return (
+      <>
+        {/* The top bar shows the event name: the header keeps the way back. */}
+        <Stack.Screen options={{ title: t('orgManage') }} />
+        <OrganizerWeb c={c} tab={tab} onTab={setTab}>
+          {page}
+        </OrganizerWeb>
+      </>
+    );
+  }
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <Stack.Screen options={{ title: c.title }} />
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 8, gap: 8 }}>
+        {TABS.map((k) => (
+          <Chip key={k} testID={`org-tab-${k}`} label={labels[k]} selected={tab === k} onPress={() => setTab(k)} />
+        ))}
+      </ScrollView>
+      {page}
     </View>
   );
 }

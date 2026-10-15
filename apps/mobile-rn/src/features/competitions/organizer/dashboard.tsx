@@ -1,33 +1,24 @@
-import { useRef, useState } from 'react';
-import { Share, View } from 'react-native';
+import { View } from 'react-native';
 
 import type { Json } from '../../../core/api/client';
 import { useLocale, useT } from '../../../core/prefs';
-import { useApi } from '../../../core/services';
 import { space, useTheme } from '../../../core/theme';
-import { formatDate } from '../../../core/utils/format';
 import { Loading, SectionHeader, StatCard } from '../../../core/widgets/common';
 import { ErrorText, ErrorView } from '../../../core/widgets/error';
-import { Button, Card, ListGroup, ListRow, Screen, Txt, toast } from '../../../core/widgets/kit';
+import { Button, Card, ListGroup, ListRow, Screen, Txt } from '../../../core/widgets/kit';
 import { formatMoney } from '../api';
 import { statusLabelForCompetition } from '../screens';
-import { organizerApi, useOrganizerDashboard, useRefreshCompetition } from './api';
+import { useOrganizerDashboard } from './api';
 import { RegistrationsBreakdown } from './breakdown';
-import { CHECKLIST, missingForPublication, publicationState, TAB_FOR, type ChecklistItem, type ManageTab } from './logic';
+import { CHECKLIST, TAB_FOR, type ChecklistItem, type ManageTab } from './logic';
+import { usePublication } from './publication';
 
 export function DashboardTab({ c, onGo }: { c: Json; onGo: (tab: ManageTab) => void }) {
   const t = useT();
   const locale = useLocale();
   const { colors } = useTheme();
-  const api = useApi();
-  const refresh = useRefreshCompetition();
   const dash = useOrganizerDashboard(c.id);
-  const sending = useRef(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<unknown>(null);
-  const state = publicationState(c);
-  const missing = missingForPublication(c);
-  const canRequest = (state === 'DRAFT' || state === 'RETURNED') && missing.length === 0;
+  const { state, missing, canRequest, busy, error, request, share } = usePublication(c);
   const labels: Record<ChecklistItem, string> = { DESCRIPTION: t('orgCheckDescription'), DATES: t('orgCheckDates'), COVER: t('orgCheckCover'), CATEGORY: t('orgCheckCategory'), WOD: t('orgCheckWod') };
   const stateText = {
     DRAFT: t('orgStateDraft'),
@@ -36,28 +27,6 @@ export function DashboardTab({ c, onGo }: { c: Json; onGo: (tab: ManageTab) => v
     PUBLISHED: t('orgStatePublished', { status: statusLabelForCompetition(t, c.status) }),
     CANCELLED: t('orgStateCancelled'),
   }[state];
-
-  async function request() {
-    if (sending.current || !canRequest) return;
-    sending.current = true;
-    setBusy(true);
-    setError(null);
-    try {
-      await organizerApi(api).requestPublication(c.id);
-      toast(t('orgRequested'));
-    } catch (e) {
-      setError(e);
-    } finally {
-      await refresh();
-      sending.current = false;
-      setBusy(false);
-    }
-  }
-
-  function share() {
-    const text = t('orgShareText', { title: c.title, date: formatDate(c.eventStart, locale), place: c.city ?? c.location ?? '' });
-    void Share.share({ message: `${text}\nfitnessleague://competitions/${c.id}` });
-  }
 
   const d = dash.data;
   return (
