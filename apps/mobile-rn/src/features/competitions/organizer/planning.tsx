@@ -13,13 +13,15 @@ import { DateField, Select, type Option } from '../../../core/widgets/pickers';
 import { useHeats } from '../api';
 import { organizerApi, useRefreshCompetition, useRegistrations } from './api';
 import { exportCsv } from './export';
+import { Guide } from './guide';
+import type { ManageTab } from './logic';
 import { autoBody, autoValid, csvFileName, filterHeats, freeLanes, heatBody, heatDays, heatDraft, heatsCsv, heatValid, laneCandidates, personName, type AutoDraft, type HeatDraft, type HeatFilter } from './logic-b';
 import { TimetableCard } from './timetable';
 
 const when = (iso: string, locale: string) => formatDate(iso, locale, { weekday: 'short', hour: '2-digit', minute: '2-digit' });
 
 /** « Planning » (spec §1.3 item 5): heats with their lanes, filters, automatic heats. */
-export function PlanningTab({ c }: { c: Json }) {
+export function PlanningTab({ c, onGo }: { c: Json; onGo?: (tab: ManageTab) => void }) {
   const t = useT();
   const locale = useLocale();
   const { colors } = useTheme();
@@ -123,7 +125,13 @@ export function PlanningTab({ c }: { c: Json }) {
       ) : null}
       <ErrorText error={error} />
       {all.length === 0 ? (
-        <EmptyState icon="event-note" message={t('orgHeatNone')} />
+        !categories.some((k) => k.active) ? (
+          <Guide testID="guide-categories" message={t('orgNeedCategory')} action={t('orgGoCategories')} onPress={onGo && (() => onGo('categories'))} />
+        ) : !(c.workouts ?? []).length ? (
+          <Guide testID="guide-wods" message={t('orgNeedWod')} action={t('orgGoWods')} onPress={onGo && (() => onGo('wods'))} />
+        ) : (
+          <EmptyState icon="event-note" message={t('orgHeatNone')} />
+        )
       ) : (
         <>
           <TextField testID="heat-search" icon="search" placeholder={t('orgHeatSearch')} value={filter.q} onChangeText={(q) => setFilter({ ...filter, q })} autoCapitalize="none" />

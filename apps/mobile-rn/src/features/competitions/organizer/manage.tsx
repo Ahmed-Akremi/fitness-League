@@ -48,11 +48,11 @@ export function ManageScreen({ id, initialTab = 'dashboard' }: { id: string; ini
       {tab === 'dashboard' && <DashboardTab c={c} onGo={setTab} />}
       {tab === 'general' && <GeneralTab c={c} />}
       {tab === 'categories' && <CategoriesTab c={c} />}
-      {tab === 'wods' && <WodsTab c={c} />}
-      {tab === 'planning' && <PlanningTab c={c} />}
+      {tab === 'wods' && <WodsTab c={c} onGo={setTab} />}
+      {tab === 'planning' && <PlanningTab c={c} onGo={setTab} />}
       {tab === 'participants' && <ParticipantsTab c={c} />}
       {tab === 'team' && <TeamTab c={c} />}
-      {tab === 'leaderboard' && <LeaderboardTab c={c} />}
+      {tab === 'leaderboard' && <LeaderboardTab c={c} onGo={setTab} />}
       {tab === 'announcements' && <AnnouncementsTab c={c} />}
       {tab === 'coupons' && <CouponsTab c={c} />}
     </View>

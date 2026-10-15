@@ -10,7 +10,8 @@ import { ErrorText } from '../../../core/widgets/error';
 import { Button, Card, Chip, Dialog, IconButton, ListGroup, ListRow, Screen, TextField, Txt } from '../../../core/widgets/kit';
 import { DateField } from '../../../core/widgets/pickers';
 import { organizerApi, useRefreshCompetition } from './api';
-import { nextWodNumber, SCORE_TYPES, wodBody, wodDraft, wodValid, type WodDraft } from './logic';
+import { Guide } from './guide';
+import { nextWodNumber, SCORE_TYPES, wodBody, wodDraft, wodValid, type ManageTab, type WodDraft } from './logic';
 
 const scoreLabels = (t: T): Record<string, string> => ({
   MOVEMENT_REPS: t('orgScoreMovementReps'),
@@ -25,7 +26,7 @@ const scoreLabels = (t: T): Record<string, string> => ({
   COMPLEX: t('orgScoreComplex'),
 });
 
-export function WodsTab({ c }: { c: Json }) {
+export function WodsTab({ c, onGo }: { c: Json; onGo?: (tab: ManageTab) => void }) {
   const t = useT();
   const api = useApi();
   const { colors } = useTheme();
@@ -66,6 +67,9 @@ export function WodsTab({ c }: { c: Json }) {
   if (edit) return <WodForm draft={edit} categories={c.categories ?? []} busy={busy} error={error} labels={labels} onSave={save} onDelete={remove} onCancel={() => setEdit(null)} />;
   return (
     <Screen>
+      {(c.categories ?? []).some((k: Json) => k.active) ? null : (
+        <Guide testID="guide-categories" message={t('orgNeedCategory')} action={t('orgGoCategories')} onPress={onGo && (() => onGo('categories'))} />
+      )}
       {workouts.length === 0 ? (
         <Txt color={colors.outline}>{t('orgNoWods')}</Txt>
       ) : (

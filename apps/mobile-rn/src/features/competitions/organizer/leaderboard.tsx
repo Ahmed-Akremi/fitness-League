@@ -9,10 +9,12 @@ import { ErrorView } from '../../../core/widgets/error';
 import { Button, Card, Chip, ListGroup, Screen, Txt } from '../../../core/widgets/kit';
 import { useCompLeaderboard } from '../api';
 import { exportCsv } from './export';
+import { Guide } from './guide';
+import type { ManageTab } from './logic';
 import { csvFileName, leaderboardCsv } from './logic-b';
 
 /** « Classement » (spec §1.3 item 8): the ranking per category. Read only: the server lets only the head judge (admin panel) publish the final leaderboard. */
-export function LeaderboardTab({ c }: { c: Json }) {
+export function LeaderboardTab({ c, onGo }: { c: Json; onGo?: (tab: ManageTab) => void }) {
   const t = useT();
   const { colors } = useTheme();
   const categories: Json[] = (c.categories ?? []).filter((k: Json) => k.active !== false);
@@ -25,7 +27,11 @@ export function LeaderboardTab({ c }: { c: Json }) {
           <Chip key={k.id} testID={`board-cat-${k.id}`} label={k.name} selected={categoryId === k.id} onPress={() => setCategoryId(k.id)} />
         ))}
       </View>
-      {board.isError ? (
+      {categories.length === 0 ? (
+        <Guide testID="guide-categories" message={t('orgNeedCategory')} action={t('orgGoCategories')} onPress={onGo && (() => onGo('categories'))} />
+      ) : !(c.workouts ?? []).length ? (
+        <Guide testID="guide-wods" message={t('orgNeedWod')} action={t('orgGoWods')} onPress={onGo && (() => onGo('wods'))} />
+      ) : board.isError ? (
         <ErrorView error={board.error} onRetry={() => board.refetch()} />
       ) : !board.data ? (
         <Loading />
