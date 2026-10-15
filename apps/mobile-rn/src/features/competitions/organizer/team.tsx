@@ -11,7 +11,8 @@ import { Button, Dialog, IconButton, ListGroup, ListRow, Screen, TextField, Txt 
 import { useMe } from '../../me/api';
 import { socialApi } from '../../social/api';
 import { organizerApi, useRefreshCompetition, useStaff } from './api';
-import { personName, STAFF_ORDER, staffByRole } from './logic-b';
+import { exportCsv } from './export';
+import { csvFileName, personName, STAFF_ORDER, staffByRole, staffCsv } from './logic-b';
 
 /** « Équipe » (spec §1.3 item 7): organizers, head judges and judges; co-organizers are added or removed here, judges stay with the admin panel. */
 export function TeamTab({ c }: { c: Json }) {
@@ -97,6 +98,7 @@ export function TeamTab({ c }: { c: Json }) {
       <Txt color={colors.outline}>{t('orgTeamJudgesHint')}</Txt>
       <ErrorText error={error} />
       <Button testID="team-add" icon="person-add" label={t('orgTeamAdd')} busy={busy} onPress={() => setAdding(true)} />
+      <Button testID="team-export" kind="outlined" icon="file-download" label={t('orgExport')} disabled={staff.data.length === 0} onPress={() => exportCsv(csvFileName(c, 'team'), staffCsv(staff.data))} />
       <Dialog
         visible={removing != null}
         title={t('orgTeamRemove')}

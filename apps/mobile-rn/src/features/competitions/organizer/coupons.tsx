@@ -12,7 +12,8 @@ import { Button, Card, Chip, ListGroup, ListRow, Screen, TextField, Txt } from '
 import { DateField, Select } from '../../../core/widgets/pickers';
 import { formatMoney } from '../api';
 import { organizerApi, useCoupons, useRefreshCompetition } from './api';
-import { batchCodes, couponBody, couponDraft, couponValid, createCoupons, normalizeCode, topUsed, type BatchResult, type CouponDraft, type CouponKind } from './logic-b';
+import { exportCsv } from './export';
+import { batchCodes, couponBody, couponDraft, couponsCsv, couponValid, createCoupons, csvFileName, normalizeCode, topUsed, type BatchResult, type CouponDraft, type CouponKind } from './logic-b';
 
 const KINDS: CouponKind[] = ['PERCENTAGE', 'FIXED_AMOUNT', 'FREE'];
 type Report = Pick<BatchResult, 'created' | 'taken'>;
@@ -117,6 +118,7 @@ export function CouponsTab({ c }: { c: Json }) {
         </>
       ) : null}
       <SectionHeader title={t('orgCouponAll')} />
+      <Button testID="coupon-export" kind="outlined" icon="file-download" label={t('orgExport')} disabled={list.data.length === 0} onPress={() => exportCsv(csvFileName(c, 'coupons'), couponsCsv(list.data, c.categories ?? [], c.currency))} />
       {list.data.length === 0 ? (
         <Txt color={colors.outline}>{t('orgCouponNone')}</Txt>
       ) : (

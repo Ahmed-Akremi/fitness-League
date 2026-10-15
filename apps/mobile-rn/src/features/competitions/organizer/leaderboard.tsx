@@ -6,8 +6,10 @@ import { useT } from '../../../core/prefs';
 import { space, useTheme } from '../../../core/theme';
 import { EmptyState, Loading, RankRow, StatusPill } from '../../../core/widgets/common';
 import { ErrorView } from '../../../core/widgets/error';
-import { Card, Chip, ListGroup, Screen, Txt } from '../../../core/widgets/kit';
+import { Button, Card, Chip, ListGroup, Screen, Txt } from '../../../core/widgets/kit';
 import { useCompLeaderboard } from '../api';
+import { exportCsv } from './export';
+import { csvFileName, leaderboardCsv } from './logic-b';
 
 /** « Classement » (spec §1.3 item 8): the ranking per category. Read only: the server lets only the head judge (admin panel) publish the final leaderboard. */
 export function LeaderboardTab({ c }: { c: Json }) {
@@ -30,6 +32,14 @@ export function LeaderboardTab({ c }: { c: Json }) {
       ) : (
         <>
           <StatusPill testID="board-status" label={board.data.provisional ? t('orgBoardProvisional') : t('orgBoardFinal')} color={board.data.provisional ? colors.outline : colors.primary} />
+          <Button
+            testID="board-export"
+            kind="outlined"
+            icon="file-download"
+            label={t('orgExport')}
+            disabled={board.data.rows.length === 0}
+            onPress={() => exportCsv(csvFileName(c, 'leaderboard'), leaderboardCsv(board.data.rows, categories.find((k) => k.id === categoryId)?.name ?? ''))}
+          />
           {board.data.rows.length === 0 ? (
             <EmptyState icon="leaderboard" message={t('orgBoardEmpty')} />
           ) : (

@@ -12,7 +12,8 @@ import { ErrorText, ErrorView } from '../../../core/widgets/error';
 import { Button, Chip, Dialog, ListRow, Segmented, TextField, Txt } from '../../../core/widgets/kit';
 import { formatMoney } from '../api';
 import { organizerApi, useRefreshCompetition, useRegistrations } from './api';
-import { filterRegistrations, personName, registrationsCsv, toCollect, type PaymentFilter } from './logic-b';
+import { exportCsv } from './export';
+import { csvFileName, filterRegistrations, personName, registrationsCsv, toCollect, type PaymentFilter } from './logic-b';
 
 const PAYMENTS: PaymentFilter[] = ['ALL', 'PENDING', 'PAID', 'FREE'];
 const standing = (r: Json) => r.registrationStatus !== 'CANCELLED' && r.registrationStatus !== 'REFUNDED';
@@ -90,7 +91,7 @@ export function ParticipantsTab({ c }: { c: Json }) {
               <Chip key={k.id} testID={`reg-cat-${k.id}`} label={k.name} selected={categoryId === k.id} onPress={() => setCategoryId(k.id)} />
             ))}
           </View>
-          <Button testID="reg-csv" kind="outlined" icon="file-download" label={t('orgRegExport')} disabled={rows.length === 0} onPress={() => void Share.share({ message: registrationsCsv(rows) })} />
+          <Button testID="reg-csv" kind="outlined" icon="file-download" label={t('orgExport')} disabled={rows.length === 0} onPress={() => exportCsv(csvFileName(c, 'participants'), registrationsCsv(rows))} />
         </>
       ) : (
         <Txt color={colors.outline}>{t('orgRegCollectHint')}</Txt>

@@ -12,7 +12,8 @@ import { Button, Card, Chip, Dialog, IconButton, ListGroup, ListRow, Screen, Tex
 import { DateField, Select, type Option } from '../../../core/widgets/pickers';
 import { useHeats } from '../api';
 import { organizerApi, useRefreshCompetition, useRegistrations } from './api';
-import { autoBody, autoValid, filterHeats, freeLanes, heatBody, heatDays, heatDraft, heatValid, laneCandidates, personName, type AutoDraft, type HeatDraft, type HeatFilter } from './logic-b';
+import { exportCsv } from './export';
+import { autoBody, autoValid, csvFileName, filterHeats, freeLanes, heatBody, heatDays, heatDraft, heatsCsv, heatValid, laneCandidates, personName, type AutoDraft, type HeatDraft, type HeatFilter } from './logic-b';
 import { TimetableCard } from './timetable';
 
 const when = (iso: string, locale: string) => formatDate(iso, locale, { weekday: 'short', hour: '2-digit', minute: '2-digit' });
@@ -142,6 +143,7 @@ export function PlanningTab({ c }: { c: Json }) {
               <Select testID="heat-filter-wod" label={t('orgHeatWod')} value={filter.workoutId ?? ''} options={[{ value: '', label: t('orgAllWods') }, ...wodOptions]} onChange={(v) => setFilter({ ...filter, workoutId: v || null })} />
             </View>
           </View>
+          <Button testID="heat-export" kind="outlined" icon="file-download" label={t('orgExport')} disabled={shown.length === 0} onPress={() => exportCsv(csvFileName(c, 'heats'), heatsCsv(shown))} />
           {shown.length === 0 ? (
             <Txt color={colors.outline}>{t('orgHeatNoMatch')}</Txt>
           ) : (
