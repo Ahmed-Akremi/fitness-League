@@ -52,15 +52,63 @@ const csvCell = (v: unknown) => {
   return /[",;\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 };
 
-/** Spreadsheet export: one line per registration; amounts in currency units (3 decimals for TND, 2 otherwise), dates in ISO. */
+/** One CSV text: the header line, then one line per row; every cell goes through `csvCell`. */
+export const toCsv = (head: string[], rows: unknown[][]) => [head.join(','), ...rows.map((r) => r.map(csvCell).join(','))].join('\n');
+
+/** Amount in currency units: 3 decimals for TND (millimes), 2 otherwise. */
+const units = (amount: unknown, currency: string) => {
+  const digits = currency === 'TND' ? 3 : 2;
+  return (Number(amount ?? 0) / 10 ** digits).toFixed(digits);
+};
+
+/** Spreadsheet export: one line per registration; amounts in currency units, dates in ISO. */
 export function registrationsCsv(rows: Json[]): string {
-  const head = 'name,username,category,registration,payment,amount,currency,registered_at';
-  const lines = rows.map((r) => {
-    const digits = r.currency === 'TND' ? 3 : 2;
-    return [personName(r), r.user?.username ?? '', r.category?.name ?? '', r.registrationStatus, r.paymentStatus, (Number(r.finalPrice ?? 0) / 10 ** digits).toFixed(digits), r.currency, r.registeredAt].map(csvCell).join(',');
-  });
-  return [head, ...lines].join('\n');
+  return toCsv(
+    ['name', 'username', 'category', 'registration', 'payment', 'amount', 'currency', 'registered_at'],
+    rows.map((r) => [personName(r), r.user?.username ?? '', r.category?.name ?? '', r.registrationStatus, r.paymentStatus, units(r.finalPrice, r.currency), r.currency, r.registeredAt]),
+  );
 }
+
+/** Lane sheet to print for the floor: one line per lane of every heat, free lanes included. */
+export function heatsCsv(heats: Json[]): string {
+  const rows: unknown[][] = [];
+  for (const h of heats) {
+    const byLane = new Map<number, Json>((h.lanes ?? []).map((l: Json) => [l.lane, l]));
+    for (let n = 1; n <= (h.laneCount ?? 0); n++) {
+      const l = byLane.get(n);
+      rows.push([h.name, h.startsAt ?? '', h.workout?.name ?? '', h.category?.name ?? '', n, l ? personName(l) : '', l?.athlete?.username ?? '']);
+    }
+  }
+  return toCsv(['heat', 'starts_at', 'wod', 'category', 'lane', 'athlete', 'username'], rows);
+}
+
+export function couponsCsv(coupons: Json[], categories: Json[], currency: string): string {
+  const names = new Map(categories.map((k) => [k.id, k.name]));
+  return toCsv(
+    ['code', 'type', 'value', 'category', 'used', 'max_uses', 'expires_at', 'active'],
+    coupons.map((k) => [
+      k.code,
+      k.type,
+      k.type === 'PERCENTAGE' ? k.value : k.type === 'FIXED_AMOUNT' ? units(k.value, currency) : '',
+      k.categoryId ? (names.get(k.categoryId) ?? '') : '',
+      k.usedCount ?? 0,
+      k.maxUses ?? '',
+      k.expiresAt ?? '',
+      k.active ? 'yes' : 'no',
+    ]),
+  );
+}
+
+export const staffCsv = (rows: Json[]) => {
+  const groups = staffByRole(rows);
+  return toCsv(['role', 'name', 'username'], STAFF_ORDER.flatMap((role) => groups[role].map((s) => [role, personName(s), s.user?.username ?? ''])));
+};
+
+export const leaderboardCsv = (rows: Json[], category: string) =>
+  toCsv(['category', 'rank', 'name', 'username', 'points', 'pending'], rows.map((r) => [category, r.rank, r.athlete?.fullName || r.athlete?.username || '', r.athlete?.username ?? '', r.totalPoints, r.pending ?? 0]));
+
+/** `<address name>-<list>.csv`, so the organizer's downloads stay apart. */
+export const csvFileName = (c: Json, list: string) => `${c.slug || 'event'}-${list}.csv`;
 
 // ───────────── Planning ─────────────
 

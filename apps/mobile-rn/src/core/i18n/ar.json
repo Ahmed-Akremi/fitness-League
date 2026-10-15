@@ -813,5 +813,20 @@
   "orgReleaseNowButton": "إظهاره الآن",
   "orgDelayNotAnnounced": "تم تأخير {count} دفعات {minutes} دقيقة، لكن الإعلان لم يُنشر.",
   "orgDelayPostAnnouncement": "نشر الإعلان",
-  "orgTeamAddConfirm": "سيتمكن {name} من تعديل كل شيء في هذا الحدث، مثلك."
+  "orgTeamAddConfirm": "سيتمكن {name} من تعديل كل شيء في هذا الحدث، مثلك.",
+  "orgMenuEventInfo": "معلومات الحدث",
+  "orgMenuHeats": "الدفعات",
+  "orgMenuLabel": "قائمة فضاء المنظِّم",
+  "orgMarkTodo": "مطلوب",
+  "orgPillDraft": "مسودة",
+  "orgPillRequested": "طُلب النشر",
+  "orgPillReturned": "أُعيد للتعديل",
+  "orgPillCancelled": "ملغى",
+  "orgTopDates": "التسجيل من {from} إلى {to}",
+  "orgPreview": "معاينة",
+  "orgExport": "تصدير (CSV)",
+  "orgNeedCategory": "أنشئ فئة أولاً: الدفعات والترتيب مرتبطة بها.",
+  "orgNeedWod": "أضف تمريناً أولاً: الدفعات والترتيب تحتاج إليه.",
+  "orgGoCategories": "الذهاب إلى الفئات",
+  "orgGoWods": "الذهاب إلى التمارين"
 }

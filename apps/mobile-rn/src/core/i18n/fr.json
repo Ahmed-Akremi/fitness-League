@@ -813,5 +813,20 @@
   "orgReleaseNowButton": "Le montrer maintenant",
   "orgDelayNotAnnounced": "{count} heats décalés de {minutes} min, mais l'annonce n'a pas été publiée.",
   "orgDelayPostAnnouncement": "Publier l'annonce",
-  "orgTeamAddConfirm": "{name} pourra tout modifier dans cet événement, comme toi."
+  "orgTeamAddConfirm": "{name} pourra tout modifier dans cet événement, comme toi.",
+  "orgMenuEventInfo": "Infos de l'événement",
+  "orgMenuHeats": "Heats",
+  "orgMenuLabel": "Menu de l'espace organisateur",
+  "orgMarkTodo": "à faire",
+  "orgPillDraft": "Brouillon",
+  "orgPillRequested": "Publication demandée",
+  "orgPillReturned": "Renvoyé",
+  "orgPillCancelled": "Annulé",
+  "orgTopDates": "Inscriptions du {from} au {to}",
+  "orgPreview": "Aperçu",
+  "orgExport": "Exporter (CSV)",
+  "orgNeedCategory": "Crée d'abord une catégorie : les heats et le classement s'y rattachent.",
+  "orgNeedWod": "Ajoute d'abord un WOD : les heats et le classement en ont besoin.",
+  "orgGoCategories": "Aller aux catégories",
+  "orgGoWods": "Aller aux WODs"
 }

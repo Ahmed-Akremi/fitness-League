@@ -813,5 +813,20 @@
   "orgReleaseNowButton": "Show it now",
   "orgDelayNotAnnounced": "{count} heats moved by {minutes} min, but the announcement was not posted.",
   "orgDelayPostAnnouncement": "Post the announcement",
-  "orgTeamAddConfirm": "{name} will be able to change everything in this event, like you."
+  "orgTeamAddConfirm": "{name} will be able to change everything in this event, like you.",
+  "orgMenuEventInfo": "Event details",
+  "orgMenuHeats": "Heats",
+  "orgMenuLabel": "Organizer space menu",
+  "orgMarkTodo": "to do",
+  "orgPillDraft": "Draft",
+  "orgPillRequested": "Publication requested",
+  "orgPillReturned": "Sent back",
+  "orgPillCancelled": "Cancelled",
+  "orgTopDates": "Registration {from} → {to}",
+  "orgPreview": "Preview",
+  "orgExport": "Export (CSV)",
+  "orgNeedCategory": "Create a category first: heats and the leaderboard belong to one.",
+  "orgNeedWod": "Add a WOD first: heats and the leaderboard need one.",
+  "orgGoCategories": "Go to categories",
+  "orgGoWods": "Go to WODs"
 }
