@@ -102,7 +102,7 @@ const complete = {
   workouts: [{ id: 'w1', number: 1, name: 'WOD 1', scoreType: 'REPS' }],
 };
 const figures = { participants: 12, paidRegistrations: 8, freeRegistrations: 1, pendingPayments: 3, revenue: 320000, pendingSubmissions: 0, pendingJudging: 2, approvedSubmissions: 5, rejectedSubmissions: 0 };
-const organizerBackend = (c: object) => new FakeBackend().on('GET', '/competitions/c9', [200, c]).on('GET', '/competitions/c9/dashboard', [200, figures]);
+const organizerBackend = (c: object) => new FakeBackend().on('GET', '/competitions/c9', [200, c]).on('GET', '/competitions/c9/dashboard', [200, figures]).on('GET', '/competitions/c9/registrations', [200, []]);
 
 describe('organizer space', () => {
   it('is reserved to the organizers', async () => {

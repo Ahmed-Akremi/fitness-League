@@ -12,6 +12,7 @@ import { Button, Card, ListGroup, ListRow, Screen, Txt, toast } from '../../../c
 import { formatMoney } from '../api';
 import { statusLabelForCompetition } from '../screens';
 import { organizerApi, useOrganizerDashboard, useRefreshCompetition } from './api';
+import { RegistrationsBreakdown } from './breakdown';
 import { CHECKLIST, missingForPublication, publicationState, TAB_FOR, type ChecklistItem, type ManageTab } from './logic';
 
 export function DashboardTab({ c, onGo }: { c: Json; onGo: (tab: ManageTab) => void }) {
@@ -110,6 +111,7 @@ export function DashboardTab({ c, onGo }: { c: Json; onGo: (tab: ManageTab) => v
       ) : (
         <Loading />
       )}
+      <RegistrationsBreakdown c={c} />
     </Screen>
   );
 }
