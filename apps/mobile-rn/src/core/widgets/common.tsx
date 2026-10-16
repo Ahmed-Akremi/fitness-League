@@ -121,7 +121,8 @@ export function SkeletonList({ count = 6, height, label }: { count?: number; hei
     return () => loop.stop();
   }, [reduced, pulse]);
   return (
-    <View testID="skeleton" role="progressbar" accessibilityLabel={label} style={{ padding: 16, gap: 10 }}>
+    // Announced as a progress bar only with a name: a nameless one would be read as « progress bar » and nothing else.
+    <View testID="skeleton" role={label ? 'progressbar' : undefined} accessibilityLabel={label} style={{ padding: 16, gap: 10 }}>
       {Array.from({ length: count }, (_, i) => (
         <Animated.View key={i} testID="skeleton-row" style={{ height: h, borderRadius: r, backgroundColor: colors.surfaceHigh, opacity: pulse }} />
       ))}

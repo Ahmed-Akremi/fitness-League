@@ -38,7 +38,8 @@ export function CouponsTab({ c }: { c: Json }) {
   const wide = useWideWeb();
   const qc = useQueryClient();
   const toggling = useRef(new Set<string>());
-  const [toggleFailed, setToggleFailed] = useState<{ code: string; error: unknown } | null>(null);
+  // One line per code that did not change: two toggles failing one after the other both stay named.
+  const [toggleFailed, setToggleFailed] = useState<{ id: string; code: string; error: unknown }[]>([]);
 
   async function guarded(fn: () => Promise<void>) {
     if (sending.current) return;
@@ -70,21 +71,23 @@ export function CouponsTab({ c }: { c: Json }) {
   async function toggle(k: Json) {
     if (toggling.current.has(k.id)) return;
     toggling.current.add(k.id);
-    setToggleFailed(null);
+    // Trying this code again clears its old failure; the other codes keep theirs.
+    setToggleFailed((f) => f.filter((x) => x.id !== k.id));
     const key = orgKeys.coupons(c.id);
     // A reload already on its way would overwrite the new state when it lands.
     await qc.cancelQueries({ queryKey: key });
-    const before = qc.getQueryData<Json[]>(key);
     qc.setQueryData<Json[]>(key, (list) => (list ? setActive(list, k.id, !k.active) : list));
     try {
       await organizerApi(api).setCouponActive(c.id, k.id, !k.active);
       toast(k.active ? t('orgToastDeactivated') : t('orgToastActivated'));
     } catch (e) {
-      qc.setQueryData(key, before);
-      setToggleFailed({ code: k.code, error: e });
+      // Only this code goes back: another toggle still on its way keeps its new state.
+      qc.setQueryData<Json[]>(key, (list) => (list ? setActive(list, k.id, k.active) : list));
+      setToggleFailed((f) => [...f, { id: k.id, code: k.code, error: e }]);
     } finally {
       toggling.current.delete(k.id);
-      void refresh();
+      // One reload once the last toggle has landed: an earlier one would bring back states still on their way.
+      if (toggling.current.size === 0) void refresh();
     }
   }
 
@@ -111,8 +114,8 @@ export function CouponsTab({ c }: { c: Json }) {
       />
     );
   }
-  if (list.isError) return <ErrorView error={list.error} onRetry={() => list.refetch()} />;
-  if (!list.data) return <SkeletonList label={t('orgLoading')} />;
+  // A failed reload keeps the list and the names of the codes that did not change.
+  if (!list.data) return list.isError ? <ErrorView error={list.error} onRetry={() => list.refetch()} /> : <SkeletonList label={t('orgLoading')} />;
   const top = topUsed(list.data);
   const add = (
     <Button
@@ -157,14 +160,15 @@ export function CouponsTab({ c }: { c: Json }) {
           </>
         ) : null}
         <SectionHeader title={t('orgCouponAll')} />
-        {toggleFailed ? (
-          <View style={{ gap: space.xs }}>
-            <Txt testID="coupon-toggle-failed" color={colors.error}>
-              {t('orgCouponToggleFailed', { code: toggleFailed.code })}
+        <ErrorText error={list.error} />
+        {toggleFailed.map((f) => (
+          <View key={f.id} style={{ gap: space.xs }}>
+            <Txt testID={`coupon-toggle-failed-${f.id}`} color={colors.error}>
+              {t('orgCouponToggleFailed', { code: f.code })}
             </Txt>
-            <ErrorText error={toggleFailed.error} />
+            <ErrorText error={f.error} />
           </View>
-        ) : null}
+        ))}
         {wide ? null : exportBtn}
         {list.data.length === 0 ? (
           <Txt color={colors.outline}>{t('orgCouponNone')}</Txt>

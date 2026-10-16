@@ -7,15 +7,16 @@ import { displayText, space, useTheme, webDense } from '../../../core/theme';
 import { formatDate } from '../../../core/utils/format';
 import { Ring } from '../../../core/widgets/chart';
 import { SkeletonList, StatusPill } from '../../../core/widgets/common';
-import { ErrorView } from '../../../core/widgets/error';
+import { ErrorText, ErrorView } from '../../../core/widgets/error';
 import { Card, Icon, ListRow, Screen, Txt } from '../../../core/widgets/kit';
 import { Select, type Option } from '../../../core/widgets/pickers';
 import { Grid, SearchField, SectionCard } from '../../../core/widgets/web';
 import { useHeats } from '../api';
+import { useLiveRefresh } from './api';
 import { Guide } from './guide';
 import type { ManageTab } from './logic';
 import { filterHeats, heatDays, heatEnd, timetable } from './logic-b';
-import { dayEnd, daySchedule, LIVE_REFRESH_MS, scheduleDay } from './logic-web';
+import { dayEnd, daySchedule, scheduleDay } from './logic-web';
 import { OrgPageHeader } from './page';
 import { DelayControls, useNow } from './timetable';
 
@@ -24,16 +25,16 @@ export function ScheduleTab({ c, onGo }: { c: Json; onGo?: (tab: ManageTab) => v
   const t = useT();
   const locale = useLocale();
   const { colors } = useTheme();
-  // Read again every 30 s while this page is open (analysis §3 item 11).
-  const heats = useHeats(c.id, LIVE_REFRESH_MS);
+  // Read again every 30 s while this page is on screen (analysis §3 item 11).
+  const heats = useHeats(c.id, useLiveRefresh());
   // Every second, and only while this page is open: the interval stops when the page closes.
   const now = useNow(1000);
   const [day, setDay] = useState<string | null>(null);
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [workoutId, setWorkoutId] = useState<string | null>(null);
   const [q, setQ] = useState('');
-  if (heats.isError) return <ErrorView error={heats.error} onRetry={() => heats.refetch()} />;
-  if (!heats.data) return <SkeletonList label={t('orgLoading')} />;
+  // A failed 30 s reload keeps the clock and « Retard »: the error shows above them.
+  if (!heats.data) return heats.isError ? <ErrorView error={heats.error} onRetry={() => heats.refetch()} /> : <SkeletonList label={t('orgLoading')} />;
   const all: Json[] = heats.data;
   const days = heatDays(all);
   // Until the organizer picks a day: the day of the heat running, else the one « Retard » would move.
@@ -70,6 +71,7 @@ export function ScheduleTab({ c, onGo }: { c: Json; onGo?: (tab: ManageTab) => v
         }
       />
       <Screen>
+        <ErrorText error={heats.error} />
         {!shownDay ? (
           <Guide testID="guide-heats" message={t('orgNeedHeat')} action={t('orgGoHeats')} onPress={onGo && (() => onGo('planning'))} />
         ) : (

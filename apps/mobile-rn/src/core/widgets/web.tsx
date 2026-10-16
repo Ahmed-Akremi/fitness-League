@@ -2,7 +2,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { Children, Fragment, isValidElement, useState, type ReactNode } from 'react';
 import { Pressable, TextInput, View } from 'react-native';
 
-import { isFocused, useFocusRing } from '../focus';
+import { ariaPressed, isFocused, useFocusRing } from '../focus';
 import { displayText, space, useTheme, webDense } from '../theme';
 import { Txt, type IconName } from './kit';
 
@@ -34,7 +34,8 @@ export function SearchField({ value, onChangeText, placeholder, testID, width = 
   const { colors } = useTheme();
   const [focused, setFocused] = useState(false);
   return (
-    <View style={[{ flexDirection: 'row', alignItems: 'center', gap: 6, height: webDense.control, width, borderRadius: webDense.radius.field, backgroundColor: colors.surfaceHigh, paddingHorizontal: 10 }, focused && { borderWidth: 1, borderColor: colors.primary }]}>
+    // The border is always there (transparent at rest): the focus only colours it, so the box keeps its size.
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, height: webDense.control, width, borderRadius: webDense.radius.field, backgroundColor: colors.surfaceHigh, paddingHorizontal: 10, borderWidth: 1, borderColor: focused ? colors.primary : 'transparent' }}>
       <MaterialIcons name="search" size={16} color={colors.outline} />
       <TextInput
         testID={testID}
@@ -77,8 +78,9 @@ export function SegmentedInline<K extends string>({ label, options, value, onCha
   const { colors } = useTheme();
   const ring = useFocusRing();
   return (
-    <View testID={testID} accessibilityRole="radiogroup" style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
-      <Txt style={webDense.caption} color={colors.outline}>
+    // Toggle buttons in a group named by the label (role radio needs arrow keys, which this switch does not have).
+    <View testID={testID} role="group" aria-label={label} style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+      <Txt aria-hidden style={webDense.caption} color={colors.outline}>
         {label}
       </Txt>
       {options.map((o, i) => {
@@ -86,11 +88,11 @@ export function SegmentedInline<K extends string>({ label, options, value, onCha
         return (
           <Fragment key={o.key}>
             {i > 0 ? (
-              <Txt style={webDense.caption} color={colors.outline}>
+              <Txt aria-hidden style={webDense.caption} color={colors.outline}>
                 |
               </Txt>
             ) : null}
-            <Pressable testID={testID ? `${testID}-${o.key}` : undefined} accessibilityRole="radio" accessibilityState={{ checked: on }} hitSlop={6} onPress={() => onChange(o.key)} style={(state) => [{ minHeight: 24, justifyContent: 'center' }, ring(isFocused(state))]}>
+            <Pressable testID={testID ? `${testID}-${o.key}` : undefined} accessibilityRole="button" {...ariaPressed(on)} hitSlop={6} onPress={() => onChange(o.key)} style={(state) => [{ minHeight: 24, justifyContent: 'center' }, ring(isFocused(state))]}>
               <Txt style={[webDense.caption, { textDecorationLine: on ? 'underline' : 'none', fontWeight: on ? '700' : '400' }]} color={on ? colors.text : colors.outline}>
                 {o.label}
               </Txt>

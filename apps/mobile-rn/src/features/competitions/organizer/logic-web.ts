@@ -162,14 +162,21 @@ export function filterBoard(rows: Json[], q: string): Json[] {
   return s ? rows.filter((r) => fold(`${r.athlete?.fullName ?? ''} ${r.athlete?.username ?? ''}`).includes(s)) : rows;
 }
 
+/** Latin letters that accents removal leaves as they are: spelled out, so « Straße » is not cut into « stra-e ». */
+const SPELLED: Record<string, string> = { ß: 'ss', œ: 'oe', æ: 'ae', ø: 'o', ł: 'l', đ: 'd', þ: 'th' };
+
 /** Lowercase ASCII words joined by dashes, for file names: « RX Femmes 18-35 » → « rx-femmes-18-35 ». */
 export const toSlug = (s: string) =>
   fold(s)
+    .replace(/[ßœæøłđþ]/g, (x) => SPELLED[x])
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
 
-/** `<event>-leaderboard-<category>.csv`, so two categories exported the same day stay apart; a name without Latin letters keeps `<event>-leaderboard.csv`. */
-export const boardFileName = (c: Json, category: string) => csvFileName(c, toSlug(category) ? `leaderboard-${toSlug(category)}` : 'leaderboard');
+/** `<event>-leaderboard-<category>.csv`, so two categories exported the same day stay apart; a name without Latin letters (Arabic) gets its position in the list instead. */
+export const boardFileName = (c: Json, category: string, index = -1) => {
+  const part = toSlug(category) || (index >= 0 ? String(index + 1) : '');
+  return csvFileName(c, part ? `leaderboard-${part}` : 'leaderboard');
+};
 
 /** The promo-code list with one code switched on or off (the optimistic toggle). */
 export const setActive = (list: Json[], id: string, active: boolean) => list.map((k) => (k.id === id ? { ...k, active } : k));

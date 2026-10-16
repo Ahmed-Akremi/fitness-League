@@ -11,12 +11,11 @@ import { ErrorText, ErrorView } from '../../../core/widgets/error';
 import { Button, Card, Chip, Dialog, IconButton, ListGroup, ListRow, Screen, TextField, Txt, toast } from '../../../core/widgets/kit';
 import { DateField, Select, type Option } from '../../../core/widgets/pickers';
 import { useHeats } from '../api';
-import { organizerApi, useRefreshCompetition, useRegistrations } from './api';
+import { organizerApi, useLiveRefresh, useRefreshCompetition, useRegistrations } from './api';
 import { exportCsv } from './export';
 import { Guide } from './guide';
 import type { ManageTab } from './logic';
 import { autoBody, autoValid, csvFileName, csvSeparator, filterHeats, freeLanes, heatBody, heatDays, heatDraft, heatsCsv, heatValid, laneCandidates, personName, type AutoDraft, type HeatDraft, type HeatFilter } from './logic-b';
-import { LIVE_REFRESH_MS } from './logic-web';
 import { ExportButton, OrgPageHeader } from './page';
 import { TimetableCard } from './timetable';
 import { useWideWeb } from './web';
@@ -30,8 +29,8 @@ export function PlanningTab({ c, onGo }: { c: Json; onGo?: (tab: ManageTab) => v
   const { colors } = useTheme();
   const api = useApi();
   const refresh = useRefreshCompetition();
-  // Read again every 30 s while this page is open (analysis §3 item 11).
-  const heats = useHeats(c.id, LIVE_REFRESH_MS);
+  // Read again every 30 s while this page is on screen (analysis §3 item 11).
+  const heats = useHeats(c.id, useLiveRefresh());
   const regs = useRegistrations(c.id);
   const [filter, setFilter] = useState<HeatFilter>({ day: null, categoryId: null, workoutId: null, q: '' });
   const [edit, setEdit] = useState<HeatDraft | null>(null);
@@ -64,8 +63,8 @@ export function PlanningTab({ c, onGo }: { c: Json; onGo?: (tab: ManageTab) => v
     }
   }
 
-  if (heats.isError) return <ErrorView error={heats.error} onRetry={() => heats.refetch()} />;
-  if (!heats.data) return <SkeletonList label={t('orgLoading')} />;
+  // A failed 30 s reload keeps the page and what is being typed: the error shows above the list.
+  if (!heats.data) return heats.isError ? <ErrorView error={heats.error} onRetry={() => heats.refetch()} /> : <SkeletonList label={t('orgLoading')} />;
   const all: Json[] = heats.data;
   const categories: Json[] = c.categories ?? [];
   const catOptions: Option[] = categories.map((k) => ({ value: k.id, label: k.name }));
@@ -145,6 +144,7 @@ export function PlanningTab({ c, onGo }: { c: Json; onGo?: (tab: ManageTab) => v
             {notice}
           </Txt>
         ) : null}
+        <ErrorText error={heats.error} />
         <ErrorText error={error} />
         {all.length === 0 ? (
           !categories.some((k) => k.active) ? (

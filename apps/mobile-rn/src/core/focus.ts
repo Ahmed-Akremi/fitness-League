@@ -27,25 +27,40 @@ if (Platform.OS === 'web' && typeof document !== 'undefined') {
   document.addEventListener('pointerdown', () => setKeyboardModality(false), true);
 }
 
-export function useKeyboardModality(): boolean {
-  return useSyncExternalStore(
-    (l) => {
-      listeners.add(l);
-      return () => {
-        listeners.delete(l);
-      };
-    },
-    () => keyboard,
-    () => false,
-  );
+const subscribe = (l: () => void) => {
+  listeners.add(l);
+  return () => {
+    listeners.delete(l);
+  };
+};
+const ignore = () => () => {};
+
+/** `enabled` false: no subscription at all, so a key press does not re-render the controls that never draw a ring. */
+export function useKeyboardModality(enabled = true): boolean {
+  return useSyncExternalStore(enabled ? subscribe : ignore, () => enabled && keyboard, () => false);
 }
 
 /** The ring of a focused control, or null: only on a computer, only after a key press. */
 export function useFocusRing() {
   const { colors, dense } = useTheme();
-  const keyboardOn = useKeyboardModality();
+  const keyboardOn = useKeyboardModality(dense);
   return (focused?: boolean): ViewStyle | null => (dense && keyboardOn && focused ? { outlineStyle: 'solid', outlineWidth: 2, outlineColor: colors.primary, outlineOffset: 2 } : null);
 }
+
+/** Space ticks a checkbox in the browser: react-native-web only presses buttons and menu items with it. A phone never calls it. */
+export function spaceKey(fn: () => void): object {
+  return {
+    onKeyDown: (e: { key?: string; nativeEvent?: { key?: string }; preventDefault?: () => void }) => {
+      if ((e.key ?? e.nativeEvent?.key) !== ' ') return;
+      // Not the page scroll as well.
+      e.preventDefault?.();
+      fn();
+    },
+  };
+}
+
+/** `aria-pressed` for a toggle button: react-native-web writes it in the page, React Native's types do not list it. */
+export const ariaPressed = (on: boolean): object => ({ 'aria-pressed': on });
 
 /** `focused` from a Pressable's state: react-native-web passes it, the phones do not. */
 export const isFocused = (state: unknown) => !!(state as { focused?: boolean }).focused;

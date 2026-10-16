@@ -120,6 +120,8 @@ export function GeneralTab({ c }: { c: Json }) {
     setBusy('delete');
     try {
       await organizerApi(api).remove(c.id);
+      // Said before leaving: the list it lands on does not show what happened.
+      toast(t('orgToastEventDeleted'));
       router.replace('/competitions');
       await refresh();
     } catch (e) {

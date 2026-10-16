@@ -5,7 +5,7 @@ import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Switch, Te
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { create } from 'zustand';
 
-import { isFocused, useFocusRing } from '../focus';
+import { isFocused, spaceKey, useFocusRing } from '../focus';
 import { fonts, radius, space, useTheme, webDense } from '../theme';
 
 export type IconName = ComponentProps<typeof MaterialIcons>['name'];
@@ -171,7 +171,7 @@ export function Checkbox({ label, value, onChange, testID }: { label: string; va
   const { colors } = useTheme();
   const ring = useFocusRing();
   return (
-    <Pressable testID={testID} accessibilityRole="checkbox" accessibilityState={{ checked: value }} onPress={() => onChange(!value)} style={(state) => [{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8 }, ring(isFocused(state))]}>
+    <Pressable testID={testID} accessibilityRole="checkbox" aria-checked={value} {...spaceKey(() => onChange(!value))} onPress={() => onChange(!value)} style={(state) => [{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8 }, ring(isFocused(state))]}>
       <MaterialIcons name={value ? 'check-box' : 'check-box-outline-blank'} size={24} color={value ? colors.primary : colors.outline} />
       <Txt style={{ flex: 1 }}>{label}</Txt>
     </Pressable>

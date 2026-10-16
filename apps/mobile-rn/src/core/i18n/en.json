@@ -902,6 +902,7 @@
   "orgGoHeats": "Go to heats",
   "orgDay": "Day",
   "orgToastDeleted": "Deleted.",
+  "orgToastEventDeleted": "Event deleted.",
   "orgToastOrder": "Order updated.",
   "orgToastTemplates": "Categories added.",
   "orgToastActivated": "Activated.",

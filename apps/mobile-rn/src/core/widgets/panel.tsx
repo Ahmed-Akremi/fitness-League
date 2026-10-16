@@ -35,7 +35,7 @@ function Drawer({ title, closeLabel, onClose, footer, children, testID }: { titl
     <View style={{ flex: 1 }}>
       {/* Not focusable: the keyboard goes straight to the drawer, Esc closes it. */}
       <Pressable testID={`${testID}-backdrop`} focusable={false} importantForAccessibility="no" onPress={onClose} style={[StyleSheet.absoluteFill, { backgroundColor: '#00000066' }]} />
-      <Animated.View testID={testID} role="dialog" accessibilityLabel={title} accessibilityViewIsModal style={{ position: 'absolute', top: 0, bottom: 0, right: 0, width: PANEL_WIDTH, maxWidth: '100%', backgroundColor: colors.background, transform: [{ translateX: x }] }}>
+      <Animated.View testID={testID} role="dialog" accessibilityLabel={title} accessibilityViewIsModal aria-modal style={{ position: 'absolute', top: 0, bottom: 0, right: 0, width: PANEL_WIDTH, maxWidth: '100%', backgroundColor: colors.background, transform: [{ translateX: x }] }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, minHeight: 56, paddingStart: space.xl, paddingEnd: space.sm, borderBottomWidth: 1, borderBottomColor: colors.border }}>
           <Txt numberOfLines={1} style={[webDense.cardTitle, { flex: 1, fontSize: 16 }]}>
             {title}

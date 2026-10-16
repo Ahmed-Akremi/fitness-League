@@ -83,8 +83,8 @@ describe('computer page pieces: render', () => {
       () => <SegmentedInline testID="as" label="Show as:" value="percent" options={[{ key: 'percent', label: 'Percentages (%)' }, { key: 'numbers', label: 'Numbers' }]} onChange={onChange} />,
       new FakeBackend(),
     );
-    expect(screen.getByTestId('as-percent').props.accessibilityState).toMatchObject({ checked: true });
-    expect(screen.getByTestId('as-numbers').props.accessibilityState).toMatchObject({ checked: false });
+    expect(screen.getByTestId('as-percent').props['aria-pressed']).toBe(true);
+    expect(screen.getByTestId('as-numbers').props['aria-pressed']).toBe(false);
     fireEvent.press(screen.getByTestId('as-numbers'));
     expect(onChange).toHaveBeenCalledWith('numbers');
   });

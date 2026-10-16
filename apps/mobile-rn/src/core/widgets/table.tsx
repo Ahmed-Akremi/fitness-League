@@ -2,7 +2,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import type { ReactElement, ReactNode } from 'react';
 import { FlatList, Pressable, View, type ViewStyle } from 'react-native';
 
-import { isFocused, useFocusRing } from '../focus';
+import { isFocused, spaceKey, useFocusRing } from '../focus';
 import { space, useTheme, webDense } from '../theme';
 import { Menu, Txt } from './kit';
 
@@ -106,7 +106,7 @@ function Check({ testID, checked, mixed, label, onPress }: { testID: string; che
   const { colors } = useTheme();
   const ring = useFocusRing();
   return (
-    <Pressable testID={testID} accessibilityRole="checkbox" accessibilityLabel={label} accessibilityState={{ checked: mixed ? 'mixed' : checked }} hitSlop={6} onPress={onPress} style={(state) => [{ width: 24, height: 24, alignItems: 'center', justifyContent: 'center' }, ring(isFocused(state))]}>
+    <Pressable testID={testID} accessibilityRole="checkbox" accessibilityLabel={label} aria-checked={mixed ? 'mixed' : checked} {...spaceKey(onPress)} hitSlop={6} onPress={onPress} style={(state) => [{ width: 24, height: 24, alignItems: 'center', justifyContent: 'center' }, ring(isFocused(state))]}>
       <MaterialIcons name={checked ? 'check-box' : mixed ? 'indeterminate-check-box' : 'check-box-outline-blank'} size={20} color={checked || mixed ? colors.primary : colors.outline} />
     </Pressable>
   );

@@ -1,6 +1,6 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { focusManager, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createContext, useContext, useState, type ReactNode } from 'react';
-import { Platform } from 'react-native';
+import { AppState, Platform } from 'react-native';
 
 import { ApiClient } from './api/client';
 import { demoFetch } from './api/demo-backend';
@@ -38,6 +38,14 @@ export function createServices(): Services {
 }
 
 const ServicesContext = createContext<Services | null>(null);
+
+/** React Query's « focus » on a phone (the browser already has the page visibility): an app in the background stops the 30 s reloads, coming back reloads what is stale. */
+export function appStateFocus(setFocused: (focused: boolean) => void, appState: Pick<typeof AppState, 'addEventListener'> = AppState) {
+  const sub = appState.addEventListener('change', (s) => setFocused(s === 'active'));
+  return () => sub.remove();
+}
+
+if (Platform.OS !== 'web') focusManager.setEventListener((setFocused) => appStateFocus(setFocused));
 
 export function newQueryClient() {
   return new QueryClient({ defaultOptions: { queries: { retry: 1, staleTime: 30_000 }, mutations: { retry: false } } });

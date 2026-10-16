@@ -116,7 +116,7 @@ describe('keyboard focus on a computer', () => {
 });
 
 describe('names for screen readers', () => {
-  it('the inline switch is a radio group; the panel is a dialog named after its title; the chart reads its values', async () => {
+  it('the inline switch is a group of toggle buttons; the panel is a dialog named after its title; the chart reads its values', async () => {
     const screen = await renderScreen(
       () => (
         <>
@@ -129,9 +129,9 @@ describe('names for screen readers', () => {
       ),
       new FakeBackend(),
     );
-    expect(screen.getByTestId('as').props.accessibilityRole).toBe('radiogroup');
-    expect(screen.getByTestId('as-a').props.accessibilityRole).toBe('radio');
-    expect(screen.getByTestId('as-a').props.accessibilityState).toMatchObject({ checked: true });
+    expect(screen.getByTestId('as').props.role).toBe('group');
+    expect(screen.getByTestId('as-a').props.accessibilityRole).toBe('button');
+    expect(screen.getByTestId('as-a').props['aria-pressed']).toBe(true);
     expect(screen.getByLabelText('Registrations per day: 19 Oct 1, 20 Oct 3')).toBeTruthy();
     expect(screen.getByTestId('side-panel').props.role).toBe('dialog');
     expect(screen.getByTestId('side-panel').props.accessibilityLabel).toBe('Sami Ben Ali');
