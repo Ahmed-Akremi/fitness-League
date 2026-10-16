@@ -4,6 +4,7 @@ import { Pressable, ScrollView, View, type ViewStyle } from 'react-native';
 
 import type { Json } from '../../../core/api/client';
 import { useLocale, useT } from '../../../core/prefs';
+import { isFocused, useFocusRing } from '../../../core/focus';
 import { space, ThemeScope, useTheme, webDense } from '../../../core/theme';
 import { formatDate } from '../../../core/utils/format';
 import { GymLogo } from '../../../core/widgets/common';
@@ -73,6 +74,7 @@ function OrgMenu({ c, tab, onTab }: { c: Json; tab: ManageTab; onTab: (tab: Mana
 function MenuItem({ tab, label, selected, mark, onPress }: { tab: ManageTab; label: string; selected: boolean; mark?: MenuMark; onPress: () => void }) {
   const t = useT();
   const { colors } = useTheme();
+  const ring = useFocusRing();
   const spoken = mark === 'todo' ? `${label}, ${t('orgMarkTodo')}` : mark ? `${label}, ${mark}` : label;
   return (
     <Pressable
@@ -85,7 +87,7 @@ function MenuItem({ tab, label, selected, mark, onPress }: { tab: ManageTab; lab
         // react-native-web passes `hovered` too.
         const hovered = (state as { hovered?: boolean }).hovered;
         const item: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: 10, height: 36, paddingHorizontal: space.md, borderRadius: webDense.radius.field, backgroundColor: selected ? colors.surfaceHigh : hovered || state.pressed ? colors.surface : 'transparent' };
-        return item;
+        return [item, ring(isFocused(state))];
       }}
     >
       {/* Circle21's active item: a 3 px bar in the accent on the leading edge (the web layout is not mirrored). */}

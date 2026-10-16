@@ -5,7 +5,7 @@ import type { Json } from '../../../core/api/client';
 import { useLocale, useT } from '../../../core/prefs';
 import { space, useTheme } from '../../../core/theme';
 import { formatDate } from '../../../core/utils/format';
-import { EmptyState, Loading, StatusPill } from '../../../core/widgets/common';
+import { EmptyState, SkeletonList, StatusPill } from '../../../core/widgets/common';
 import { ErrorText, ErrorView } from '../../../core/widgets/error';
 import { Select } from '../../../core/widgets/pickers';
 import { DataTable, type Column } from '../../../core/widgets/table';
@@ -28,7 +28,7 @@ export function FinancesTab({ c }: { c: Json }) {
   const [q, setQ] = useState('');
   const [payment, setPayment] = useState<TxFilter>('ALL');
   // A failed reload keeps the page (and a batch summary) with the error above it; the full-page error is only for a first load.
-  if (!regs.data) return regs.isError ? <ErrorView error={regs.error} onRetry={() => regs.refetch()} /> : <Loading />;
+  if (!regs.data) return regs.isError ? <ErrorView error={regs.error} onRetry={() => regs.refetch()} /> : <SkeletonList label={t('orgLoading')} />;
   const f = finance(regs.data);
   const shown = filterTransactions(f.rows, { q, payment });
   const money = (n: number, currency: string = c.currency) => formatMoney(n, currency, locale);
@@ -75,7 +75,7 @@ export function FinancesTab({ c }: { c: Json }) {
   return (
     <>
       <OrgPageHeader tab="finances" />
-      <DataTable testID="fin-table" rows={shown} keyOf={(r) => r.id} nameOf={personName} rowTestID={(r) => `fin-row-${r.id}`} columns={columns} header={header} empty={<EmptyState icon="payments" message={t('orgFinNone')} />} />
+      <DataTable testID="fin-table" rows={shown} keyOf={(r) => r.id} nameOf={personName} rowTestID={(r) => `fin-row-${r.id}`} columns={columns} header={header} empty={<EmptyState icon="payments" message={f.rows.length ? t('orgFinNoMatch') : t('orgFinNone')} />} />
     </>
   );
 }

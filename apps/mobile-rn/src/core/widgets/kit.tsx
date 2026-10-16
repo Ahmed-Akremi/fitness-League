@@ -5,6 +5,7 @@ import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Switch, Te
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { create } from 'zustand';
 
+import { isFocused, spaceKey, useFocusRing } from '../focus';
 import { fonts, radius, space, useTheme, webDense } from '../theme';
 
 export type IconName = ComponentProps<typeof MaterialIcons>['name'];
@@ -35,6 +36,7 @@ type ButtonKind = 'filled' | 'tonal' | 'outlined' | 'text';
 
 export function Button({ label, onPress, kind = 'filled', icon, busy, disabled, testID, style }: { label: string; onPress?: () => void; kind?: ButtonKind; icon?: IconName; busy?: boolean; disabled?: boolean; testID?: string; style?: StyleProp<ViewStyle> }) {
   const { colors, dense } = useTheme();
+  const ring = useFocusRing();
   const off = disabled || busy || !onPress;
   const bg = { filled: colors.primary, tonal: colors.surfaceHigh, outlined: 'transparent', text: 'transparent' }[kind];
   const fg = kind === 'filled' ? colors.onPrimary : kind === 'tonal' ? colors.text : colors.primary;
@@ -45,12 +47,13 @@ export function Button({ label, onPress, kind = 'filled', icon, busy, disabled, 
       accessibilityState={{ disabled: off, busy }}
       disabled={off}
       onPress={onPress}
-      style={({ pressed }) => [
+      style={(state) => [
         styles.button,
         dense && styles.buttonDense,
-        { backgroundColor: bg, opacity: off && !busy ? 0.45 : pressed ? 0.8 : 1 },
+        { backgroundColor: bg, opacity: off && !busy ? 0.45 : state.pressed ? 0.8 : 1 },
         kind === 'outlined' && { borderWidth: 1, borderColor: colors.outline },
         kind === 'text' && { minHeight: dense ? webDense.control : 40, paddingHorizontal: 8 },
+        ring(isFocused(state)),
         style,
       ]}
     >
@@ -67,8 +70,9 @@ export function Button({ label, onPress, kind = 'filled', icon, busy, disabled, 
 }
 
 export function IconButton({ icon, onPress, label, color, testID }: { icon: IconName; onPress: () => void; label: string; color?: string; testID?: string }) {
+  const ring = useFocusRing();
   return (
-    <Pressable testID={testID} accessibilityRole="button" accessibilityLabel={label} onPress={onPress} hitSlop={8} style={{ padding: 8 }}>
+    <Pressable testID={testID} accessibilityRole="button" accessibilityLabel={label} onPress={onPress} hitSlop={8} style={(state) => [{ padding: 8 }, ring(isFocused(state))]}>
       <Icon name={icon} color={color} />
     </Pressable>
   );
@@ -76,16 +80,25 @@ export function IconButton({ icon, onPress, label, color, testID }: { icon: Icon
 
 export function TextField({ label, error, icon, style, ...props }: { label?: string; error?: string | null; icon?: IconName; style?: StyleProp<ViewStyle> } & TextInputProps) {
   const { colors, dense } = useTheme();
+  const [focused, setFocused] = useState(false);
   return (
     <View style={style}>
       {label ? <Txt variant="small" color={colors.outline} style={dense ? { marginBottom: 4, fontSize: 12 } : { marginBottom: 6 }}>{label}</Txt> : null}
-      <View style={[styles.field, dense && { borderRadius: webDense.radius.field }, { backgroundColor: colors.surface, borderColor: error ? colors.error : colors.surfaceHigh }]}>
+      <View style={[styles.field, dense && { borderRadius: webDense.radius.field }, { backgroundColor: colors.surface, borderColor: error ? colors.error : colors.surfaceHigh }, dense && focused && { borderColor: colors.primary }]}>
         {icon && <Icon name={icon} size={dense ? 16 : 20} color={colors.outline} />}
         <TextInput
           accessibilityLabel={label}
           placeholderTextColor={colors.outline}
           style={{ flex: 1, color: colors.text, fontSize: dense ? 14 : 16, paddingVertical: dense ? 7 : 12, textAlign: 'auto' }}
           {...props}
+          onFocus={(e) => {
+            setFocused(true);
+            props.onFocus?.(e);
+          }}
+          onBlur={(e) => {
+            setFocused(false);
+            props.onBlur?.(e);
+          }}
         />
       </View>
       {error ? <Txt variant="small" color={colors.error} style={{ marginTop: 4 }}>{error}</Txt> : null}
@@ -108,6 +121,7 @@ export function Card({ children, onPress, style, testID }: { children: ReactNode
 
 export function Chip({ label, selected, onPress, icon, testID }: { label: string; selected?: boolean; onPress?: () => void; icon?: IconName; testID?: string }) {
   const { colors, dense } = useTheme();
+  const ring = useFocusRing();
   const fg = selected ? colors.onPrimary : colors.text;
   return (
     <Pressable
@@ -116,7 +130,7 @@ export function Chip({ label, selected, onPress, icon, testID }: { label: string
       accessibilityState={{ selected }}
       disabled={!onPress}
       onPress={onPress}
-      style={[styles.chip, dense && { borderRadius: webDense.radius.field, paddingVertical: 6 }, { backgroundColor: selected ? colors.primary : colors.surfaceHigh }]}
+      style={(state) => [styles.chip, dense && { borderRadius: webDense.radius.field, paddingVertical: 6 }, { backgroundColor: selected ? colors.primary : colors.surfaceHigh }, ring(isFocused(state))]}
     >
       {icon && <MaterialIcons name={icon} size={16} color={fg} />}
       <Text style={{ color: fg, fontWeight: '600', fontSize: 13 }}>{label}</Text>
@@ -155,8 +169,9 @@ export function Screen({ children, scroll = true, padded = true, edges = ['botto
 
 export function Checkbox({ label, value, onChange, testID }: { label: string; value: boolean; onChange: (v: boolean) => void; testID?: string }) {
   const { colors } = useTheme();
+  const ring = useFocusRing();
   return (
-    <Pressable testID={testID} accessibilityRole="checkbox" accessibilityState={{ checked: value }} onPress={() => onChange(!value)} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8 }}>
+    <Pressable testID={testID} accessibilityRole="checkbox" aria-checked={value} {...spaceKey(() => onChange(!value))} onPress={() => onChange(!value)} style={(state) => [{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8 }, ring(isFocused(state))]}>
       <MaterialIcons name={value ? 'check-box' : 'check-box-outline-blank'} size={24} color={value ? colors.primary : colors.outline} />
       <Txt style={{ flex: 1 }}>{label}</Txt>
     </Pressable>
@@ -175,8 +190,9 @@ export function useHeader(options: { title?: string; headerRight?: () => ReactNo
 /** Flutter ListTile: leading icon/element, title, subtitle, trailing element, optional press. */
 export function ListRow({ icon, leading, title, subtitle, trailing, onPress, testID, danger, chevron }: { icon?: IconName; leading?: ReactNode; title: string; subtitle?: string | null; trailing?: ReactNode; onPress?: () => void; testID?: string; danger?: boolean; chevron?: boolean }) {
   const { colors, dense } = useTheme();
+  const ring = useFocusRing();
   return (
-    <Pressable testID={testID} accessibilityRole={onPress ? 'button' : undefined} disabled={!onPress} onPress={onPress} style={({ pressed }) => [styles.row, dense && { minHeight: 40, paddingVertical: 6 }, pressed && { opacity: 0.7 }]}>
+    <Pressable testID={testID} accessibilityRole={onPress ? 'button' : undefined} disabled={!onPress} onPress={onPress} style={(state) => [styles.row, dense && { minHeight: 40, paddingVertical: 6 }, state.pressed && { opacity: 0.7 }, ring(isFocused(state))]}>
       {leading ?? (icon ? <Icon name={icon} color={danger ? colors.error : colors.outline} /> : null)}
       <View style={{ flex: 1 }}>
         <Txt color={danger ? colors.error : undefined} style={{ fontSize: dense ? 14 : 16 }}>{title}</Txt>
@@ -210,9 +226,10 @@ export function ListGroup({ children, inset = 48, style, testID }: { children: R
 
 /** Compact text action (section headers, inline links): no button height. */
 export function LinkButton({ label, onPress, testID }: { label: string; onPress?: () => void; testID?: string }) {
-  const { colors } = useTheme();
+  const { colors, dense } = useTheme();
+  const ring = useFocusRing();
   return (
-    <Pressable testID={testID} accessibilityRole="button" onPress={onPress} disabled={!onPress} hitSlop={12} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
+    <Pressable testID={testID} accessibilityRole="button" onPress={onPress} disabled={!onPress} hitSlop={12} style={(state) => [{ opacity: state.pressed ? 0.6 : 1 }, dense && { minHeight: 24, justifyContent: 'center' }, ring(isFocused(state))]}>
       <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 14 }}>{label}</Text>
     </Pressable>
   );
@@ -271,9 +288,10 @@ export function Fab({ label, icon = 'add', onPress, testID }: { label?: string; 
 export function Menu({ items, label, icon = 'more-vert', testID }: { items: { label: string; onPress: () => void; testID?: string }[]; label: string; icon?: IconName; testID?: string }) {
   const { colors } = useTheme();
   const [open, setOpen] = useState(false);
+  const ring = useFocusRing();
   return (
     <>
-      <Pressable testID={testID} accessibilityRole="button" accessibilityLabel={label} onPress={() => setOpen(true)} hitSlop={8} style={{ padding: 8 }}>
+      <Pressable testID={testID} accessibilityRole="button" accessibilityLabel={label} onPress={() => setOpen(true)} hitSlop={8} style={(state) => [{ padding: 8 }, ring(isFocused(state))]}>
         <Icon name={icon} />
       </Pressable>
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>

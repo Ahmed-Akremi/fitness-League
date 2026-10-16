@@ -5,9 +5,9 @@ import type { Json } from '../../../core/api/client';
 import { useLocale, useT } from '../../../core/prefs';
 import { useApi } from '../../../core/services';
 import { space, useTheme } from '../../../core/theme';
-import { Loading, SectionHeader } from '../../../core/widgets/common';
+import { Loading, SectionHeader, SkeletonList } from '../../../core/widgets/common';
 import { ErrorText, ErrorView } from '../../../core/widgets/error';
-import { Button, Dialog, IconButton, ListGroup, ListRow, Screen, TextField, Txt } from '../../../core/widgets/kit';
+import { Button, Dialog, IconButton, ListGroup, ListRow, Screen, TextField, Txt, toast } from '../../../core/widgets/kit';
 import { useMe } from '../../me/api';
 import { socialApi } from '../../social/api';
 import { organizerApi, useRefreshCompetition, useStaff } from './api';
@@ -33,7 +33,7 @@ export function TeamTab({ c }: { c: Json }) {
   const [error, setError] = useState<unknown>(null);
   const wide = useWideWeb();
 
-  async function run(fn: () => Promise<unknown>, after?: () => void) {
+  async function run(fn: () => Promise<unknown>, after?: () => void, done?: string) {
     if (sending.current) return;
     sending.current = true;
     setBusy(true);
@@ -41,6 +41,8 @@ export function TeamTab({ c }: { c: Json }) {
     try {
       await fn();
       after?.();
+      // Only once the request has succeeded: an error keeps its text, with no toast.
+      if (done) toast(done);
     } catch (e) {
       setError(e);
     } finally {
@@ -51,7 +53,7 @@ export function TeamTab({ c }: { c: Json }) {
   }
 
   if (staff.isError) return <ErrorView error={staff.error} onRetry={() => staff.refetch()} />;
-  if (!staff.data) return <Loading />;
+  if (!staff.data) return <SkeletonList label={t('orgLoading')} />;
   const groups = staffByRole(staff.data);
   if (adding) {
     const organizers = new Set(groups.ORGANIZER.map((s) => s.userId as string));
@@ -68,7 +70,7 @@ export function TeamTab({ c }: { c: Json }) {
           onConfirm={() => {
             const p = picked;
             setPicked(null);
-            if (p) void run(() => organizerApi(api).addOrganizer(c.id, p.id), () => setAdding(false));
+            if (p) void run(() => organizerApi(api).addOrganizer(c.id, p.id), () => setAdding(false), t('orgToastOrganizerAdded', { name: p.name }));
           }}
           onCancel={() => setPicked(null)}
         />
@@ -125,7 +127,7 @@ export function TeamTab({ c }: { c: Json }) {
           onConfirm={() => {
             const s = removing;
             setRemoving(null);
-            if (s) void run(() => organizerApi(api).removeStaff(c.id, s.id));
+            if (s) void run(() => organizerApi(api).removeStaff(c.id, s.id), undefined, t('orgToastStaffRemoved', { name: personName(s) }));
           }}
           onCancel={() => setRemoving(null)}
         />

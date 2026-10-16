@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { useRef, useState } from 'react';
 import { View } from 'react-native';
 
@@ -6,14 +7,15 @@ import { useLocale, useT } from '../../../core/prefs';
 import { useApi } from '../../../core/services';
 import { space, useTheme } from '../../../core/theme';
 import { formatDate } from '../../../core/utils/format';
-import { Loading, SectionHeader } from '../../../core/widgets/common';
+import { SectionHeader, SkeletonList } from '../../../core/widgets/common';
 import { ErrorText, ErrorView } from '../../../core/widgets/error';
-import { Button, Card, Chip, ListGroup, ListRow, Screen, TextField, Txt } from '../../../core/widgets/kit';
+import { Button, Card, Chip, ListGroup, ListRow, Screen, TextField, Txt, toast } from '../../../core/widgets/kit';
 import { DateField, Select } from '../../../core/widgets/pickers';
 import { formatMoney } from '../api';
-import { organizerApi, useCoupons, useRefreshCompetition } from './api';
+import { organizerApi, orgKeys, useCoupons, useRefreshCompetition } from './api';
 import { exportCsv } from './export';
 import { batchCodes, couponBody, couponDraft, couponsCsv, couponValid, createCoupons, csvFileName, csvSeparator, normalizeCode, topUsed, type BatchResult, type CouponDraft, type CouponKind } from './logic-b';
+import { setActive } from './logic-web';
 import { ExportButton, OrgPageHeader } from './page';
 import { useWideWeb } from './web';
 
@@ -34,6 +36,10 @@ export function CouponsTab({ c }: { c: Json }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const wide = useWideWeb();
+  const qc = useQueryClient();
+  const toggling = useRef(new Set<string>());
+  // One line per code that did not change: two toggles failing one after the other both stay named.
+  const [toggleFailed, setToggleFailed] = useState<{ id: string; code: string; error: unknown }[]>([]);
 
   async function guarded(fn: () => Promise<void>) {
     if (sending.current) return;
@@ -61,10 +67,29 @@ export function CouponsTab({ c }: { c: Json }) {
       if (r.error) setError(r.error);
       else setForm(null);
     });
-  const toggle = (k: Json) =>
-    guarded(async () => {
+  /** Optimistic (analysis §3 item 12): the row shows its new state at once; a failure puts it back and names the code. */
+  async function toggle(k: Json) {
+    if (toggling.current.has(k.id)) return;
+    toggling.current.add(k.id);
+    // Trying this code again clears its old failure; the other codes keep theirs.
+    setToggleFailed((f) => f.filter((x) => x.id !== k.id));
+    const key = orgKeys.coupons(c.id);
+    // A reload already on its way would overwrite the new state when it lands.
+    await qc.cancelQueries({ queryKey: key });
+    qc.setQueryData<Json[]>(key, (list) => (list ? setActive(list, k.id, !k.active) : list));
+    try {
       await organizerApi(api).setCouponActive(c.id, k.id, !k.active);
-    });
+      toast(k.active ? t('orgToastDeactivated') : t('orgToastActivated'));
+    } catch (e) {
+      // Only this code goes back: another toggle still on its way keeps its new state.
+      qc.setQueryData<Json[]>(key, (list) => (list ? setActive(list, k.id, k.active) : list));
+      setToggleFailed((f) => [...f, { id: k.id, code: k.code, error: e }]);
+    } finally {
+      toggling.current.delete(k.id);
+      // One reload once the last toggle has landed: an earlier one would bring back states still on their way.
+      if (toggling.current.size === 0) void refresh();
+    }
+  }
 
   const kindLabel: Record<CouponKind, string> = { PERCENTAGE: t('orgCouponPercent'), FIXED_AMOUNT: t('orgCouponAmount'), FREE: t('orgCouponFree') };
   const discount = (k: Json) => (k.type === 'FREE' ? t('orgCouponFree') : k.type === 'PERCENTAGE' ? `-${k.value} %` : `-${formatMoney(k.value, c.currency, locale)}`);
@@ -89,8 +114,8 @@ export function CouponsTab({ c }: { c: Json }) {
       />
     );
   }
-  if (list.isError) return <ErrorView error={list.error} onRetry={() => list.refetch()} />;
-  if (!list.data) return <Loading />;
+  // A failed reload keeps the list and the names of the codes that did not change.
+  if (!list.data) return list.isError ? <ErrorView error={list.error} onRetry={() => list.refetch()} /> : <SkeletonList label={t('orgLoading')} />;
   const top = topUsed(list.data);
   const add = (
     <Button
@@ -135,6 +160,15 @@ export function CouponsTab({ c }: { c: Json }) {
           </>
         ) : null}
         <SectionHeader title={t('orgCouponAll')} />
+        <ErrorText error={list.error} />
+        {toggleFailed.map((f) => (
+          <View key={f.id} style={{ gap: space.xs }}>
+            <Txt testID={`coupon-toggle-failed-${f.id}`} color={colors.error}>
+              {t('orgCouponToggleFailed', { code: f.code })}
+            </Txt>
+            <ErrorText error={f.error} />
+          </View>
+        ))}
         {wide ? null : exportBtn}
         {list.data.length === 0 ? (
           <Txt color={colors.outline}>{t('orgCouponNone')}</Txt>
@@ -147,7 +181,7 @@ export function CouponsTab({ c }: { c: Json }) {
                 icon="sell"
                 title={k.code}
                 subtitle={[discount(k), categoryName(k.categoryId), t('orgCouponUses', { used: k.usedCount ?? 0, max: k.maxUses ?? '∞' }), k.expiresAt ? t('orgCouponUntil', { date: formatDate(k.expiresAt, locale) }) : null, k.active ? null : t('orgInactive')].filter(Boolean).join(' · ')}
-                trailing={<Button testID={`coupon-toggle-${k.id}`} kind="text" label={k.active ? t('orgDeactivate') : t('orgActivate')} busy={busy} onPress={() => toggle(k)} />}
+                trailing={<Button testID={`coupon-toggle-${k.id}`} kind="text" label={k.active ? t('orgDeactivate') : t('orgActivate')} onPress={() => toggle(k)} />}
               />
             ))}
           </ListGroup>

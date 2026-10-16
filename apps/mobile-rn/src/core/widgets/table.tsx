@@ -2,6 +2,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import type { ReactElement, ReactNode } from 'react';
 import { FlatList, Pressable, View, type ViewStyle } from 'react-native';
 
+import { isFocused, spaceKey, useFocusRing } from '../focus';
 import { space, useTheme, webDense } from '../theme';
 import { Menu, Txt } from './kit';
 
@@ -31,6 +32,7 @@ export function DataTable<T>({ testID, rows, keyOf, nameOf, columns, rowTestID, 
   empty?: ReactElement;
 }) {
   const { colors } = useTheme();
+  const ring = useFocusRing();
   const all = !!selection && rows.length > 0 && rows.every((r) => selection.selected.has(keyOf(r)));
   const some = !!selection && rows.some((r) => selection.selected.has(keyOf(r)));
   const cell = (c: Column<T>): ViewStyle => ({ flex: c.width ? undefined : (c.flex ?? 1), width: c.width, alignItems: c.align === 'end' ? 'flex-end' : 'flex-start', justifyContent: 'center' });
@@ -74,7 +76,7 @@ export function DataTable<T>({ testID, rows, keyOf, nameOf, columns, rowTestID, 
               // react-native-web passes `hovered` too.
               const hovered = (state as { hovered?: boolean }).hovered;
               const row: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: space.md, minHeight: ROW_HEIGHT, paddingHorizontal: space.md, borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: hovered || state.pressed ? colors.surface : 'transparent' };
-              return row;
+              return [row, ring(isFocused(state))];
             }}
           >
             {selection ? <Check testID={`${testID}-check-${key}`} checked={selection.selected.has(key)} label={selection.label(name)} onPress={() => selection.onToggle(key)} /> : null}
@@ -102,8 +104,9 @@ export function DataTable<T>({ testID, rows, keyOf, nameOf, columns, rowTestID, 
 
 function Check({ testID, checked, mixed, label, onPress }: { testID: string; checked: boolean; mixed?: boolean; label: string; onPress: () => void }) {
   const { colors } = useTheme();
+  const ring = useFocusRing();
   return (
-    <Pressable testID={testID} accessibilityRole="checkbox" accessibilityLabel={label} accessibilityState={{ checked: mixed ? 'mixed' : checked }} hitSlop={6} onPress={onPress} style={{ width: 24, alignItems: 'center' }}>
+    <Pressable testID={testID} accessibilityRole="checkbox" accessibilityLabel={label} aria-checked={mixed ? 'mixed' : checked} {...spaceKey(onPress)} hitSlop={6} onPress={onPress} style={(state) => [{ width: 24, height: 24, alignItems: 'center', justifyContent: 'center' }, ring(isFocused(state))]}>
       <MaterialIcons name={checked ? 'check-box' : mixed ? 'indeterminate-check-box' : 'check-box-outline-blank'} size={20} color={checked || mixed ? colors.primary : colors.outline} />
     </Pressable>
   );

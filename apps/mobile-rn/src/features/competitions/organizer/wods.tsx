@@ -7,7 +7,7 @@ import { useApi } from '../../../core/services';
 import { space, useTheme } from '../../../core/theme';
 import { SectionHeader } from '../../../core/widgets/common';
 import { ErrorText } from '../../../core/widgets/error';
-import { Button, Card, Chip, Dialog, IconButton, ListGroup, ListRow, Screen, TextField, Txt } from '../../../core/widgets/kit';
+import { Button, Card, Chip, Dialog, IconButton, ListGroup, ListRow, Screen, TextField, Txt, toast } from '../../../core/widgets/kit';
 import { DateField } from '../../../core/widgets/pickers';
 import { organizerApi, useRefreshCompetition } from './api';
 import { Guide } from './guide';
@@ -42,7 +42,7 @@ export function WodsTab({ c, onGo }: { c: Json; onGo?: (tab: ManageTab) => void 
   const labels = scoreLabels(t);
   const defaults = { number: nextWodNumber(workouts), start: new Date(c.eventStart), end: new Date(c.eventEnd) };
 
-  async function run(fn: () => Promise<unknown>, after?: () => void) {
+  async function run(fn: () => Promise<unknown>, after?: () => void, done?: string) {
     if (sending.current) return;
     sending.current = true;
     setBusy(true);
@@ -50,6 +50,8 @@ export function WodsTab({ c, onGo }: { c: Json; onGo?: (tab: ManageTab) => void 
     try {
       await fn();
       after?.();
+      // Only once the request has succeeded: an error keeps its text, with no toast.
+      if (done) toast(done);
     } catch (e) {
       setError(e);
     } finally {
@@ -59,12 +61,12 @@ export function WodsTab({ c, onGo }: { c: Json; onGo?: (tab: ManageTab) => void 
     }
   }
 
-  const save = (d: WodDraft) => run(() => (d.id ? organizerApi(api).updateWod(c.id, d.id, wodBody(d)) : organizerApi(api).addWod(c.id, wodBody(d))), () => setEdit(null));
-  const remove = (d: WodDraft) => run(() => organizerApi(api).removeWod(c.id, d.id!), () => setEdit(null));
+  const save = (d: WodDraft) => run(() => (d.id ? organizerApi(api).updateWod(c.id, d.id, wodBody(d)) : organizerApi(api).addWod(c.id, wodBody(d))), () => setEdit(null), t('orgSaved'));
+  const remove = (d: WodDraft) => run(() => organizerApi(api).removeWod(c.id, d.id!), () => setEdit(null), t('orgToastDeleted'));
   function move(i: number, dir: -1 | 1) {
     const order = workouts.map((w) => w.id as string);
     [order[i], order[i + dir]] = [order[i + dir], order[i]];
-    void run(() => organizerApi(api).reorderWods(c.id, order));
+    void run(() => organizerApi(api).reorderWods(c.id, order), undefined, t('orgToastOrder'));
   }
 
   if (edit) return <WodForm draft={edit} categories={c.categories ?? []} busy={busy} error={error} labels={labels} onSave={save} onDelete={remove} onCancel={() => setEdit(null)} />;

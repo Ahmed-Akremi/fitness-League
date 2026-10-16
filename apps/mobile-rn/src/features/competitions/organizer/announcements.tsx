@@ -6,7 +6,7 @@ import { useLocale, useT } from '../../../core/prefs';
 import { useApi } from '../../../core/services';
 import { space, useTheme } from '../../../core/theme';
 import { formatDate } from '../../../core/utils/format';
-import { Loading, SectionHeader } from '../../../core/widgets/common';
+import { SectionHeader, SkeletonList } from '../../../core/widgets/common';
 import { ErrorText, ErrorView } from '../../../core/widgets/error';
 import { Button, Card, Screen, TextField, Txt, toast } from '../../../core/widgets/kit';
 import { organizerApi, useAnnouncements, useRefreshCompetition } from './api';
@@ -61,7 +61,7 @@ export function AnnouncementsTab({ c }: { c: Json }) {
         {list.isError ? (
           <ErrorView error={list.error} onRetry={() => list.refetch()} />
         ) : !list.data ? (
-          <Loading />
+          <SkeletonList label={t('orgLoading')} />
         ) : list.data.length === 0 ? (
           <Txt color={colors.outline}>{t('orgAnnNone')}</Txt>
         ) : (

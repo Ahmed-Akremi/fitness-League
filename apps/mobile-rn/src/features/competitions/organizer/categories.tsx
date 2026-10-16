@@ -6,7 +6,7 @@ import { useLocale, useT } from '../../../core/prefs';
 import { useApi } from '../../../core/services';
 import { space, useTheme } from '../../../core/theme';
 import { ErrorText } from '../../../core/widgets/error';
-import { Button, Card, Chip, IconButton, ListGroup, ListRow, Screen, TextField, Txt } from '../../../core/widgets/kit';
+import { Button, Card, Chip, IconButton, ListGroup, ListRow, Screen, TextField, Txt, toast } from '../../../core/widgets/kit';
 import { formatMoney } from '../api';
 import { organizerApi, useRefreshCompetition } from './api';
 import { catBody, catDraft, catValid, type CatDraft } from './logic';
@@ -27,7 +27,7 @@ export function CategoriesTab({ c }: { c: Json }) {
   const wide = useWideWeb();
   const genderLabel: Record<string, string> = { MALE: t('orgGenderMale'), FEMALE: t('orgGenderFemale'), MIXED: t('orgGenderMixed') };
 
-  async function run(fn: () => Promise<unknown>, after?: () => void) {
+  async function run(fn: () => Promise<unknown>, after?: () => void, done?: string) {
     if (sending.current) return;
     sending.current = true;
     setBusy(true);
@@ -35,6 +35,8 @@ export function CategoriesTab({ c }: { c: Json }) {
     try {
       await fn();
       after?.();
+      // Only once the request has succeeded: an error keeps its text, with no toast.
+      if (done) toast(done);
     } catch (e) {
       setError(e);
     } finally {
@@ -45,8 +47,8 @@ export function CategoriesTab({ c }: { c: Json }) {
   }
 
   const save = (d: CatDraft) =>
-    run(() => (d.id ? organizerApi(api).updateCategory(c.id, d.id, catBody(d)) : organizerApi(api).addCategory(c.id, { ...catBody(d), sortOrder: cats.length })), () => setEdit(null));
-  const toggle = (d: CatDraft) => run(() => organizerApi(api).updateCategory(c.id, d.id!, { active: !d.active }), () => setEdit(null));
+    run(() => (d.id ? organizerApi(api).updateCategory(c.id, d.id, catBody(d)) : organizerApi(api).addCategory(c.id, { ...catBody(d), sortOrder: cats.length })), () => setEdit(null), t('orgSaved'));
+  const toggle = (d: CatDraft) => run(() => organizerApi(api).updateCategory(c.id, d.id!, { active: !d.active }), () => setEdit(null), d.active ? t('orgToastDeactivated') : t('orgToastActivated'));
 
   /** Swaps two neighbours, then gives every category its position as sortOrder (only the changed ones are sent). */
   function move(i: number, dir: -1 | 1) {
@@ -56,7 +58,7 @@ export function CategoriesTab({ c }: { c: Json }) {
       for (const [n, id] of order.entries()) {
         if (cats.find((x) => x.id === id)!.sortOrder !== n) await organizerApi(api).updateCategory(c.id, id, { sortOrder: n });
       }
-    });
+    }, undefined, t('orgToastOrder'));
   }
 
   const subtitle = (x: Json) =>
@@ -80,7 +82,7 @@ export function CategoriesTab({ c }: { c: Json }) {
         {cats.length === 0 ? (
           <>
             <Txt color={colors.outline}>{t('orgNoCategories')}</Txt>
-            <Button testID="cat-templates" kind="outlined" icon="playlist-add" label={t('orgAddTemplates')} busy={busy} onPress={() => run(() => organizerApi(api).addTemplates(c.id))} />
+            <Button testID="cat-templates" kind="outlined" icon="playlist-add" label={t('orgAddTemplates')} busy={busy} onPress={() => run(() => organizerApi(api).addTemplates(c.id), undefined, t('orgToastTemplates'))} />
           </>
         ) : (
           <ListGroup>

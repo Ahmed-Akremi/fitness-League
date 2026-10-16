@@ -6,12 +6,12 @@ import { useLocale, useT } from '../../../core/prefs';
 import { useApi } from '../../../core/services';
 import { space, useTheme } from '../../../core/theme';
 import { formatDate } from '../../../core/utils/format';
-import { EmptyState, Loading, SectionHeader } from '../../../core/widgets/common';
+import { EmptyState, SectionHeader, SkeletonList } from '../../../core/widgets/common';
 import { ErrorText, ErrorView } from '../../../core/widgets/error';
-import { Button, Card, Chip, Dialog, IconButton, ListGroup, ListRow, Screen, TextField, Txt } from '../../../core/widgets/kit';
+import { Button, Card, Chip, Dialog, IconButton, ListGroup, ListRow, Screen, TextField, Txt, toast } from '../../../core/widgets/kit';
 import { DateField, Select, type Option } from '../../../core/widgets/pickers';
 import { useHeats } from '../api';
-import { organizerApi, useRefreshCompetition, useRegistrations } from './api';
+import { organizerApi, useLiveRefresh, useRefreshCompetition, useRegistrations } from './api';
 import { exportCsv } from './export';
 import { Guide } from './guide';
 import type { ManageTab } from './logic';
@@ -29,7 +29,8 @@ export function PlanningTab({ c, onGo }: { c: Json; onGo?: (tab: ManageTab) => v
   const { colors } = useTheme();
   const api = useApi();
   const refresh = useRefreshCompetition();
-  const heats = useHeats(c.id);
+  // Read again every 30 s while this page is on screen (analysis §3 item 11).
+  const heats = useHeats(c.id, useLiveRefresh());
   const regs = useRegistrations(c.id);
   const [filter, setFilter] = useState<HeatFilter>({ day: null, categoryId: null, workoutId: null, q: '' });
   const [edit, setEdit] = useState<HeatDraft | null>(null);
@@ -41,7 +42,7 @@ export function PlanningTab({ c, onGo }: { c: Json; onGo?: (tab: ManageTab) => v
   const [error, setError] = useState<unknown>(null);
   const wide = useWideWeb();
 
-  async function run(fn: () => Promise<unknown>, after?: (result: Json) => void) {
+  async function run(fn: () => Promise<unknown>, after?: (result: Json) => void, done?: string) {
     if (sending.current) return;
     sending.current = true;
     setBusy(true);
@@ -51,6 +52,8 @@ export function PlanningTab({ c, onGo }: { c: Json; onGo?: (tab: ManageTab) => v
       // Not `after?.(await fn())`: optional chaining would skip the call (and the request) when there is no `after`.
       const result = (await fn()) as Json;
       after?.(result);
+      // Only once the request has succeeded: an error keeps its text, with no toast.
+      if (done) toast(done);
     } catch (e) {
       setError(e);
     } finally {
@@ -60,8 +63,8 @@ export function PlanningTab({ c, onGo }: { c: Json; onGo?: (tab: ManageTab) => v
     }
   }
 
-  if (heats.isError) return <ErrorView error={heats.error} onRetry={() => heats.refetch()} />;
-  if (!heats.data) return <Loading />;
+  // A failed 30 s reload keeps the page and what is being typed: the error shows above the list.
+  if (!heats.data) return heats.isError ? <ErrorView error={heats.error} onRetry={() => heats.refetch()} /> : <SkeletonList label={t('orgLoading')} />;
   const all: Json[] = heats.data;
   const categories: Json[] = c.categories ?? [];
   const catOptions: Option[] = categories.map((k) => ({ value: k.id, label: k.name }));
@@ -76,8 +79,8 @@ export function PlanningTab({ c, onGo }: { c: Json; onGo?: (tab: ManageTab) => v
         error={error}
         catOptions={catOptions}
         wodOptions={wodOptions}
-        onSave={(d) => run(() => (d.id ? org.updateHeat(c.id, d.id, heatBody(d)) : org.addHeat(c.id, heatBody(d))), () => setEdit(null))}
-        onDelete={(d) => run(() => org.removeHeat(c.id, d.id!), () => setEdit(null))}
+        onSave={(d) => run(() => (d.id ? org.updateHeat(c.id, d.id, heatBody(d)) : org.addHeat(c.id, heatBody(d))), () => setEdit(null), t('orgSaved'))}
+        onDelete={(d) => run(() => org.removeHeat(c.id, d.id!), () => setEdit(null), t('orgToastDeleted'))}
         onCancel={() => setEdit(null)}
       />
     );
@@ -105,7 +108,7 @@ export function PlanningTab({ c, onGo }: { c: Json; onGo?: (tab: ManageTab) => v
   }
   const open = lanesOf ? all.find((h) => h.id === lanesOf) : undefined;
   if (open) {
-    return <LanesView heat={open} registrations={regs.data ?? []} busy={busy} error={error} onAssign={(rid, lane) => run(() => org.assignLane(c.id, open.id, rid, lane))} onFree={(lane) => run(() => org.freeLane(c.id, open.id, lane))} onClose={() => setLanesOf(null)} />;
+    return <LanesView heat={open} registrations={regs.data ?? []} busy={busy} error={error} onAssign={(rid, lane) => run(() => org.assignLane(c.id, open.id, rid, lane), undefined, t('orgToastLaneSet', { lane }))} onFree={(lane) => run(() => org.freeLane(c.id, open.id, lane), undefined, t('orgToastLaneFreed', { lane }))} onClose={() => setLanesOf(null)} />;
   }
 
   const days = heatDays(all);
@@ -141,6 +144,7 @@ export function PlanningTab({ c, onGo }: { c: Json; onGo?: (tab: ManageTab) => v
             {notice}
           </Txt>
         ) : null}
+        <ErrorText error={heats.error} />
         <ErrorText error={error} />
         {all.length === 0 ? (
           !categories.some((k) => k.active) ? (

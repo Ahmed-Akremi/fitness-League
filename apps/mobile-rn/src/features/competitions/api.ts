@@ -43,9 +43,10 @@ export function useMySubmissions(id: string, enabled: boolean) {
   return useQuery({ queryKey: compKeys.mine(id), queryFn: () => competitionsApi(api).mySubmissions(id), enabled });
 }
 
-export function useCompLeaderboard(id: string, categoryId?: string, workoutId?: string) {
+/** `refetchInterval`: read again this often while the screen is shown (the organizer's live pages). */
+export function useCompLeaderboard(id: string, categoryId?: string, workoutId?: string, refetchInterval?: number) {
   const api = useApi();
-  return useQuery({ queryKey: compKeys.board(id, categoryId, workoutId), queryFn: () => competitionsApi(api).leaderboard(id, categoryId, workoutId) });
+  return useQuery({ queryKey: compKeys.board(id, categoryId, workoutId), queryFn: () => competitionsApi(api).leaderboard(id, categoryId, workoutId), refetchInterval });
 }
 
 /** Money is stored in minor units: 3500 EUR cents → "35 EUR", 35000 TND millimes → "35 TND". */
@@ -61,7 +62,7 @@ export function youtubeId(url: string): string | null {
   return m ? m[1] : null;
 }
 
-export function useHeats(id: string) {
+export function useHeats(id: string, refetchInterval?: number) {
   const api = useApi();
-  return useQuery({ queryKey: compKeys.heats(id), queryFn: () => competitionsApi(api).heats(id) });
+  return useQuery({ queryKey: compKeys.heats(id), queryFn: () => competitionsApi(api).heats(id), refetchInterval });
 }

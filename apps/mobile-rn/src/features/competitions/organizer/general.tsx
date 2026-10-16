@@ -11,7 +11,7 @@ import { SectionHeader } from '../../../core/widgets/common';
 import { ErrorText } from '../../../core/widgets/error';
 import { Button, Chip, Dialog, Screen, TextField, Txt, toast } from '../../../core/widgets/kit';
 import { DateField } from '../../../core/widgets/pickers';
-import { DEFAULT_COVER } from '../screens';
+import { DEFAULT_COVER, statusLabelForCompetition } from '../screens';
 import { organizerApi, useRefreshCompetition } from './api';
 import { COVER_MAX_BYTES, datesValid, fromMillimes, ORGANIZER_NEXT, toMillimes, type EventFormat } from './logic';
 import { OrgPageHeader } from './page';
@@ -112,7 +112,7 @@ export function GeneralTab({ c }: { c: Json }) {
       toast(t('orgBannerTooLarge'));
       return;
     }
-    await run('cover', () => organizerApi(api).uploadCover(c.id, picked.file));
+    await run('cover', () => organizerApi(api).uploadCover(c.id, picked.file), t('orgToastBanner'));
   }
 
   async function remove() {
@@ -120,6 +120,8 @@ export function GeneralTab({ c }: { c: Json }) {
     setBusy('delete');
     try {
       await organizerApi(api).remove(c.id);
+      // Said before leaving: the list it lands on does not show what happened.
+      toast(t('orgToastEventDeleted'));
       router.replace('/competitions');
       await refresh();
     } catch (e) {
@@ -142,7 +144,7 @@ export function GeneralTab({ c }: { c: Json }) {
         <Txt variant="small" color={colors.outline}>{t('orgBannerHint')}</Txt>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
           <Button testID="org-banner-pick" kind="outlined" icon="image" label={t('orgBannerPick')} busy={busy === 'cover'} onPress={pickBanner} />
-          {c.coverUrl ? <Button testID="org-banner-remove" kind="text" label={t('orgBannerRemove')} onPress={() => run('cover', () => organizerApi(api).removeCover(c.id))} /> : null}
+          {c.coverUrl ? <Button testID="org-banner-remove" kind="text" label={t('orgBannerRemove')} onPress={() => run('cover', () => organizerApi(api).removeCover(c.id), t('orgToastBannerRemoved'))} /> : null}
         </View>
 
         <SectionHeader title={t('orgTabGeneral')} />
@@ -186,7 +188,7 @@ export function GeneralTab({ c }: { c: Json }) {
           onConfirm={() => {
             const s = confirming!;
             setConfirming(null);
-            void run(s, () => organizerApi(api).setStatus(c.id, s));
+            void run(s, () => organizerApi(api).setStatus(c.id, s), t('orgToastStatus', { status: statusLabelForCompetition(t, s) }));
           }}
           onCancel={() => setConfirming(null)}
         />

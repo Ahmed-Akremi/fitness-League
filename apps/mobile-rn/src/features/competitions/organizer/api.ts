@@ -1,9 +1,16 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useIsFocused } from 'expo-router';
 
 import type { ApiClient, Json, UploadFile } from '../../../core/api/client';
 import { ApiError } from '../../../core/api/errors';
 import { useApi } from '../../../core/services';
 import { slugFor, type EventFormat } from './logic';
+import { LIVE_REFRESH_MS } from './logic-web';
+
+/** The 30 s reload (analysis §3 item 11), only while the page is the one on screen: a page pushed on top, like « Aperçu », stops it. */
+export function useLiveRefresh(): number | undefined {
+  return useIsFocused() ? LIVE_REFRESH_MS : undefined;
+}
 
 export type CompetitionInput = {
   title: string;
