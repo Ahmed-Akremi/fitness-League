@@ -50,7 +50,7 @@ describe('organizer space: one export everywhere', () => {
     const rows = [{ rank: 1, athlete: { id: 'u-r3', fullName: 'Hédi Kéfi', username: 'hedi' }, totalPoints: 180, pending: 0 }];
     const screen = await renderScreen(open('leaderboard'), orgBackend().on('GET', '/competitions/c9/leaderboard', [200, board(rows)]));
     await fireEvent.press(await screen.findByTestId('board-export'));
-    expect(sent()).toEqual({ title: 'event-leaderboard.csv', head: 'category,rank,name,username,points,pending' });
+    expect(sent()).toEqual({ title: 'event-leaderboard-rx-men.csv', head: 'category,rank,name,username,points,pending' });
     expect((share.mock.calls[0][0].message as string).split('\n')[1]).toBe('RX Men,1,Hédi Kéfi,hedi,180,0');
   });
 

@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { useRef, useState } from 'react';
 import { View } from 'react-native';
 
@@ -8,12 +9,13 @@ import { space, useTheme } from '../../../core/theme';
 import { formatDate } from '../../../core/utils/format';
 import { SectionHeader, SkeletonList } from '../../../core/widgets/common';
 import { ErrorText, ErrorView } from '../../../core/widgets/error';
-import { Button, Card, Chip, ListGroup, ListRow, Screen, TextField, Txt } from '../../../core/widgets/kit';
+import { Button, Card, Chip, ListGroup, ListRow, Screen, TextField, Txt, toast } from '../../../core/widgets/kit';
 import { DateField, Select } from '../../../core/widgets/pickers';
 import { formatMoney } from '../api';
-import { organizerApi, useCoupons, useRefreshCompetition } from './api';
+import { organizerApi, orgKeys, useCoupons, useRefreshCompetition } from './api';
 import { exportCsv } from './export';
 import { batchCodes, couponBody, couponDraft, couponsCsv, couponValid, createCoupons, csvFileName, csvSeparator, normalizeCode, topUsed, type BatchResult, type CouponDraft, type CouponKind } from './logic-b';
+import { setActive } from './logic-web';
 import { ExportButton, OrgPageHeader } from './page';
 import { useWideWeb } from './web';
 
@@ -34,6 +36,9 @@ export function CouponsTab({ c }: { c: Json }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const wide = useWideWeb();
+  const qc = useQueryClient();
+  const toggling = useRef(new Set<string>());
+  const [toggleFailed, setToggleFailed] = useState<{ code: string; error: unknown } | null>(null);
 
   async function guarded(fn: () => Promise<void>) {
     if (sending.current) return;
@@ -61,10 +66,27 @@ export function CouponsTab({ c }: { c: Json }) {
       if (r.error) setError(r.error);
       else setForm(null);
     });
-  const toggle = (k: Json) =>
-    guarded(async () => {
+  /** Optimistic (analysis §3 item 12): the row shows its new state at once; a failure puts it back and names the code. */
+  async function toggle(k: Json) {
+    if (toggling.current.has(k.id)) return;
+    toggling.current.add(k.id);
+    setToggleFailed(null);
+    const key = orgKeys.coupons(c.id);
+    // A reload already on its way would overwrite the new state when it lands.
+    await qc.cancelQueries({ queryKey: key });
+    const before = qc.getQueryData<Json[]>(key);
+    qc.setQueryData<Json[]>(key, (list) => (list ? setActive(list, k.id, !k.active) : list));
+    try {
       await organizerApi(api).setCouponActive(c.id, k.id, !k.active);
-    });
+      toast(k.active ? t('orgToastDeactivated') : t('orgToastActivated'));
+    } catch (e) {
+      qc.setQueryData(key, before);
+      setToggleFailed({ code: k.code, error: e });
+    } finally {
+      toggling.current.delete(k.id);
+      void refresh();
+    }
+  }
 
   const kindLabel: Record<CouponKind, string> = { PERCENTAGE: t('orgCouponPercent'), FIXED_AMOUNT: t('orgCouponAmount'), FREE: t('orgCouponFree') };
   const discount = (k: Json) => (k.type === 'FREE' ? t('orgCouponFree') : k.type === 'PERCENTAGE' ? `-${k.value} %` : `-${formatMoney(k.value, c.currency, locale)}`);
@@ -135,6 +157,14 @@ export function CouponsTab({ c }: { c: Json }) {
           </>
         ) : null}
         <SectionHeader title={t('orgCouponAll')} />
+        {toggleFailed ? (
+          <View style={{ gap: space.xs }}>
+            <Txt testID="coupon-toggle-failed" color={colors.error}>
+              {t('orgCouponToggleFailed', { code: toggleFailed.code })}
+            </Txt>
+            <ErrorText error={toggleFailed.error} />
+          </View>
+        ) : null}
         {wide ? null : exportBtn}
         {list.data.length === 0 ? (
           <Txt color={colors.outline}>{t('orgCouponNone')}</Txt>
@@ -147,7 +177,7 @@ export function CouponsTab({ c }: { c: Json }) {
                 icon="sell"
                 title={k.code}
                 subtitle={[discount(k), categoryName(k.categoryId), t('orgCouponUses', { used: k.usedCount ?? 0, max: k.maxUses ?? '∞' }), k.expiresAt ? t('orgCouponUntil', { date: formatDate(k.expiresAt, locale) }) : null, k.active ? null : t('orgInactive')].filter(Boolean).join(' · ')}
-                trailing={<Button testID={`coupon-toggle-${k.id}`} kind="text" label={k.active ? t('orgDeactivate') : t('orgActivate')} busy={busy} onPress={() => toggle(k)} />}
+                trailing={<Button testID={`coupon-toggle-${k.id}`} kind="text" label={k.active ? t('orgDeactivate') : t('orgActivate')} onPress={() => toggle(k)} />}
               />
             ))}
           </ListGroup>
