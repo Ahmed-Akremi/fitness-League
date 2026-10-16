@@ -60,8 +60,8 @@ export function ManageScreen({ id, initialTab = 'dashboard' }: { id: string; ini
   if (wide) {
     return (
       <>
-        {/* The top bar shows the event name: the header keeps the way back. */}
-        <Stack.Screen options={{ title: t('orgManage') }} />
+        {/* The top bar shows the event name and has its own way back (Circle21's compact header). */}
+        <Stack.Screen options={{ title: t('orgManage'), headerShown: false }} />
         <OrganizerWeb c={c} tab={tab} onTab={setTab}>
           {page}
         </OrganizerWeb>

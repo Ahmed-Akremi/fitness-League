@@ -214,10 +214,10 @@ export function SportChip({ code, name, selected, onPress, testID }: { code: str
 
 const GYM_PALETTE = ['#C6F432', '#3DA9FC', '#FF8A3D', '#F15BB5', '#06D6A0', '#FFD166', '#9B5DE5'];
 
-/** Gym logo (rounded square). Without a URL, initials on a colour derived from the name. */
-export function GymLogo({ name, url, size = 56 }: { name: string; url?: string | null; size?: number }) {
+/** Gym logo (rounded square, or a circle with `round`). Without a URL, initials on a colour derived from the name. */
+export function GymLogo({ name, url, size = 56, round }: { name: string; url?: string | null; size?: number; round?: boolean }) {
   const [failed, setFailed] = useState(false);
-  const r = size * 0.24;
+  const r = round ? size / 2 : size * 0.24;
   if (url && !failed) {
     return <Image accessibilityLabel={name} source={{ uri: url }} onError={() => setFailed(true)} style={{ width: size, height: size, borderRadius: r }} />;
   }
