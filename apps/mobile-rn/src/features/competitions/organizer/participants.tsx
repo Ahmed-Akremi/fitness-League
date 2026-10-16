@@ -19,7 +19,7 @@ const PAYMENTS: PaymentFilter[] = ['ALL', 'PENDING', 'PAID', 'FREE'];
 const standing = (r: Json) => r.registrationStatus !== 'CANCELLED' && r.registrationStatus !== 'REFUNDED';
 
 /** « Participants » (spec §1.3 item 6): every registration with search and filters, « À encaisser », mark paid with a receipt, CSV. */
-export function ParticipantsTab({ c }: { c: Json }) {
+export function ParticipantsTab({ c, initialCategoryId = null }: { c: Json; initialCategoryId?: string | null }) {
   const t = useT();
   const locale = useLocale();
   const { colors } = useTheme();
@@ -28,7 +28,7 @@ export function ParticipantsTab({ c }: { c: Json }) {
   const regs = useRegistrations(c.id);
   const [mode, setMode] = useState<'all' | 'collect'>('all');
   const [q, setQ] = useState('');
-  const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [categoryId, setCategoryId] = useState<string | null>(initialCategoryId);
   const [payment, setPayment] = useState<PaymentFilter>('ALL');
   const [paying, setPaying] = useState<Json | null>(null);
   const [receipt, setReceipt] = useState<string | null>(null);

@@ -10,14 +10,17 @@ import { formatMoney } from '../api';
 import { statusLabelForCompetition } from '../screens';
 import { useOrganizerDashboard } from './api';
 import { RegistrationsBreakdown } from './breakdown';
-import { CHECKLIST, TAB_FOR, type ChecklistItem, type ManageTab } from './logic';
+import { CHECKLIST, TAB_FOR, type ChecklistItem } from './logic';
+import { OverviewWeb } from './overview';
 import { OrgPageHeader } from './page';
 import { usePublication } from './publication';
+import { useWideWeb, type Go } from './web';
 
-export function DashboardTab({ c, onGo }: { c: Json; onGo: (tab: ManageTab) => void }) {
+export function DashboardTab({ c, onGo }: { c: Json; onGo: Go }) {
   const t = useT();
   const locale = useLocale();
   const { colors } = useTheme();
+  const wide = useWideWeb();
   const dash = useOrganizerDashboard(c.id);
   const { state, missing, canRequest, busy, error, request, share } = usePublication(c);
   const labels: Record<ChecklistItem, string> = { DESCRIPTION: t('orgCheckDescription'), DATES: t('orgCheckDates'), COVER: t('orgCheckCover'), CATEGORY: t('orgCheckCategory'), WOD: t('orgCheckWod') };
@@ -67,10 +70,14 @@ export function DashboardTab({ c, onGo }: { c: Json; onGo: (tab: ManageTab) => v
             <Button testID="org-request" label={t('orgRequestPublication')} busy={busy} disabled={!canRequest} onPress={request} />
           </>
         )}
-        <SectionHeader title={t('orgFigures')} />
+        {wide ? null : <SectionHeader title={t('orgFigures')} />}
         {dash.isError ? (
           <ErrorView error={dash.error} onRetry={() => dash.refetch()} />
-        ) : d ? (
+        ) : !d ? (
+          <Loading />
+        ) : wide ? (
+          <OverviewWeb c={c} d={d} onGo={onGo} />
+        ) : (
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.md }}>
             <Figure label={t('orgParticipants')} value={String(d.participants)} />
             <Figure label={t('orgPaid')} value={String(d.paidRegistrations)} />
@@ -80,10 +87,8 @@ export function DashboardTab({ c, onGo }: { c: Json; onGo: (tab: ManageTab) => v
             <Figure label={t('orgApproved')} value={String(d.approvedSubmissions)} />
             <Figure label={t('orgRejected')} value={String(d.rejectedSubmissions)} />
           </View>
-        ) : (
-          <Loading />
         )}
-        <RegistrationsBreakdown c={c} />
+        {wide ? null : <RegistrationsBreakdown c={c} />}
       </Screen>
     </>
   );

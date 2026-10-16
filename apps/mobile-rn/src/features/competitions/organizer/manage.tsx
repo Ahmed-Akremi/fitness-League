@@ -19,7 +19,7 @@ import type { ManageTab } from './logic';
 import { ParticipantsTab } from './participants';
 import { PlanningTab } from './planning';
 import { TeamTab } from './team';
-import { phoneTab, useWideWeb } from './web';
+import { phoneTab, useWideWeb, type Go } from './web';
 import { OrganizerWeb } from './web-shell';
 import { WodsTab } from './wods';
 
@@ -32,6 +32,12 @@ export function ManageScreen({ id, initialTab = 'dashboard' }: { id: string; ini
   const comp = useCompetition(id);
   const wide = useWideWeb();
   const [tab, setTab] = useState<ManageTab>(initialTab);
+  const [focus, setFocus] = useState<{ categoryId: string } | null>(null);
+  /** Opens a page; only the overview's categories open Participants already filtered. */
+  const go: Go = (next, f) => {
+    setFocus(f ?? null);
+    setTab(next);
+  };
   const labels: Record<ManageTab, string> = { dashboard: t('orgTabDashboard'), finances: t('orgMenuFinances'), timetable: t('orgMenuTimetable'), general: t('orgTabGeneral'), categories: t('orgTabCategories'), wods: t('orgTabWods'), planning: t('orgTabPlanning'), participants: t('orgTabParticipants'), team: t('orgTabTeam'), leaderboard: t('orgTabLeaderboard'), announcements: t('orgTabAnnouncements'), coupons: t('orgTabCoupons') };
 
   // The server answers 404 (a draft) or 403 to anyone who is not on the staff.
@@ -44,14 +50,15 @@ export function ManageScreen({ id, initialTab = 'dashboard' }: { id: string; ini
   const shown = wide ? tab : phoneTab(tab);
   const page = (
     <>
-      {shown === 'dashboard' && <DashboardTab c={c} onGo={setTab} />}
+      {shown === 'dashboard' && <DashboardTab c={c} onGo={go} />}
       {shown === 'general' && <GeneralTab c={c} />}
       {shown === 'categories' && <CategoriesTab c={c} />}
-      {shown === 'wods' && <WodsTab c={c} onGo={setTab} />}
-      {shown === 'planning' && <PlanningTab c={c} onGo={setTab} />}
-      {shown === 'participants' && <ParticipantsTab c={c} />}
+      {shown === 'wods' && <WodsTab c={c} onGo={go} />}
+      {shown === 'planning' && <PlanningTab c={c} onGo={go} />}
+      {/* Keyed on the category: a new « filtered on » opens a fresh list. */}
+      {shown === 'participants' && <ParticipantsTab key={focus?.categoryId ?? 'all'} c={c} initialCategoryId={focus?.categoryId ?? null} />}
       {shown === 'team' && <TeamTab c={c} />}
-      {shown === 'leaderboard' && <LeaderboardTab c={c} onGo={setTab} />}
+      {shown === 'leaderboard' && <LeaderboardTab c={c} onGo={go} />}
       {shown === 'announcements' && <AnnouncementsTab c={c} />}
       {shown === 'coupons' && <CouponsTab c={c} />}
     </>
@@ -62,7 +69,7 @@ export function ManageScreen({ id, initialTab = 'dashboard' }: { id: string; ini
       <>
         {/* The top bar shows the event name and has its own way back (Circle21's compact header). */}
         <Stack.Screen options={{ title: t('orgManage'), headerShown: false }} />
-        <OrganizerWeb c={c} tab={tab} onTab={setTab}>
+        <OrganizerWeb c={c} tab={shown} onTab={go}>
           {page}
         </OrganizerWeb>
       </>
@@ -73,7 +80,7 @@ export function ManageScreen({ id, initialTab = 'dashboard' }: { id: string; ini
       <Stack.Screen options={{ title: c.title }} />
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 8, gap: 8 }}>
         {TABS.map((k) => (
-          <Chip key={k} testID={`org-tab-${k}`} label={labels[k]} selected={shown === k} onPress={() => setTab(k)} />
+          <Chip key={k} testID={`org-tab-${k}`} label={labels[k]} selected={shown === k} onPress={() => go(k)} />
         ))}
       </ScrollView>
       {page}
