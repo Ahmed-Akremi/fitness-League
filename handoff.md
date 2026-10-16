@@ -1,4 +1,4 @@
-# Handoff — fitness-league (2026-10-16, organizer space on a computer: lot Web 2 and the Circle21 look built on feat/organizer-space, reviewed and fixed, local, not pushed)
+# Handoff — fitness-league (2026-10-16, organizer space: lot Web 3 built on feat/organizer-space after lot Web 2, reviewed and fixed, pushed)
 
 ## 1. Goal
 
@@ -26,6 +26,37 @@
 
 ## 2. Current state
 
+- **Update 2026-10-16 (later):** **organizer space, lot Web 3, built on `feat/organizer-space`** (owner: « verifier la commit et attaque web 3 … », push « Pousser maintenant », scope « Comportements partout », then « keep working and fix all bugs »). Lot Web 2 was pushed first (`da155c1..655be20`); lot Web 3 is pushed with this handoff. Plan `docs/superpowers/plans/2026-10-16-organizer-web-lot-3.md` (9 tasks, built inline, one commit per task).
+  - **On phones and computers:**
+    - a short translated message (toast) after every organizer change: categories, WODs, heats and lanes, team, banner, status, and the event deletion;
+    - grey placeholder rows while the lists load (table-row sized on a computer);
+    - Heats, « Horaire du jour » and the leaderboard read their data again every 30 s, only while the page is on screen. A page pushed on top (« Aperçu ») stops it, and so does a phone app in the background (React Query follows `AppState`). A failed reload keeps the page and what is typed, with the error above;
+    - a leaderboard search (accents ignored, cleared on a category change) and one export file per category (`<event>-leaderboard-<category>.csv`; an Arabic name gets its position);
+    - promo codes switch at once. A refusal puts back only that code and names it; the list reloads after the last toggle.
+  - **On a computer only:**
+    - a focus ring after a key press (gone after a click);
+    - 24 px targets;
+    - a light palette at 4.5:1 (accent darkened to `#596e16` with white text);
+    - screen readers: the side panel is a named modal dialog, the % / numbers switch is a named group of toggle buttons (`aria-pressed`), checkboxes carry `aria-checked` and toggle with Space, the bar chart reads its values;
+    - Plural fixes in Arabic.
+  - **Lot Web 2 minors fixed in Task 7:** no single « Marquer payé » during a batch; Finances « no match »; Judges card when the team cannot be read; the panel's « Fermer » had the same testID as the X.
+  - **Review:** a whole-branch review by a fresh reviewer said « with fixes », 0 critical, 4 important, 11 minor. The owner said « fix all bugs », so all 15 were fixed in `960ba39`, each with a test in `test/screens/organizer-web3-review.test.tsx` (14 failed first; the « Marquer payé (n) » one is coverage only). The 4 important ones:
+    - a failed 30 s reload replaced the page and lost a heat being edited;
+    - the reload kept running under a pushed page;
+    - a promo-code rollback restored the whole list;
+    - the radio switch had no `aria-checked` on the web.
+  - **Checks:** RN **53 suites / 366 tests** (`npx jest --maxWorkers=2`; the default parallel run timed out 8 files while `tsc` and Metro ran) + `npx tsc --noEmit` clean.
+  - **Browser check after the fixes** (`Desktop/organizer-web-3/fixes/`):
+    - `aria-checked` true / false / mixed in the page;
+    - Space toggles once and does not scroll;
+    - `aria-pressed` follows the click;
+    - the panel has `role=dialog`, `aria-modal=true` and is named after the athlete;
+    - the search box stays 220×32 when focused;
+    - overflow 0 and no page error.
+  - **Screenshots:**
+    - `Desktop/organizer-web-3/{computer,computer-light,keyboard}`;
+    - phone before / after: byte-identical, except Planning (the clock).
+  - **Preview:** restarted on :8081 (offline demo) with the final code: http://localhost:8081/competitions/01a10804-0000-7000-8000-00000000d001/manage.
 - **Update 2026-10-16:** **organizer space on a computer, lot Web 2 + the Circle21 look, built on `feat/organizer-space`** (owner: « faire plus de amelioration utiliser cette prompt pour etre comme cicle21 … PROMPT.md », then « oui ok commite chaque tache terminer sur la branche feat/organizer-space sans touche backend »; local, **not pushed**). Prompt `docs/prompts/circle21-style-upgrade/PROMPT.md` (untracked, with the 25 reference frames in `ref/`); plan `docs/superpowers/plans/2026-10-16-organizer-web-lot-2.md` (12 tasks, built inline, one commit per task). On a browser window of 1024 px or more only:
   - **Look:** `ThemeScope` (`core/theme`) gives the shared widgets a dense look (cards with 10 px corners and no border, 32 px buttons and fields, 13 px uppercase section titles, green « on » switches, centered dialogs and list boxes). Phones never set it.
   - **Shell:** a compact top bar (back, round cover, title + lock while unpublished, « format · status », registration dates in the center, Aperçu, publication / Partager, a ⋯ menu with the checklist, the event details and the participants export). The 220 px menu has one icon per page and an accent bar on the page open. The stack header is hidden on a computer.
@@ -99,6 +130,22 @@ Organizer space on a computer, lot Web 1 (`feat/organizer-space`, 2026-10-15; `a
 - `web.ts` (`isWideWeb`, `useWideWeb`, `ORG_MENU`, `contentWidth`, `menuMarks`), `web-shell.tsx` (`OrganizerWeb`: menu, top bar, centered column), `publication.ts` (`usePublication`, shared by the dashboard and the top bar), `export.ts` (`exportCsv`, `downloadCsv`, `csvFileContent`), `guide.tsx` (`Guide`).
 - Changed: `logic-b.ts` (`toCsv`, `heatsCsv`, `couponsCsv`, `staffCsv`, `leaderboardCsv`, `csvFileName`), `manage.tsx` (layout choice, `onGo` to WODs / Heats / Classement), `dashboard.tsx`, `participants.tsx`, `planning.tsx`, `coupons.tsx`, `team.tsx`, `leaderboard.tsx`, `wods.tsx`; i18n `orgMenu*`, `orgPill*`, `orgTopDates`, `orgPreview`, `orgExport`, `orgNeed*`, `orgGo*`, `orgMarkTodo`.
 - Tests: `test/core/organizer-web.test.ts`, `test/core/organizer-export.test.ts`, `test/screens/organizer-{export,guides,web}.test.tsx` (the web layout is chosen by mocking `useWideWeb`).
+
+Organizer space, lot Web 3 (`feat/organizer-space`, 2026-10-16)
+- `core/focus.ts`: keyboard / pointer store, `useFocusRing` (dense only), `spaceKey`, `ariaPressed`, `isFocused`.
+- `core/theme`: `denseLight` (light palette on a computer).
+- `core/services.tsx`: `appStateFocus` (React Query focus from `AppState` on phones).
+- `core/widgets/common.tsx`: `SkeletonList`.
+- `organizer/api.ts`: `useLiveRefresh` (30 s while focused).
+- `organizer/logic-web.ts`: `LIVE_REFRESH_MS`, `filterBoard`, `toSlug`, `boardFileName`, `setActive`.
+- Changed:
+  - pages: `planning`, `schedule`, `leaderboard`, `coupons`, `general`, `categories`, `wods`, `team`, `overview`, `participants-web`, `finances`;
+  - widgets: kit, table, web, panel, chart.
+- i18n `orgToast*`, `orgBoardNoMatch`, `orgFinNoMatch`, `orgCouponToggleFailed`, `orgKpiUnavailable`, `orgLoading`.
+- Tests:
+  - `test/core/{organizer-web3,focus-contrast}.test.*`;
+  - `test/screens/organizer-{toasts,skeletons,live,board-coupons,web3-minors,web3-review}.test.tsx`.
+- `test/fake-api.ts` handlers may return a promise (held requests).
 
 Organizer space on a computer, lot Web 2 + Circle21 look (`feat/organizer-space`, 2026-10-16)
 - Core:
@@ -213,6 +260,18 @@ Rust backend (`apps/backend`, branch `feat/rust-backend`)
 
 ## 4. Changes made
 
+Lot Web 3 on `feat/organizer-space` (2026-10-16):
+- `94825b0` plan;
+- `04e9cc9` rules and texts;
+- `576b8b6` toasts;
+- `48897cf` skeletons;
+- `3b99c2b` 30 s refresh;
+- `b883d41` leaderboard search, per-category file name, optimistic promo toggle;
+- `cc37b67` keyboard and contrast pass;
+- `0c33647` lot Web 2 minors;
+- `960ba39` review fixes;
+- then the docs commit.
+
 Lot Web 2 on `feat/organizer-space` (2026-10-16): `c6c2029` plan; `96a0c80` rules, texts, demo data; `c4e5928` dense widgets (ThemeScope); `1d427a1` page pieces; `a1f4f64` table and side panel; `84fac3a` shell restyle; `13c2bcc` header row on every page; `361ddfa` overview; `5ca0d7b` Finances; `8a50560` participants table, panel, batch; `56d7e90` Horaire du jour; `e613a63` row-in-button fix; `f6173e7` review fixes; then the docs commit.
 
 Lot Web 1 on `feat/organizer-space` (2026-10-15): `2498525` analysis; `152f85a` plan; `fb1725a` rules, export builders, texts; `b12e58c` one CSV export everywhere; `88c5722` guiding empty pages; `e08bf53` computer layout; then the docs commit.
@@ -290,7 +349,14 @@ Rust backend, branch `feat/rust-backend` (2026-10-07, one commit per plan task):
 ## 6. Next steps
 
 0-organizer. **Organizer space lot A** (`feat/organizer-space`) is done, reviewed and pushed (2026-10-14): the owner opens the PR in the GitHub UI. Backend changes went beyond the three agreed (owner to confirm): the delete scoping (security precondition of open creation), the `DRAFT` guard on publish-leaderboard and the trimmed note check (they enforce agreed rules #2 and #3). Owner's decisions pending: (a) a creation limit per user per day on `POST /competitions` (spam drafts can crowd the admin list, which loads 200 rows and sorts waiting requests on the client); (b) organizers cannot cancel an event from the app (admins only, plan choice); (c) per-category WOD variants and `releaseAt` were moved to lot B (spec §1.3 listed them in lot A); (d) two admins publishing / sending back at the same instant: publish wins silently. Deferred to lot B: a new WOD number can collide with an inactive WOD's number (needs a WOD deactivated from the panel); a new WOD's default window is invalid when `eventStart == eventEnd`; the General tab previews the default banner while none is uploaded (show « Aucune bannière »); test gaps (create form with out-of-order dates as a screen test, admin list badge component test, double-tap test only on Categories); an emptied WOD video link is stored as `''`, not `null`. The owner accepted the delete scoping (2026-10-14); (c) is settled: per-category WODs are task 10 of lot B. Then: apply migration `20261014120000_competition_publication_request` locally; later the **« sur place » phase** (check-in, waiver, lane scoring, online payment, notifications, competition logo; needs backend). Decide with the owner whether to fix the partial-`PUT` dates bug (§5). The Rust backend competitions part must take over the three new rules (spec §2), the `{ id, competitionId }` scoping of every organizer route and the `DRAFT` guard on publish-leaderboard.
-0-web2. **Organizer space on a computer, lot Web 2 + Circle21 look**: built, reviewed and fixed (2026-10-16; `feat/organizer-space`, not pushed).
+0-web3. **Organizer space, lot Web 3**: built, reviewed and every finding fixed (2026-10-16; `feat/organizer-space`, pushed).
+- No deferred minors: the owner asked to fix them all.
+- To check by hand on a phone: the 30 s reload pauses with the app in the background and comes back when it is reopened.
+- Next: the owner opens the PR `feat/organizer-space` → `main` (lots B, Web 1 to 3) in the GitHub UI.
+- The « needs backend » list stays for later (owner: frontend only).
+- Proposals from the lot Web 2 recording still wait for the owner's go-ahead.
+
+0-web2. **Organizer space on a computer, lot Web 2 + Circle21 look**: built, reviewed and fixed (2026-10-16; `feat/organizer-space`, pushed). Its deferred minors below were fixed in lot Web 3 (Task 7 and the review fixes).
 - **Deferred minors from the review:**
   - a single « Marquer payé » (panel, row menu) stays available while a batch runs, and the API's read-then-write `markPaid` could record a second payment row;
   - the overview « À encaisser » follows `/dashboard` (counts pending payments on cancelled registrations) while the badge, Participants and Finances use the registrations still standing (demo: 3 vs 2);
@@ -301,7 +367,7 @@ Rust backend, branch `feat/rust-backend` (2026-10-07, one commit per plan task):
   - the Judges KPI shows « — » if the staff request fails.
 - **To check by hand:** focus comes back to the row after the panel closes (react-native-web's Modal; jest cannot see it).
 - **Proposals from the recording (not built, owner's go-ahead needed):** create forms in the side panel, a bottom-left notice card, setting cards with an inline ✓ save (after the partial-`PUT` dates bug, §5), radio cards, and « Voir tout » on every overview card.
-- **Next:** lot Web 3 (toasts on every mutation, skeletons, keyboard and contrast pass, refresh every 30 s on Time Table and leaderboard, leaderboard search, optimistic promo-code toggle).
+- **Next:** lot Web 3, done (see 0-web3).
 0-web. **Organizer space on a computer**: lot Web 1 built, reviewed and fixed (2026-10-15; `feat/organizer-space`, not pushed). Deferred minors of its review: the two « Demander la publication » buttons (top bar + dashboard) have separate double-click guards; the Participants badge (pending, not cancelled) can differ from the dashboard « À encaisser » figure (server counts every pending); every leaderboard export is named `<slug>-leaderboard.csv` whatever the category; a negative number would be exported as text by the formula guard (none today); the computer menu loads the registrations on every page; the shared link stays `fitnessleague://…` (no public web page per event yet). Then lot Web 2 (overview with judges and % / numbers, Finances page from the registrations, participants table with a detail panel and « Marquer payé » in batch, Heats / Time Table split) and lot Web 3 (toasts and skeletons, keyboard and contrast pass, refresh every 30 s on Time Table and leaderboard, leaderboard search, optimistic promo-code toggle), each with its own plan. The « needs backend » list of the analysis stays for later (owner: frontend only).
 0-lotB. **Organizer space lot B** (`feat/organizer-space-lot-b`, plan `docs/superpowers/plans/2026-10-14-organizer-space-lot-b.md`): the 11 tasks are built and reviewed, review fixes in `1d653c4` (2026-10-15). Left: the owner opens the PR after lot A's. Deferred minors from the review: the clock shows « Suivant : … à 10:00 » with the hour only, even weeks before the event; the lane picker has no search or sort and offers athletes already placed in another heat of the same WOD; « Créer » (promo code) is greyed without a reason when a batch code would pass 32 characters; retrying a batch after an error reports the codes created on the first run as « Déjà pris »; an error from the lane view / heat form / coupon form stays on the list after « Retour » / « Annuler »; the participants' pull-to-refresh spinner flashes after « Marquer payé »; plurals (« 1 heats moved », « 1 to judge ») although the app supports ICU plurals. Needs the owner or the backend later: the « sur place » phase (check-in, waiver, lane scoring by judges, online payment, notifications for announcements and delays, competition logo); an organizer who should publish the final leaderboard needs a server change (today head judge or admin only); the CSV as a real file needs `expo-sharing` + `expo-file-system` (two new packages, owner's call).
 0-landing. **Landing page**: merged into `main` as PR #8 (`ff5326d`, 2026-10-12). Before the page goes public: (1) replace `apps/landing/public/media/tutorial.mp4` (Alamy watermarks of the default banner; re-render after replacing `apps/mobile-rn/assets/competition-cover.jpg`); (2) WhatsApp number and store links in `apps/landing/src/config.ts`; (3) choose a host and a domain (static `dist/`; long cache on `/media` and `/assets`); (4) make `og:image` in `apps/landing/index.html` an absolute URL once the domain is known. No pricing section and no event card on purpose (no prices decided, demo event not real).
