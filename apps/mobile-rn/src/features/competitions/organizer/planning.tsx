@@ -8,7 +8,7 @@ import { space, useTheme } from '../../../core/theme';
 import { formatDate } from '../../../core/utils/format';
 import { EmptyState, Loading, SectionHeader } from '../../../core/widgets/common';
 import { ErrorText, ErrorView } from '../../../core/widgets/error';
-import { Button, Card, Chip, Dialog, IconButton, ListGroup, ListRow, Screen, TextField, Txt } from '../../../core/widgets/kit';
+import { Button, Card, Chip, Dialog, IconButton, ListGroup, ListRow, Screen, TextField, Txt, toast } from '../../../core/widgets/kit';
 import { DateField, Select, type Option } from '../../../core/widgets/pickers';
 import { useHeats } from '../api';
 import { organizerApi, useRefreshCompetition, useRegistrations } from './api';
@@ -41,7 +41,7 @@ export function PlanningTab({ c, onGo }: { c: Json; onGo?: (tab: ManageTab) => v
   const [error, setError] = useState<unknown>(null);
   const wide = useWideWeb();
 
-  async function run(fn: () => Promise<unknown>, after?: (result: Json) => void) {
+  async function run(fn: () => Promise<unknown>, after?: (result: Json) => void, done?: string) {
     if (sending.current) return;
     sending.current = true;
     setBusy(true);
@@ -51,6 +51,8 @@ export function PlanningTab({ c, onGo }: { c: Json; onGo?: (tab: ManageTab) => v
       // Not `after?.(await fn())`: optional chaining would skip the call (and the request) when there is no `after`.
       const result = (await fn()) as Json;
       after?.(result);
+      // Only once the request has succeeded: an error keeps its text, with no toast.
+      if (done) toast(done);
     } catch (e) {
       setError(e);
     } finally {
@@ -76,8 +78,8 @@ export function PlanningTab({ c, onGo }: { c: Json; onGo?: (tab: ManageTab) => v
         error={error}
         catOptions={catOptions}
         wodOptions={wodOptions}
-        onSave={(d) => run(() => (d.id ? org.updateHeat(c.id, d.id, heatBody(d)) : org.addHeat(c.id, heatBody(d))), () => setEdit(null))}
-        onDelete={(d) => run(() => org.removeHeat(c.id, d.id!), () => setEdit(null))}
+        onSave={(d) => run(() => (d.id ? org.updateHeat(c.id, d.id, heatBody(d)) : org.addHeat(c.id, heatBody(d))), () => setEdit(null), t('orgSaved'))}
+        onDelete={(d) => run(() => org.removeHeat(c.id, d.id!), () => setEdit(null), t('orgToastDeleted'))}
         onCancel={() => setEdit(null)}
       />
     );
@@ -105,7 +107,7 @@ export function PlanningTab({ c, onGo }: { c: Json; onGo?: (tab: ManageTab) => v
   }
   const open = lanesOf ? all.find((h) => h.id === lanesOf) : undefined;
   if (open) {
-    return <LanesView heat={open} registrations={regs.data ?? []} busy={busy} error={error} onAssign={(rid, lane) => run(() => org.assignLane(c.id, open.id, rid, lane))} onFree={(lane) => run(() => org.freeLane(c.id, open.id, lane))} onClose={() => setLanesOf(null)} />;
+    return <LanesView heat={open} registrations={regs.data ?? []} busy={busy} error={error} onAssign={(rid, lane) => run(() => org.assignLane(c.id, open.id, rid, lane), undefined, t('orgToastLaneSet', { lane }))} onFree={(lane) => run(() => org.freeLane(c.id, open.id, lane), undefined, t('orgToastLaneFreed', { lane }))} onClose={() => setLanesOf(null)} />;
   }
 
   const days = heatDays(all);
