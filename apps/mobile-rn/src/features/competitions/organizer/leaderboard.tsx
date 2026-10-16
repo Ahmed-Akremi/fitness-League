@@ -4,7 +4,7 @@ import { View } from 'react-native';
 import type { Json } from '../../../core/api/client';
 import { useLocale, useT } from '../../../core/prefs';
 import { space, useTheme } from '../../../core/theme';
-import { EmptyState, Loading, RankRow, StatusPill } from '../../../core/widgets/common';
+import { EmptyState, RankRow, SkeletonList, StatusPill } from '../../../core/widgets/common';
 import { ErrorView } from '../../../core/widgets/error';
 import { Card, Chip, ListGroup, Screen, Txt } from '../../../core/widgets/kit';
 import { useCompLeaderboard } from '../api';
@@ -42,7 +42,7 @@ export function LeaderboardTab({ c, onGo }: { c: Json; onGo?: (tab: ManageTab) =
         ) : board.isError ? (
           <ErrorView error={board.error} onRetry={() => board.refetch()} />
         ) : !board.data ? (
-          <Loading />
+          <SkeletonList label={t('orgLoading')} />
         ) : (
           <>
             <StatusPill testID="board-status" label={board.data.provisional ? t('orgBoardProvisional') : t('orgBoardFinal')} color={board.data.provisional ? colors.outline : colors.primary} />

@@ -104,8 +104,11 @@ export function MovementBadge({ movement }: { movement: unknown }) {
 }
 
 /** Pulsing placeholders while a list loads (static when animations are disabled). */
-export function SkeletonList({ count = 6, height = 76 }: { count?: number; height?: number }) {
-  const { colors } = useTheme();
+export function SkeletonList({ count = 6, height, label }: { count?: number; height?: number; label?: string }) {
+  const { colors, dense } = useTheme();
+  // On a computer: table-row sized placeholders.
+  const h = height ?? (dense ? 44 : 76);
+  const r = dense ? webDense.radius.field : 18;
   const reduced = useReducedMotion();
   const pulse = useRef(new Animated.Value(0.6)).current;
   useEffect(() => {
@@ -118,9 +121,9 @@ export function SkeletonList({ count = 6, height = 76 }: { count?: number; heigh
     return () => loop.stop();
   }, [reduced, pulse]);
   return (
-    <View testID="skeleton" style={{ padding: 16, gap: 10 }}>
+    <View testID="skeleton" role="progressbar" accessibilityLabel={label} style={{ padding: 16, gap: 10 }}>
       {Array.from({ length: count }, (_, i) => (
-        <Animated.View key={i} style={{ height, borderRadius: 18, backgroundColor: colors.surfaceHigh, opacity: pulse }} />
+        <Animated.View key={i} testID="skeleton-row" style={{ height: h, borderRadius: r, backgroundColor: colors.surfaceHigh, opacity: pulse }} />
       ))}
     </View>
   );

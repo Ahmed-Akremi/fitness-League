@@ -6,7 +6,7 @@ import { useLocale, useT } from '../../../core/prefs';
 import { useApi } from '../../../core/services';
 import { space, useTheme } from '../../../core/theme';
 import { formatDate } from '../../../core/utils/format';
-import { EmptyState, Loading, SectionHeader } from '../../../core/widgets/common';
+import { EmptyState, SectionHeader, SkeletonList } from '../../../core/widgets/common';
 import { ErrorText, ErrorView } from '../../../core/widgets/error';
 import { Button, Card, Chip, Dialog, IconButton, ListGroup, ListRow, Screen, TextField, Txt, toast } from '../../../core/widgets/kit';
 import { DateField, Select, type Option } from '../../../core/widgets/pickers';
@@ -63,7 +63,7 @@ export function PlanningTab({ c, onGo }: { c: Json; onGo?: (tab: ManageTab) => v
   }
 
   if (heats.isError) return <ErrorView error={heats.error} onRetry={() => heats.refetch()} />;
-  if (!heats.data) return <Loading />;
+  if (!heats.data) return <SkeletonList label={t('orgLoading')} />;
   const all: Json[] = heats.data;
   const categories: Json[] = c.categories ?? [];
   const catOptions: Option[] = categories.map((k) => ({ value: k.id, label: k.name }));

@@ -6,7 +6,7 @@ import { useLocale, useT } from '../../../core/prefs';
 import { displayText, space, useTheme, webDense } from '../../../core/theme';
 import { formatDate } from '../../../core/utils/format';
 import { Ring } from '../../../core/widgets/chart';
-import { Loading, StatusPill } from '../../../core/widgets/common';
+import { SkeletonList, StatusPill } from '../../../core/widgets/common';
 import { ErrorView } from '../../../core/widgets/error';
 import { Card, Icon, ListRow, Screen, Txt } from '../../../core/widgets/kit';
 import { Select, type Option } from '../../../core/widgets/pickers';
@@ -32,7 +32,7 @@ export function ScheduleTab({ c, onGo }: { c: Json; onGo?: (tab: ManageTab) => v
   const [workoutId, setWorkoutId] = useState<string | null>(null);
   const [q, setQ] = useState('');
   if (heats.isError) return <ErrorView error={heats.error} onRetry={() => heats.refetch()} />;
-  if (!heats.data) return <Loading />;
+  if (!heats.data) return <SkeletonList label={t('orgLoading')} />;
   const all: Json[] = heats.data;
   const days = heatDays(all);
   // Until the organizer picks a day: the day of the heat running, else the one « Retard » would move.

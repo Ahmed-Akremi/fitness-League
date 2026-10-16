@@ -5,7 +5,7 @@ import type { Json } from '../../../core/api/client';
 import { useLocale, useT } from '../../../core/prefs';
 import { useApi } from '../../../core/services';
 import { space, useTheme } from '../../../core/theme';
-import { Loading, SectionHeader } from '../../../core/widgets/common';
+import { Loading, SectionHeader, SkeletonList } from '../../../core/widgets/common';
 import { ErrorText, ErrorView } from '../../../core/widgets/error';
 import { Button, Dialog, IconButton, ListGroup, ListRow, Screen, TextField, Txt, toast } from '../../../core/widgets/kit';
 import { useMe } from '../../me/api';
@@ -53,7 +53,7 @@ export function TeamTab({ c }: { c: Json }) {
   }
 
   if (staff.isError) return <ErrorView error={staff.error} onRetry={() => staff.refetch()} />;
-  if (!staff.data) return <Loading />;
+  if (!staff.data) return <SkeletonList label={t('orgLoading')} />;
   const groups = staffByRole(staff.data);
   if (adding) {
     const organizers = new Set(groups.ORGANIZER.map((s) => s.userId as string));

@@ -5,7 +5,7 @@ import type { Json } from '../../../core/api/client';
 import { useLocale, useT } from '../../../core/prefs';
 import { space, useTheme } from '../../../core/theme';
 import { formatDate } from '../../../core/utils/format';
-import { EmptyState, Loading, StatusPill } from '../../../core/widgets/common';
+import { EmptyState, SkeletonList, StatusPill } from '../../../core/widgets/common';
 import { ErrorText, ErrorView } from '../../../core/widgets/error';
 import { Button, Chip, ListRow, Segmented, TextField, Txt } from '../../../core/widgets/kit';
 import { useRegistrations } from './api';
@@ -34,7 +34,7 @@ function ParticipantsPhone({ c, initialCategoryId }: { c: Json; initialCategoryI
   const payLabel = paymentLabels(t);
 
   if (regs.isError) return <ErrorView error={regs.error} onRetry={() => regs.refetch()} />;
-  if (!regs.data) return <Loading />;
+  if (!regs.data) return <SkeletonList label={t('orgLoading')} />;
   const all: Json[] = regs.data;
   const collect = toCollect(all);
   const rows = mode === 'collect' ? collect : filterRegistrations(all, { q, categoryId, payment });

@@ -6,7 +6,7 @@ import { useLocale, useT } from '../../../core/prefs';
 import { useApi } from '../../../core/services';
 import { space, useTheme } from '../../../core/theme';
 import { formatDate } from '../../../core/utils/format';
-import { Loading, SectionHeader } from '../../../core/widgets/common';
+import { SectionHeader, SkeletonList } from '../../../core/widgets/common';
 import { ErrorText, ErrorView } from '../../../core/widgets/error';
 import { Button, Card, Chip, ListGroup, ListRow, Screen, TextField, Txt } from '../../../core/widgets/kit';
 import { DateField, Select } from '../../../core/widgets/pickers';
@@ -90,7 +90,7 @@ export function CouponsTab({ c }: { c: Json }) {
     );
   }
   if (list.isError) return <ErrorView error={list.error} onRetry={() => list.refetch()} />;
-  if (!list.data) return <Loading />;
+  if (!list.data) return <SkeletonList label={t('orgLoading')} />;
   const top = topUsed(list.data);
   const add = (
     <Button

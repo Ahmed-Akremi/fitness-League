@@ -5,7 +5,7 @@ import type { Json } from '../../../core/api/client';
 import { useLocale, useT } from '../../../core/prefs';
 import { space, useTheme } from '../../../core/theme';
 import { formatDate } from '../../../core/utils/format';
-import { EmptyState, Loading, SectionHeader, StatusPill } from '../../../core/widgets/common';
+import { EmptyState, SectionHeader, SkeletonList, StatusPill } from '../../../core/widgets/common';
 import { ErrorText, ErrorView } from '../../../core/widgets/error';
 import { Button, Dialog, Segmented, Txt } from '../../../core/widgets/kit';
 import { SidePanel } from '../../../core/widgets/panel';
@@ -38,7 +38,7 @@ export function ParticipantsWeb({ c, initialCategoryId }: { c: Json; initialCate
   const [confirming, setConfirming] = useState(false);
 
   // A failed reload keeps the page (and a batch summary) with the error above it; the full-page error is only for a first load.
-  if (!regs.data) return regs.isError ? <ErrorView error={regs.error} onRetry={() => regs.refetch()} /> : <Loading />;
+  if (!regs.data) return regs.isError ? <ErrorView error={regs.error} onRetry={() => regs.refetch()} /> : <SkeletonList label={t('orgLoading')} />;
   const all: Json[] = regs.data;
   const collect = toCollect(all);
   const rows = mode === 'collect' ? collect : filterRegistrations(all, { q, categoryId, payment });

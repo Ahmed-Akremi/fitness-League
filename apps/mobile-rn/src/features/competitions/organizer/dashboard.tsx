@@ -3,7 +3,7 @@ import { View } from 'react-native';
 import type { Json } from '../../../core/api/client';
 import { useLocale, useT } from '../../../core/prefs';
 import { space, useTheme } from '../../../core/theme';
-import { Loading, SectionHeader, StatCard } from '../../../core/widgets/common';
+import { SectionHeader, SkeletonList, StatCard } from '../../../core/widgets/common';
 import { ErrorText, ErrorView } from '../../../core/widgets/error';
 import { Button, Card, ListGroup, ListRow, Screen, Txt } from '../../../core/widgets/kit';
 import { formatMoney } from '../api';
@@ -74,7 +74,7 @@ export function DashboardTab({ c, onGo }: { c: Json; onGo: Go }) {
         {dash.isError ? (
           <ErrorView error={dash.error} onRetry={() => dash.refetch()} />
         ) : !d ? (
-          <Loading />
+          <SkeletonList count={2} label={t('orgLoading')} />
         ) : wide ? (
           <OverviewWeb c={c} d={d} onGo={onGo} />
         ) : (
