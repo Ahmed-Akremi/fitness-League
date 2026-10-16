@@ -19,6 +19,7 @@ import { LeaderboardTab } from './leaderboard';
 import type { ManageTab } from './logic';
 import { ParticipantsTab } from './participants';
 import { PlanningTab } from './planning';
+import { ScheduleTab } from './schedule';
 import { TeamTab } from './team';
 import { phoneTab, useWideWeb, type Go } from './web';
 import { OrganizerWeb } from './web-shell';
@@ -57,6 +58,7 @@ export function ManageScreen({ id, initialTab = 'dashboard' }: { id: string; ini
       {shown === 'categories' && <CategoriesTab c={c} />}
       {shown === 'wods' && <WodsTab c={c} onGo={go} />}
       {shown === 'planning' && <PlanningTab c={c} onGo={go} />}
+      {shown === 'timetable' && <ScheduleTab c={c} onGo={go} />}
       {/* Keyed on the category: a new « filtered on » opens a fresh list. */}
       {shown === 'participants' && <ParticipantsTab key={focus?.categoryId ?? 'all'} c={c} initialCategoryId={focus?.categoryId ?? null} />}
       {shown === 'team' && <TeamTab c={c} />}

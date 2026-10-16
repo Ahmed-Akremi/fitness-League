@@ -24,7 +24,7 @@ export const ORG_MENU: MenuSection[] = [
   { key: 'dashboard', tabs: ['dashboard', 'finances'] },
   { key: 'general', tabs: ['general', 'categories', 'coupons', 'team'] },
   { key: 'participants', tabs: ['participants'] },
-  { key: 'planning', tabs: ['wods', 'planning'] },
+  { key: 'planning', tabs: ['wods', 'planning', 'timetable'] },
   { key: 'leaderboard', tabs: ['leaderboard'] },
   { key: 'messages', tabs: ['announcements'] },
 ];

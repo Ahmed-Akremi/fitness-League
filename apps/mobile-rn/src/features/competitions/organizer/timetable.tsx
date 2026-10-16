@@ -11,8 +11,8 @@ import { competitionsApi } from '../api';
 import { organizerApi, useRefreshCompetition } from './api';
 import { delayMinutes, delayTargets, runDelay, timetable } from './logic-b';
 
-/** The current time, read again every 30 seconds. */
-function useNow(everyMs = 30_000) {
+/** The current time, read again every `everyMs`: 30 s for the phone's clock card, 1 s on the computer's time table. */
+export function useNow(everyMs = 30_000) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), everyMs);
@@ -25,14 +25,33 @@ type Failure = { heats: Json[]; minutes: number; total: number; day: string };
 /** Every heat moved but the announcement did not go out. */
 type Unannounced = { minutes: number; total: number; day: string };
 
-/** Clock of the event day (spec §1.3 item 5): the heat running, the next one, how many are done; « Retard » moves every heat not started yet, then posts one announcement. */
+/** Clock of the event day (spec §1.3 item 5): the heat running, the next one, how many are done, and « Retard ». The phone shows it on Planning; the computer has a page for it (`schedule.tsx`). */
 export function TimetableCard({ c, heats }: { c: Json; heats: Json[] }) {
+  const t = useT();
+  const locale = useLocale();
+  const { colors } = useTheme();
+  const now = useNow();
+  const tt = timetable(heats, now);
+  const hour = (iso: string) => formatDate(iso, locale, { hour: '2-digit', minute: '2-digit' });
+  if (tt.total === 0) return null;
+  return (
+    <Card testID="timetable" style={{ gap: space.sm }}>
+      <Txt variant="headline">{formatDate(new Date(now), locale, { hour: '2-digit', minute: '2-digit' })}</Txt>
+      <Txt>{tt.current ? t('orgNowRunning', { name: tt.current.name }) : t('orgNothingRunning')}</Txt>
+      {tt.next ? <Txt color={colors.outline}>{t('orgNextHeat', { name: tt.next.name, time: hour(tt.next.startsAt) })}</Txt> : null}
+      <Txt color={colors.outline}>{t('orgHeatsDone', { done: tt.done, total: tt.total })}</Txt>
+      <DelayControls c={c} heats={heats} now={now} />
+    </Card>
+  );
+}
+
+/** « Retard »: moves every heat of the day being run that has not started, then posts one announcement; what failed is retried alone. */
+export function DelayControls({ c, heats, now }: { c: Json; heats: Json[]; now: number }) {
   const t = useT();
   const locale = useLocale();
   const { colors } = useTheme();
   const api = useApi();
   const refresh = useRefreshCompetition();
-  const now = useNow();
   const [asking, setAsking] = useState(false);
   const [failed, setFailed] = useState<Failure | null>(null);
   const [unannounced, setUnannounced] = useState<Unannounced | null>(null);
@@ -40,9 +59,7 @@ export function TimetableCard({ c, heats }: { c: Json; heats: Json[] }) {
   const sending = useRef(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
-  const tt = timetable(heats, now);
   const targets = delayTargets(heats, now);
-  const hour = (iso: string) => formatDate(iso, locale, { hour: '2-digit', minute: '2-digit' });
   const dayOf = (iso: string) => formatDate(iso, locale, { weekday: 'long', day: 'numeric', month: 'long' });
 
   async function guarded(fn: () => Promise<void>) {
@@ -92,13 +109,8 @@ export function TimetableCard({ c, heats }: { c: Json; heats: Json[] }) {
       if (todo.length > 0) await move(todo, minutes, todo.length, dayOf(todo[0].startsAt));
     });
 
-  if (tt.total === 0) return null;
   return (
-    <Card testID="timetable" style={{ gap: space.sm }}>
-      <Txt variant="headline">{formatDate(new Date(now), locale, { hour: '2-digit', minute: '2-digit' })}</Txt>
-      <Txt>{tt.current ? t('orgNowRunning', { name: tt.current.name }) : t('orgNothingRunning')}</Txt>
-      {tt.next ? <Txt color={colors.outline}>{t('orgNextHeat', { name: tt.next.name, time: hour(tt.next.startsAt) })}</Txt> : null}
-      <Txt color={colors.outline}>{t('orgHeatsDone', { done: tt.done, total: tt.total })}</Txt>
+    <>
       {failed ? (
         <>
           <Txt color={colors.error}>{t('orgDelayFailed', { names: failed.heats.map((h) => h.name).join(', ') })}</Txt>
@@ -128,6 +140,6 @@ export function TimetableCard({ c, heats }: { c: Json; heats: Json[] }) {
         }}
         onCancel={() => setAsking(false)}
       />
-    </Card>
+    </>
   );
 }

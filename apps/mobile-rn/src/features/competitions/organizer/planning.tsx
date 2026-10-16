@@ -128,7 +128,8 @@ export function PlanningTab({ c, onGo }: { c: Json; onGo?: (tab: ManageTab) => v
         }
       />
       <Screen>
-        <TimetableCard c={c} heats={all} />
+        {/* On a computer the clock and « Retard » have their own page (Horaire du jour). */}
+        {wide ? null : <TimetableCard c={c} heats={all} />}
         {wide ? null : (
           <View style={{ flexDirection: 'row', gap: space.sm }}>
             <View style={{ flex: 1 }}>{create}</View>
