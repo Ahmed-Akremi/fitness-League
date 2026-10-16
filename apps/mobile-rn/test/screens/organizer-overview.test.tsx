@@ -68,7 +68,7 @@ describe('overview on a computer', () => {
     await fireEvent.press(screen.getByTestId('ov-gender-as-numbers'));
     expect(screen.getByTestId('ov-gender-women').props.children).toBe('2');
     expect(screen.getByTestId('ov-gender-mixed').props.children).toBe('0');
-    expect(screen.getByTestId('ov-gender-as-numbers').props.accessibilityState).toMatchObject({ selected: true });
+    expect(screen.getByTestId('ov-gender-as-numbers').props.accessibilityState).toMatchObject({ checked: true });
   });
 
   it('scores: a ring of to judge / validated / refused with its legend', async () => {

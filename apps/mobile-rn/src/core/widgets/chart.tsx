@@ -81,7 +81,7 @@ export function BarChart({ data, label, height = 160 }: { data: { key: string; l
   const max = Math.max(1, ...data.map((d) => d.value));
   const every = axisStep(data.length);
   return (
-    <View accessibilityLabel={label} style={{ gap: 6 }}>
+    <View accessible accessibilityRole="image" accessibilityLabel={`${label}: ${data.map((d) => `${d.label} ${d.value}`).join(', ')}`} style={{ gap: 6 }}>
       <View style={{ height, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'center', gap: 4 }}>
         {data.map((d) => (
           <View

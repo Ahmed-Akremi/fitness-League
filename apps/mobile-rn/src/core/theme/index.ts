@@ -56,6 +56,12 @@ export const palettes = {
   }),
 };
 
+/**
+ * The light palette on a computer (lot Web 3): a darker accent with white on it, and darker secondary text, so every
+ * text reaches 4.5:1 (WCAG AA) on each light surface — the light side panel included. Phones keep `palettes.light`.
+ */
+export const denseLight = (accent: string): Colors => ({ ...palettes.light(accent), primary: darken(accent, 0.55), onPrimary: '#FFFFFF', outline: '#62666F' });
+
 export const fonts = {
   display: 'BarlowCondensed-ExtraBold',
   displaySemi: 'BarlowCondensed-SemiBold',
@@ -97,7 +103,7 @@ export function useTheme(): { dark: boolean; colors: Colors; dense: boolean } {
   const system = useColorScheme();
   const scope = useContext(ScopeContext);
   const dark = scope.scheme ? scope.scheme === 'dark' : mode === 'system' ? system !== 'light' : mode === 'dark';
-  return { dark, colors: dark ? palettes.dark(config.accent) : palettes.light(config.accent), dense: scope.dense };
+  return { dark, colors: dark ? palettes.dark(config.accent) : scope.dense ? denseLight(config.accent) : palettes.light(config.accent), dense: scope.dense };
 }
 
 /** Big athletic numbers (LP, scores, times). */

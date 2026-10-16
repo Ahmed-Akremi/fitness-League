@@ -2,6 +2,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { Children, Fragment, isValidElement, useState, type ReactNode } from 'react';
 import { Pressable, TextInput, View } from 'react-native';
 
+import { isFocused, useFocusRing } from '../focus';
 import { displayText, space, useTheme, webDense } from '../theme';
 import { Txt, type IconName } from './kit';
 
@@ -31,8 +32,9 @@ export function Toolbar({ children }: { children: ReactNode }) {
 /** Filled search box with a magnifier (Circle21 refs 12, 19, 20). */
 export function SearchField({ value, onChangeText, placeholder, testID, width = 220 }: { value: string; onChangeText: (s: string) => void; placeholder: string; testID?: string; width?: number }) {
   const { colors } = useTheme();
+  const [focused, setFocused] = useState(false);
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, height: webDense.control, width, borderRadius: webDense.radius.field, backgroundColor: colors.surfaceHigh, paddingHorizontal: 10 }}>
+    <View style={[{ flexDirection: 'row', alignItems: 'center', gap: 6, height: webDense.control, width, borderRadius: webDense.radius.field, backgroundColor: colors.surfaceHigh, paddingHorizontal: 10 }, focused && { borderWidth: 1, borderColor: colors.primary }]}>
       <MaterialIcons name="search" size={16} color={colors.outline} />
       <TextInput
         testID={testID}
@@ -42,6 +44,8 @@ export function SearchField({ value, onChangeText, placeholder, testID, width = 
         placeholder={placeholder}
         placeholderTextColor={colors.outline}
         autoCapitalize="none"
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
         style={{ flex: 1, color: colors.text, fontSize: 13, paddingVertical: 0, textAlign: 'auto' }}
       />
     </View>
@@ -51,6 +55,7 @@ export function SearchField({ value, onChangeText, placeholder, testID, width = 
 /** 32 px square icon button (export, refresh): the label is what screen readers say. */
 export function SquareButton({ icon, label, onPress, disabled, testID }: { icon: IconName; label: string; onPress?: () => void; disabled?: boolean; testID?: string }) {
   const { colors } = useTheme();
+  const ring = useFocusRing();
   const off = disabled || !onPress;
   return (
     <Pressable
@@ -60,7 +65,7 @@ export function SquareButton({ icon, label, onPress, disabled, testID }: { icon:
       accessibilityState={{ disabled: off }}
       disabled={off}
       onPress={onPress}
-      style={({ pressed }) => ({ width: webDense.control, height: webDense.control, borderRadius: webDense.radius.field, borderWidth: 1, borderColor: colors.outline, alignItems: 'center', justifyContent: 'center', opacity: off ? 0.45 : pressed ? 0.8 : 1 })}
+      style={(state) => [{ width: webDense.control, height: webDense.control, borderRadius: webDense.radius.field, borderWidth: 1, borderColor: colors.outline, alignItems: 'center', justifyContent: 'center', opacity: off ? 0.45 : state.pressed ? 0.8 : 1 }, ring(isFocused(state))]}
     >
       <MaterialIcons name={icon} size={18} color={colors.text} />
     </Pressable>
@@ -70,8 +75,9 @@ export function SquareButton({ icon, label, onPress, disabled, testID }: { icon:
 /** « Afficher en : Pourcentages (%) | Nombres » (Circle21 ref 03): a caption and text options, the chosen one underlined. */
 export function SegmentedInline<K extends string>({ label, options, value, onChange, testID }: { label: string; options: { key: K; label: string }[]; value: K; onChange: (k: K) => void; testID?: string }) {
   const { colors } = useTheme();
+  const ring = useFocusRing();
   return (
-    <View testID={testID} style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+    <View testID={testID} accessibilityRole="radiogroup" style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
       <Txt style={webDense.caption} color={colors.outline}>
         {label}
       </Txt>
@@ -84,7 +90,7 @@ export function SegmentedInline<K extends string>({ label, options, value, onCha
                 |
               </Txt>
             ) : null}
-            <Pressable testID={testID ? `${testID}-${o.key}` : undefined} accessibilityRole="button" accessibilityState={{ selected: on }} hitSlop={6} onPress={() => onChange(o.key)}>
+            <Pressable testID={testID ? `${testID}-${o.key}` : undefined} accessibilityRole="radio" accessibilityState={{ checked: on }} hitSlop={6} onPress={() => onChange(o.key)} style={(state) => [{ minHeight: 24, justifyContent: 'center' }, ring(isFocused(state))]}>
               <Txt style={[webDense.caption, { textDecorationLine: on ? 'underline' : 'none', fontWeight: on ? '700' : '400' }]} color={on ? colors.text : colors.outline}>
                 {o.label}
               </Txt>
