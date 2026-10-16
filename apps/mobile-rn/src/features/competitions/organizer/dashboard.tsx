@@ -11,6 +11,7 @@ import { statusLabelForCompetition } from '../screens';
 import { useOrganizerDashboard } from './api';
 import { RegistrationsBreakdown } from './breakdown';
 import { CHECKLIST, TAB_FOR, type ChecklistItem, type ManageTab } from './logic';
+import { OrgPageHeader } from './page';
 import { usePublication } from './publication';
 
 export function DashboardTab({ c, onGo }: { c: Json; onGo: (tab: ManageTab) => void }) {
@@ -30,58 +31,61 @@ export function DashboardTab({ c, onGo }: { c: Json; onGo: (tab: ManageTab) => v
 
   const d = dash.data;
   return (
-    <Screen>
-      <Card testID="org-state" style={{ gap: space.sm }}>
-        <Txt variant="title">{stateText}</Txt>
-        {state === 'RETURNED' ? (
-          <Txt testID="org-note" color={colors.error}>
-            {c.publicationNote}
-          </Txt>
-        ) : null}
-      </Card>
-      {state === 'PUBLISHED' ? (
-        <Button testID="org-share" kind="outlined" icon="share" label={t('orgShare')} onPress={share} />
-      ) : state === 'CANCELLED' ? null : (
-        <>
-          <SectionHeader title={t('orgChecklist')} />
-          <ListGroup>
-            {CHECKLIST.map((item) => {
-              const todo = missing.includes(item);
-              return (
-                <ListRow
-                  key={item}
-                  testID={`check-${item}`}
-                  icon={todo ? 'radio-button-unchecked' : 'check-circle'}
-                  title={labels[item]}
-                  subtitle={todo ? t('orgGoTo') : null}
-                  chevron={todo}
-                  onPress={todo ? () => onGo(TAB_FOR[item]) : undefined}
-                />
-              );
-            })}
-          </ListGroup>
-          <ErrorText error={error} />
-          <Button testID="org-request" label={t('orgRequestPublication')} busy={busy} disabled={!canRequest} onPress={request} />
-        </>
-      )}
-      <SectionHeader title={t('orgFigures')} />
-      {dash.isError ? (
-        <ErrorView error={dash.error} onRetry={() => dash.refetch()} />
-      ) : d ? (
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.md }}>
-          <Figure label={t('orgParticipants')} value={String(d.participants)} />
-          <Figure label={t('orgPaid')} value={String(d.paidRegistrations)} />
-          <Figure label={t('orgToCollect')} value={String(d.pendingPayments)} />
-          <Figure label={t('orgRevenue')} value={formatMoney(d.revenue, c.currency, locale)} />
-          <Figure label={t('orgToJudge')} value={String(d.pendingJudging)} />
-          <Figure label={t('orgApproved')} value={String(d.approvedSubmissions)} />
-          <Figure label={t('orgRejected')} value={String(d.rejectedSubmissions)} />
-        </View>
-      ) : (
-        <Loading />
-      )}
-      <RegistrationsBreakdown c={c} />
-    </Screen>
+    <>
+      <OrgPageHeader tab="dashboard" />
+      <Screen>
+        <Card testID="org-state" style={{ gap: space.sm }}>
+          <Txt variant="title">{stateText}</Txt>
+          {state === 'RETURNED' ? (
+            <Txt testID="org-note" color={colors.error}>
+              {c.publicationNote}
+            </Txt>
+          ) : null}
+        </Card>
+        {state === 'PUBLISHED' ? (
+          <Button testID="org-share" kind="outlined" icon="share" label={t('orgShare')} onPress={share} />
+        ) : state === 'CANCELLED' ? null : (
+          <>
+            <SectionHeader title={t('orgChecklist')} />
+            <ListGroup>
+              {CHECKLIST.map((item) => {
+                const todo = missing.includes(item);
+                return (
+                  <ListRow
+                    key={item}
+                    testID={`check-${item}`}
+                    icon={todo ? 'radio-button-unchecked' : 'check-circle'}
+                    title={labels[item]}
+                    subtitle={todo ? t('orgGoTo') : null}
+                    chevron={todo}
+                    onPress={todo ? () => onGo(TAB_FOR[item]) : undefined}
+                  />
+                );
+              })}
+            </ListGroup>
+            <ErrorText error={error} />
+            <Button testID="org-request" label={t('orgRequestPublication')} busy={busy} disabled={!canRequest} onPress={request} />
+          </>
+        )}
+        <SectionHeader title={t('orgFigures')} />
+        {dash.isError ? (
+          <ErrorView error={dash.error} onRetry={() => dash.refetch()} />
+        ) : d ? (
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.md }}>
+            <Figure label={t('orgParticipants')} value={String(d.participants)} />
+            <Figure label={t('orgPaid')} value={String(d.paidRegistrations)} />
+            <Figure label={t('orgToCollect')} value={String(d.pendingPayments)} />
+            <Figure label={t('orgRevenue')} value={formatMoney(d.revenue, c.currency, locale)} />
+            <Figure label={t('orgToJudge')} value={String(d.pendingJudging)} />
+            <Figure label={t('orgApproved')} value={String(d.approvedSubmissions)} />
+            <Figure label={t('orgRejected')} value={String(d.rejectedSubmissions)} />
+          </View>
+        ) : (
+          <Loading />
+        )}
+        <RegistrationsBreakdown c={c} />
+      </Screen>
+    </>
   );
 }
 

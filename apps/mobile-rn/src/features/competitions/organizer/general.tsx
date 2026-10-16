@@ -14,6 +14,7 @@ import { DateField } from '../../../core/widgets/pickers';
 import { DEFAULT_COVER } from '../screens';
 import { organizerApi, useRefreshCompetition } from './api';
 import { COVER_MAX_BYTES, datesValid, fromMillimes, ORGANIZER_NEXT, toMillimes, type EventFormat } from './logic';
+import { OrgPageHeader } from './page';
 
 export function GeneralTab({ c }: { c: Json }) {
   const t = useT();
@@ -133,70 +134,73 @@ export function GeneralTab({ c }: { c: Json }) {
     { key: 'HYBRID', label: t('orgFormatHybrid') },
   ];
   return (
-    <Screen>
-      <SectionHeader title={t('orgBanner')} />
-      <Image source={c.coverUrl ? { uri: c.coverUrl } : DEFAULT_COVER} style={{ width: bannerWidth, height: (bannerWidth * 596) / 1440, borderRadius: radius.field }} />
-      <Txt variant="small" color={colors.outline}>{t('orgBannerHint')}</Txt>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
-        <Button testID="org-banner-pick" kind="outlined" icon="image" label={t('orgBannerPick')} busy={busy === 'cover'} onPress={pickBanner} />
-        {c.coverUrl ? <Button testID="org-banner-remove" kind="text" label={t('orgBannerRemove')} onPress={() => run('cover', () => organizerApi(api).removeCover(c.id))} /> : null}
-      </View>
+    <>
+      <OrgPageHeader tab="general" />
+      <Screen>
+        <SectionHeader title={t('orgBanner')} />
+        <Image source={c.coverUrl ? { uri: c.coverUrl } : DEFAULT_COVER} style={{ width: bannerWidth, height: (bannerWidth * 596) / 1440, borderRadius: radius.field }} />
+        <Txt variant="small" color={colors.outline}>{t('orgBannerHint')}</Txt>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
+          <Button testID="org-banner-pick" kind="outlined" icon="image" label={t('orgBannerPick')} busy={busy === 'cover'} onPress={pickBanner} />
+          {c.coverUrl ? <Button testID="org-banner-remove" kind="text" label={t('orgBannerRemove')} onPress={() => run('cover', () => organizerApi(api).removeCover(c.id))} /> : null}
+        </View>
 
-      <SectionHeader title={t('orgTabGeneral')} />
-      <TextField testID="org-title" label={t('orgName')} value={title} onChangeText={setTitle} maxLength={120} />
-      <TextField testID="org-description" label={t('orgDescription')} value={description} onChangeText={setDescription} maxLength={5000} multiline />
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
-        {formats.map((f) => (
-          <Chip key={f.key} testID={`org-format-${f.key}`} label={f.label} selected={format === f.key} onPress={() => setFormat(f.key)} />
-        ))}
-      </View>
-      <TextField testID="org-city" label={t('city')} value={city} onChangeText={setCity} maxLength={100} />
-      <TextField testID="org-place" label={t('orgPlace')} value={place} onChangeText={setPlace} maxLength={200} />
-      {!placeOk && <Txt variant="small" color={colors.outline}>{t('orgPlaceRequired')}</Txt>}
-      <DateField mode="datetime" label={t('orgRegistrationStart')} value={regStart} onChange={setRegStart} />
-      <DateField mode="datetime" label={t('orgRegistrationEnd')} value={regEnd} onChange={setRegEnd} />
-      <DateField mode="datetime" label={t('orgEventStart')} value={eventStart} onChange={setEventStart} />
-      <DateField mode="datetime" label={t('orgEventEnd')} value={eventEnd} onChange={setEventEnd} />
-      {!datesValid(dates) && <Txt variant="small" color={colors.error}>{t('orgDatesInvalid')}</Txt>}
-      <TextField testID="org-price" label={t('orgPrice')} value={price} onChangeText={setPrice} keyboardType="decimal-pad" />
-      <TextField testID="org-max" label={t('orgMaxParticipants')} value={max} onChangeText={setMax} keyboardType="number-pad" />
-      <ErrorText error={error} />
-      <Button testID="org-save" label={t('save')} busy={busy === 'save'} disabled={!valid} onPress={save} />
-
-      <SectionHeader title={t('orgEvent')} />
-      {draft ? (
-        <Button testID="org-delete" kind="outlined" icon="delete" label={t('orgDelete')} busy={busy === 'delete'} onPress={() => setDeleting(true)} />
-      ) : (
-        <>
-          <Txt variant="small" color={colors.outline}>{t('orgNextStep')}</Txt>
-          {(ORGANIZER_NEXT[c.status] ?? []).map((s) => (
-            <Button key={s} testID={`org-next-${s}`} kind="outlined" label={nextLabels[s]} busy={busy === s} onPress={() => setConfirming(s)} />
+        <SectionHeader title={t('orgTabGeneral')} />
+        <TextField testID="org-title" label={t('orgName')} value={title} onChangeText={setTitle} maxLength={120} />
+        <TextField testID="org-description" label={t('orgDescription')} value={description} onChangeText={setDescription} maxLength={5000} multiline />
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
+          {formats.map((f) => (
+            <Chip key={f.key} testID={`org-format-${f.key}`} label={f.label} selected={format === f.key} onPress={() => setFormat(f.key)} />
           ))}
-        </>
-      )}
-      <Dialog
-        visible={confirming != null}
-        title={confirming ? nextLabels[confirming] : ''}
-        message={confirming ? askLabels[confirming] : undefined}
-        confirmLabel={t('orgConfirm')}
-        cancelLabel={t('cancel')}
-        onConfirm={() => {
-          const s = confirming!;
-          setConfirming(null);
-          void run(s, () => organizerApi(api).setStatus(c.id, s));
-        }}
-        onCancel={() => setConfirming(null)}
-      />
-      <Dialog
-        visible={deleting}
-        title={t('orgDelete')}
-        message={t('orgDeleteConfirm', { title: c.title })}
-        confirmLabel={t('delete')}
-        cancelLabel={t('cancel')}
-        destructive
-        onConfirm={remove}
-        onCancel={() => setDeleting(false)}
-      />
-    </Screen>
+        </View>
+        <TextField testID="org-city" label={t('city')} value={city} onChangeText={setCity} maxLength={100} />
+        <TextField testID="org-place" label={t('orgPlace')} value={place} onChangeText={setPlace} maxLength={200} />
+        {!placeOk && <Txt variant="small" color={colors.outline}>{t('orgPlaceRequired')}</Txt>}
+        <DateField mode="datetime" label={t('orgRegistrationStart')} value={regStart} onChange={setRegStart} />
+        <DateField mode="datetime" label={t('orgRegistrationEnd')} value={regEnd} onChange={setRegEnd} />
+        <DateField mode="datetime" label={t('orgEventStart')} value={eventStart} onChange={setEventStart} />
+        <DateField mode="datetime" label={t('orgEventEnd')} value={eventEnd} onChange={setEventEnd} />
+        {!datesValid(dates) && <Txt variant="small" color={colors.error}>{t('orgDatesInvalid')}</Txt>}
+        <TextField testID="org-price" label={t('orgPrice')} value={price} onChangeText={setPrice} keyboardType="decimal-pad" />
+        <TextField testID="org-max" label={t('orgMaxParticipants')} value={max} onChangeText={setMax} keyboardType="number-pad" />
+        <ErrorText error={error} />
+        <Button testID="org-save" label={t('save')} busy={busy === 'save'} disabled={!valid} onPress={save} />
+
+        <SectionHeader title={t('orgEvent')} />
+        {draft ? (
+          <Button testID="org-delete" kind="outlined" icon="delete" label={t('orgDelete')} busy={busy === 'delete'} onPress={() => setDeleting(true)} />
+        ) : (
+          <>
+            <Txt variant="small" color={colors.outline}>{t('orgNextStep')}</Txt>
+            {(ORGANIZER_NEXT[c.status] ?? []).map((s) => (
+              <Button key={s} testID={`org-next-${s}`} kind="outlined" label={nextLabels[s]} busy={busy === s} onPress={() => setConfirming(s)} />
+            ))}
+          </>
+        )}
+        <Dialog
+          visible={confirming != null}
+          title={confirming ? nextLabels[confirming] : ''}
+          message={confirming ? askLabels[confirming] : undefined}
+          confirmLabel={t('orgConfirm')}
+          cancelLabel={t('cancel')}
+          onConfirm={() => {
+            const s = confirming!;
+            setConfirming(null);
+            void run(s, () => organizerApi(api).setStatus(c.id, s));
+          }}
+          onCancel={() => setConfirming(null)}
+        />
+        <Dialog
+          visible={deleting}
+          title={t('orgDelete')}
+          message={t('orgDeleteConfirm', { title: c.title })}
+          confirmLabel={t('delete')}
+          cancelLabel={t('cancel')}
+          destructive
+          onConfirm={remove}
+          onCancel={() => setDeleting(false)}
+        />
+      </Screen>
+    </>
   );
 }

@@ -11,6 +11,7 @@ import { ErrorText, ErrorView } from '../../../core/widgets/error';
 import { Button, Card, Screen, TextField, Txt, toast } from '../../../core/widgets/kit';
 import { organizerApi, useAnnouncements, useRefreshCompetition } from './api';
 import { announcementValid } from './logic-b';
+import { OrgPageHeader } from './page';
 
 /** « Annonces » (spec §1.3 item 9): post an announcement; it shows on the event page, without a notification. */
 export function AnnouncementsTab({ c }: { c: Json }) {
@@ -46,25 +47,28 @@ export function AnnouncementsTab({ c }: { c: Json }) {
   }
 
   return (
-    <Screen>
-      <Card style={{ gap: space.md }}>
-        <Txt color={colors.outline}>{t('orgAnnHint')}</Txt>
-        <TextField testID="ann-title" label={t('orgAnnTitle')} value={title} onChangeText={setTitle} maxLength={120} />
-        <TextField testID="ann-body" label={t('orgAnnBody')} value={body} onChangeText={setBody} maxLength={5000} multiline />
-        <ErrorText error={error} />
-        <Button testID="ann-post" icon="campaign" label={t('orgAnnPost')} busy={busy} disabled={!ok} onPress={post} />
-      </Card>
-      <SectionHeader title={t('orgAnnList')} />
-      {list.isError ? (
-        <ErrorView error={list.error} onRetry={() => list.refetch()} />
-      ) : !list.data ? (
-        <Loading />
-      ) : list.data.length === 0 ? (
-        <Txt color={colors.outline}>{t('orgAnnNone')}</Txt>
-      ) : (
-        <AnnouncementList items={list.data} />
-      )}
-    </Screen>
+    <>
+      <OrgPageHeader tab="announcements" />
+      <Screen>
+        <Card style={{ gap: space.md }}>
+          <Txt color={colors.outline}>{t('orgAnnHint')}</Txt>
+          <TextField testID="ann-title" label={t('orgAnnTitle')} value={title} onChangeText={setTitle} maxLength={120} />
+          <TextField testID="ann-body" label={t('orgAnnBody')} value={body} onChangeText={setBody} maxLength={5000} multiline />
+          <ErrorText error={error} />
+          <Button testID="ann-post" icon="campaign" label={t('orgAnnPost')} busy={busy} disabled={!ok} onPress={post} />
+        </Card>
+        <SectionHeader title={t('orgAnnList')} />
+        {list.isError ? (
+          <ErrorView error={list.error} onRetry={() => list.refetch()} />
+        ) : !list.data ? (
+          <Loading />
+        ) : list.data.length === 0 ? (
+          <Txt color={colors.outline}>{t('orgAnnNone')}</Txt>
+        ) : (
+          <AnnouncementList items={list.data} />
+        )}
+      </Screen>
+    </>
   );
 }
 

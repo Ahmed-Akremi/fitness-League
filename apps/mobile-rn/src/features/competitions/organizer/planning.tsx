@@ -16,7 +16,9 @@ import { exportCsv } from './export';
 import { Guide } from './guide';
 import type { ManageTab } from './logic';
 import { autoBody, autoValid, csvFileName, csvSeparator, filterHeats, freeLanes, heatBody, heatDays, heatDraft, heatsCsv, heatValid, laneCandidates, personName, type AutoDraft, type HeatDraft, type HeatFilter } from './logic-b';
+import { ExportButton, OrgPageHeader } from './page';
 import { TimetableCard } from './timetable';
+import { useWideWeb } from './web';
 
 const when = (iso: string, locale: string) => formatDate(iso, locale, { weekday: 'short', hour: '2-digit', minute: '2-digit' });
 
@@ -37,6 +39,7 @@ export function PlanningTab({ c, onGo }: { c: Json; onGo?: (tab: ManageTab) => v
   const sending = useRef(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
+  const wide = useWideWeb();
 
   async function run(fn: () => Promise<unknown>, after?: (result: Json) => void) {
     if (sending.current) return;
@@ -107,70 +110,85 @@ export function PlanningTab({ c, onGo }: { c: Json; onGo?: (tab: ManageTab) => v
 
   const days = heatDays(all);
   const shown = filterHeats(all, filter);
+  const create = <Button testID="heat-new" icon="add" label={t('orgHeatNew')} onPress={() => setEdit(heatDraft(null))} />;
+  const autoBtn = (
+    <Button testID="heat-auto" kind="outlined" icon="auto-fix-high" label={t('orgHeatAuto')} disabled={categories.length === 0} onPress={() => setAuto({ categoryId: categories[0]?.id ?? null, workoutId: null, lanes: '8', start: null, interval: '15' })} />
+  );
+  const exportBtn = <ExportButton testID="heat-export" disabled={shown.length === 0} onPress={() => exportCsv(csvFileName(c, 'heats'), heatsCsv(shown, csvSeparator(locale)))} />;
   return (
-    <Screen>
-      <TimetableCard c={c} heats={all} />
-      <View style={{ flexDirection: 'row', gap: space.sm }}>
-        <View style={{ flex: 1 }}>
-          <Button testID="heat-new" icon="add" label={t('orgHeatNew')} onPress={() => setEdit(heatDraft(null))} />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Button testID="heat-auto" kind="outlined" icon="auto-fix-high" label={t('orgHeatAuto')} disabled={categories.length === 0} onPress={() => setAuto({ categoryId: categories[0]?.id ?? null, workoutId: null, lanes: '8', start: null, interval: '15' })} />
-        </View>
-      </View>
-      {notice ? (
-        <Txt testID="heat-notice" color={colors.primary}>
-          {notice}
-        </Txt>
-      ) : null}
-      <ErrorText error={error} />
-      {all.length === 0 ? (
-        !categories.some((k) => k.active) ? (
-          <Guide testID="guide-categories" message={t('orgNeedCategory')} action={t('orgGoCategories')} onPress={onGo && (() => onGo('categories'))} />
-        ) : !(c.workouts ?? []).length ? (
-          <Guide testID="guide-wods" message={t('orgNeedWod')} action={t('orgGoWods')} onPress={onGo && (() => onGo('wods'))} />
-        ) : (
-          <EmptyState icon="event-note" message={t('orgHeatNone')} />
-        )
-      ) : (
-        <>
-          <TextField testID="heat-search" icon="search" placeholder={t('orgHeatSearch')} value={filter.q} onChangeText={(q) => setFilter({ ...filter, q })} autoCapitalize="none" />
-          {days.length > 1 ? (
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
-              <Chip testID="heat-day-all" label={t('orgAllDays')} selected={!filter.day} onPress={() => setFilter({ ...filter, day: null })} />
-              {days.map((d) => (
-                <Chip key={d} testID={`heat-day-${d}`} label={formatDate(`${d}T12:00:00`, locale, { weekday: 'short', day: 'numeric', month: 'short' })} selected={filter.day === d} onPress={() => setFilter({ ...filter, day: d })} />
-              ))}
-            </View>
-          ) : null}
+    <>
+      <OrgPageHeader
+        tab="planning"
+        actions={
+          <>
+            {create}
+            {autoBtn}
+            {all.length > 0 ? exportBtn : null}
+          </>
+        }
+      />
+      <Screen>
+        <TimetableCard c={c} heats={all} />
+        {wide ? null : (
           <View style={{ flexDirection: 'row', gap: space.sm }}>
-            <View style={{ flex: 1 }}>
-              <Select testID="heat-filter-cat" label={t('orgHeatCategory')} value={filter.categoryId ?? ''} options={[{ value: '', label: t('orgAllCategories') }, ...catOptions]} onChange={(v) => setFilter({ ...filter, categoryId: v || null })} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Select testID="heat-filter-wod" label={t('orgHeatWod')} value={filter.workoutId ?? ''} options={[{ value: '', label: t('orgAllWods') }, ...wodOptions]} onChange={(v) => setFilter({ ...filter, workoutId: v || null })} />
-            </View>
+            <View style={{ flex: 1 }}>{create}</View>
+            <View style={{ flex: 1 }}>{autoBtn}</View>
           </View>
-          <Button testID="heat-export" kind="outlined" icon="file-download" label={t('orgExport')} disabled={shown.length === 0} onPress={() => exportCsv(csvFileName(c, 'heats'), heatsCsv(shown, csvSeparator(locale)))} />
-          {shown.length === 0 ? (
-            <Txt color={colors.outline}>{t('orgHeatNoMatch')}</Txt>
+        )}
+        {notice ? (
+          <Txt testID="heat-notice" color={colors.primary}>
+            {notice}
+          </Txt>
+        ) : null}
+        <ErrorText error={error} />
+        {all.length === 0 ? (
+          !categories.some((k) => k.active) ? (
+            <Guide testID="guide-categories" message={t('orgNeedCategory')} action={t('orgGoCategories')} onPress={onGo && (() => onGo('categories'))} />
+          ) : !(c.workouts ?? []).length ? (
+            <Guide testID="guide-wods" message={t('orgNeedWod')} action={t('orgGoWods')} onPress={onGo && (() => onGo('wods'))} />
           ) : (
-            <ListGroup>
-              {shown.map((h) => (
-                <ListRow
-                  key={h.id}
-                  testID={`heat-${h.id}`}
-                  title={h.name}
-                  subtitle={[h.startsAt ? when(h.startsAt, locale) : t('orgHeatNoTime'), h.workout?.name, h.category?.name, t('orgHeatLanes', { used: (h.lanes ?? []).length, count: h.laneCount })].filter(Boolean).join(' · ')}
-                  onPress={() => setLanesOf(h.id)}
-                  trailing={<IconButton icon="edit" label={t('orgHeatEdit')} onPress={() => setEdit(heatDraft(h))} />}
-                />
-              ))}
-            </ListGroup>
-          )}
-        </>
-      )}
-    </Screen>
+            <EmptyState icon="event-note" message={t('orgHeatNone')} />
+          )
+        ) : (
+          <>
+            <TextField testID="heat-search" icon="search" placeholder={t('orgHeatSearch')} value={filter.q} onChangeText={(q) => setFilter({ ...filter, q })} autoCapitalize="none" />
+            {days.length > 1 ? (
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
+                <Chip testID="heat-day-all" label={t('orgAllDays')} selected={!filter.day} onPress={() => setFilter({ ...filter, day: null })} />
+                {days.map((d) => (
+                  <Chip key={d} testID={`heat-day-${d}`} label={formatDate(`${d}T12:00:00`, locale, { weekday: 'short', day: 'numeric', month: 'short' })} selected={filter.day === d} onPress={() => setFilter({ ...filter, day: d })} />
+                ))}
+              </View>
+            ) : null}
+            <View style={{ flexDirection: 'row', gap: space.sm }}>
+              <View style={{ flex: 1 }}>
+                <Select testID="heat-filter-cat" label={t('orgHeatCategory')} value={filter.categoryId ?? ''} options={[{ value: '', label: t('orgAllCategories') }, ...catOptions]} onChange={(v) => setFilter({ ...filter, categoryId: v || null })} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Select testID="heat-filter-wod" label={t('orgHeatWod')} value={filter.workoutId ?? ''} options={[{ value: '', label: t('orgAllWods') }, ...wodOptions]} onChange={(v) => setFilter({ ...filter, workoutId: v || null })} />
+              </View>
+            </View>
+            {wide ? null : exportBtn}
+            {shown.length === 0 ? (
+              <Txt color={colors.outline}>{t('orgHeatNoMatch')}</Txt>
+            ) : (
+              <ListGroup>
+                {shown.map((h) => (
+                  <ListRow
+                    key={h.id}
+                    testID={`heat-${h.id}`}
+                    title={h.name}
+                    subtitle={[h.startsAt ? when(h.startsAt, locale) : t('orgHeatNoTime'), h.workout?.name, h.category?.name, t('orgHeatLanes', { used: (h.lanes ?? []).length, count: h.laneCount })].filter(Boolean).join(' · ')}
+                    onPress={() => setLanesOf(h.id)}
+                    trailing={<IconButton icon="edit" label={t('orgHeatEdit')} onPress={() => setEdit(heatDraft(h))} />}
+                  />
+                ))}
+              </ListGroup>
+            )}
+          </>
+        )}
+      </Screen>
+    </>
   );
 }
 

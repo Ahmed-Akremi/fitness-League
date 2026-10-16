@@ -13,6 +13,8 @@ import { socialApi } from '../../social/api';
 import { organizerApi, useRefreshCompetition, useStaff } from './api';
 import { exportCsv } from './export';
 import { csvFileName, csvSeparator, personName, STAFF_ORDER, staffByRole, staffCsv } from './logic-b';
+import { ExportButton, OrgPageHeader } from './page';
+import { useWideWeb } from './web';
 
 /** « Équipe » (spec §1.3 item 7): organizers, head judges and judges; co-organizers are added or removed here, judges stay with the admin panel. */
 export function TeamTab({ c }: { c: Json }) {
@@ -29,6 +31,7 @@ export function TeamTab({ c }: { c: Json }) {
   const sending = useRef(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
+  const wide = useWideWeb();
 
   async function run(fn: () => Promise<unknown>, after?: () => void) {
     if (sending.current) return;
@@ -73,48 +76,61 @@ export function TeamTab({ c }: { c: Json }) {
     );
   }
   const titles = { ORGANIZER: t('orgTeamOrganizers'), HEAD_JUDGE: t('orgTeamHeadJudges'), JUDGE: t('orgTeamJudges') };
+  const add = <Button testID="team-add" icon="person-add" label={t('orgTeamAdd')} busy={busy} onPress={() => setAdding(true)} />;
+  const exportBtn = <ExportButton testID="team-export" disabled={staff.data.length === 0} onPress={() => exportCsv(csvFileName(c, 'team'), staffCsv(staff.data, csvSeparator(locale)))} />;
   return (
-    <Screen>
-      {STAFF_ORDER.map((role) => (
-        <View key={role} style={{ gap: space.sm }}>
-          <SectionHeader title={titles[role]} />
-          {groups[role].length === 0 ? (
-            <Txt color={colors.outline}>{t('orgTeamNone')}</Txt>
-          ) : (
-            <ListGroup>
-              {groups[role].map((s) => (
-                <ListRow
-                  key={s.id}
-                  testID={`staff-${s.id}`}
-                  icon={role === 'ORGANIZER' ? 'manage-accounts' : 'gavel'}
-                  title={personName(s)}
-                  subtitle={s.userId === me?.id ? t('orgTeamYou') : s.user?.username ? `@${s.user.username}` : null}
-                  trailing={role === 'ORGANIZER' && me && s.userId !== me.id ? <IconButton icon="person-remove" label={t('orgTeamRemove')} onPress={() => setRemoving(s)} /> : null}
-                />
-              ))}
-            </ListGroup>
-          )}
-        </View>
-      ))}
-      <Txt color={colors.outline}>{t('orgTeamJudgesHint')}</Txt>
-      <ErrorText error={error} />
-      <Button testID="team-add" icon="person-add" label={t('orgTeamAdd')} busy={busy} onPress={() => setAdding(true)} />
-      <Button testID="team-export" kind="outlined" icon="file-download" label={t('orgExport')} disabled={staff.data.length === 0} onPress={() => exportCsv(csvFileName(c, 'team'), staffCsv(staff.data, csvSeparator(locale)))} />
-      <Dialog
-        visible={removing != null}
-        title={t('orgTeamRemove')}
-        message={removing ? t('orgTeamRemoveConfirm', { name: personName(removing) }) : undefined}
-        confirmLabel={t('orgTeamRemove')}
-        cancelLabel={t('cancel')}
-        destructive
-        onConfirm={() => {
-          const s = removing;
-          setRemoving(null);
-          if (s) void run(() => organizerApi(api).removeStaff(c.id, s.id));
-        }}
-        onCancel={() => setRemoving(null)}
+    <>
+      <OrgPageHeader
+        tab="team"
+        actions={
+          <>
+            {add}
+            {exportBtn}
+          </>
+        }
       />
-    </Screen>
+      <Screen>
+        {STAFF_ORDER.map((role) => (
+          <View key={role} style={{ gap: space.sm }}>
+            <SectionHeader title={titles[role]} />
+            {groups[role].length === 0 ? (
+              <Txt color={colors.outline}>{t('orgTeamNone')}</Txt>
+            ) : (
+              <ListGroup>
+                {groups[role].map((s) => (
+                  <ListRow
+                    key={s.id}
+                    testID={`staff-${s.id}`}
+                    icon={role === 'ORGANIZER' ? 'manage-accounts' : 'gavel'}
+                    title={personName(s)}
+                    subtitle={s.userId === me?.id ? t('orgTeamYou') : s.user?.username ? `@${s.user.username}` : null}
+                    trailing={role === 'ORGANIZER' && me && s.userId !== me.id ? <IconButton icon="person-remove" label={t('orgTeamRemove')} onPress={() => setRemoving(s)} /> : null}
+                  />
+                ))}
+              </ListGroup>
+            )}
+          </View>
+        ))}
+        <Txt color={colors.outline}>{t('orgTeamJudgesHint')}</Txt>
+        <ErrorText error={error} />
+        {wide ? null : add}
+        {wide ? null : exportBtn}
+        <Dialog
+          visible={removing != null}
+          title={t('orgTeamRemove')}
+          message={removing ? t('orgTeamRemoveConfirm', { name: personName(removing) }) : undefined}
+          confirmLabel={t('orgTeamRemove')}
+          cancelLabel={t('cancel')}
+          destructive
+          onConfirm={() => {
+            const s = removing;
+            setRemoving(null);
+            if (s) void run(() => organizerApi(api).removeStaff(c.id, s.id));
+          }}
+          onCancel={() => setRemoving(null)}
+        />
+      </Screen>
+    </>
   );
 }
 

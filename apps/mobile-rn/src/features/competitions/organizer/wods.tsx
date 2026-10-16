@@ -12,6 +12,8 @@ import { DateField } from '../../../core/widgets/pickers';
 import { organizerApi, useRefreshCompetition } from './api';
 import { Guide } from './guide';
 import { nextWodNumber, SCORE_TYPES, wodBody, wodDraft, wodValid, type ManageTab, type WodDraft } from './logic';
+import { OrgPageHeader } from './page';
+import { useWideWeb } from './web';
 
 const scoreLabels = (t: T): Record<string, string> => ({
   MOVEMENT_REPS: t('orgScoreMovementReps'),
@@ -36,6 +38,7 @@ export function WodsTab({ c, onGo }: { c: Json; onGo?: (tab: ManageTab) => void 
   const sending = useRef(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
+  const wide = useWideWeb();
   const labels = scoreLabels(t);
   const defaults = { number: nextWodNumber(workouts), start: new Date(c.eventStart), end: new Date(c.eventEnd) };
 
@@ -65,35 +68,39 @@ export function WodsTab({ c, onGo }: { c: Json; onGo?: (tab: ManageTab) => void 
   }
 
   if (edit) return <WodForm draft={edit} categories={c.categories ?? []} busy={busy} error={error} labels={labels} onSave={save} onDelete={remove} onCancel={() => setEdit(null)} />;
+  const add = <Button testID="wod-new" icon="add" label={t('orgNewWod')} onPress={() => setEdit(wodDraft(null, defaults))} />;
   return (
-    <Screen>
-      {(c.categories ?? []).some((k: Json) => k.active) ? null : (
-        <Guide testID="guide-categories" message={t('orgNeedCategory')} action={t('orgGoCategories')} onPress={onGo && (() => onGo('categories'))} />
-      )}
-      {workouts.length === 0 ? (
-        <Txt color={colors.outline}>{t('orgNoWods')}</Txt>
-      ) : (
-        <ListGroup>
-          {workouts.map((w, i) => (
-            <ListRow
-              key={w.id}
-              testID={`wod-${w.id}`}
-              title={`${w.number}. ${w.name}`}
-              subtitle={labels[w.scoreType] ?? w.scoreType}
-              onPress={() => setEdit(wodDraft(w, defaults))}
-              trailing={
-                <View style={{ flexDirection: 'row' }}>
-                  {i > 0 ? <IconButton icon="arrow-upward" label={t('orgMoveUp')} onPress={() => move(i, -1)} /> : null}
-                  {i < workouts.length - 1 ? <IconButton icon="arrow-downward" label={t('orgMoveDown')} onPress={() => move(i, 1)} /> : null}
-                </View>
-              }
-            />
-          ))}
-        </ListGroup>
-      )}
-      <ErrorText error={error} />
-      <Button testID="wod-new" icon="add" label={t('orgNewWod')} onPress={() => setEdit(wodDraft(null, defaults))} />
-    </Screen>
+    <>
+      <OrgPageHeader tab="wods" actions={add} />
+      <Screen>
+        {(c.categories ?? []).some((k: Json) => k.active) ? null : (
+          <Guide testID="guide-categories" message={t('orgNeedCategory')} action={t('orgGoCategories')} onPress={onGo && (() => onGo('categories'))} />
+        )}
+        {workouts.length === 0 ? (
+          <Txt color={colors.outline}>{t('orgNoWods')}</Txt>
+        ) : (
+          <ListGroup>
+            {workouts.map((w, i) => (
+              <ListRow
+                key={w.id}
+                testID={`wod-${w.id}`}
+                title={`${w.number}. ${w.name}`}
+                subtitle={labels[w.scoreType] ?? w.scoreType}
+                onPress={() => setEdit(wodDraft(w, defaults))}
+                trailing={
+                  <View style={{ flexDirection: 'row' }}>
+                    {i > 0 ? <IconButton icon="arrow-upward" label={t('orgMoveUp')} onPress={() => move(i, -1)} /> : null}
+                    {i < workouts.length - 1 ? <IconButton icon="arrow-downward" label={t('orgMoveDown')} onPress={() => move(i, 1)} /> : null}
+                  </View>
+                }
+              />
+            ))}
+          </ListGroup>
+        )}
+        <ErrorText error={error} />
+        {wide ? null : add}
+      </Screen>
+    </>
   );
 }
 

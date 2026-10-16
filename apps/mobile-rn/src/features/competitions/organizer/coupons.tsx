@@ -14,6 +14,8 @@ import { formatMoney } from '../api';
 import { organizerApi, useCoupons, useRefreshCompetition } from './api';
 import { exportCsv } from './export';
 import { batchCodes, couponBody, couponDraft, couponsCsv, couponValid, createCoupons, csvFileName, csvSeparator, normalizeCode, topUsed, type BatchResult, type CouponDraft, type CouponKind } from './logic-b';
+import { ExportButton, OrgPageHeader } from './page';
+import { useWideWeb } from './web';
 
 const KINDS: CouponKind[] = ['PERCENTAGE', 'FIXED_AMOUNT', 'FREE'];
 type Report = Pick<BatchResult, 'created' | 'taken'>;
@@ -31,6 +33,7 @@ export function CouponsTab({ c }: { c: Json }) {
   const sending = useRef(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
+  const wide = useWideWeb();
 
   async function guarded(fn: () => Promise<void>) {
     if (sending.current) return;
@@ -89,53 +92,68 @@ export function CouponsTab({ c }: { c: Json }) {
   if (list.isError) return <ErrorView error={list.error} onRetry={() => list.refetch()} />;
   if (!list.data) return <Loading />;
   const top = topUsed(list.data);
+  const add = (
+    <Button
+      testID="coupon-new"
+      icon="add"
+      label={t('orgCouponNew')}
+      onPress={() => {
+        setReport(null);
+        setError(null);
+        setForm(couponDraft());
+      }}
+    />
+  );
+  const exportBtn = <ExportButton testID="coupon-export" disabled={list.data.length === 0} onPress={() => exportCsv(csvFileName(c, 'coupons'), couponsCsv(list.data, c.categories ?? [], c.currency, csvSeparator(locale)))} />;
   return (
-    <Screen>
-      {summary ? (
-        <Card testID="coupon-report">
-          <Txt>{summary}</Txt>
-        </Card>
-      ) : null}
-      <Button
-        testID="coupon-new"
-        icon="add"
-        label={t('orgCouponNew')}
-        onPress={() => {
-          setReport(null);
-          setError(null);
-          setForm(couponDraft());
-        }}
+    <>
+      <OrgPageHeader
+        tab="coupons"
+        actions={
+          <>
+            {add}
+            {exportBtn}
+          </>
+        }
       />
-      <ErrorText error={error} />
-      {top.length > 0 ? (
-        <>
-          <SectionHeader title={t('orgCouponTop')} />
+      <Screen>
+        {summary ? (
+          <Card testID="coupon-report">
+            <Txt>{summary}</Txt>
+          </Card>
+        ) : null}
+        {wide ? null : add}
+        <ErrorText error={error} />
+        {top.length > 0 ? (
+          <>
+            <SectionHeader title={t('orgCouponTop')} />
+            <ListGroup>
+              {top.map((k) => (
+                <ListRow key={k.id} icon="trending-up" title={k.code} trailing={<Txt variant="title">{String(k.usedCount)}</Txt>} />
+              ))}
+            </ListGroup>
+          </>
+        ) : null}
+        <SectionHeader title={t('orgCouponAll')} />
+        {wide ? null : exportBtn}
+        {list.data.length === 0 ? (
+          <Txt color={colors.outline}>{t('orgCouponNone')}</Txt>
+        ) : (
           <ListGroup>
-            {top.map((k) => (
-              <ListRow key={k.id} icon="trending-up" title={k.code} trailing={<Txt variant="title">{String(k.usedCount)}</Txt>} />
+            {list.data.map((k: Json) => (
+              <ListRow
+                key={k.id}
+                testID={`coupon-${k.id}`}
+                icon="sell"
+                title={k.code}
+                subtitle={[discount(k), categoryName(k.categoryId), t('orgCouponUses', { used: k.usedCount ?? 0, max: k.maxUses ?? '∞' }), k.expiresAt ? t('orgCouponUntil', { date: formatDate(k.expiresAt, locale) }) : null, k.active ? null : t('orgInactive')].filter(Boolean).join(' · ')}
+                trailing={<Button testID={`coupon-toggle-${k.id}`} kind="text" label={k.active ? t('orgDeactivate') : t('orgActivate')} busy={busy} onPress={() => toggle(k)} />}
+              />
             ))}
           </ListGroup>
-        </>
-      ) : null}
-      <SectionHeader title={t('orgCouponAll')} />
-      <Button testID="coupon-export" kind="outlined" icon="file-download" label={t('orgExport')} disabled={list.data.length === 0} onPress={() => exportCsv(csvFileName(c, 'coupons'), couponsCsv(list.data, c.categories ?? [], c.currency, csvSeparator(locale)))} />
-      {list.data.length === 0 ? (
-        <Txt color={colors.outline}>{t('orgCouponNone')}</Txt>
-      ) : (
-        <ListGroup>
-          {list.data.map((k: Json) => (
-            <ListRow
-              key={k.id}
-              testID={`coupon-${k.id}`}
-              icon="sell"
-              title={k.code}
-              subtitle={[discount(k), categoryName(k.categoryId), t('orgCouponUses', { used: k.usedCount ?? 0, max: k.maxUses ?? '∞' }), k.expiresAt ? t('orgCouponUntil', { date: formatDate(k.expiresAt, locale) }) : null, k.active ? null : t('orgInactive')].filter(Boolean).join(' · ')}
-              trailing={<Button testID={`coupon-toggle-${k.id}`} kind="text" label={k.active ? t('orgDeactivate') : t('orgActivate')} busy={busy} onPress={() => toggle(k)} />}
-            />
-          ))}
-        </ListGroup>
-      )}
-    </Screen>
+        )}
+      </Screen>
+    </>
   );
 }
 
