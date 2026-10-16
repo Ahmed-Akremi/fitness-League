@@ -1,6 +1,6 @@
 import type { Json } from '../../../core/api/client';
 import { ApiError } from '../../../core/api/errors';
-import { delayTargets, fold, heatDays, heatEnd, heatState, localDay, personName, standing, timetable, toCsv, units, type Distribution, type HeatState } from './logic-b';
+import { csvFileName, delayTargets, fold, heatDays, heatEnd, heatState, localDay, personName, standing, timetable, toCsv, units, type Distribution, type HeatState } from './logic-b';
 
 /** Organizer space on a computer, lot Web 2 (analysis 2026-10-15 §3 items 7–10): the rules its pages share. */
 
@@ -150,3 +150,26 @@ export function dayEnd(heats: Json[]): string | null {
   const ends = heats.filter((h) => h.startsAt).map(heatEnd).sort();
   return ends.length ? ends[ends.length - 1] : null;
 }
+
+// ───────────── Live pages, leaderboard, promo codes (lot Web 3) ─────────────
+
+/** The time table and the leaderboard read their data again this often while they are open. */
+export const LIVE_REFRESH_MS = 30_000;
+
+/** Leaderboard rows whose athlete's name or username contains the search, accents and case aside. */
+export function filterBoard(rows: Json[], q: string): Json[] {
+  const s = fold(q.trim());
+  return s ? rows.filter((r) => fold(`${r.athlete?.fullName ?? ''} ${r.athlete?.username ?? ''}`).includes(s)) : rows;
+}
+
+/** Lowercase ASCII words joined by dashes, for file names: « RX Femmes 18-35 » → « rx-femmes-18-35 ». */
+export const toSlug = (s: string) =>
+  fold(s)
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+
+/** `<event>-leaderboard-<category>.csv`, so two categories exported the same day stay apart; a name without Latin letters keeps `<event>-leaderboard.csv`. */
+export const boardFileName = (c: Json, category: string) => csvFileName(c, toSlug(category) ? `leaderboard-${toSlug(category)}` : 'leaderboard');
+
+/** The promo-code list with one code switched on or off (the optimistic toggle). */
+export const setActive = (list: Json[], id: string, active: boolean) => list.map((k) => (k.id === id ? { ...k, active } : k));

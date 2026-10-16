@@ -9,7 +9,8 @@ export interface FakeRequest {
   body: any;
 }
 
-type Handler = (req: FakeRequest) => [number, unknown];
+/** A handler answers at once, or returns a promise to hold the request until the test releases it. */
+type Handler = (req: FakeRequest) => [number, unknown] | Promise<[number, unknown]>;
 
 /** Scripted HTTP backend for tests: routes "METHOD /path" to handlers and records every request. */
 export class FakeBackend {
@@ -34,7 +35,7 @@ export class FakeBackend {
     this.requests.push(req);
     if (this.offline) throw new TypeError('Network request failed');
     const handler = this.routes.get(`${req.method} ${req.path}`);
-    const [status, body] = handler ? handler(req) : [404, { code: 'NOT_FOUND' }];
+    const [status, body] = handler ? await handler(req) : [404, { code: 'NOT_FOUND' }];
     return new Response(body === undefined ? '' : JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
   };
 
