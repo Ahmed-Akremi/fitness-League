@@ -66,9 +66,9 @@ export function Button({ label, onPress, kind = 'filled', icon, busy, disabled, 
   );
 }
 
-export function IconButton({ icon, onPress, label, color }: { icon: IconName; onPress: () => void; label: string; color?: string }) {
+export function IconButton({ icon, onPress, label, color, testID }: { icon: IconName; onPress: () => void; label: string; color?: string; testID?: string }) {
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} hitSlop={8} style={{ padding: 8 }}>
+    <Pressable testID={testID} accessibilityRole="button" accessibilityLabel={label} onPress={onPress} hitSlop={8} style={{ padding: 8 }}>
       <Icon name={icon} color={color} />
     </Pressable>
   );
