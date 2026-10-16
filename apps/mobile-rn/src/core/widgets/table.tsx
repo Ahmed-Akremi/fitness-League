@@ -66,7 +66,8 @@ export function DataTable<T>({ testID, rows, keyOf, nameOf, columns, rowTestID, 
         return (
           <Pressable
             testID={rowTestID ? rowTestID(item) : `${testID}-row-${key}`}
-            accessibilityRole={onRowPress ? 'button' : undefined}
+            // A row that holds its own buttons (menu, checkbox) is not a button itself: on the web a button cannot contain one. The menu's « open » is then the keyboard way.
+            accessibilityRole={onRowPress && !rowActions && !selection ? 'button' : undefined}
             disabled={!onRowPress}
             onPress={onRowPress && (() => onRowPress(item))}
             style={(state) => {

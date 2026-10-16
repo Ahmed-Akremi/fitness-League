@@ -73,6 +73,22 @@ describe('table', () => {
     expect(pay).toHaveBeenCalledTimes(1);
   });
 
+  it('a row holding a menu or checkboxes is not itself a button (no button inside a button on the web), and still opens on a click', async () => {
+    const onRowPress = jest.fn();
+    const screen = await renderScreen(
+      () => <DataTable testID="t" rows={rows} keyOf={(r) => r.id} nameOf={(r) => r.name} columns={columns} onRowPress={onRowPress} rowActions={() => [{ label: 'Open', onPress: () => {} }]} />,
+      new FakeBackend(),
+    );
+    expect(screen.getByTestId('t-row-a').props.accessibilityRole).toBeUndefined();
+    fireEvent.press(screen.getByTestId('t-row-a'));
+    expect(onRowPress).toHaveBeenCalledWith(rows[0]);
+  });
+
+  it('a plain clickable row is a button', async () => {
+    const screen = await renderScreen(() => <DataTable testID="t" rows={rows} keyOf={(r) => r.id} nameOf={(r) => r.name} columns={columns} onRowPress={() => {}} />, new FakeBackend());
+    expect(screen.getByTestId('t-row-a').props.accessibilityRole).toBe('button');
+  });
+
   it('an empty list shows the header strip and the empty element', async () => {
     const screen = await renderScreen(() => <DataTable testID="t" rows={[] as Row[]} keyOf={(r) => r.id} nameOf={(r) => r.name} columns={columns} empty={<Txt>No payment</Txt>} />, new FakeBackend());
     expect(screen.getByTestId('t-head')).toBeTruthy();
