@@ -2,7 +2,8 @@ import type { Json } from '../../../core/api/client';
 
 /** Organizer space (spec 2026-10-14): the rules the organizer screens share. */
 
-export type ManageTab = 'dashboard' | 'general' | 'categories' | 'wods' | 'planning' | 'participants' | 'team' | 'leaderboard' | 'announcements' | 'coupons';
+/** `finances` and `timetable` exist only on a computer (lot Web 2); a phone shows `phoneTab(tab)` instead (`web.ts`). */
+export type ManageTab = 'dashboard' | 'finances' | 'general' | 'categories' | 'wods' | 'planning' | 'timetable' | 'participants' | 'team' | 'leaderboard' | 'announcements' | 'coupons';
 export type ChecklistItem = 'DESCRIPTION' | 'DATES' | 'COVER' | 'CATEGORY' | 'WOD';
 export type PublicationState = 'DRAFT' | 'REQUESTED' | 'RETURNED' | 'PUBLISHED' | 'CANCELLED';
 export type EventFormat = 'ONSITE' | 'ONLINE' | 'HYBRID';

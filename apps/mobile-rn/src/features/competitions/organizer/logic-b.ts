@@ -38,11 +38,12 @@ export function filterRegistrations(rows: Json[], f: { q: string; categoryId: st
   );
 }
 
-/** « À encaisser »: payment pending, registration neither cancelled nor refunded, oldest first. */
+/** A registration still standing: neither cancelled nor refunded. */
+export const standing = (r: Json) => r.registrationStatus !== 'CANCELLED' && r.registrationStatus !== 'REFUNDED';
+
+/** « À encaisser »: payment pending, registration still standing, oldest first. */
 export function toCollect(rows: Json[]): Json[] {
-  return rows
-    .filter((r) => r.paymentStatus === 'PENDING' && r.registrationStatus !== 'CANCELLED' && r.registrationStatus !== 'REFUNDED')
-    .sort((a, b) => Date.parse(a.registeredAt) - Date.parse(b.registeredAt));
+  return rows.filter((r) => r.paymentStatus === 'PENDING' && standing(r)).sort((a, b) => Date.parse(a.registeredAt) - Date.parse(b.registeredAt));
 }
 
 const csvCell = (v: unknown) => {
@@ -59,7 +60,7 @@ export const csvSeparator = (locale: string) => (locale === 'en' ? ',' : ';');
 export const toCsv = (head: string[], rows: unknown[][], sep = ',') => [head.join(sep), ...rows.map((r) => r.map(csvCell).join(sep))].join('\n');
 
 /** Amount in currency units: 3 decimals for TND (millimes), 2 otherwise. */
-const units = (amount: unknown, currency: string) => {
+export const units = (amount: unknown, currency: string) => {
   const digits = currency === 'TND' ? 3 : 2;
   return (Number(amount ?? 0) / 10 ** digits).toFixed(digits);
 };
@@ -156,6 +157,14 @@ export function timetable(heats: Json[], now: number): Timetable {
     total: timed.length,
   };
 }
+
+export type HeatState = 'done' | 'running' | 'upcoming';
+
+/** Where a heat stands at `now`, by the rule of `timetable`: ended, running, or not started. */
+export const heatState = (h: Json, now: number): HeatState => (endOf(h) <= now ? 'done' : startOf(h) <= now ? 'running' : 'upcoming');
+
+/** End of a timed heat, ISO (a heat without a duration ends when it starts). */
+export const heatEnd = (h: Json) => new Date(endOf(h)).toISOString();
 
 /** « Retard »: the heats of the day being run that start after now, in running order (started heats, heats without a time and the other days stay where they are). */
 export function delayTargets(heats: Json[], now: number): Json[] {

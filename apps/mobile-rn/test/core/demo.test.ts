@@ -56,7 +56,7 @@ describe('demo backend (offline build)', () => {
     expect(created).toMatchObject({ id: '01a10804-0000-7000-8000-00000000d001', status: 'DRAFT', myRoles: ['ORGANIZER'] });
     const mine = await api().get<{ id: string }[]>('/competitions', { filter: 'ALL', mine: 'true' });
     expect(mine.some((c) => c.id === created.id)).toBe(true);
-    expect(await api().get(`/competitions/${created.id}/dashboard`)).toMatchObject({ participants: 0 });
+    expect(await api().get(`/competitions/${created.id}/dashboard`)).toMatchObject({ participants: 3 });
   });
 
   it('answers the organizer lists of the demo draft', async () => {

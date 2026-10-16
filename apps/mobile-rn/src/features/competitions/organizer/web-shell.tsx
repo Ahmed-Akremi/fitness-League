@@ -41,6 +41,7 @@ function OrgMenu({ c, tab, onTab }: { c: Json; tab: ManageTab; onTab: (tab: Mana
   const marks = menuMarks(c, toCollect(regs.data ?? []).length);
   const label: Record<ManageTab, string> = {
     dashboard: t('orgTabDashboard'),
+    finances: t('orgMenuFinances'),
     general: t('orgMenuEventInfo'),
     categories: t('orgTabCategories'),
     coupons: t('orgTabCoupons'),
@@ -48,6 +49,7 @@ function OrgMenu({ c, tab, onTab }: { c: Json; tab: ManageTab; onTab: (tab: Mana
     participants: t('orgTabParticipants'),
     wods: t('orgTabWods'),
     planning: t('orgMenuHeats'),
+    timetable: t('orgMenuTimetable'),
     leaderboard: t('orgTabLeaderboard'),
     announcements: t('orgTabAnnouncements'),
   };

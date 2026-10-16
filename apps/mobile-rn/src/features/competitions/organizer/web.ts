@@ -1,6 +1,7 @@
 import { Platform, useWindowDimensions } from 'react-native';
 
 import type { Json } from '../../../core/api/client';
+import type { IconName } from '../../../core/widgets/kit';
 import { missingForPublication, publicationState, TAB_FOR, type ManageTab } from './logic';
 
 /** Organizer space on a computer (analysis 2026-10-15, lot Web 1): a wide layout in the browser, the phone keeps its tabs. */
@@ -31,7 +32,7 @@ export const ORG_MENU: MenuSection[] = [
 /** Content column: forms stay readable (720 px of fields + padding), figures and tables use the room. */
 export const FORM_WIDTH = 752;
 export const WIDE_WIDTH = 1200;
-const WIDE_TABS: ManageTab[] = ['dashboard', 'participants', 'planning', 'leaderboard'];
+const WIDE_TABS: ManageTab[] = ['dashboard', 'finances', 'participants', 'planning', 'timetable', 'leaderboard'];
 export const contentWidth = (tab: ManageTab) => (WIDE_TABS.includes(tab) ? WIDE_WIDTH : FORM_WIDTH);
 
 export type MenuMark = 'todo' | number;
@@ -44,3 +45,26 @@ export function menuMarks(c: Json, toCollect: number): Partial<Record<ManageTab,
   if (toCollect > 0) marks.participants = toCollect;
   return marks;
 }
+
+/** Pages that exist only on a computer (lot Web 2); a window that gets narrow shows the nearest phone tab instead, and the page comes back when it widens. */
+export const PHONE_FALLBACK: Partial<Record<ManageTab, ManageTab>> = { finances: 'dashboard', timetable: 'planning' };
+export const phoneTab = (tab: ManageTab): ManageTab => PHONE_FALLBACK[tab] ?? tab;
+
+/** One icon per page in the computer menu, like Circle21's sub-navigation. */
+export const MENU_ICON: Record<ManageTab, IconName> = {
+  dashboard: 'bar-chart',
+  finances: 'payments',
+  general: 'info-outline',
+  categories: 'category',
+  coupons: 'local-offer',
+  team: 'groups',
+  participants: 'group',
+  wods: 'fitness-center',
+  planning: 'local-fire-department',
+  timetable: 'schedule',
+  leaderboard: 'emoji-events',
+  announcements: 'campaign',
+};
+
+/** Opens a page; the overview can open Participants already filtered on one category. */
+export type Go = (tab: ManageTab, focus?: { categoryId: string }) => void;
