@@ -27,6 +27,7 @@ const endOf = (h: Json) => startOf(h) + (h.durationMin ?? 0) * 60_000;
 // ───────────── Participants ─────────────
 
 export type PaymentFilter = 'ALL' | 'PENDING' | 'PAID' | 'FREE';
+export const PAYMENT_FILTERS: PaymentFilter[] = ['ALL', 'PENDING', 'PAID', 'FREE'];
 
 export function filterRegistrations(rows: Json[], f: { q: string; categoryId: string | null; payment: PaymentFilter }): Json[] {
   const q = fold(f.q.trim());
