@@ -12,6 +12,7 @@ import { exportCsv } from './export';
 import { Guide } from './guide';
 import type { ManageTab } from './logic';
 import { csvFileName, csvSeparator, leaderboardCsv } from './logic-b';
+import { LIVE_REFRESH_MS } from './logic-web';
 import { ExportButton, OrgPageHeader } from './page';
 import { useWideWeb } from './web';
 
@@ -22,7 +23,8 @@ export function LeaderboardTab({ c, onGo }: { c: Json; onGo?: (tab: ManageTab) =
   const { colors } = useTheme();
   const categories: Json[] = (c.categories ?? []).filter((k: Json) => k.active !== false);
   const [categoryId, setCategoryId] = useState<string | undefined>(categories[0]?.id);
-  const board = useCompLeaderboard(c.id, categoryId);
+  // Read again every 30 s while this page is open (analysis §3 item 11).
+  const board = useCompLeaderboard(c.id, categoryId, undefined, LIVE_REFRESH_MS);
   const wide = useWideWeb();
   const rows: Json[] = board.data?.rows ?? [];
   const exportBtn = <ExportButton testID="board-export" disabled={rows.length === 0} onPress={() => exportCsv(csvFileName(c, 'leaderboard'), leaderboardCsv(rows, categories.find((k) => k.id === categoryId)?.name ?? '', csvSeparator(locale)))} />;

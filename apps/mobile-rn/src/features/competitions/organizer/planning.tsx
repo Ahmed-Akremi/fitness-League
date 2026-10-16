@@ -16,6 +16,7 @@ import { exportCsv } from './export';
 import { Guide } from './guide';
 import type { ManageTab } from './logic';
 import { autoBody, autoValid, csvFileName, csvSeparator, filterHeats, freeLanes, heatBody, heatDays, heatDraft, heatsCsv, heatValid, laneCandidates, personName, type AutoDraft, type HeatDraft, type HeatFilter } from './logic-b';
+import { LIVE_REFRESH_MS } from './logic-web';
 import { ExportButton, OrgPageHeader } from './page';
 import { TimetableCard } from './timetable';
 import { useWideWeb } from './web';
@@ -29,7 +30,8 @@ export function PlanningTab({ c, onGo }: { c: Json; onGo?: (tab: ManageTab) => v
   const { colors } = useTheme();
   const api = useApi();
   const refresh = useRefreshCompetition();
-  const heats = useHeats(c.id);
+  // Read again every 30 s while this page is open (analysis §3 item 11).
+  const heats = useHeats(c.id, LIVE_REFRESH_MS);
   const regs = useRegistrations(c.id);
   const [filter, setFilter] = useState<HeatFilter>({ day: null, categoryId: null, workoutId: null, q: '' });
   const [edit, setEdit] = useState<HeatDraft | null>(null);

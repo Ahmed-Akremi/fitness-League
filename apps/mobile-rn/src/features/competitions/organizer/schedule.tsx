@@ -15,7 +15,7 @@ import { useHeats } from '../api';
 import { Guide } from './guide';
 import type { ManageTab } from './logic';
 import { filterHeats, heatDays, heatEnd, timetable } from './logic-b';
-import { dayEnd, daySchedule, scheduleDay } from './logic-web';
+import { dayEnd, daySchedule, LIVE_REFRESH_MS, scheduleDay } from './logic-web';
 import { OrgPageHeader } from './page';
 import { DelayControls, useNow } from './timetable';
 
@@ -24,7 +24,8 @@ export function ScheduleTab({ c, onGo }: { c: Json; onGo?: (tab: ManageTab) => v
   const t = useT();
   const locale = useLocale();
   const { colors } = useTheme();
-  const heats = useHeats(c.id);
+  // Read again every 30 s while this page is open (analysis §3 item 11).
+  const heats = useHeats(c.id, LIVE_REFRESH_MS);
   // Every second, and only while this page is open: the interval stops when the page closes.
   const now = useNow(1000);
   const [day, setDay] = useState<string | null>(null);
