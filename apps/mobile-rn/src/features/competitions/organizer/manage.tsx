@@ -81,7 +81,8 @@ export function ManageScreen({ id, initialTab = 'dashboard' }: { id: string; ini
   }
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <Stack.Screen options={{ title: c.title }} />
+      {/* headerShown again: the stack keeps the computer layout's « hidden » when the window narrows. */}
+      <Stack.Screen options={{ title: c.title, headerShown: true }} />
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 8, gap: 8 }}>
         {TABS.map((k) => (
           <Chip key={k} testID={`org-tab-${k}`} label={labels[k]} selected={shown === k} onPress={() => go(k)} />

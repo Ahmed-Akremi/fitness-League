@@ -107,7 +107,8 @@ export function KpiCard({ title, caption, value, footnote, testID }: { title: st
           {caption}
         </Txt>
       ) : null}
-      <Txt testID={testID ? `${testID}-value` : undefined} numberOfLines={1} style={[displayText(webDense.kpi), { marginTop: space.md }]}>
+      {/* No line limit: a long amount wraps on a narrow card rather than ending in « … ». */}
+      <Txt testID={testID ? `${testID}-value` : undefined} style={[displayText(webDense.kpi), { marginTop: space.md }]}>
         {value}
       </Txt>
       {footnote ? (

@@ -59,6 +59,11 @@ describe('computer page pieces: render', () => {
     expect(screen.getByText('Manual payment, no online fees')).toBeTruthy();
   });
 
+  it('a long figure wraps instead of being cut (« 12 345,5 TND » needs 183 px in a 152 px card at a 1024 px window)', async () => {
+    const screen = await renderScreen(() => <KpiCard testID="k" title="Revenue" value="12 345,5 TND" />, new FakeBackend());
+    expect(screen.getByTestId('k-value').props.numberOfLines).toBeUndefined();
+  });
+
   it('section card: « no data » in the middle instead of its content', async () => {
     const screen = await renderScreen(
       () => (

@@ -6,7 +6,7 @@ import { useLocale, useT } from '../../../core/prefs';
 import { space, useTheme } from '../../../core/theme';
 import { formatDate } from '../../../core/utils/format';
 import { EmptyState, Loading, StatusPill } from '../../../core/widgets/common';
-import { ErrorView } from '../../../core/widgets/error';
+import { ErrorText, ErrorView } from '../../../core/widgets/error';
 import { Select } from '../../../core/widgets/pickers';
 import { DataTable, type Column } from '../../../core/widgets/table';
 import { Grid, KpiCard, PageHeader, SearchField } from '../../../core/widgets/web';
@@ -27,8 +27,8 @@ export function FinancesTab({ c }: { c: Json }) {
   const regs = useRegistrations(c.id);
   const [q, setQ] = useState('');
   const [payment, setPayment] = useState<TxFilter>('ALL');
-  if (regs.isError) return <ErrorView error={regs.error} onRetry={() => regs.refetch()} />;
-  if (!regs.data) return <Loading />;
+  // A failed reload keeps the page (and a batch summary) with the error above it; the full-page error is only for a first load.
+  if (!regs.data) return regs.isError ? <ErrorView error={regs.error} onRetry={() => regs.refetch()} /> : <Loading />;
   const f = finance(regs.data);
   const shown = filterTransactions(f.rows, { q, payment });
   const money = (n: number, currency: string = c.currency) => formatMoney(n, currency, locale);
@@ -49,6 +49,7 @@ export function FinancesTab({ c }: { c: Json }) {
   ];
   const header = (
     <View style={{ gap: space.lg }}>
+      <ErrorText error={regs.error} />
       <Grid min={200} counts={[3, 2, 1]}>
         <KpiCard testID="fin-gross" title={t('orgFinGross')} caption={t('orgFinGrossHint')} value={money(f.gross)} />
         <KpiCard testID="fin-discounts" title={t('orgFinDiscounts')} caption={t('orgFinDiscountsHint')} value={money(f.discounts)} />

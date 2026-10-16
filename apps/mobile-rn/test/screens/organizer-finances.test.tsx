@@ -88,6 +88,19 @@ describe('finances on a computer', () => {
     expect(screen.getByTestId('org-menu-finances').props.accessibilityState?.selected).toBe(true);
   });
 
+  it('a reload that fails keeps the figures and the table, and says why', async () => {
+    const b = backend();
+    const screen = await renderScreen(open(), b);
+    await fireEvent.press(await screen.findByTestId('org-menu-finances'));
+    expect(await screen.findByTestId('fin-table')).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('org-menu-dashboard'));
+    b.offline = true;
+    await fireEvent.press(screen.getByTestId('org-menu-finances'));
+    expect((await screen.findAllByText(/No connection/)).length).toBeGreaterThan(0);
+    expect(screen.getByTestId('fin-table')).toBeTruthy();
+    expect(screen.getByTestId('fin-gross-value')).toBeTruthy();
+  });
+
   it('a narrow window shows the dashboard instead of Finances, and Finances again once wide', async () => {
     const screen = await renderScreen(open('finances'), backend());
     expect(await screen.findByTestId('fin-table')).toBeTruthy();

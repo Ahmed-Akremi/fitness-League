@@ -150,6 +150,21 @@ describe('participants on a computer', () => {
     expect(screen.getByTestId('reg-table-check-r4').props.accessibilityState).toMatchObject({ checked: true });
   });
 
+  it('the network drops during a batch: the table and the summary stay, the error shows above them', async () => {
+    const b = backend();
+    b.on('POST', '/competitions/c9/registrations/r4/mark-paid', () => {
+      // The first payment goes through, then the venue's Wi-Fi drops: the second one and the reload fail.
+      b.offline = true;
+      return [200, {}];
+    });
+    const screen = await renderScreen(open, b);
+    await selectAllToCollect(screen);
+    await fireEvent.press(screen.getByTestId('dialog-confirm'));
+    expect(await screen.findByText('1 marked paid · none already settled')).toBeTruthy();
+    expect(screen.getByText('1 registration left: try again.')).toBeTruthy();
+    expect(screen.getByTestId('reg-table')).toBeTruthy();
+  });
+
   it('the phone keeps its list and its inline « Mark paid »', async () => {
     setWide(false);
     const screen = await renderScreen(open, backend());

@@ -37,8 +37,8 @@ export function ParticipantsWeb({ c, initialCategoryId }: { c: Json; initialCate
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const [confirming, setConfirming] = useState(false);
 
-  if (regs.isError) return <ErrorView error={regs.error} onRetry={() => regs.refetch()} />;
-  if (!regs.data) return <Loading />;
+  // A failed reload keeps the page (and a batch summary) with the error above it; the full-page error is only for a first load.
+  if (!regs.data) return regs.isError ? <ErrorView error={regs.error} onRetry={() => regs.refetch()} /> : <Loading />;
   const all: Json[] = regs.data;
   const collect = toCollect(all);
   const rows = mode === 'collect' ? collect : filterRegistrations(all, { q, categoryId, payment });
@@ -108,6 +108,7 @@ export function ParticipantsWeb({ c, initialCategoryId }: { c: Json; initialCate
         }}
       />
       {mode === 'collect' ? <Txt color={colors.outline}>{t('orgRegCollectHint')}</Txt> : null}
+      <ErrorText error={regs.error} />
       {pay.info ? <Txt color={colors.primary}>{pay.info}</Txt> : null}
       <ErrorText error={pay.error} />
       {batch.result ? (
