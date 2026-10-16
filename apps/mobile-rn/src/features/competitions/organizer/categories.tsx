@@ -10,6 +10,8 @@ import { Button, Card, Chip, IconButton, ListGroup, ListRow, Screen, TextField, 
 import { formatMoney } from '../api';
 import { organizerApi, useRefreshCompetition } from './api';
 import { catBody, catDraft, catValid, type CatDraft } from './logic';
+import { OrgPageHeader } from './page';
+import { useWideWeb } from './web';
 
 export function CategoriesTab({ c }: { c: Json }) {
   const t = useT();
@@ -22,6 +24,7 @@ export function CategoriesTab({ c }: { c: Json }) {
   const sending = useRef(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
+  const wide = useWideWeb();
   const genderLabel: Record<string, string> = { MALE: t('orgGenderMale'), FEMALE: t('orgGenderFemale'), MIXED: t('orgGenderMixed') };
 
   async function run(fn: () => Promise<unknown>, after?: () => void) {
@@ -69,35 +72,39 @@ export function CategoriesTab({ c }: { c: Json }) {
       .join(' · ');
 
   if (edit) return <CategoryForm draft={edit} busy={busy} error={error} onSave={save} onToggle={toggle} onCancel={() => setEdit(null)} />;
+  const add = <Button testID="cat-new" icon="add" label={t('orgNewCategory')} onPress={() => setEdit(catDraft(null))} />;
   return (
-    <Screen>
-      {cats.length === 0 ? (
-        <>
-          <Txt color={colors.outline}>{t('orgNoCategories')}</Txt>
-          <Button testID="cat-templates" kind="outlined" icon="playlist-add" label={t('orgAddTemplates')} busy={busy} onPress={() => run(() => organizerApi(api).addTemplates(c.id))} />
-        </>
-      ) : (
-        <ListGroup>
-          {cats.map((x, i) => (
-            <ListRow
-              key={x.id}
-              testID={`cat-${x.id}`}
-              title={x.name}
-              subtitle={subtitle(x)}
-              onPress={() => setEdit(catDraft(x))}
-              trailing={
-                <View style={{ flexDirection: 'row' }}>
-                  {i > 0 ? <IconButton icon="arrow-upward" label={t('orgMoveUp')} onPress={() => move(i, -1)} /> : null}
-                  {i < cats.length - 1 ? <IconButton icon="arrow-downward" label={t('orgMoveDown')} onPress={() => move(i, 1)} /> : null}
-                </View>
-              }
-            />
-          ))}
-        </ListGroup>
-      )}
-      <ErrorText error={error} />
-      <Button testID="cat-new" icon="add" label={t('orgNewCategory')} onPress={() => setEdit(catDraft(null))} />
-    </Screen>
+    <>
+      <OrgPageHeader tab="categories" actions={add} />
+      <Screen>
+        {cats.length === 0 ? (
+          <>
+            <Txt color={colors.outline}>{t('orgNoCategories')}</Txt>
+            <Button testID="cat-templates" kind="outlined" icon="playlist-add" label={t('orgAddTemplates')} busy={busy} onPress={() => run(() => organizerApi(api).addTemplates(c.id))} />
+          </>
+        ) : (
+          <ListGroup>
+            {cats.map((x, i) => (
+              <ListRow
+                key={x.id}
+                testID={`cat-${x.id}`}
+                title={x.name}
+                subtitle={subtitle(x)}
+                onPress={() => setEdit(catDraft(x))}
+                trailing={
+                  <View style={{ flexDirection: 'row' }}>
+                    {i > 0 ? <IconButton icon="arrow-upward" label={t('orgMoveUp')} onPress={() => move(i, -1)} /> : null}
+                    {i < cats.length - 1 ? <IconButton icon="arrow-downward" label={t('orgMoveDown')} onPress={() => move(i, 1)} /> : null}
+                  </View>
+                }
+              />
+            ))}
+          </ListGroup>
+        )}
+        <ErrorText error={error} />
+        {wide ? null : add}
+      </Screen>
+    </>
   );
 }
 

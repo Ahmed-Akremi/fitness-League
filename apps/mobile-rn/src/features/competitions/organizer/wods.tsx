@@ -10,7 +10,10 @@ import { ErrorText } from '../../../core/widgets/error';
 import { Button, Card, Chip, Dialog, IconButton, ListGroup, ListRow, Screen, TextField, Txt } from '../../../core/widgets/kit';
 import { DateField } from '../../../core/widgets/pickers';
 import { organizerApi, useRefreshCompetition } from './api';
-import { nextWodNumber, SCORE_TYPES, wodBody, wodDraft, wodValid, type WodDraft } from './logic';
+import { Guide } from './guide';
+import { nextWodNumber, SCORE_TYPES, wodBody, wodDraft, wodValid, type ManageTab, type WodDraft } from './logic';
+import { OrgPageHeader } from './page';
+import { useWideWeb } from './web';
 
 const scoreLabels = (t: T): Record<string, string> => ({
   MOVEMENT_REPS: t('orgScoreMovementReps'),
@@ -25,7 +28,7 @@ const scoreLabels = (t: T): Record<string, string> => ({
   COMPLEX: t('orgScoreComplex'),
 });
 
-export function WodsTab({ c }: { c: Json }) {
+export function WodsTab({ c, onGo }: { c: Json; onGo?: (tab: ManageTab) => void }) {
   const t = useT();
   const api = useApi();
   const { colors } = useTheme();
@@ -35,6 +38,7 @@ export function WodsTab({ c }: { c: Json }) {
   const sending = useRef(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
+  const wide = useWideWeb();
   const labels = scoreLabels(t);
   const defaults = { number: nextWodNumber(workouts), start: new Date(c.eventStart), end: new Date(c.eventEnd) };
 
@@ -63,43 +67,52 @@ export function WodsTab({ c }: { c: Json }) {
     void run(() => organizerApi(api).reorderWods(c.id, order));
   }
 
-  if (edit) return <WodForm draft={edit} busy={busy} error={error} labels={labels} onSave={save} onDelete={remove} onCancel={() => setEdit(null)} />;
+  if (edit) return <WodForm draft={edit} categories={c.categories ?? []} busy={busy} error={error} labels={labels} onSave={save} onDelete={remove} onCancel={() => setEdit(null)} />;
+  const add = <Button testID="wod-new" icon="add" label={t('orgNewWod')} onPress={() => setEdit(wodDraft(null, defaults))} />;
   return (
-    <Screen>
-      {workouts.length === 0 ? (
-        <Txt color={colors.outline}>{t('orgNoWods')}</Txt>
-      ) : (
-        <ListGroup>
-          {workouts.map((w, i) => (
-            <ListRow
-              key={w.id}
-              testID={`wod-${w.id}`}
-              title={`${w.number}. ${w.name}`}
-              subtitle={labels[w.scoreType] ?? w.scoreType}
-              onPress={() => setEdit(wodDraft(w, defaults))}
-              trailing={
-                <View style={{ flexDirection: 'row' }}>
-                  {i > 0 ? <IconButton icon="arrow-upward" label={t('orgMoveUp')} onPress={() => move(i, -1)} /> : null}
-                  {i < workouts.length - 1 ? <IconButton icon="arrow-downward" label={t('orgMoveDown')} onPress={() => move(i, 1)} /> : null}
-                </View>
-              }
-            />
-          ))}
-        </ListGroup>
-      )}
-      <ErrorText error={error} />
-      <Button testID="wod-new" icon="add" label={t('orgNewWod')} onPress={() => setEdit(wodDraft(null, defaults))} />
-    </Screen>
+    <>
+      <OrgPageHeader tab="wods" actions={add} />
+      <Screen>
+        {(c.categories ?? []).some((k: Json) => k.active) ? null : (
+          <Guide testID="guide-categories" message={t('orgNeedCategory')} action={t('orgGoCategories')} onPress={onGo && (() => onGo('categories'))} />
+        )}
+        {workouts.length === 0 ? (
+          <Txt color={colors.outline}>{t('orgNoWods')}</Txt>
+        ) : (
+          <ListGroup>
+            {workouts.map((w, i) => (
+              <ListRow
+                key={w.id}
+                testID={`wod-${w.id}`}
+                title={`${w.number}. ${w.name}`}
+                subtitle={labels[w.scoreType] ?? w.scoreType}
+                onPress={() => setEdit(wodDraft(w, defaults))}
+                trailing={
+                  <View style={{ flexDirection: 'row' }}>
+                    {i > 0 ? <IconButton icon="arrow-upward" label={t('orgMoveUp')} onPress={() => move(i, -1)} /> : null}
+                    {i < workouts.length - 1 ? <IconButton icon="arrow-downward" label={t('orgMoveDown')} onPress={() => move(i, 1)} /> : null}
+                  </View>
+                }
+              />
+            ))}
+          </ListGroup>
+        )}
+        <ErrorText error={error} />
+        {wide ? null : add}
+      </Screen>
+    </>
   );
 }
 
-function WodForm({ draft, busy, error, labels, onSave, onDelete, onCancel }: { draft: WodDraft; busy: boolean; error: unknown; labels: Record<string, string>; onSave: (d: WodDraft) => void; onDelete: (d: WodDraft) => void; onCancel: () => void }) {
+function WodForm({ draft, categories, busy, error, labels, onSave, onDelete, onCancel }: { draft: WodDraft; categories: Json[]; busy: boolean; error: unknown; labels: Record<string, string>; onSave: (d: WodDraft) => void; onDelete: (d: WodDraft) => void; onCancel: () => void }) {
   const t = useT();
   const { colors } = useTheme();
   const [d, setD] = useState(draft);
   const [deleting, setDeleting] = useState(false);
   const set = (k: 'name' | 'description' | 'standards' | 'table' | 'max' | 'min' | 'capMin' | 'videoUrl') => (v: string) => setD({ ...d, [k]: v });
   const setMove = (i: number, k: 'name' | 'points', v: string) => setD({ ...d, movements: d.movements.map((m, j) => (j === i ? { ...m, [k]: v } : m)) });
+  const setVariant = (i: number, k: 'description' | 'standards' | 'capMin', v: string) => setD({ ...d, variants: d.variants.map((x, j) => (j === i ? { ...x, [k]: v } : x)) });
+  const withoutVersion = categories.filter((k) => !d.variants.some((v) => v.categoryId === k.id));
   const ok = wodValid(d);
   return (
     <Screen>
@@ -148,6 +161,31 @@ function WodForm({ draft, busy, error, labels, onSave, onDelete, onCancel }: { d
         <TextField testID="wod-video" label={t('orgVideoUrl')} value={d.videoUrl} onChangeText={set('videoUrl')} keyboardType="url" autoCapitalize="none" maxLength={500} />
         <DateField mode="datetime" label={t('orgSubmissionStart')} value={d.start} onChange={(v) => setD({ ...d, start: v })} />
         <DateField mode="datetime" label={t('orgSubmissionEnd')} value={d.end} onChange={(v) => setD({ ...d, end: v })} />
+        <SectionHeader title={t('orgVariants')} />
+        <Txt variant="small" color={colors.outline}>
+          {t('orgVariantsHint')}
+        </Txt>
+        {d.variants.map((v, i) => (
+          <Card key={v.categoryId} testID={`wod-variant-${v.categoryId}`} style={{ gap: space.sm }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Txt variant="title">{categories.find((k) => k.id === v.categoryId)?.name ?? '—'}</Txt>
+              <IconButton icon="close" label={t('orgVariantRemove')} onPress={() => setD({ ...d, variants: d.variants.filter((_, j) => j !== i) })} />
+            </View>
+            <TextField testID={`wod-variant-desc-${v.categoryId}`} label={t('orgWodDescription')} value={v.description} onChangeText={(x) => setVariant(i, 'description', x)} maxLength={5000} multiline />
+            <TextField testID={`wod-variant-standards-${v.categoryId}`} label={t('orgStandards')} value={v.standards} onChangeText={(x) => setVariant(i, 'standards', x)} maxLength={5000} multiline />
+            <TextField testID={`wod-variant-cap-${v.categoryId}`} label={t('orgTimeCap')} value={v.capMin} onChangeText={(x) => setVariant(i, 'capMin', x)} keyboardType="decimal-pad" />
+          </Card>
+        ))}
+        {withoutVersion.length > 0 ? (
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
+            {withoutVersion.map((k) => (
+              <Chip key={k.id} testID={`wod-variant-add-${k.id}`} icon="add" label={k.name} onPress={() => setD({ ...d, variants: [...d.variants, { categoryId: k.id, description: d.description, standards: d.standards, capMin: d.capMin }] })} />
+            ))}
+          </View>
+        ) : null}
+        <SectionHeader title={t('orgRelease')} />
+        <DateField testID="wod-release" mode="datetime" label={t('orgReleaseAt')} value={d.releaseAt} placeholder={t('orgReleaseNow')} onChange={(releaseAt) => setD({ ...d, releaseAt })} />
+        {d.releaseAt ? <Button testID="wod-release-now" kind="text" icon="visibility" label={t('orgReleaseNowButton')} onPress={() => setD({ ...d, releaseAt: new Date() })} /> : null}
         {!ok && d.description.trim().length > 0 ? <Txt variant="small" color={colors.error}>{t('orgWodInvalid')}</Txt> : null}
         <ErrorText error={error} />
         <Button testID="wod-save" label={t('save')} busy={busy} disabled={!ok} onPress={() => onSave(d)} />

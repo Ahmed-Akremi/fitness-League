@@ -45,7 +45,18 @@ export function errorMessage(t: T, error: unknown): string {
               return t('errorValidation');
           }
         case 'CONFLICT':
-          return error.extra.reason === 'QUEUE_CLOSED' ? t('errorDuelQueueClosed') : t('errorGeneric');
+          switch (error.extra.reason) {
+            case 'QUEUE_CLOSED':
+              return t('errorDuelQueueClosed');
+            case 'HEATS_EXIST':
+              return t('errorHeatsExist');
+            case 'LANE_TAKEN':
+              return t('errorLaneTaken');
+            case 'ALREADY_IN_HEAT':
+              return t('errorAlreadyInHeat');
+            default:
+              return t('errorGeneric');
+          }
         default:
           return t('errorGeneric');
       }

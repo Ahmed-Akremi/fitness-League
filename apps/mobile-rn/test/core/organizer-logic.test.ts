@@ -123,6 +123,7 @@ describe('WODs', () => {
       ],
       timeCapS: null,
       videoUrl: '',
+      variants: [],
       submissionStart: '2026-10-12T08:00:00.000Z',
       submissionDeadline: '2026-10-13T18:00:00.000Z',
     });
@@ -145,5 +146,36 @@ describe('WODs', () => {
       defaults,
     );
     expect(w).toMatchObject({ id: 'w1', number: 2, method: 'PLACEMENT_POINTS', table: '100, 90', capMin: '10', standards: '', videoUrl: '' });
+  });
+});
+
+describe('WOD versions per category and release date', () => {
+  const defaults = { number: 1, start: new Date('2026-12-12T08:00:00Z'), end: new Date('2026-12-13T18:00:00Z') };
+  const w = {
+    id: 'w1', number: 1, name: 'WOD 1', description: 'AMRAP 12', standards: null, scoreType: 'REPS', scoringMethod: 'DIRECT_POINTS', maximumPoints: 100, minimumPoints: 0, placementTable: [], timeCapS: null, videoUrl: null, movements: [],
+    submissionStart: '2026-12-12T08:00:00.000Z', submissionDeadline: '2026-12-13T18:00:00.000Z', releaseAt: '2026-12-11T18:00:00.000Z',
+    variants: [{ id: 'v1', workoutId: 'w1', categoryId: 'k2', description: 'AMRAP 12, lighter', standards: null, timeCapS: 600 }],
+  };
+
+  it('reads the versions and the release date of a WOD', () => {
+    const d = wodDraft(w, defaults);
+    expect(d.variants).toEqual([{ categoryId: 'k2', description: 'AMRAP 12, lighter', standards: '', capMin: '10' }]);
+    expect(d.releaseAt?.toISOString()).toBe('2026-12-11T18:00:00.000Z');
+    expect(wodDraft(null, defaults)).toMatchObject({ variants: [], releaseAt: null });
+  });
+
+  it('a version needs its description, and a time cap of at least a minute', () => {
+    const d = wodDraft(w, defaults);
+    expect(wodValid(d)).toBe(true);
+    expect(wodValid({ ...d, variants: [{ ...d.variants[0], description: ' ' }] })).toBe(false);
+    expect(wodValid({ ...d, variants: [{ ...d.variants[0], capMin: '0,5' }] })).toBe(false);
+  });
+
+  it('sends every version (an empty list clears them) and the release date only when there is one', () => {
+    const d = wodDraft(w, defaults);
+    expect(wodBody(d)).toMatchObject({ variants: [{ categoryId: 'k2', description: 'AMRAP 12, lighter', timeCapS: 600 }], releaseAt: '2026-12-11T18:00:00.000Z' });
+    const plain = wodBody({ ...d, variants: [], releaseAt: null });
+    expect(plain.variants).toEqual([]);
+    expect(plain).not.toHaveProperty('releaseAt');
   });
 });

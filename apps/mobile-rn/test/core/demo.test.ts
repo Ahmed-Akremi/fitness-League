@@ -56,6 +56,15 @@ describe('demo backend (offline build)', () => {
     expect(created).toMatchObject({ id: '01a10804-0000-7000-8000-00000000d001', status: 'DRAFT', myRoles: ['ORGANIZER'] });
     const mine = await api().get<{ id: string }[]>('/competitions', { filter: 'ALL', mine: 'true' });
     expect(mine.some((c) => c.id === created.id)).toBe(true);
-    expect(await api().get(`/competitions/${created.id}/dashboard`)).toMatchObject({ participants: 0 });
+    expect(await api().get(`/competitions/${created.id}/dashboard`)).toMatchObject({ participants: 3 });
+  });
+
+  it('answers the organizer lists of the demo draft', async () => {
+    const id = '01a10804-0000-7000-8000-00000000d001';
+    for (const path of ['registrations', 'heats', 'staff', 'coupons', 'announcements']) {
+      const rows = await api().get<unknown[]>(`/competitions/${id}/${path}`);
+      expect(Array.isArray(rows) && rows.length > 0).toBe(true);
+    }
+    expect(await api().get(`/competitions/${id}/leaderboard`, { categoryId: '01a10804-0000-7000-8000-00000000d101' })).toMatchObject({ provisional: true, rows: [] });
   });
 });
