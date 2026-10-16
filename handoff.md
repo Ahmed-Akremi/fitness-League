@@ -1,4 +1,4 @@
-# Handoff — fitness-league (2026-10-16, organizer space: lot Web 3 built on feat/organizer-space after lot Web 2, reviewed and fixed, pushed)
+# Handoff — fitness-league (2026-10-16, organizer space: lot Web 3 built on feat/organizer-space after lot Web 2, reviewed and fixed, pushed; PR to main still to open)
 
 ## 1. Goal
 
@@ -26,7 +26,12 @@
 
 ## 2. Current state
 
-- **Update 2026-10-16 (later):** **organizer space, lot Web 3, built on `feat/organizer-space`** (owner: « verifier la commit et attaque web 3 … », push « Pousser maintenant », scope « Comportements partout », then « keep working and fix all bugs »). Lot Web 2 was pushed first (`da155c1..655be20`); lot Web 3 is pushed with this handoff. Plan `docs/superpowers/plans/2026-10-16-organizer-web-lot-3.md` (9 tasks, built inline, one commit per task).
+- **Status at the end of 2026-10-16:**
+  - **Branch:** `feat/organizer-space` is in sync with GitHub. `git ls-remote origin refs/heads/feat/organizer-space` = local `HEAD`, nothing unpushed: lots B, Web 1, Web 2 and Web 3, up to `72c6ad9` plus this handoff update.
+  - **PR `feat/organizer-space` → `main`:** not opened yet. The owner opens it in the GitHub UI: https://github.com/Ahmed-Akremi/fitness-League/pull/new/feat/organizer-space. Claude cannot do it: `gh` is not installed in WSL, and the GitHub MCP server fails to connect (« Authorization header is badly formatted »).
+  - **Working tree:** only the eight CRLF-only files (never staged) plus the untracked `docs/prompts/` and `.archify/`. The old `stash@{0}` (CRLF noise from `feat/gyms-sports-mobile`) is kept.
+  - **Preview:** on :8081 (offline demo, final code), started by Claude in the background: http://localhost:8081/competitions/01a10804-0000-7000-8000-00000000d001/manage.
+- **Update 2026-10-16 (later):** **organizer space, lot Web 3, built on `feat/organizer-space`** (owner: « verifier la commit et attaque web 3 … », push « Pousser maintenant », scope « Comportements partout », then « keep working and fix all bugs »). Lot Web 2 was pushed first (`da155c1..655be20`), then lot Web 3 (`655be20..72c6ad9`). Plan `docs/superpowers/plans/2026-10-16-organizer-web-lot-3.md` (9 tasks, built inline, one commit per task).
   - **On phones and computers:**
     - a short translated message (toast) after every organizer change: categories, WODs, heats and lanes, team, banner, status, and the event deletion;
     - grey placeholder rows while the lists load (table-row sized on a computer);
@@ -270,7 +275,8 @@ Lot Web 3 on `feat/organizer-space` (2026-10-16):
 - `cc37b67` keyboard and contrast pass;
 - `0c33647` lot Web 2 minors;
 - `960ba39` review fixes;
-- then the docs commit.
+- `72c6ad9` docs (README, handoff);
+- then this handoff update (push check, PR link, lot Web 3 traps).
 
 Lot Web 2 on `feat/organizer-space` (2026-10-16): `c6c2029` plan; `96a0c80` rules, texts, demo data; `c4e5928` dense widgets (ThemeScope); `1d427a1` page pieces; `a1f4f64` table and side panel; `84fac3a` shell restyle; `13c2bcc` header row on every page; `361ddfa` overview; `5ca0d7b` Finances; `8a50560` participants table, panel, batch; `56d7e90` Horaire du jour; `e613a63` row-in-button fix; `f6173e7` review fixes; then the docs commit.
 
@@ -345,6 +351,17 @@ Rust backend, branch `feat/rust-backend` (2026-10-07, one commit per plan task):
   - **Lot B, plan code that sent nothing:** the planning tab's `run()` was written `after?.((await fn()) as Json)`. Optional chaining skips its arguments when `after` is missing, so assigning or freeing a lane (no `after`) never called the server. The lane test caught it; it looked like a timing race at first because every debug probe rewrote that line. Written `const result = await fn(); after?.(result)`. Never put the awaited work inside an optional call's arguments.
   - **Claude Code safety check** refused a `task-done … -- bash -c '…'` command (it cannot read a `bash -c` script for removals, although none was there); the per-task check now runs from a script in the git-ignored plan workspace.
   - Two bare `fireEvent.press` calls for the double-tap tests left overlapping `act` scopes and made every later test of the file fail in a few ms → both presses go inside one `await act(async () => …)`; the « Gérer » test is split in two (`router.push` spied) for the same reason. React still logs « overlapping act » warnings (noise only).
+- **Organizer space, lot Web 3 (2026-10-16): traps and rulings.**
+  - **Full suite with default workers:** 8 files timed out (`Exceeded timeout of 30000 ms`, findBy… misses) while `tsc` and the Metro preview ran at the same time. With `npx jest --maxWorkers=2`: 53 / 366 green. Use two workers on `/mnt/c`.
+  - **`aria-checked` is invisible in jest:** the native `Pressable` folds it into `accessibilityState`, so a test can only check `accessibilityState` + the Space handler. The page attribute was checked in a real browser (`aria-checked` true / false / mixed). `aria-pressed`, `aria-modal` and `role="group"` + `aria-label` do reach the host props.
+  - **RNTL 14 renders host elements only:** `.parent` is the host parent. The SearchField box is `getByTestId('<id>').parent`, not `.parent.parent`.
+  - **Two review tests were wrong before they were accepted as failing:**
+    - `b.offline = true` fails every request, so the whole page showed the full-page error. Only the second staff request is made to fail now.
+    - A dynamic `import()` in a test needs `--experimental-vm-modules`. The fixture is imported at the top now.
+  - **The held-request promo toggle test:** press inside `act` without awaiting the press (awaiting waits for the held request → timeout), then `waitFor` the optimistic label.
+  - **GateGuard hook:**
+    - It blocks a whole Bash command that deletes a folder recursively, or merely contains such text (even inside a doc being written), until the files, a rollback and the owner's instruction are stated. The plan workspace was moved to the scratchpad instead of being deleted.
+    - It also asks for facts before the first edit of a file outside the repo (the memory index).
 
 ## 6. Next steps
 
@@ -352,7 +369,7 @@ Rust backend, branch `feat/rust-backend` (2026-10-07, one commit per plan task):
 0-web3. **Organizer space, lot Web 3**: built, reviewed and every finding fixed (2026-10-16; `feat/organizer-space`, pushed).
 - No deferred minors: the owner asked to fix them all.
 - To check by hand on a phone: the 30 s reload pauses with the app in the background and comes back when it is reopened.
-- Next: the owner opens the PR `feat/organizer-space` → `main` (lots B, Web 1 to 3) in the GitHub UI.
+- Next: the owner opens the PR `feat/organizer-space` → `main` (lots B, Web 1 to 3) in the GitHub UI: https://github.com/Ahmed-Akremi/fitness-League/pull/new/feat/organizer-space. After the merge, start new work from an up-to-date `main`.
 - The « needs backend » list stays for later (owner: frontend only).
 - Proposals from the lot Web 2 recording still wait for the owner's go-ahead.
 
@@ -368,7 +385,7 @@ Rust backend, branch `feat/rust-backend` (2026-10-07, one commit per plan task):
 - **To check by hand:** focus comes back to the row after the panel closes (react-native-web's Modal; jest cannot see it).
 - **Proposals from the recording (not built, owner's go-ahead needed):** create forms in the side panel, a bottom-left notice card, setting cards with an inline ✓ save (after the partial-`PUT` dates bug, §5), radio cards, and « Voir tout » on every overview card.
 - **Next:** lot Web 3, done (see 0-web3).
-0-web. **Organizer space on a computer**: lot Web 1 built, reviewed and fixed (2026-10-15; `feat/organizer-space`, not pushed). Deferred minors of its review: the two « Demander la publication » buttons (top bar + dashboard) have separate double-click guards; the Participants badge (pending, not cancelled) can differ from the dashboard « À encaisser » figure (server counts every pending); every leaderboard export is named `<slug>-leaderboard.csv` whatever the category; a negative number would be exported as text by the formula guard (none today); the computer menu loads the registrations on every page; the shared link stays `fitnessleague://…` (no public web page per event yet). Then lot Web 2 (overview with judges and % / numbers, Finances page from the registrations, participants table with a detail panel and « Marquer payé » in batch, Heats / Time Table split) and lot Web 3 (toasts and skeletons, keyboard and contrast pass, refresh every 30 s on Time Table and leaderboard, leaderboard search, optimistic promo-code toggle), each with its own plan. The « needs backend » list of the analysis stays for later (owner: frontend only).
+0-web. **Organizer space on a computer**: lot Web 1 built, reviewed and fixed (2026-10-15; `feat/organizer-space`, pushed 2026-10-16 with lot Web 2). Deferred minors of its review: the two « Demander la publication » buttons (top bar + dashboard) have separate double-click guards; the Participants badge (pending, not cancelled) can differ from the dashboard « À encaisser » figure (server counts every pending); every leaderboard export is named `<slug>-leaderboard.csv` whatever the category; a negative number would be exported as text by the formula guard (none today); the computer menu loads the registrations on every page; the shared link stays `fitnessleague://…` (no public web page per event yet). Then lot Web 2 (overview with judges and % / numbers, Finances page from the registrations, participants table with a detail panel and « Marquer payé » in batch, Heats / Time Table split) and lot Web 3 (toasts and skeletons, keyboard and contrast pass, refresh every 30 s on Time Table and leaderboard, leaderboard search, optimistic promo-code toggle), each with its own plan. The « needs backend » list of the analysis stays for later (owner: frontend only).
 0-lotB. **Organizer space lot B** (`feat/organizer-space-lot-b`, plan `docs/superpowers/plans/2026-10-14-organizer-space-lot-b.md`): the 11 tasks are built and reviewed, review fixes in `1d653c4` (2026-10-15). Left: the owner opens the PR after lot A's. Deferred minors from the review: the clock shows « Suivant : … à 10:00 » with the hour only, even weeks before the event; the lane picker has no search or sort and offers athletes already placed in another heat of the same WOD; « Créer » (promo code) is greyed without a reason when a batch code would pass 32 characters; retrying a batch after an error reports the codes created on the first run as « Déjà pris »; an error from the lane view / heat form / coupon form stays on the list after « Retour » / « Annuler »; the participants' pull-to-refresh spinner flashes after « Marquer payé »; plurals (« 1 heats moved », « 1 to judge ») although the app supports ICU plurals. Needs the owner or the backend later: the « sur place » phase (check-in, waiver, lane scoring by judges, online payment, notifications for announcements and delays, competition logo); an organizer who should publish the final leaderboard needs a server change (today head judge or admin only); the CSV as a real file needs `expo-sharing` + `expo-file-system` (two new packages, owner's call).
 0-landing. **Landing page**: merged into `main` as PR #8 (`ff5326d`, 2026-10-12). Before the page goes public: (1) replace `apps/landing/public/media/tutorial.mp4` (Alamy watermarks of the default banner; re-render after replacing `apps/mobile-rn/assets/competition-cover.jpg`); (2) WhatsApp number and store links in `apps/landing/src/config.ts`; (3) choose a host and a domain (static `dist/`; long cache on `/media` and `/assets`); (4) make `og:image` in `apps/landing/index.html` an absolute URL once the domain is known. No pricing section and no event card on purpose (no prices decided, demo event not real).
 
