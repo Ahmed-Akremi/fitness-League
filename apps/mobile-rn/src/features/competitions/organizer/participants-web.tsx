@@ -90,7 +90,7 @@ export function ParticipantsWeb({ c, initialCategoryId }: { c: Json; initialCate
         <ExportButton testID="reg-csv" disabled={rows.length === 0} onPress={() => exportCsv(csvFileName(c, 'participants'), registrationsCsv(rows, csvSeparator(locale)))} />
       </>
     ) : (
-      <Button testID="reg-batch" icon="done-all" label={t('orgMarkPaidBatch', { count: chosen.length })} busy={batch.busy} disabled={chosen.length === 0} onPress={() => setConfirming(true)} />
+      <Button testID="reg-batch" icon="done-all" label={t('orgMarkPaidBatch', { count: chosen.length })} busy={batch.busy} disabled={chosen.length === 0 || pay.busy} onPress={() => setConfirming(true)} />
     );
 
   const listHeader = (
@@ -133,15 +133,16 @@ export function ParticipantsWeb({ c, initialCategoryId }: { c: Json; initialCate
         columns={columns}
         onRowPress={(r) => setOpenId(r.id)}
         selection={mode === 'collect' ? { selected, onToggle: toggle, onToggleAll: toggleAll, label: (name) => t('orgSelectRow', { name }), allLabel: t('orgSelectAll') } : undefined}
+        // One flow at a time: a single payment and a batch could otherwise both pay the same registration.
         rowActions={(r) => [
           { label: t('orgOpenDetails'), testID: `reg-open-${r.id}`, onPress: () => setOpenId(r.id) },
-          ...(r.paymentStatus === 'PENDING' && standing(r) ? [{ label: t('orgMarkPaid'), testID: `reg-paid-${r.id}`, onPress: () => pay.ask(r) }] : []),
+          ...(r.paymentStatus === 'PENDING' && standing(r) && !batch.busy ? [{ label: t('orgMarkPaid'), testID: `reg-paid-${r.id}`, onPress: () => pay.ask(r) }] : []),
         ]}
         menuLabel={(name) => t('orgRowActions', { name })}
         header={listHeader}
         empty={<EmptyState icon="group" message={mode === 'collect' ? t('orgRegNothingToCollect') : t('orgRegNone')} />}
       />
-      <AthletePanel c={c} r={open} heats={heats.data ?? []} pay={pay} onClose={() => setOpenId(null)} />
+      <AthletePanel c={c} r={open} heats={heats.data ?? []} pay={pay} locked={batch.busy} onClose={() => setOpenId(null)} />
       <Dialog
         visible={confirming}
         title={t('orgMarkPaid')}
@@ -171,7 +172,7 @@ function PayPill({ r, testID }: { r: Json; testID?: string }) {
 }
 
 /** The athlete's record in the light side panel, with « Marquer payé » or the receipt in its footer. */
-function AthletePanel({ c, r, heats, pay, onClose }: { c: Json; r: Json | null; heats: Json[]; pay: MarkPaid; onClose: () => void }) {
+function AthletePanel({ c, r, heats, pay, locked, onClose }: { c: Json; r: Json | null; heats: Json[]; pay: MarkPaid; locked: boolean; onClose: () => void }) {
   const t = useT();
   const pending = !!r && r.paymentStatus === 'PENDING' && standing(r);
   return (
@@ -183,9 +184,9 @@ function AthletePanel({ c, r, heats, pay, onClose }: { c: Json; r: Json | null; 
       onClose={onClose}
       footer={
         <>
-          <Button testID="reg-panel-close" kind="outlined" label={t('orgClose')} onPress={onClose} style={{ flex: 1 }} />
+          <Button testID="reg-panel-dismiss" kind="outlined" label={t('orgClose')} onPress={onClose} style={{ flex: 1 }} />
           {r && pending ? (
-            <Button testID="reg-panel-pay" label={t('orgMarkPaid')} busy={pay.busy} onPress={() => pay.ask(r)} style={{ flex: 1 }} />
+            <Button testID="reg-panel-pay" label={t('orgMarkPaid')} busy={pay.busy} disabled={locked} onPress={() => pay.ask(r)} style={{ flex: 1 }} />
           ) : r && r.paymentStatus === 'PAID' ? (
             <Button testID="reg-panel-receipt" icon="receipt-long" label={t('orgReceiptButton')} onPress={() => pay.showReceipt(r)} style={{ flex: 1 }} />
           ) : null}

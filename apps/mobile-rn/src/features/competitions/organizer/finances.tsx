@@ -75,7 +75,7 @@ export function FinancesTab({ c }: { c: Json }) {
   return (
     <>
       <OrgPageHeader tab="finances" />
-      <DataTable testID="fin-table" rows={shown} keyOf={(r) => r.id} nameOf={personName} rowTestID={(r) => `fin-row-${r.id}`} columns={columns} header={header} empty={<EmptyState icon="payments" message={t('orgFinNone')} />} />
+      <DataTable testID="fin-table" rows={shown} keyOf={(r) => r.id} nameOf={personName} rowTestID={(r) => `fin-row-${r.id}`} columns={columns} header={header} empty={<EmptyState icon="payments" message={f.rows.length ? t('orgFinNoMatch') : t('orgFinNone')} />} />
     </>
   );
 }

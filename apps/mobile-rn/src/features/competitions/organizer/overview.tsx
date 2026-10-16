@@ -42,7 +42,7 @@ export function OverviewWeb({ c, d, onGo }: { c: Json; d: Json; onGo: Go }) {
         <KpiCard testID="ov-kpi-revenue" title={t('orgRevenue')} caption={today} value={formatMoney(d.revenue, c.currency, locale)} />
       </Grid>
       <Grid min={180} counts={[4, 2, 1]}>
-        <KpiCard testID="ov-kpi-judges" title={t('orgTeamJudges')} caption={t('orgKpiJudgesHint')} value={staff.data ? String(judgeCount(staff.data)) : '—'} />
+        <KpiCard testID="ov-kpi-judges" title={t('orgTeamJudges')} caption={staff.isError ? t('orgKpiUnavailable') : t('orgKpiJudgesHint')} value={staff.data ? String(judgeCount(staff.data)) : '—'} />
         <KpiCard testID="ov-kpi-to-judge" title={t('orgToJudge')} caption={t('orgKpiToJudgeHint')} value={String(scores[0])} />
         <KpiCard testID="ov-kpi-approved" title={t('orgApproved')} caption={t('orgKpiApprovedHint')} value={String(scores[1])} />
         <KpiCard testID="ov-kpi-rejected" title={t('orgRejected')} caption={t('orgKpiRejectedHint')} value={String(scores[2])} />
