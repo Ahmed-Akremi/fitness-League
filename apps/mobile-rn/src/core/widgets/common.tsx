@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { AccessibilityInfo, ActivityIndicator, Animated, Image, Pressable, TextInput, View } from 'react-native';
 
 import { useLocale, useT } from '../prefs';
-import { displayText, fonts, radius, space, useTheme } from '../theme';
+import { displayText, fonts, radius, space, useTheme, webDense } from '../theme';
 import { formatDuration, localized, parseDuration } from '../utils/format';
 import { Button, Chip, Icon, LinkButton, Txt, type IconName } from './kit';
 
@@ -17,10 +17,10 @@ export function Loading() {
 
 /** Athletic card: big number, small label. */
 export function StatCard({ label, children, onPress, trailing }: { label: string; children: ReactNode; onPress?: () => void; trailing?: ReactNode }) {
-  const { colors } = useTheme();
+  const { colors, dense } = useTheme();
   const Box = onPress ? Pressable : View;
   return (
-    <Box onPress={onPress} accessibilityRole={onPress ? 'button' : undefined} style={{ backgroundColor: colors.surface, borderRadius: radius.card, padding: space.lg, borderWidth: 1, borderColor: colors.border }}>
+    <Box onPress={onPress} accessibilityRole={onPress ? 'button' : undefined} style={[{ backgroundColor: colors.surface, borderRadius: radius.card, padding: space.lg, borderWidth: 1, borderColor: colors.border }, dense && { borderRadius: webDense.radius.card, borderWidth: 0 }]}>
       <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
         <Txt variant="label" color={colors.outline} style={{ flex: 1 }}>{label}</Txt>
         {trailing}
@@ -69,11 +69,11 @@ export function EmptyState({ icon, message, actionLabel, onAction }: { icon: Ico
 }
 
 export function SectionHeader({ title, actionLabel, onAction }: { title: string; actionLabel?: string; onAction?: () => void }) {
-  const { colors } = useTheme();
+  const { colors, dense } = useTheme();
   return (
     // In a Screen (gap 12) this gives 24 px above the title and 12 px between the title and its content.
     <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: space.md, paddingHorizontal: space.xs }}>
-      <Txt accessibilityRole="header" variant="label" color={colors.outline} style={{ flex: 1, letterSpacing: 1.4 }}>{title}</Txt>
+      <Txt accessibilityRole="header" variant="label" color={colors.outline} style={[{ flex: 1, letterSpacing: 1.4 }, dense && webDense.sectionTitle]}>{title}</Txt>
       {actionLabel && <LinkButton label={actionLabel} onPress={onAction} />}
     </View>
   );

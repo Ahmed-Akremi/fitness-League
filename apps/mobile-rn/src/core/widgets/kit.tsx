@@ -5,7 +5,7 @@ import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Switch, Te
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { create } from 'zustand';
 
-import { fonts, radius, space, useTheme } from '../theme';
+import { fonts, radius, space, useTheme, webDense } from '../theme';
 
 export type IconName = ComponentProps<typeof MaterialIcons>['name'];
 
@@ -34,7 +34,7 @@ export function Txt({ children, style, variant = 'body', color, ...rest }: { chi
 type ButtonKind = 'filled' | 'tonal' | 'outlined' | 'text';
 
 export function Button({ label, onPress, kind = 'filled', icon, busy, disabled, testID, style }: { label: string; onPress?: () => void; kind?: ButtonKind; icon?: IconName; busy?: boolean; disabled?: boolean; testID?: string; style?: StyleProp<ViewStyle> }) {
-  const { colors } = useTheme();
+  const { colors, dense } = useTheme();
   const off = disabled || busy || !onPress;
   const bg = { filled: colors.primary, tonal: colors.surfaceHigh, outlined: 'transparent', text: 'transparent' }[kind];
   const fg = kind === 'filled' ? colors.onPrimary : kind === 'tonal' ? colors.text : colors.primary;
@@ -47,9 +47,10 @@ export function Button({ label, onPress, kind = 'filled', icon, busy, disabled, 
       onPress={onPress}
       style={({ pressed }) => [
         styles.button,
+        dense && styles.buttonDense,
         { backgroundColor: bg, opacity: off && !busy ? 0.45 : pressed ? 0.8 : 1 },
         kind === 'outlined' && { borderWidth: 1, borderColor: colors.outline },
-        kind === 'text' && { minHeight: 40, paddingHorizontal: 8 },
+        kind === 'text' && { minHeight: dense ? webDense.control : 40, paddingHorizontal: 8 },
         style,
       ]}
     >
@@ -57,8 +58,8 @@ export function Button({ label, onPress, kind = 'filled', icon, busy, disabled, 
         <ActivityIndicator color={fg} />
       ) : (
         <>
-          {icon && <MaterialIcons name={icon} size={18} color={fg} />}
-          <Text style={{ color: fg, fontWeight: '700', fontSize: 15, letterSpacing: 0.4 }}>{label}</Text>
+          {icon && <MaterialIcons name={icon} size={dense ? 16 : 18} color={fg} />}
+          <Text style={{ color: fg, fontWeight: '700', fontSize: dense ? 13 : 15, letterSpacing: dense ? 0.2 : 0.4 }}>{label}</Text>
         </>
       )}
     </Pressable>
@@ -74,16 +75,16 @@ export function IconButton({ icon, onPress, label, color }: { icon: IconName; on
 }
 
 export function TextField({ label, error, icon, style, ...props }: { label?: string; error?: string | null; icon?: IconName; style?: StyleProp<ViewStyle> } & TextInputProps) {
-  const { colors } = useTheme();
+  const { colors, dense } = useTheme();
   return (
     <View style={style}>
-      {label ? <Txt variant="small" color={colors.outline} style={{ marginBottom: 6 }}>{label}</Txt> : null}
-      <View style={[styles.field, { backgroundColor: colors.surface, borderColor: error ? colors.error : colors.surfaceHigh }]}>
-        {icon && <Icon name={icon} size={20} color={colors.outline} />}
+      {label ? <Txt variant="small" color={colors.outline} style={dense ? { marginBottom: 4, fontSize: 12 } : { marginBottom: 6 }}>{label}</Txt> : null}
+      <View style={[styles.field, dense && { borderRadius: webDense.radius.field }, { backgroundColor: colors.surface, borderColor: error ? colors.error : colors.surfaceHigh }]}>
+        {icon && <Icon name={icon} size={dense ? 16 : 20} color={colors.outline} />}
         <TextInput
           accessibilityLabel={label}
           placeholderTextColor={colors.outline}
-          style={{ flex: 1, color: colors.text, fontSize: 16, paddingVertical: 12, textAlign: 'auto' }}
+          style={{ flex: 1, color: colors.text, fontSize: dense ? 14 : 16, paddingVertical: dense ? 7 : 12, textAlign: 'auto' }}
           {...props}
         />
       </View>
@@ -93,9 +94,9 @@ export function TextField({ label, error, icon, style, ...props }: { label?: str
 }
 
 export function Card({ children, onPress, style, testID }: { children: ReactNode; onPress?: () => void; style?: StyleProp<ViewStyle>; testID?: string }) {
-  const { colors } = useTheme();
-  // Hairline border: relief on the dark surface without shadows.
-  const base = [{ backgroundColor: colors.surface, borderRadius: radius.card, padding: space.lg, borderWidth: 1, borderColor: colors.border }, style];
+  const { colors, dense } = useTheme();
+  // Hairline border: relief on the dark surface without shadows. On a computer: Circle21's flat card, no border.
+  const base = [{ backgroundColor: colors.surface, borderRadius: radius.card, padding: space.lg, borderWidth: 1, borderColor: colors.border }, dense && { borderRadius: webDense.radius.card, padding: webDense.pad, borderWidth: 0 }, style];
   return onPress ? (
     <Pressable testID={testID} accessibilityRole="button" onPress={onPress} style={({ pressed }) => [base, pressed && { opacity: 0.85 }]}>
       {children}
@@ -106,7 +107,7 @@ export function Card({ children, onPress, style, testID }: { children: ReactNode
 }
 
 export function Chip({ label, selected, onPress, icon, testID }: { label: string; selected?: boolean; onPress?: () => void; icon?: IconName; testID?: string }) {
-  const { colors } = useTheme();
+  const { colors, dense } = useTheme();
   const fg = selected ? colors.onPrimary : colors.text;
   return (
     <Pressable
@@ -115,7 +116,7 @@ export function Chip({ label, selected, onPress, icon, testID }: { label: string
       accessibilityState={{ selected }}
       disabled={!onPress}
       onPress={onPress}
-      style={[styles.chip, { backgroundColor: selected ? colors.primary : colors.surfaceHigh }]}
+      style={[styles.chip, dense && { borderRadius: webDense.radius.field, paddingVertical: 6 }, { backgroundColor: selected ? colors.primary : colors.surfaceHigh }]}
     >
       {icon && <MaterialIcons name={icon} size={16} color={fg} />}
       <Text style={{ color: fg, fontWeight: '600', fontSize: 13 }}>{label}</Text>
@@ -173,12 +174,12 @@ export function useHeader(options: { title?: string; headerRight?: () => ReactNo
 
 /** Flutter ListTile: leading icon/element, title, subtitle, trailing element, optional press. */
 export function ListRow({ icon, leading, title, subtitle, trailing, onPress, testID, danger, chevron }: { icon?: IconName; leading?: ReactNode; title: string; subtitle?: string | null; trailing?: ReactNode; onPress?: () => void; testID?: string; danger?: boolean; chevron?: boolean }) {
-  const { colors } = useTheme();
+  const { colors, dense } = useTheme();
   return (
-    <Pressable testID={testID} accessibilityRole={onPress ? 'button' : undefined} disabled={!onPress} onPress={onPress} style={({ pressed }) => [styles.row, pressed && { opacity: 0.7 }]}>
+    <Pressable testID={testID} accessibilityRole={onPress ? 'button' : undefined} disabled={!onPress} onPress={onPress} style={({ pressed }) => [styles.row, dense && { minHeight: 40, paddingVertical: 6 }, pressed && { opacity: 0.7 }]}>
       {leading ?? (icon ? <Icon name={icon} color={danger ? colors.error : colors.outline} /> : null)}
       <View style={{ flex: 1 }}>
-        <Txt color={danger ? colors.error : undefined} style={{ fontSize: 16 }}>{title}</Txt>
+        <Txt color={danger ? colors.error : undefined} style={{ fontSize: dense ? 14 : 16 }}>{title}</Txt>
         {subtitle ? <Txt variant="small" color={colors.outline}>{subtitle}</Txt> : null}
       </View>
       {trailing}
@@ -218,11 +219,11 @@ export function LinkButton({ label, onPress, testID }: { label: string; onPress?
 }
 
 export function SwitchRow({ title, value, onChange, testID }: { title: string; value: boolean; onChange: (v: boolean) => void; testID?: string }) {
-  const { colors } = useTheme();
+  const { colors, dense } = useTheme();
   return (
     <View style={styles.row}>
       <Txt style={{ flex: 1, fontSize: 16 }}>{title}</Txt>
-      <Switch testID={testID} accessibilityLabel={title} value={value} onValueChange={onChange} trackColor={{ true: colors.primary, false: colors.surfaceHigh }} thumbColor="#FFFFFF" />
+      <Switch testID={testID} accessibilityLabel={title} value={value} onValueChange={onChange} trackColor={{ true: dense ? colors.success : colors.primary, false: colors.surfaceHigh }} thumbColor="#FFFFFF" />
     </View>
   );
 }
@@ -312,7 +313,7 @@ export function Dialog({ visible, title, message, confirmLabel, cancelLabel, onC
   destructive?: boolean;
   confirmDisabled?: boolean;
 }) {
-  const { colors } = useTheme();
+  const { colors, dense } = useTheme();
   const [text, setText] = useState(input?.initial ?? '');
   useEffect(() => {
     if (visible) setText(input?.initial ?? '');
@@ -321,7 +322,7 @@ export function Dialog({ visible, title, message, confirmLabel, cancelLabel, onC
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
       <View style={{ flex: 1, backgroundColor: '#000000AA', justifyContent: 'center', padding: 24 }}>
-        <View style={{ backgroundColor: colors.surface, borderRadius: 24, padding: 20, gap: 12 }}>
+        <View style={[{ backgroundColor: colors.surface, borderRadius: 24, padding: 20, gap: 12 }, dense && { width: '100%', maxWidth: 480, alignSelf: 'center', borderRadius: webDense.radius.card }]}>
           <Txt variant="title" style={{ fontSize: 20 }}>{title}</Txt>
           {message ? <Txt>{message}</Txt> : null}
           {input && <TextField testID={input.testID} label={input.label} value={text} onChangeText={setText} secureTextEntry={input.secure} keyboardType={input.keyboardType} autoFocus />}
@@ -363,6 +364,7 @@ export function ToastHost() {
 
 const styles = StyleSheet.create({
   button: { minHeight: 50, borderRadius: radius.pill, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  buttonDense: { minHeight: webDense.control, borderRadius: webDense.radius.field, paddingHorizontal: space.md, gap: 6 },
   field: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: radius.field, borderWidth: 1, paddingHorizontal: 12 },
   chip: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 8 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 16, paddingVertical: 10, paddingHorizontal: 8, minHeight: 48 },
