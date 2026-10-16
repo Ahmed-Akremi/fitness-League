@@ -13,6 +13,7 @@ import { AnnouncementsTab } from './announcements';
 import { CategoriesTab } from './categories';
 import { CouponsTab } from './coupons';
 import { DashboardTab } from './dashboard';
+import { FinancesTab } from './finances';
 import { GeneralTab } from './general';
 import { LeaderboardTab } from './leaderboard';
 import type { ManageTab } from './logic';
@@ -51,6 +52,7 @@ export function ManageScreen({ id, initialTab = 'dashboard' }: { id: string; ini
   const page = (
     <>
       {shown === 'dashboard' && <DashboardTab c={c} onGo={go} />}
+      {shown === 'finances' && <FinancesTab c={c} />}
       {shown === 'general' && <GeneralTab c={c} />}
       {shown === 'categories' && <CategoriesTab c={c} />}
       {shown === 'wods' && <WodsTab c={c} onGo={go} />}
