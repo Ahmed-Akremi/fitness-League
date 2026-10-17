@@ -14,6 +14,8 @@ import { EmptyState, Loading, SectionHeader, SkeletonList, StatCard, StatusPill,
 import { ErrorText, ErrorView, errorMessage } from '../../core/widgets/error';
 import { Button, Card, Chip, Icon, ListGroup, ListRow, Screen, Segmented, TextField, Txt, toast, type IconName } from '../../core/widgets/kit';
 import { compKeys, competitionsApi, formatMoney, useCompetition, useCompetitions, useCompLeaderboard, useHeats, useMySubmissions, youtubeId, type CompFilter } from './api';
+import { CompetitionAnnouncements } from './organizer/announcements';
+import { publicationState } from './organizer/logic';
 
 const statusLabel = (t: T, s: string) => (t as (k: string) => string)(`compStatus${s}`);
 
@@ -38,8 +40,9 @@ export function CompetitionsScreen() {
           { key: 'FINISHED', label: t('compFilterFinished') },
         ]}
       />
-      <View style={{ flexDirection: 'row', paddingHorizontal: 16 }}>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 16 }}>
         <Chip testID="comp-mine" icon="person" label={t('competitionsMine')} selected={mine} onPress={() => setMine(!mine)} />
+        <Chip testID="comp-create" icon="add" label={t('createEvent')} onPress={() => router.push('/competitions/new')} />
       </View>
       <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }} refreshControl={<RefreshControl refreshing={false} onRefresh={() => list.refetch()} tintColor={colors.primary} />}>
         {list.isError ? (
@@ -61,7 +64,7 @@ function CompetitionCard({ c }: { c: Json }) {
   const locale = useLocale();
   const { colors } = useTheme();
   return (
-    <Card testID={`comp-${c.id}`} onPress={() => router.push(`/competitions/${c.id}`)} style={{ gap: space.sm }}>
+    <Card testID={`comp-${c.id}`} onPress={() => router.push(c.status === 'DRAFT' ? `/competitions/${c.id}/manage` : `/competitions/${c.id}`)} style={{ gap: space.sm }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
         <Icon name="emoji-events" color={colors.primary} />
         <Txt variant="title" style={{ flex: 1, fontWeight: '800' }}>{c.title}</Txt>
@@ -74,7 +77,7 @@ function CompetitionCard({ c }: { c: Json }) {
         <Meta icon="groups" text={t('compAthletes', { count: c.participants })} />
       </View>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
-        <StatusPill label={statusLabelForCompetition(t, c.status)} color={c.status === 'REGISTRATION_OPEN' ? colors.primary : colors.outline} />
+        <StatusPill label={c.status === 'DRAFT' ? draftLabel(t, c) : statusLabelForCompetition(t, c.status)} color={c.status === 'REGISTRATION_OPEN' ? colors.primary : colors.outline} />
         {c.status === 'REGISTRATION_OPEN' && <Txt variant="small" color={colors.outline}>{t('compDeadline', { date: formatDate(c.registrationEnd, locale) })}</Txt>}
       </View>
     </Card>
@@ -97,6 +100,12 @@ export function statusLabelForCompetition(t: T, s: string) {
   if (s === 'FINAL_LEADERBOARD' || s === 'FINISHED') return t('compFilterFinished');
   if (s === 'DRAFT' || s === 'REGISTRATION_CLOSED') return t('compFilterUpcoming');
   return t('compFilterActive');
+}
+
+/** Only organizers see drafts: the card tells where the publication stands. */
+function draftLabel(t: T, c: Json) {
+  const s = publicationState(c);
+  return s === 'REQUESTED' ? t('orgCardRequested') : s === 'RETURNED' ? t('orgCardReturned') : t('orgCardDraft');
 }
 
 // ───────────── Detail ─────────────
@@ -132,6 +141,11 @@ export function CompetitionScreen({ id }: { id: string }) {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <Stack.Screen options={{ title: c.title }} />
+      {(c.myRoles ?? []).includes('ORGANIZER') ? (
+        <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
+          <Button testID="comp-manage" kind="outlined" icon="tune" label={t('orgManage')} onPress={() => router.push(`/competitions/${c.id}/manage`)} />
+        </View>
+      ) : null}
       <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: colors.surfaceHigh }}>
         {([['info', t('compEventInfo')], ['wods', t('compWods')], ['leaderboard', t('leaderboard')]] as const).map(([key, label]) => (
           <Pressable key={key} testID={`comp-tab-${key}`} accessibilityRole="tab" accessibilityState={{ selected: tab === key }} onPress={() => setTab(key)} style={{ flex: 1, alignItems: 'center', paddingVertical: 14, borderBottomWidth: 3, borderBottomColor: tab === key ? colors.primary : 'transparent' }}>
@@ -198,6 +212,7 @@ export function CompetitionScreen({ id }: { id: string }) {
                 <ListRow icon="groups" title={t('compAthletes', { count: c.participants })} />
               </ListGroup>
               <HeatSchedule id={id} />
+              <CompetitionAnnouncements id={id} />
 
               {categories.length > 0 && (
                 <View onLayout={anchor('categories')} style={{ gap: space.md }}>

@@ -96,8 +96,8 @@ async function main() {
       }
       return { id: user.id, token: s.accessToken };
     };
-    /** Judge-only account (admin panel, no app): created as an admin would, signed in to the admin panel. */
-    const judgeAccount = async (username: string, role: 'JUDGE' | 'HEAD_JUDGE') => {
+    /** Panel account (judge, head judge or admin): created as an admin would, signed in to the admin panel. */
+    const panelAccount = async (username: string, role: 'JUDGE' | 'HEAD_JUDGE' | 'ADMIN') => {
       const email = `${username}@demo.fitnessleague.test`;
       const passwordHash = await app.get(PasswordService).hash(PASSWORD);
       await prisma.user.upsert({
@@ -110,7 +110,7 @@ async function main() {
     };
 
     const people: Record<string, { id: string; token: string }> = {};
-    for (const s of staff) people[s.u] = s.role === 'ORGANIZER' ? await account(s.u, s.name, { role: 'GYM_ADMIN' }) : await judgeAccount(s.u, s.role);
+    for (const s of staff) people[s.u] = s.role === 'ORGANIZER' ? await account(s.u, s.name, { role: 'GYM_ADMIN' }) : await panelAccount(s.u, s.role);
     for (const a of athletes) people[a.u] = await account(a.u, a.name, { gender: a.g, dob: a.dob });
     const org = people.organizer_demo.token;
     const h = (n: number) => new Date(Date.now() + n * 3_600_000).toISOString();
@@ -160,7 +160,9 @@ async function main() {
     await call('POST', `/competitions/${cid}/coupons`, org, { code: 'DISCOUNT20', type: 'PERCENTAGE', value: 20 });
     for (const s of staff.filter((x) => x.role !== 'ORGANIZER')) await call('POST', `/competitions/${cid}/staff`, org, { userId: people[s.u].id, role: s.role });
 
-    await call('PATCH', `/competitions/${cid}/status`, org, { status: 'REGISTRATION_OPEN' });
+    // Organizer space: an admin publishes the draft.
+    const admin = await panelAccount('competition_admin', 'ADMIN');
+    await call('PATCH', `/admin/competitions/${cid}/status`, admin.token, { status: 'REGISTRATION_OPEN' });
     for (const a of athletes) {
       const r = await call<{ id: string; paymentStatus: string }>('POST', `/competitions/${cid}/register`, people[a.u].token, { categoryId: catIds[a.cat], ...(a.coupon ? { couponCode: a.coupon } : {}) });
       if (r.paymentStatus === 'PENDING') await call('POST', `/competitions/${cid}/registrations/${r.id}/mark-paid`, org);

@@ -2104,6 +2104,10 @@ model Competition {
   /// Ordered tie-break rules (domain.ts TieBreakRule[]), configured by the organizer.
   tieBreakRules            Json              @default("[]") @map("tie_break_rules")
   leaderboardLockedAt      DateTime?         @map("leaderboard_locked_at") @db.Timestamptz
+  /// Organizer asked the admins to publish this draft (organizer space); cleared when an admin publishes it or sends it back.
+  publicationRequestedAt   DateTime?         @map("publication_requested_at") @db.Timestamptz
+  /// Why an admin sent the draft back to its organizer.
+  publicationNote          String?           @map("publication_note")
   createdById              String            @map("created_by") @db.Uuid
   createdAt                DateTime          @default(now()) @map("created_at") @db.Timestamptz
   updatedAt                DateTime          @updatedAt @map("updated_at") @db.Timestamptz

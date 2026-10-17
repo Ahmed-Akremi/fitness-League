@@ -1,8 +1,8 @@
 import { onlineManager } from '@tanstack/react-query';
 import NetInfo from '@react-native-community/netinfo';
-import { Stack } from 'expo-router';
+import { router, Stack, usePathname, type Href } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { DevSettings, I18nManager, Platform, View } from 'react-native';
 
 import { useSession } from '../../core/auth/session';
@@ -28,6 +28,25 @@ export function useGate(): Gate {
   return me.data.profile?.onboardingCompleted === true ? 'app' : 'onboarding';
 }
 
+/** Paths the gate itself shows: no page of the app to come back to. */
+const GATE_PATHS = new Set(['/', '/splash', '/login', '/register', '/forgot-password', '/onboarding']);
+
+/**
+ * A link opened before the app is ready (an address typed on the web, a shared app link on a cold start) is
+ * replaced by the splash and sign-in screens, then by the home tab: keep it, and open it once the app is.
+ */
+function usePendingLink(gate: Gate) {
+  const pathname = usePathname();
+  const pending = useRef<string | null | undefined>(undefined);
+  if (pending.current === undefined) pending.current = gate === 'app' || GATE_PATHS.has(pathname) ? null : pathname;
+  useEffect(() => {
+    if (gate !== 'app' || !pending.current) return;
+    const href = pending.current;
+    pending.current = null;
+    router.push(href as Href);
+  }, [gate]);
+}
+
 /** Arabic lays out right-to-left; React Native applies a direction change after a reload. */
 function useRtl(rtl: boolean) {
   useEffect(() => {
@@ -46,6 +65,7 @@ export function AppRoot() {
   const auth = useAuth();
   const status = useSession((s) => s.status);
   const gate = useGate();
+  usePendingLink(gate);
   const locale = useLocale();
   const { dark, colors } = useTheme();
   const t = useT();
@@ -132,7 +152,9 @@ export function AppRoot() {
           <Stack.Screen name="gyms/[id]/wods/[wodId]" options={{ title: t('gymWods') }} />
           <Stack.Screen name="gym-wars/[id]" options={{ title: t('gymWar') }} />
           <Stack.Screen name="competitions/index" options={{ title: t('competitions') }} />
+          <Stack.Screen name="competitions/new" options={{ title: t('createEvent') }} />
           <Stack.Screen name="competitions/[id]/index" options={{ title: t('competitions') }} />
+          <Stack.Screen name="competitions/[id]/manage" options={{ title: t('orgManage') }} />
           <Stack.Screen name="competitions/[id]/register" options={{ title: t('compRegister') }} />
           <Stack.Screen name="competitions/[id]/wods/[wodId]/submit" options={{ title: t('compSubmitScore') }} />
         </Stack.Protected>

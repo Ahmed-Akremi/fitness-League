@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { AccessibilityInfo, ActivityIndicator, Animated, Image, Pressable, TextInput, View } from 'react-native';
 
 import { useLocale, useT } from '../prefs';
-import { displayText, fonts, radius, space, useTheme } from '../theme';
+import { displayText, fonts, radius, space, useTheme, webDense } from '../theme';
 import { formatDuration, localized, parseDuration } from '../utils/format';
 import { Button, Chip, Icon, LinkButton, Txt, type IconName } from './kit';
 
@@ -17,10 +17,10 @@ export function Loading() {
 
 /** Athletic card: big number, small label. */
 export function StatCard({ label, children, onPress, trailing }: { label: string; children: ReactNode; onPress?: () => void; trailing?: ReactNode }) {
-  const { colors } = useTheme();
+  const { colors, dense } = useTheme();
   const Box = onPress ? Pressable : View;
   return (
-    <Box onPress={onPress} accessibilityRole={onPress ? 'button' : undefined} style={{ backgroundColor: colors.surface, borderRadius: radius.card, padding: space.lg, borderWidth: 1, borderColor: colors.border }}>
+    <Box onPress={onPress} accessibilityRole={onPress ? 'button' : undefined} style={[{ backgroundColor: colors.surface, borderRadius: radius.card, padding: space.lg, borderWidth: 1, borderColor: colors.border }, dense && { borderRadius: webDense.radius.card, borderWidth: 0 }]}>
       <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
         <Txt variant="label" color={colors.outline} style={{ flex: 1 }}>{label}</Txt>
         {trailing}
@@ -69,11 +69,11 @@ export function EmptyState({ icon, message, actionLabel, onAction }: { icon: Ico
 }
 
 export function SectionHeader({ title, actionLabel, onAction }: { title: string; actionLabel?: string; onAction?: () => void }) {
-  const { colors } = useTheme();
+  const { colors, dense } = useTheme();
   return (
     // In a Screen (gap 12) this gives 24 px above the title and 12 px between the title and its content.
     <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: space.md, paddingHorizontal: space.xs }}>
-      <Txt accessibilityRole="header" variant="label" color={colors.outline} style={{ flex: 1, letterSpacing: 1.4 }}>{title}</Txt>
+      <Txt accessibilityRole="header" variant="label" color={colors.outline} style={[{ flex: 1, letterSpacing: 1.4 }, dense && webDense.sectionTitle]}>{title}</Txt>
       {actionLabel && <LinkButton label={actionLabel} onPress={onAction} />}
     </View>
   );
@@ -104,8 +104,11 @@ export function MovementBadge({ movement }: { movement: unknown }) {
 }
 
 /** Pulsing placeholders while a list loads (static when animations are disabled). */
-export function SkeletonList({ count = 6, height = 76 }: { count?: number; height?: number }) {
-  const { colors } = useTheme();
+export function SkeletonList({ count = 6, height, label }: { count?: number; height?: number; label?: string }) {
+  const { colors, dense } = useTheme();
+  // On a computer: table-row sized placeholders.
+  const h = height ?? (dense ? 44 : 76);
+  const r = dense ? webDense.radius.field : 18;
   const reduced = useReducedMotion();
   const pulse = useRef(new Animated.Value(0.6)).current;
   useEffect(() => {
@@ -118,9 +121,10 @@ export function SkeletonList({ count = 6, height = 76 }: { count?: number; heigh
     return () => loop.stop();
   }, [reduced, pulse]);
   return (
-    <View testID="skeleton" style={{ padding: 16, gap: 10 }}>
+    // Announced as a progress bar only with a name: a nameless one would be read as « progress bar » and nothing else.
+    <View testID="skeleton" role={label ? 'progressbar' : undefined} accessibilityLabel={label} style={{ padding: 16, gap: 10 }}>
       {Array.from({ length: count }, (_, i) => (
-        <Animated.View key={i} style={{ height, borderRadius: 18, backgroundColor: colors.surfaceHigh, opacity: pulse }} />
+        <Animated.View key={i} testID="skeleton-row" style={{ height: h, borderRadius: r, backgroundColor: colors.surfaceHigh, opacity: pulse }} />
       ))}
     </View>
   );
@@ -214,10 +218,10 @@ export function SportChip({ code, name, selected, onPress, testID }: { code: str
 
 const GYM_PALETTE = ['#C6F432', '#3DA9FC', '#FF8A3D', '#F15BB5', '#06D6A0', '#FFD166', '#9B5DE5'];
 
-/** Gym logo (rounded square). Without a URL, initials on a colour derived from the name. */
-export function GymLogo({ name, url, size = 56 }: { name: string; url?: string | null; size?: number }) {
+/** Gym logo (rounded square, or a circle with `round`). Without a URL, initials on a colour derived from the name. */
+export function GymLogo({ name, url, size = 56, round }: { name: string; url?: string | null; size?: number; round?: boolean }) {
   const [failed, setFailed] = useState(false);
-  const r = size * 0.24;
+  const r = round ? size / 2 : size * 0.24;
   if (url && !failed) {
     return <Image accessibilityLabel={name} source={{ uri: url }} onError={() => setFailed(true)} style={{ width: size, height: size, borderRadius: r }} />;
   }

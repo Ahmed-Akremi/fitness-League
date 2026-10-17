@@ -4,7 +4,8 @@ import { FlatList, Modal, Platform, Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useLocale } from '../prefs';
-import { radius, useTheme } from '../theme';
+import { isFocused, useFocusRing } from '../focus';
+import { radius, useTheme, webDense } from '../theme';
 import { formatDate } from '../utils/format';
 import { Button, Icon, Txt, type IconName } from './kit';
 
@@ -13,62 +14,83 @@ export interface Option {
   label: string;
 }
 
-/** Field that opens a full-screen list (Flutter DropdownButtonFormField). */
-export function Select({ label, value, options, onChange, error, testID, placeholder }: { label: string; value: string | null | undefined; options: Option[]; onChange: (v: string) => void; error?: string | null; testID?: string; placeholder?: string }) {
-  const { colors } = useTheme();
+/** Field that opens a list (Flutter DropdownButtonFormField): full screen on a phone, a small centered box on a computer. `bare`: no label above (toolbars). */
+export function Select({ label, value, options, onChange, error, testID, placeholder, bare }: { label: string; value: string | null | undefined; options: Option[]; onChange: (v: string) => void; error?: string | null; testID?: string; placeholder?: string; bare?: boolean }) {
+  const { colors, dense } = useTheme();
   const [open, setOpen] = useState(false);
   const selected = options.find((o) => o.value === value);
+  const head = (
+    <View style={{ flexDirection: 'row', alignItems: 'center', padding: 16 }}>
+      <Txt variant="title" style={{ flex: 1 }}>{label}</Txt>
+      <Pressable accessibilityRole="button" accessibilityLabel="close" onPress={() => setOpen(false)} hitSlop={8}>
+        <Icon name="close" />
+      </Pressable>
+    </View>
+  );
+  const list = (
+    <FlatList
+      data={options}
+      keyExtractor={(o) => o.value}
+      renderItem={({ item }) => (
+        <Pressable
+          testID={`${testID ?? 'option'}-${item.value}`}
+          accessibilityRole="button"
+          accessibilityState={{ selected: item.value === value }}
+          onPress={() => {
+            onChange(item.value);
+            setOpen(false);
+          }}
+          style={{ paddingHorizontal: 16, paddingVertical: dense ? 10 : 14, flexDirection: 'row', alignItems: 'center' }}
+        >
+          <Txt style={{ flex: 1 }}>{item.label}</Txt>
+          {item.value === value && <Icon name="check" color={colors.primary} />}
+        </Pressable>
+      )}
+    />
+  );
   return (
     <View>
-      <FieldButton testID={testID} label={label} value={selected?.label ?? placeholder ?? ''} icon="arrow-drop-down" error={error} onPress={() => setOpen(true)} />
-      <Modal visible={open} animationType="slide" onRequestClose={() => setOpen(false)}>
-        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', padding: 16 }}>
-            <Txt variant="title" style={{ flex: 1 }}>{label}</Txt>
-            <Pressable accessibilityRole="button" accessibilityLabel="close" onPress={() => setOpen(false)} hitSlop={8}>
-              <Icon name="close" />
-            </Pressable>
+      <FieldButton testID={testID} label={label} bare={bare} value={selected?.label ?? placeholder ?? ''} icon="arrow-drop-down" error={error} onPress={() => setOpen(true)} />
+      <Modal visible={open} transparent={dense} animationType={dense ? 'fade' : 'slide'} onRequestClose={() => setOpen(false)}>
+        {dense ? (
+          <View style={{ flex: 1, backgroundColor: '#00000066', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+            <View style={{ width: '100%', maxWidth: 360, maxHeight: 480, backgroundColor: colors.surface, borderRadius: webDense.radius.card, overflow: 'hidden' }}>
+              {head}
+              {list}
+            </View>
           </View>
-          <FlatList
-            data={options}
-            keyExtractor={(o) => o.value}
-            renderItem={({ item }) => (
-              <Pressable
-                testID={`${testID ?? 'option'}-${item.value}`}
-                accessibilityRole="button"
-                accessibilityState={{ selected: item.value === value }}
-                onPress={() => {
-                  onChange(item.value);
-                  setOpen(false);
-                }}
-                style={{ paddingHorizontal: 16, paddingVertical: 14, flexDirection: 'row', alignItems: 'center' }}
-              >
-                <Txt style={{ flex: 1 }}>{item.label}</Txt>
-                {item.value === value && <Icon name="check" color={colors.primary} />}
-              </Pressable>
-            )}
-          />
-        </SafeAreaView>
+        ) : (
+          <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+            {head}
+            {list}
+          </SafeAreaView>
+        )}
       </Modal>
     </View>
   );
 }
 
-/** Tappable read-only field (date, select). */
-export function FieldButton({ label, value, icon, error, onPress, testID }: { label: string; value: string; icon: IconName; error?: string | null; onPress: () => void; testID?: string }) {
-  const { colors } = useTheme();
+/** Tappable read-only field (date, select). `bare`: no label above it (screen readers still read it). */
+export function FieldButton({ label, value, icon, error, onPress, testID, bare }: { label: string; value: string; icon: IconName; error?: string | null; onPress: () => void; testID?: string; bare?: boolean }) {
+  const { colors, dense } = useTheme();
+  const ring = useFocusRing();
   return (
     <View>
-      <Txt variant="small" color={error ? colors.error : colors.outline} style={{ marginBottom: 6 }}>{label}</Txt>
+      {bare ? null : <Txt variant="small" color={error ? colors.error : colors.outline} style={dense ? { marginBottom: 4, fontSize: 12 } : { marginBottom: 6 }}>{label}</Txt>}
       <Pressable
         testID={testID}
         accessibilityRole="button"
         accessibilityLabel={label}
         onPress={onPress}
-        style={{ flexDirection: 'row', alignItems: 'center', borderRadius: radius.field, borderWidth: 1, borderColor: error ? colors.error : colors.surfaceHigh, backgroundColor: colors.surface, paddingHorizontal: 12, minHeight: 48 }}
+        style={(state) => [
+          { flexDirection: 'row', alignItems: 'center', borderRadius: radius.field, borderWidth: 1, borderColor: error ? colors.error : colors.surfaceHigh, backgroundColor: colors.surface, paddingHorizontal: 12, minHeight: 48 },
+          dense && { borderRadius: webDense.radius.field, minHeight: webDense.control, paddingHorizontal: 10 },
+          bare && { minWidth: 150, justifyContent: 'space-between', gap: 4 },
+          ring(isFocused(state)),
+        ]}
       >
-        <Txt style={{ flex: 1 }} color={value ? colors.text : colors.outline}>{value}</Txt>
-        <Icon name={icon} color={colors.outline} />
+        <Txt style={[bare ? { flexShrink: 1 } : { flex: 1 }, dense && { fontSize: 13 }]} numberOfLines={bare ? 1 : undefined} color={value ? colors.text : colors.outline}>{value}</Txt>
+        <Icon name={icon} size={dense ? 18 : 22} color={colors.outline} />
       </Pressable>
       {error ? <Txt variant="small" color={colors.error} style={{ marginTop: 4 }}>{error}</Txt> : null}
     </View>
