@@ -17,10 +17,14 @@ use crate::{
     validate::{Check, ValidJson, Validate, nullable, readable_name},
 };
 
+pub mod onboarding;
+
 pub fn routes(api: Api) -> Api {
-    api.get("/api/v1/me", me)
+    let api = api
+        .get("/api/v1/me", me)
         .patch("/api/v1/me/profile", update_profile)
-        .patch("/api/v1/me/settings", update_settings)
+        .patch("/api/v1/me/settings", update_settings);
+    onboarding::routes(api)
 }
 
 async fn me(
