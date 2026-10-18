@@ -1,0 +1,31 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT email FROM users WHERE id = ?",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "email",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | UNIQUE_KEY | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 1016
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.users",
+            "name": "email"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "57c83b6a6482a9a0c853340568a6a3e91bdcab1a73c8bd57434f26abe8db0910"
+}

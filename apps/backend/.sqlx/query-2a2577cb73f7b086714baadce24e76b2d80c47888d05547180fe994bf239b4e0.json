@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "INSERT INTO user_sports (user_id, sport_id, is_primary) SELECT ?, id, ? FROM sports WHERE id = ? AND enabled",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "2a2577cb73f7b086714baadce24e76b2d80c47888d05547180fe994bf239b4e0"
+}

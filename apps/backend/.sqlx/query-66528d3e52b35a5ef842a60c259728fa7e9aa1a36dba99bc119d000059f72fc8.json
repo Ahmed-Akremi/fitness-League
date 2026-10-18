@@ -1,0 +1,72 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT onboarding_completed_at, calibration_ends_at,\n                  EXISTS (SELECT 1 FROM user_sports WHERE user_id = p.user_id) AS \"sports!\",\n                  EXISTS (SELECT 1 FROM baselines WHERE user_id = p.user_id) AS \"baselines!\"\n           FROM profiles p WHERE p.user_id = ?",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "onboarding_completed_at",
+        "type_info": {
+          "type": "Datetime",
+          "flags": "BINARY",
+          "collation": 63,
+          "max_size": 26
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.profiles",
+            "name": "onboarding_completed_at"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "calibration_ends_at",
+        "type_info": {
+          "type": "Datetime",
+          "flags": "BINARY",
+          "collation": 63,
+          "max_size": 26
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.profiles",
+            "name": "calibration_ends_at"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "sports!",
+        "type_info": {
+          "type": "Long",
+          "flags": "NOT_NULL | BINARY",
+          "collation": 63,
+          "max_size": 1
+        },
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 3,
+        "name": "baselines!",
+        "type_info": {
+          "type": "Long",
+          "flags": "NOT_NULL | BINARY",
+          "collation": 63,
+          "max_size": 1
+        },
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "66528d3e52b35a5ef842a60c259728fa7e9aa1a36dba99bc119d000059f72fc8"
+}

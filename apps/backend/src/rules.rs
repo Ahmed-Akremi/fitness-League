@@ -17,6 +17,8 @@ pub struct LevelTitle {
 pub struct Rules {
     pub min_age_years: i32,
     pub level_titles: Vec<LevelTitle>,
+    /// How long the calibration period lasts once onboarding is complete.
+    pub calibration_days: i64,
 }
 
 impl Rules {

@@ -1,0 +1,26 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT (SELECT m.id FROM exercise_metrics em JOIN metric_types m ON m.id = em.metric_type_id\n                       WHERE em.exercise_id = e.id AND m.code = ?) AS \"metric?: Uuid\"\n               FROM exercises e WHERE e.id = ? AND e.enabled",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "metric?: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "BINARY",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "8ffec77f18b8d393d8b7f3b0f9d3d7a21bdbee0a648127e69f4dc0f982f41360"
+}

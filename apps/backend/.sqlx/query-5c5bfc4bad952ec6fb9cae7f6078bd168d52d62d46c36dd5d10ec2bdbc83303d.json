@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "UPDATE users SET email = ?, username = ?, password_hash = NULL, phone_e164 = NULL, date_of_birth = '1900-01-01', status = 'DELETED', anonymised_at = ?, failed_login_count = 0, locked_until = NULL, session_version = session_version + 1 WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "5c5bfc4bad952ec6fb9cae7f6078bd168d52d62d46c36dd5d10ec2bdbc83303d"
+}
