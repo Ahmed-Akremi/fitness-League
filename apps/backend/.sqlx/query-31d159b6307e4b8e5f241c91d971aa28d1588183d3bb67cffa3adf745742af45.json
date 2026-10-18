@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "UPDATE profiles SET onboarding_completed_at = ?, calibration_started_at = ?, calibration_ends_at = ? WHERE user_id = ? AND onboarding_completed_at IS NULL AND EXISTS (SELECT 1 FROM user_sports WHERE user_id = ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 5
+    },
+    "nullable": []
+  },
+  "hash": "31d159b6307e4b8e5f241c91d971aa28d1588183d3bb67cffa3adf745742af45"
+}

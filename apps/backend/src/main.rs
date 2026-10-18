@@ -139,7 +139,26 @@ async fn worker() -> Result<(), String> {
     let jobs = backend::jobs::Worker::new(state.clone(), &consumer);
     tracing::info!(consumer, "worker started");
     let mut stop = std::pin::pin!(shutdown());
+    let mut next_sweep = tokio::time::Instant::now();
     loop {
+        // The day's key decides which worker sweeps; the others only look every ten minutes.
+        if tokio::time::Instant::now() >= next_sweep {
+            let wait = match backend::modules::me::privacy::daily_sweep(&state, chrono::Utc::now())
+                .await
+            {
+                Ok(swept) => {
+                    if let Some(swept) = swept {
+                        tracing::info!(?swept, "daily sweep done");
+                    }
+                    600
+                }
+                Err(cause) => {
+                    tracing::error!(cause = %cause, "daily sweep failed; trying again in a minute");
+                    60
+                }
+            };
+            next_sweep = tokio::time::Instant::now() + std::time::Duration::from_secs(wait);
+        }
         let tick = jobs.tick(now_ms(), true, async |job| {
             backend::modules::auth::emails::handle(&state, &mailer, job).await
         });

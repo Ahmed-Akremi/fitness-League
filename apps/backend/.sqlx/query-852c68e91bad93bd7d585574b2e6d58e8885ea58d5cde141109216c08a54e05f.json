@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "INSERT INTO baselines (id, user_id, exercise_id, metric_type_id, declared_value, effective_value) VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE declared_value = IF(status = 'PROVISIONAL', VALUES(declared_value), declared_value), effective_value = IF(status = 'PROVISIONAL', VALUES(effective_value), effective_value)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 6
+    },
+    "nullable": []
+  },
+  "hash": "852c68e91bad93bd7d585574b2e6d58e8885ea58d5cde141109216c08a54e05f"
+}

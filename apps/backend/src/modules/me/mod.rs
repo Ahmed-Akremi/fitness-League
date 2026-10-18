@@ -18,13 +18,14 @@ use crate::{
 };
 
 pub mod onboarding;
+pub mod privacy;
 
 pub fn routes(api: Api) -> Api {
     let api = api
         .get("/api/v1/me", me)
         .patch("/api/v1/me/profile", update_profile)
         .patch("/api/v1/me/settings", update_settings);
-    onboarding::routes(api)
+    privacy::routes(onboarding::routes(api))
 }
 
 async fn me(
