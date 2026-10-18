@@ -276,6 +276,9 @@ A 5xx fails the whole batch. The items already done replay on the retry.
   without the `HEALTH_DATA` consent.
 - `pub async fn all(state: &AppState, user: Uuid, limit: Option<u32>) -> Result<Vec<Value>, AppError>`, the decrypted
   measurements. The export (task 7) uses it too.
+- In `validate.rs`, shared with the workouts:
+  - `pub fn round_to(value: f64, decimals: i32) -> f64`;
+  - `pub fn rfc3339(raw: &str) -> Option<DateTime<Utc>>`.
 
 - [ ] **Step 1: write the failing tests** in `tests/body.rs`:
   - `measurements_need_the_health_consent`: `GET` and `POST` answer 403, `code` `CONSENT_REQUIRED`, `consent`
@@ -322,7 +325,7 @@ A 5xx fails the whole batch. The items already done replay on the retry.
   - `pub fn total_distance_m(w: &WorkoutInput) -> i64`: over every set.
   - `pub fn fingerprint(w: &WorkoutInput) -> [u8; 32]`: SHA-256 of the sport and, per exercise, its id and its
     sets' `(reps, weight, distance, duration, warm-up)`. The time is left out.
-  - `pub fn round_to(value: f64, decimals: i32) -> f64`.
+  - Rounding uses `validate::round_to`, from task 2.
 - **`anticheat.rs`:**
   - `pub enum Severity { Info, Soft, Hard }`.
   - `pub struct RuleHit { pub rule: &'static str, pub severity: Severity, pub value: Option<f64>,

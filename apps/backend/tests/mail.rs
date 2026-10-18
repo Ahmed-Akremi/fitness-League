@@ -50,6 +50,10 @@ fn config(smtp_url: &str) -> Config {
         ("JWT_PRIVATE_KEY_B64", private.as_str()),
         ("JWT_PUBLIC_KEY_B64", public.as_str()),
         ("APP_HMAC_SECRET", "0123456789abcdef0123456789abcdef"),
+        (
+            "HEALTH_DATA_KEYS",
+            "test:BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc=",
+        ),
         ("SMTP_URL", smtp_url),
     ]
     .into_iter()

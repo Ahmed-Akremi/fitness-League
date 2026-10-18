@@ -1,6 +1,6 @@
 //! Pure rules of the account flows. No I/O, so each is tested directly.
 
-use chrono::{DateTime, Datelike, Duration, NaiveDate, Utc};
+use chrono::{DateTime, Datelike, Duration, NaiveDate, NaiveTime, Utc};
 
 pub const MAX_FAILED_LOGINS: u32 = 5;
 const BASE_LOCK_MINUTES: u32 = 15;
@@ -38,6 +38,15 @@ pub fn age_bracket(age: i32) -> Option<&'static str> {
 /// The calendar day in the business time zone (Tunisia is UTC+1, with no daylight saving).
 pub fn business_today(now: DateTime<Utc>, utc_offset_minutes: i32) -> NaiveDate {
     (now + Duration::minutes(i64::from(utc_offset_minutes))).date_naive()
+}
+
+/// The instant the business day holding `at` began: local midnight, written in UTC.
+pub fn business_day_start(at: DateTime<Utc>, utc_offset_minutes: i32) -> DateTime<Utc> {
+    let offset = Duration::minutes(i64::from(utc_offset_minutes));
+    business_today(at, utc_offset_minutes)
+        .and_time(NaiveTime::MIN)
+        .and_utc()
+        - offset
 }
 
 #[cfg(test)]
@@ -100,5 +109,14 @@ mod tests {
         assert_eq!(business_today(late, 60), date(2026, 10, 7));
         assert_eq!(business_today(late, 0), date(2026, 10, 6));
         assert_eq!(business_today(late, -720), date(2026, 10, 6));
+    }
+
+    #[test]
+    fn the_business_day_starts_at_local_midnight() {
+        let utc = |d, h, m| Utc.with_ymd_and_hms(2026, 10, d, h, m, 0).unwrap();
+        // 23:30 UTC is already 00:30 the next day in Tunis.
+        assert_eq!(business_day_start(utc(18, 23, 30), 60), utc(18, 23, 0));
+        assert_eq!(business_day_start(utc(18, 22, 30), 60), utc(17, 23, 0));
+        assert_eq!(business_day_start(utc(18, 12, 0), 0), utc(18, 0, 0));
     }
 }

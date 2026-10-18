@@ -17,6 +17,7 @@ use crate::{
     validate::{Check, ValidJson, Validate, nullable, readable_name},
 };
 
+pub mod body;
 pub mod onboarding;
 pub mod privacy;
 
@@ -25,7 +26,7 @@ pub fn routes(api: Api) -> Api {
         .get("/api/v1/me", me)
         .patch("/api/v1/me/profile", update_profile)
         .patch("/api/v1/me/settings", update_settings);
-    privacy::routes(onboarding::routes(api))
+    body::routes(privacy::routes(onboarding::routes(api)))
 }
 
 async fn me(

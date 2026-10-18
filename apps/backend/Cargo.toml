@@ -20,6 +20,8 @@ ipnet = "2"
 jsonwebtoken = { version = "11", features = ["aws_lc_rs"] }
 lettre = { version = "0.11", default-features = false, features = ["builder", "smtp-transport", "tokio1-rustls-tls"] }
 redis = { version = "1", features = ["tokio-comp", "connection-manager", "script"] }
+# AES-256-GCM for health data. Already built for sqlx's rustls, so this adds no crate.
+ring = "0.17"
 secrecy = "0.10"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

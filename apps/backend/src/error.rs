@@ -115,6 +115,17 @@ impl AppError {
         e
     }
 
+    /// The problem as one object without its HTTP envelope, `{code, errors?, …extras}`: what a batch
+    /// answers for one of its items.
+    pub fn summary(&self) -> Value {
+        let mut body = self.more.extra.clone();
+        body.insert("code".into(), json!(self.code));
+        if !self.more.errors.is_empty() {
+            body.insert("errors".into(), json!(self.more.errors));
+        }
+        Value::Object(body)
+    }
+
     pub fn unavailable(cause: impl Display) -> Self {
         let mut e = Self::new(
             StatusCode::SERVICE_UNAVAILABLE,
