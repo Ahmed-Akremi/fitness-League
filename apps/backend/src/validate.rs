@@ -203,6 +203,46 @@ pub fn uuid_param(field: &str, value: Option<&str>) -> Result<Option<Uuid>, AppE
         .transpose()
 }
 
+/// For a field the client may clear: absent is `None`, `null` is `Some(None)`. Use with
+/// `#[serde(default, deserialize_with = "nullable")]`.
+pub fn nullable<'de, D, T>(de: D) -> Result<Option<Option<T>>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+    T: serde::Deserialize<'de>,
+{
+    serde::Deserialize::deserialize(de).map(Some)
+}
+
+/// Characters that change how text is shown without being seen: the zero-width ones, the direction
+/// overrides, the soft hyphen. In a name they serve to pass for someone else, or for nobody.
+fn is_invisible(c: char) -> bool {
+    matches!(
+        c,
+        '\u{00AD}'
+            | '\u{034F}'
+            | '\u{061C}'
+            | '\u{115F}'
+            | '\u{1160}'
+            | '\u{180E}'
+            | '\u{200B}'..='\u{200F}'
+            | '\u{202A}'..='\u{202E}'
+            | '\u{2060}'..='\u{2069}'
+            | '\u{2800}'
+            | '\u{3164}'
+            | '\u{FEFF}'
+            | '\u{FFA0}'
+            | '\u{E0000}'..='\u{E007F}'
+    )
+}
+
+/// A full name a person can read: no character that hides or reorders the others, and at least two
+/// letters or digits. The second rule is what holds when a new invisible character is missing from
+/// the list of the first. A name shorter than two characters is left to the length rule.
+pub fn readable_name(name: &str) -> bool {
+    !name.chars().any(|c| c.is_control() || is_invisible(c))
+        && (name.chars().count() < 2 || name.chars().filter(|c| c.is_alphanumeric()).count() >= 2)
+}
+
 /// An email as it is stored and compared: trimmed and lower-cased. `None` unless it is a plausible
 /// address written in printable ASCII. The database compares these columns more loosely than Rust
 /// compares strings (it ignores a soft hyphen or a zero-width space, and trailing spaces do not
