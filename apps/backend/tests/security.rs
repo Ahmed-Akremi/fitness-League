@@ -111,10 +111,10 @@ async fn every_role_is_tried_against_every_protected_route(
             let reply = app
                 .call(method.clone(), path, Some(own.as_str()), None)
                 .await;
-            let passed = !matches!(
-                reply.status,
-                StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN
-            );
+            // Refused at the door: no session, or a role the route does not admit. A 403 for another
+            // reason (a missing consent) comes from behind the door.
+            let passed = !(reply.status == StatusCode::UNAUTHORIZED
+                || (reply.status == StatusCode::FORBIDDEN && reply.json["code"] == "FORBIDDEN"));
             assert_eq!(
                 passed,
                 allowed(role, path),

@@ -384,3 +384,102 @@ async fn one_sweep_a_day_whatever_the_number_of_workers(
             .is_some()
     );
 }
+
+/// A weigh-in at 78.4 kg (with the health consent) and a squat session with notes.
+async fn weigh_and_train(app: &TestApp, session: &Value) {
+    common::set_consent(app, user_of(session), "HEALTH_DATA", true).await;
+    let weigh = app
+        .call(
+            Method::POST,
+            "/api/v1/me/body-measurements",
+            access(session),
+            Some(json!({"weightKg": 78.4})),
+        )
+        .await;
+    assert_eq!(weigh.status, StatusCode::CREATED, "{}", weigh.json);
+    let sport: Uuid = sqlx::query_scalar("SELECT id FROM sports WHERE code = 'WEIGHT_TRAINING'")
+        .fetch_one(&app.db)
+        .await
+        .unwrap();
+    let squat: Uuid = sqlx::query_scalar("SELECT id FROM exercises WHERE code = 'BACK_SQUAT'")
+        .fetch_one(&app.db)
+        .await
+        .unwrap();
+    let client = Uuid::now_v7();
+    let body = json!({
+        "clientId": client, "sportId": sport, "workoutType": "STRENGTH",
+        "performedAt": (Utc::now() - Duration::hours(2)).to_rfc3339(), "durationS": 3600,
+        "notes": "felt strong",
+        "exercises": [{"exerciseId": squat, "notes": "belt on", "sets": [{"reps": 5, "weightKg": 100}]}]
+    });
+    let reply = app
+        .send(
+            common::request(Method::POST, "/api/v1/workouts")
+                .header("authorization", format!("Bearer {}", access(session).unwrap()))
+                .header("content-type", "application/json")
+                .header("idempotency-key", client.to_string())
+                .body(axum::body::Body::from(body.to_string()))
+                .unwrap(),
+        )
+        .await;
+    assert_eq!(reply.status, StatusCode::CREATED, "{}", reply.json);
+}
+
+#[sqlx::test]
+async fn the_export_holds_workouts_and_weigh_ins(
+    opts: MySqlPoolOptions,
+    conn: MySqlConnectOptions,
+) {
+    let app = seeded(opts, conn).await;
+    let session = register(&app, "nour").await;
+    weigh_and_train(&app, &session).await;
+    let reply = app
+        .call(Method::GET, "/api/v1/me/export", access(&session), None)
+        .await;
+    assert_eq!(reply.status, StatusCode::OK, "{}", reply.json);
+    assert_eq!(reply.json["bodyMeasurements"][0]["weightKg"], 78.4);
+    assert_eq!(reply.json["workouts"][0]["notes"], "felt strong");
+    assert_eq!(
+        reply.json["workouts"][0]["exercises"][0]["sets"][0]["weightKg"],
+        100.0
+    );
+}
+
+#[sqlx::test]
+async fn anonymising_removes_weigh_ins_and_workout_notes(
+    opts: MySqlPoolOptions,
+    conn: MySqlConnectOptions,
+) {
+    let app = seeded(opts, conn).await;
+    let session = register(&app, "nour").await;
+    let user = user_of(&session);
+    weigh_and_train(&app, &session).await;
+    delete(&app, &session, PASSWORD).await;
+    let swept = privacy::sweep(&app.db, (Utc::now() + Duration::days(31)).naive_utc())
+        .await
+        .unwrap();
+    assert_eq!(swept.anonymised, 1);
+
+    let weigh_ins: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM body_measurements WHERE user_id = ?")
+            .bind(user)
+            .fetch_one(&app.db)
+            .await
+            .unwrap();
+    assert_eq!(weigh_ins, 0);
+    let (notes, visibility): (Option<String>, String) =
+        sqlx::query_as("SELECT notes, visibility FROM workouts WHERE user_id = ?")
+            .bind(user)
+            .fetch_one(&app.db)
+            .await
+            .unwrap();
+    assert_eq!((notes, visibility.as_str()), (None, "PRIVATE"));
+    let exercise_notes: Option<String> = sqlx::query_scalar(
+        "SELECT e.notes FROM workout_exercises e JOIN workouts w ON w.id = e.workout_id WHERE w.user_id = ?",
+    )
+    .bind(user)
+    .fetch_one(&app.db)
+    .await
+    .unwrap();
+    assert_eq!(exercise_notes, None);
+}

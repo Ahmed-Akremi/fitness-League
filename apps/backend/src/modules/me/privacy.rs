@@ -16,7 +16,10 @@ use crate::{
         auth::{AppUser, AuthUser},
         rate_limit,
     },
-    modules::auth::{accounts, sessions},
+    modules::{
+        auth::{accounts, sessions},
+        workouts::intake,
+    },
     security::{password, policy},
     state::AppState,
     types::iso,
@@ -105,14 +108,17 @@ async fn export(
             })
         })
         .collect();
+    let workouts = intake::load(&state.db, user.id, &intake::Filter::default()).await?;
+    // Decrypted: the athlete's own health data, given back to them.
+    let body_measurements = super::body::all(&state, user.id, None).await?;
     Ok(Json(json!({
         "exportedAt": iso(Utc::now().naive_utc()),
         "account": account,
         "consents": consents,
-        // Parts 2 and 3.
+        "bodyMeasurements": body_measurements,
+        "workouts": workouts,
+        // Plans 2b to 2d.
         "goals": [],
-        "bodyMeasurements": [],
-        "workouts": [],
         "xpTransactions": [],
         "leaguePointTransactions": [],
     })))
@@ -296,6 +302,24 @@ async fn anonymise(
     .await?;
     sqlx::query!(
         "UPDATE profiles SET full_name = 'Deleted athlete', bio = NULL, gender = NULL WHERE user_id = ?",
+        user
+    )
+    .execute(&mut *tx)
+    .await?;
+    // Health data goes. Workouts stay for what they fed (records, ledgers, past rankings), without
+    // their notes and out of sight.
+    sqlx::query!("DELETE FROM body_measurements WHERE user_id = ?", user)
+        .execute(&mut *tx)
+        .await?;
+    sqlx::query!(
+        "UPDATE workouts SET notes = NULL, visibility = 'PRIVATE' WHERE user_id = ?",
+        user
+    )
+    .execute(&mut *tx)
+    .await?;
+    sqlx::query!(
+        "UPDATE workout_exercises e JOIN workouts w ON w.id = e.workout_id SET e.notes = NULL \
+         WHERE w.user_id = ?",
         user
     )
     .execute(&mut *tx)
