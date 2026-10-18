@@ -32,7 +32,8 @@ The work is too large for one spec. It is cut into six parts, each with its own 
 Part 1 is built by three plans: **1a, foundation** (everything that needs no user account:
 `docs/superpowers/plans/2026-10-06-rust-backend-1a-foundation.md`), **1b, accounts and sessions**
 (`docs/superpowers/plans/2026-10-07-rust-backend-1b-accounts.md`) and **1c, profile and privacy** (profile
-and settings changes, onboarding, export, account deletion with its daily sweep).
+and settings changes, onboarding, export, account deletion with its daily sweep:
+`docs/superpowers/plans/2026-10-18-rust-backend-1c-profile-privacy.md`). All three are built (2026-10-18).
 
 **Part 1 is done when:** a new user can register in the mobile app against the Rust API, receive the
 verification email in Mailpit, sign in, finish onboarding and see their profile; a staff account can sign in
