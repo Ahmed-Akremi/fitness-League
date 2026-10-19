@@ -1,0 +1,31 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT weight_kg_enc FROM body_measurements WHERE user_id = ? ORDER BY measured_at DESC, id DESC LIMIT 1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "weight_kg_enc",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 128
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.body_measurements",
+            "name": "weight_kg_enc"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "1d0303d182538d06d1e43a4e37b47122fa00619377f1e9de545814001eb7fe3e"
+}

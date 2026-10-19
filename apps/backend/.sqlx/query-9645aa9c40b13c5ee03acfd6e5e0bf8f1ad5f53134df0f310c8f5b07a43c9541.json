@@ -1,0 +1,99 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT id AS \"id: Uuid\", measured_at, weight_kg_enc, body_fat_pct_enc, source\n           FROM body_measurements WHERE user_id = ?\n           ORDER BY measured_at DESC, id DESC LIMIT ?",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | PRIMARY_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.body_measurements",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "measured_at",
+        "type_info": {
+          "type": "Datetime",
+          "flags": "NOT_NULL | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 26
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.body_measurements",
+            "name": "measured_at"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "weight_kg_enc",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 128
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.body_measurements",
+            "name": "weight_kg_enc"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "body_fat_pct_enc",
+        "type_info": {
+          "type": "VarString",
+          "flags": "BINARY",
+          "collation": 63,
+          "max_size": 128
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.body_measurements",
+            "name": "body_fat_pct_enc"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "source",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | ENUM",
+          "collation": 224,
+          "max_size": 56
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.body_measurements",
+            "name": "source"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "9645aa9c40b13c5ee03acfd6e5e0bf8f1ad5f53134df0f310c8f5b07a43c9541"
+}

@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "INSERT INTO body_measurements (id, user_id, measured_at, weight_kg_enc, body_fat_pct_enc, source) VALUES (?, ?, ?, ?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 6
+    },
+    "nullable": []
+  },
+  "hash": "16cc93f594824530ca8f6e34c8308706064ac9ea610172ad55e0e8fa03fa5e0f"
+}

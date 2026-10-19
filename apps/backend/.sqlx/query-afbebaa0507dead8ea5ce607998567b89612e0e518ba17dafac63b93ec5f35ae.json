@@ -1,0 +1,31 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT granted AS \"granted: bool\" FROM consents\n           WHERE user_id = ? AND type = ? ORDER BY created_at DESC, id DESC LIMIT 1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "granted: bool",
+        "type_info": {
+          "type": "Tiny",
+          "flags": "NOT_NULL | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 1
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.consents",
+            "name": "granted"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "afbebaa0507dead8ea5ce607998567b89612e0e518ba17dafac63b93ec5f35ae"
+}
