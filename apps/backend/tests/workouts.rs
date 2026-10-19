@@ -1,111 +1,13 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 mod common;
 
-use axum::{
-    body::Body,
-    http::{Method, StatusCode, header},
-};
-use backend::{security::policy, security::tokens::Audience, types::Role};
-use chrono::{DateTime, Duration, SecondsFormat, Utc};
-use common::{
-    Reply, TestApp, create_user, open_session, request, seeded, seeded_with, set_consent,
-};
+use axum::http::{Method, StatusCode, header};
+use backend::security::policy;
+use chrono::{Duration, Utc};
+use common::{Reply, TestApp, seeded, seeded_with, set_consent, workouts::*};
 use serde_json::{Value, json};
 use sqlx::mysql::{MySqlConnectOptions, MySqlPoolOptions};
 use uuid::Uuid;
-
-const WORKOUTS: &str = "/api/v1/workouts";
-
-struct Catalog {
-    strength: Uuid,
-    running: Uuid,
-    squat: Uuid,
-    run: Uuid,
-}
-
-async fn id_of(app: &TestApp, table: &str, code: &str) -> Uuid {
-    sqlx::query_scalar(sqlx::AssertSqlSafe(format!(
-        "SELECT id FROM {table} WHERE code = ?"
-    )))
-    .bind(code)
-    .fetch_one(&app.db)
-    .await
-    .unwrap()
-}
-
-async fn catalog(app: &TestApp) -> Catalog {
-    Catalog {
-        strength: id_of(app, "sports", "WEIGHT_TRAINING").await,
-        running: id_of(app, "sports", "RUNNING").await,
-        squat: id_of(app, "exercises", "BACK_SQUAT").await,
-        run: id_of(app, "exercises", "RUN").await,
-    }
-}
-
-async fn athlete(app: &TestApp, name: &str) -> (Uuid, String) {
-    let user = create_user(app, name, Role::User).await;
-    let session = open_session(app, user, Role::User, Audience::App).await;
-    (user, session["accessToken"].as_str().unwrap().to_owned())
-}
-
-fn rfc(at: DateTime<Utc>) -> String {
-    at.to_rfc3339_opts(SecondsFormat::Millis, true)
-}
-
-/// A squat session: one warm-up set of 10 × 60 kg, then three sets of `reps` × `kg`.
-fn lifting(c: &Catalog, client: Uuid, at: DateTime<Utc>, kg: f64, reps: i32) -> Value {
-    json!({
-        "clientId": client, "sportId": c.strength, "workoutType": "STRENGTH",
-        "performedAt": rfc(at), "durationS": 3600,
-        "exercises": [{"exerciseId": c.squat, "sets": [
-            {"reps": 10, "weightKg": 60, "isWarmup": true},
-            {"reps": reps, "weightKg": kg}, {"reps": reps, "weightKg": kg}, {"reps": reps, "weightKg": kg}
-        ]}]
-    })
-}
-
-fn strength(c: &Catalog, client: Uuid, at: DateTime<Utc>) -> Value {
-    lifting(c, client, at, 100.0, 5)
-}
-
-/// A single heavy squat.
-fn single(c: &Catalog, client: Uuid, at: DateTime<Utc>, kg: f64) -> Value {
-    json!({
-        "clientId": client, "sportId": c.strength, "workoutType": "STRENGTH",
-        "performedAt": rfc(at), "durationS": 1800,
-        "exercises": [{"exerciseId": c.squat, "sets": [{"reps": 1, "weightKg": kg}]}]
-    })
-}
-
-fn run(c: &Catalog, client: Uuid, km: f64, minutes: i32, at: DateTime<Utc>) -> Value {
-    json!({
-        "clientId": client, "sportId": c.running, "workoutType": "RUN",
-        "performedAt": rfc(at), "durationS": (minutes * 60).max(60),
-        "exercises": [{"exerciseId": c.run, "sets": [
-            {"distanceM": (km * 1000.0) as i32, "durationS": minutes * 60}
-        ]}]
-    })
-}
-
-/// A POST with the `Idempotency-Key` the app sends: the body's `clientId`, unless `key` says otherwise.
-async fn send(app: &TestApp, token: &str, body: &Value, key: Option<&str>) -> Reply {
-    let mut req = request(Method::POST, WORKOUTS)
-        .header("authorization", format!("Bearer {token}"))
-        .header("content-type", "application/json");
-    if let Some(key) = key {
-        req = req.header("idempotency-key", key);
-    }
-    app.send(req.body(Body::from(body.to_string())).unwrap())
-        .await
-}
-
-async fn post(app: &TestApp, token: &str, body: &Value) -> Reply {
-    send(app, token, body, body["clientId"].as_str()).await
-}
-
-async fn get(app: &TestApp, token: &str, path: &str) -> Reply {
-    app.call(Method::GET, path, Some(token), None).await
-}
 
 async fn rows(app: &TestApp, user: Uuid) -> i64 {
     sqlx::query_scalar("SELECT COUNT(*) FROM workouts WHERE user_id = ?")

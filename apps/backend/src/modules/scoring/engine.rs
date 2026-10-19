@@ -25,7 +25,7 @@ pub struct Step {
     pub applied: Option<bool>,
 }
 
-fn step(label: &'static str, value: f64) -> Step {
+pub fn step(label: &'static str, value: f64) -> Step {
     Step {
         label,
         value,
