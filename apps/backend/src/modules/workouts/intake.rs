@@ -11,13 +11,16 @@ use sqlx::MySqlPool;
 use uuid::Uuid;
 
 use super::{
-    anticheat::{self, Context, Plausibility},
+    anticheat::{self, Context, Outcome, Plausibility},
     metrics::{self, ExerciseInput, SetInput, WorkoutInput},
 };
 use crate::{
     db,
     error::AppError,
-    modules::me::body,
+    modules::{
+        me::body,
+        scoring::{self, Scoring},
+    },
     rules::Rules,
     security::policy,
     state::AppState,
@@ -180,6 +183,14 @@ pub async fn create(state: &AppState, user: Uuid, body: WorkoutBody) -> Result<C
 
     let id = Uuid::now_v7();
     let mut tx = state.db.begin().await?;
+    // One athlete's workouts are saved and scored one after the other: two phones syncing at once
+    // must not both take the first quest or lose a counter increment.
+    sqlx::query!(
+        "SELECT user_id FROM user_stats WHERE user_id = ? FOR UPDATE",
+        user
+    )
+    .fetch_optional(&mut *tx)
+    .await?;
     let inserted = sqlx::query!(
         "INSERT INTO workouts (id, user_id, client_id, payload_hash, fingerprint, sport_id, workout_type, \
            performed_at, duration_s, notes, visibility, status, received_at, device_submitted_at, \
@@ -265,7 +276,18 @@ pub async fn create(state: &AppState, user: Uuid, body: WorkoutBody) -> Result<C
     )
     .execute(&mut *tx)
     .await?;
-    // plan 2b scores an ACCEPTED workout here, in this transaction.
+    if evaluation.outcome == Outcome::Accepted {
+        // shortcut: synchronous scoring, move to a job if POST /workouts gets slow.
+        let scoring = Scoring {
+            user,
+            workout_id: id,
+            workout,
+            tracked: &resolved.tracked,
+            counts_for_competition: evaluation.counts_for_competition,
+            body_weight_kg: ctx.body_weight_kg,
+        };
+        scoring::score(&mut tx, state, &rules, scoring).await?;
+    }
     tx.commit().await?;
     Ok(Created::New(one(&state.db, user, id).await?))
 }
@@ -305,6 +327,8 @@ async fn replay(
 struct Resolved {
     workout: WorkoutInput,
     plausibility: HashMap<String, Plausibility>,
+    /// The metric codes each exercise tracks.
+    tracked: HashMap<Uuid, Vec<String>>,
 }
 
 async fn resolve(db: &MySqlPool, body: &WorkoutBody) -> Result<Resolved, AppError> {
@@ -319,8 +343,9 @@ async fn resolve(db: &MySqlPool, body: &WorkoutBody) -> Result<Resolved, AppErro
     let catalog: HashMap<Uuid, _> = sqlx::query!(
         r#"SELECT e.id AS "id: Uuid", e.sport_id AS "sport_id?: Uuid", e.code,
                   e.is_bodyweight AS "is_bodyweight: bool", e.enabled AS "enabled: bool", e.plausibility,
-                  EXISTS (SELECT 1 FROM exercise_metrics em JOIN metric_types m ON m.id = em.metric_type_id
-                          WHERE em.exercise_id = e.id AND m.code = 'DISTANCE') AS "distance!"
+                  (SELECT GROUP_CONCAT(m.code) FROM exercise_metrics em
+                   JOIN metric_types m ON m.id = em.metric_type_id
+                   WHERE em.exercise_id = e.id) AS "metrics?: String"
            FROM exercises e"#
     )
     .fetch_all(db)
@@ -336,6 +361,7 @@ async fn resolve(db: &MySqlPool, body: &WorkoutBody) -> Result<Resolved, AppErro
     let cardio_sport = category.as_deref() == Some("CARDIO");
     let mut exercises = Vec::with_capacity(body.exercises.len());
     let mut plausibility = HashMap::new();
+    let mut tracked = HashMap::new();
     for (i, sent) in body.exercises.iter().enumerate() {
         let field = format!("exercises[{i}].exerciseId");
         let Some(known) = catalog.get(&sent.exercise_id).filter(|e| e.enabled) else {
@@ -347,7 +373,16 @@ async fn resolve(db: &MySqlPool, body: &WorkoutBody) -> Result<Resolved, AppErro
         if category.is_some() && known.sport_id != Some(body.sport_id) && !shared {
             check.fail(&field, "EXERCISE_NOT_IN_SPORT");
         }
-        let distance = known.distance != 0;
+        let metrics: Vec<String> = known
+            .metrics
+            .as_deref()
+            .unwrap_or_default()
+            .split(',')
+            .filter(|code| !code.is_empty())
+            .map(str::to_owned)
+            .collect();
+        let distance = metrics.iter().any(|code| code == "DISTANCE");
+        tracked.insert(sent.exercise_id, metrics);
         for (j, set) in sent.sets.iter().enumerate() {
             let at = format!("exercises[{i}].sets[{j}]");
             if distance && set.distance_m.is_none() && set.duration_s.is_none() {
@@ -394,6 +429,7 @@ async fn resolve(db: &MySqlPool, body: &WorkoutBody) -> Result<Resolved, AppErro
             exercises,
         },
         plausibility,
+        tracked,
     })
 }
 

@@ -1,0 +1,196 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT o.exercise_id AS \"exercise_id: Uuid\", o.metric_type_id AS \"metric_id: Uuid\",\n                  CAST(o.value AS DOUBLE) AS \"value!: f64\", o.observed_at,\n                  e.code AS exercise_code, e.name_fr, e.name_en, e.name_ar,\n                  m.code AS metric_code, m.unit, m.direction\n           FROM metric_observations o\n           JOIN exercises e ON e.id = o.exercise_id\n           JOIN metric_types m ON m.id = o.metric_type_id\n           WHERE o.user_id = ? AND o.qualifier = 0 AND m.code <> 'REPS_AT_WEIGHT'\n           ORDER BY o.observed_at, o.id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "exercise_id: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | MULTIPLE_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.metric_observations",
+            "name": "exercise_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "metric_id: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | MULTIPLE_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.metric_observations",
+            "name": "metric_type_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "value!: f64",
+        "type_info": {
+          "type": "Double",
+          "flags": "BINARY",
+          "collation": 63,
+          "max_size": 22
+        },
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 3,
+        "name": "observed_at",
+        "type_info": {
+          "type": "Datetime",
+          "flags": "NOT_NULL | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 26
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.metric_observations",
+            "name": "observed_at"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "exercise_code",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | UNIQUE_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 240
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.exercises",
+            "name": "code"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "name_fr",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 480
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.exercises",
+            "name": "name_fr"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "name_en",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 480
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.exercises",
+            "name": "name_en"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "name_ar",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 480
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.exercises",
+            "name": "name_ar"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "metric_code",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | UNIQUE_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 160
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.metric_types",
+            "name": "code"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "unit",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 64
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.metric_types",
+            "name": "unit"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "direction",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | ENUM | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 64
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.metric_types",
+            "name": "direction"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "619b7fc75610811d9e154dcb8f987a8ed4682b4c0714d6bdb0bd8276f65d6f7e"
+}

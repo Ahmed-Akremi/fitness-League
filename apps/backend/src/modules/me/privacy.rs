@@ -72,6 +72,50 @@ async fn export(
     )
     .fetch_all(&state.db)
     .await?;
+    let records: Vec<Value> = sqlx::query!(
+        r#"SELECT p.id AS "id: Uuid", e.id AS "exercise_id: Uuid", e.code AS exercise_code,
+                  m.code AS metric_code, CAST(p.qualifier AS DOUBLE) AS "qualifier!: f64",
+                  CAST(p.value AS DOUBLE) AS "value!: f64",
+                  CAST(p.previous_value AS DOUBLE) AS "previous_value?: f64", p.status,
+                  p.is_current AS "is_current: bool", p.achieved_at, p.workout_id AS "workout_id: Uuid"
+           FROM personal_records p
+           JOIN exercises e ON e.id = p.exercise_id
+           JOIN metric_types m ON m.id = p.metric_type_id
+           WHERE p.user_id = ?
+           ORDER BY p.achieved_at, p.id"#,
+        user.id
+    )
+    .fetch_all(&state.db)
+    .await?
+    .into_iter()
+    .map(|r| {
+        json!({
+            "id": r.id, "exerciseId": r.exercise_id, "exerciseCode": r.exercise_code,
+            "metricCode": r.metric_code, "qualifier": r.qualifier, "value": r.value,
+            "previousValue": r.previous_value, "status": r.status, "isCurrent": r.is_current,
+            "achievedAt": iso(r.achieved_at), "workoutId": r.workout_id,
+        })
+    })
+    .collect();
+    let xp_transactions = sqlx::query!(
+        r#"SELECT id AS "id: Uuid", amount, reason, source_type, source_id, workout_id AS "workout_id?: Uuid",
+                  reverses_id AS "reverses_id?: Uuid", rule_set_version, explanation, effective_at, created_at
+           FROM xp_transactions WHERE user_id = ? ORDER BY created_at, id"#,
+        user.id
+    )
+    .fetch_all(&state.db)
+    .await?
+    .into_iter()
+    .map(|x| {
+        Ok(json!({
+            "id": x.id, "amount": x.amount, "reason": x.reason, "sourceType": x.source_type,
+            "sourceId": x.source_id, "workoutId": x.workout_id, "reversesId": x.reverses_id,
+            "ruleSetVersion": x.rule_set_version,
+            "explanation": serde_json::from_str::<Value>(&x.explanation).map_err(AppError::internal)?,
+            "effectiveAt": iso(x.effective_at), "createdAt": iso(x.created_at),
+        }))
+    })
+    .collect::<Result<Vec<_>, AppError>>()?;
 
     let extra = json!({
         "dateOfBirth": row.date_of_birth.to_string(),
@@ -91,8 +135,7 @@ async fn export(
             "createdAt": iso(b.created_at),
             "updatedAt": iso(b.updated_at),
         })).collect::<Vec<_>>(),
-        // Part 2.
-        "personalRecords": [],
+        "personalRecords": records,
     });
     if let (Some(account), Value::Object(extra)) = (account.as_object_mut(), extra) {
         account.extend(extra);
@@ -117,9 +160,9 @@ async fn export(
         "consents": consents,
         "bodyMeasurements": body_measurements,
         "workouts": workouts,
-        // Plans 2b to 2d.
+        "xpTransactions": xp_transactions,
+        // Plans 2c and 2d.
         "goals": [],
-        "xpTransactions": [],
         "leaguePointTransactions": [],
     })))
 }

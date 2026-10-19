@@ -1,0 +1,26 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT EXISTS (SELECT 1 FROM personal_records WHERE user_id = ? AND exercise_id = ? AND metric_type_id = ? AND status = ? AND xp_transaction_id IS NOT NULL AND achieved_at >= ? AND id <> ?)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "EXISTS (SELECT 1 FROM personal_records WHERE user_id = ? AND exercise_id = ? AND metric_type_id = ? AND status = ? AND xp_transaction_id IS NOT NULL AND achieved_at >= ? AND id <> ?)",
+        "type_info": {
+          "type": "Long",
+          "flags": "NOT_NULL | BINARY",
+          "collation": 63,
+          "max_size": 1
+        },
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 6
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "55524db679fe454d461eefb2ad987a3f070ecdd12e4257d2d5450e5d289ad346"
+}

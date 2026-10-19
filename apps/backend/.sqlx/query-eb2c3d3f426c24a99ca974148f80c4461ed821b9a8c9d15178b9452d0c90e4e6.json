@@ -1,0 +1,65 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT p.calibration_ends_at, p.experience_level_declared AS \"declared?: ExperienceLevel\",\n                  st.streak_freeze_days_per_week\n           FROM profiles p JOIN user_settings st ON st.user_id = p.user_id WHERE p.user_id = ?",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "calibration_ends_at",
+        "type_info": {
+          "type": "Datetime",
+          "flags": "BINARY",
+          "collation": 63,
+          "max_size": 26
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.profiles",
+            "name": "calibration_ends_at"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "declared?: ExperienceLevel",
+        "type_info": {
+          "type": "String",
+          "flags": "ENUM",
+          "collation": 224,
+          "max_size": 48
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.profiles",
+            "name": "experience_level_declared"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "streak_freeze_days_per_week",
+        "type_info": {
+          "type": "Tiny",
+          "flags": "NOT_NULL",
+          "collation": 63,
+          "max_size": 4
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.user_settings",
+            "name": "streak_freeze_days_per_week"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "eb2c3d3f426c24a99ca974148f80c4461ed821b9a8c9d15178b9452d0c90e4e6"
+}

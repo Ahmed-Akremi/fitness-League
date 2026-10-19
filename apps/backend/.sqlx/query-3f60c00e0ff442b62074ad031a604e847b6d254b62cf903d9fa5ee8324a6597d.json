@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "UPDATE baselines SET experience_level = ? WHERE user_id = ? AND exercise_id = ? AND metric_type_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "3f60c00e0ff442b62074ad031a604e847b6d254b62cf903d9fa5ee8324a6597d"
+}

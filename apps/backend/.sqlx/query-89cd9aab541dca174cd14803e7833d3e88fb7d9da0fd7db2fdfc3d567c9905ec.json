@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "UPDATE personal_records SET is_current = FALSE WHERE id = ? AND user_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "89cd9aab541dca174cd14803e7833d3e88fb7d9da0fd7db2fdfc3d567c9905ec"
+}

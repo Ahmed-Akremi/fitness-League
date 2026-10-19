@@ -1,0 +1,60 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT CAST(value AS DOUBLE) AS \"value!: f64\", observed_at, workout_id AS \"workout_id: Uuid\"\n           FROM metric_observations\n           WHERE user_id = ? AND exercise_id = ? AND metric_type_id = ? AND qualifier = 0 AND observed_at >= ?\n           ORDER BY observed_at, id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "value!: f64",
+        "type_info": {
+          "type": "Double",
+          "flags": "BINARY",
+          "collation": 63,
+          "max_size": 22
+        },
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "observed_at",
+        "type_info": {
+          "type": "Datetime",
+          "flags": "NOT_NULL | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 26
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.metric_observations",
+            "name": "observed_at"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "workout_id: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | MULTIPLE_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.metric_observations",
+            "name": "workout_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": [
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "c9f78ad084b8205fb72e492ff51e17aa60687cf355731b42f46d3bda7922832e"
+}

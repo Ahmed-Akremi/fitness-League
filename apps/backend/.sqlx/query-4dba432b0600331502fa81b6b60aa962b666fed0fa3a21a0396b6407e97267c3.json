@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "INSERT INTO metric_observations (id, user_id, exercise_id, metric_type_id, qualifier, value, workout_id, observed_at, counts_for_competition) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 9
+    },
+    "nullable": []
+  },
+  "hash": "4dba432b0600331502fa81b6b60aa962b666fed0fa3a21a0396b6407e97267c3"
+}

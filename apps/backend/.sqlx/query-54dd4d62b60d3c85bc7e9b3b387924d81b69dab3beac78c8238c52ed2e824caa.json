@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "UPDATE personal_records SET xp_transaction_id = ? WHERE id = ? AND user_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "54dd4d62b60d3c85bc7e9b3b387924d81b69dab3beac78c8238c52ed2e824caa"
+}

@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "INSERT INTO user_streaks (user_id, current_days, longest_days, last_training_date) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE current_days = VALUES(current_days), longest_days = VALUES(longest_days), last_training_date = VALUES(last_training_date)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "63a741bb284db16a4ef970ea24375e040f2b5ddc9ceafb7f8a38babfa8bb11e5"
+}

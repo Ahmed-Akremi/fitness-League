@@ -1,6 +1,6 @@
 {
   "db_name": "MySQL",
-  "query": "SELECT e.id AS \"id: Uuid\", e.sport_id AS \"sport_id?: Uuid\", e.code,\n                  e.is_bodyweight AS \"is_bodyweight: bool\", e.enabled AS \"enabled: bool\", e.plausibility,\n                  EXISTS (SELECT 1 FROM exercise_metrics em JOIN metric_types m ON m.id = em.metric_type_id\n                          WHERE em.exercise_id = e.id AND m.code = 'DISTANCE') AS \"distance!\"\n           FROM exercises e",
+  "query": "SELECT e.id AS \"id: Uuid\", e.sport_id AS \"sport_id?: Uuid\", e.code,\n                  e.is_bodyweight AS \"is_bodyweight: bool\", e.enabled AS \"enabled: bool\", e.plausibility,\n                  (SELECT GROUP_CONCAT(m.code) FROM exercise_metrics em\n                   JOIN metric_types m ON m.id = em.metric_type_id\n                   WHERE em.exercise_id = e.id) AS \"metrics?: String\"\n           FROM exercises e",
   "describe": {
     "columns": [
       {
@@ -101,12 +101,12 @@
       },
       {
         "ordinal": 6,
-        "name": "distance!",
+        "name": "metrics?: String",
         "type_info": {
-          "type": "Long",
-          "flags": "NOT_NULL | BINARY",
-          "collation": 63,
-          "max_size": 1
+          "type": "Blob",
+          "flags": "BINARY",
+          "collation": 224,
+          "max_size": 4194304
         },
         "origin": "Expression"
       }
@@ -121,8 +121,8 @@
       false,
       false,
       false,
-      false
+      true
     ]
   },
-  "hash": "7ad1347a8a7bcce186c86d85e26fe3d957abbb5e72d6e47a01a8a7a63e5e0a28"
+  "hash": "862efd7533807535a85a803ee7dfda4989e618c2575af9b702f9e53eac308807"
 }

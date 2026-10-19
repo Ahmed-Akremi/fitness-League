@@ -24,6 +24,8 @@ use sqlx::{
 use tower::ServiceExt;
 use uuid::Uuid;
 
+pub mod workouts;
+
 pub struct TestApp {
     pub state: AppState,
     pub db: MySqlPool,

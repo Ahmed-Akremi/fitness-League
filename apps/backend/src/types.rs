@@ -124,8 +124,12 @@ impl Visibility {
 }
 
 /// What the athlete says of their level. A hint only: the scoring engine derives the real one.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+/// Declared in level order, so `max` gives the higher level.
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, sqlx::Type,
+)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+#[sqlx(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum ExperienceLevel {
     Beginner,
     Intermediate,

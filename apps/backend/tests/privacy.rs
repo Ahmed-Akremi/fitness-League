@@ -449,6 +449,35 @@ async fn the_export_holds_workouts_and_weigh_ins(
 }
 
 #[sqlx::test]
+async fn the_export_holds_records_and_xp(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let app = seeded(opts, conn).await;
+    let session = register(&app, "sami").await;
+    weigh_and_train(&app, &session).await;
+    let reply = app
+        .call(Method::GET, "/api/v1/me/export", access(&session), None)
+        .await;
+    assert_eq!(reply.status, StatusCode::OK, "{}", reply.json);
+
+    let records = reply.json["account"]["personalRecords"].as_array().unwrap();
+    let mut metrics: Vec<&str> = records
+        .iter()
+        .map(|r| r["metricCode"].as_str().unwrap())
+        .collect();
+    metrics.sort_unstable();
+    assert_eq!(metrics, ["E1RM", "MAX_WEIGHT", "REPS_AT_WEIGHT"]);
+    assert_eq!(records[0]["exerciseCode"], "BACK_SQUAT");
+    assert_eq!(records[0]["isCurrent"], true);
+
+    let xp = reply.json["xpTransactions"].as_array().unwrap();
+    let reasons: Vec<&str> = xp.iter().map(|x| x["reason"].as_str().unwrap()).collect();
+    assert_eq!(reasons, ["WORKOUT", "CALIBRATION_PR", "QUEST"]);
+    let total: i64 = xp.iter().map(|x| x["amount"].as_i64().unwrap()).sum();
+    assert_eq!(total, 140);
+    assert_eq!(xp[0]["explanation"]["formula"], "workout_xp");
+    assert_eq!(xp[0]["workoutId"], reply.json["workouts"][0]["id"]);
+}
+
+#[sqlx::test]
 async fn anonymising_removes_weigh_ins_and_workout_notes(
     opts: MySqlPoolOptions,
     conn: MySqlConnectOptions,

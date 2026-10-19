@@ -103,7 +103,8 @@ fn api() -> Api {
     let api = modules::auth::routes(api);
     let api = modules::admin_auth::routes(api);
     let api = modules::me::routes(api);
-    modules::workouts::routes(api)
+    let api = modules::workouts::routes(api);
+    modules::scoring::routes(api)
 }
 
 /// `(method, path)` of every registered route.
