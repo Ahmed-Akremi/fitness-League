@@ -8,8 +8,7 @@ use uuid::Uuid;
 
 use super::engine::{self, Direction, Observation};
 use crate::{
-    error::AppError, modules::workouts::metrics::WorkoutInput, rules::Rules,
-    types::ExperienceLevel,
+    error::AppError, modules::workouts::metrics::WorkoutInput, rules::Rules, types::ExperienceLevel,
 };
 
 pub struct Metric {

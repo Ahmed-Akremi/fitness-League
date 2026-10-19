@@ -362,7 +362,11 @@ struct Explanation {
 }
 
 /// Grants what fits under the caps. Nothing is written when nothing fits.
-async fn grant(tx: &mut MySqlConnection, at: &Grant<'_>, ask: Ask) -> Result<Option<Uuid>, AppError> {
+async fn grant(
+    tx: &mut MySqlConnection,
+    at: &Grant<'_>,
+    ask: Ask,
+) -> Result<Option<Uuid>, AppError> {
     let (result, caps) = if ask.capped {
         let (today, week) = granted(tx, at.user, at.day).await?;
         engine::apply_caps(ask.requested, today, week, at.rules)

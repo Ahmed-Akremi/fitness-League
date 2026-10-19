@@ -41,7 +41,10 @@ fn entries(reply: &Reply) -> Vec<(String, i64)> {
 }
 
 fn pairs(expected: &[(&str, i64)]) -> Vec<(String, i64)> {
-    expected.iter().map(|(r, n)| ((*r).to_owned(), *n)).collect()
+    expected
+        .iter()
+        .map(|(r, n)| ((*r).to_owned(), *n))
+        .collect()
 }
 
 /// Calibration ended a month ago: records are now judged against the expected progress.
@@ -130,7 +133,12 @@ async fn a_first_workout_earns_its_points_and_the_quest(
         .await;
     let stats = &me.json["stats"];
     assert_eq!(
-        [&stats["xpTotal"], &stats["level"], &stats["xpIntoLevel"], &stats["xpForNextLevel"]],
+        [
+            &stats["xpTotal"],
+            &stats["level"],
+            &stats["xpIntoLevel"],
+            &stats["xpForNextLevel"]
+        ],
         [&json!(140), &json!(2), &json!(40), &json!(283)]
     );
     assert_eq!(me.json["streak"]["currentDays"], 1);
@@ -140,9 +148,24 @@ async fn a_first_workout_earns_its_points_and_the_quest(
 /// Three squat sessions after calibration, a day apart: 100, 102.5 and 105 kg × 5.
 async fn three_squats(app: &TestApp, c: &Catalog, token: &str) -> [Value; 3] {
     [
-        created(app, token, &lifting(c, Uuid::now_v7(), hours_ago(60), 100.0, 5)).await,
-        created(app, token, &lifting(c, Uuid::now_v7(), hours_ago(36), 102.5, 5)).await,
-        created(app, token, &lifting(c, Uuid::now_v7(), hours_ago(12), 105.0, 5)).await,
+        created(
+            app,
+            token,
+            &lifting(c, Uuid::now_v7(), hours_ago(60), 100.0, 5),
+        )
+        .await,
+        created(
+            app,
+            token,
+            &lifting(c, Uuid::now_v7(), hours_ago(36), 102.5, 5),
+        )
+        .await,
+        created(
+            app,
+            token,
+            &lifting(c, Uuid::now_v7(), hours_ago(12), 105.0, 5),
+        )
+        .await,
     ]
 }
 
@@ -189,7 +212,12 @@ async fn an_implausible_jump_is_held(opts: MySqlPoolOptions, conn: MySqlConnectO
     end_calibration(&app, user).await;
     three_squats(&app, &c, &token).await;
 
-    let jump = created(&app, &token, &lifting(&c, Uuid::now_v7(), hours_ago(6), 140.0, 5)).await;
+    let jump = created(
+        &app,
+        &token,
+        &lifting(&c, Uuid::now_v7(), hours_ago(6), 140.0, 5),
+    )
+    .await;
     assert_eq!(
         entries(&points(&app, &token, &jump).await),
         pairs(&[("WORKOUT", 30)])
@@ -226,9 +254,24 @@ async fn a_faster_run_is_a_record(opts: MySqlPoolOptions, conn: MySqlConnectOpti
     let app = seeded(opts, conn).await;
     let c = catalog(&app).await;
     let (user, token) = athlete(&app, "runner").await;
-    created(&app, &token, &run(&c, Uuid::now_v7(), 5.0, 30, hours_ago(50))).await;
-    let faster = created(&app, &token, &run(&c, Uuid::now_v7(), 5.0, 28, hours_ago(26))).await;
-    let slower = created(&app, &token, &run(&c, Uuid::now_v7(), 5.0, 29, hours_ago(2))).await;
+    created(
+        &app,
+        &token,
+        &run(&c, Uuid::now_v7(), 5.0, 30, hours_ago(50)),
+    )
+    .await;
+    let faster = created(
+        &app,
+        &token,
+        &run(&c, Uuid::now_v7(), 5.0, 28, hours_ago(26)),
+    )
+    .await;
+    let slower = created(
+        &app,
+        &token,
+        &run(&c, Uuid::now_v7(), 5.0, 29, hours_ago(2)),
+    )
+    .await;
     assert_eq!(records_of(&app, &faster, "TIME_5K").await.len(), 1);
     assert!(records_of(&app, &slower, "TIME_5K").await.is_empty());
     assert_eq!(current_record(&app, user, "TIME_5K").await, 1680.0);
@@ -240,9 +283,19 @@ async fn caps_follow_the_day_of_the_workout(opts: MySqlPoolOptions, conn: MySqlC
     let c = catalog(&app).await;
     let (user, token) = athlete(&app, "capped").await;
     end_calibration(&app, user).await;
-    created(&app, &token, &lifting(&c, Uuid::now_v7(), hours_ago(60), 100.0, 5)).await;
+    created(
+        &app,
+        &token,
+        &lifting(&c, Uuid::now_v7(), hours_ago(60), 100.0, 5),
+    )
+    .await;
     // 116.67 → 123.32 is 1.9 times the expected progress: 477 XP asked, 370 left that day.
-    let big = created(&app, &token, &lifting(&c, Uuid::now_v7(), hours_ago(36), 105.7, 5)).await;
+    let big = created(
+        &app,
+        &token,
+        &lifting(&c, Uuid::now_v7(), hours_ago(36), 105.7, 5),
+    )
+    .await;
     let reply = points(&app, &token, &big).await;
     assert_eq!(entries(&reply), pairs(&[("WORKOUT", 30), ("PR", 370)]));
     let explanation = &reply.json["entries"][1]["explanation"];
@@ -252,7 +305,12 @@ async fn caps_follow_the_day_of_the_workout(opts: MySqlPoolOptions, conn: MySqlC
     assert_eq!(explanation["caps"][0]["applied"], true);
 
     // Another business day: its own room, so the 30-minute run earns its full 10 + 30/3.
-    let next = created(&app, &token, &run(&c, Uuid::now_v7(), 5.0, 30, hours_ago(12))).await;
+    let next = created(
+        &app,
+        &token,
+        &run(&c, Uuid::now_v7(), 5.0, 30, hours_ago(12)),
+    )
+    .await;
     assert_eq!(
         entries(&points(&app, &token, &next).await)[0],
         ("WORKOUT".to_owned(), 20)
@@ -286,9 +344,19 @@ async fn held_and_rejected_workouts_earn_nothing(
     let app = seeded(opts, conn).await;
     let c = catalog(&app).await;
     let (user, token) = athlete(&app, "nothing").await;
-    let held = post(&app, &token, &single(&c, Uuid::now_v7(), hours_ago(3), 320.0)).await;
+    let held = post(
+        &app,
+        &token,
+        &single(&c, Uuid::now_v7(), hours_ago(3), 320.0),
+    )
+    .await;
     assert_eq!(held.json["status"], "HELD_FOR_REVIEW");
-    let rejected = post(&app, &token, &run(&c, Uuid::now_v7(), 5.0, 10, hours_ago(8))).await;
+    let rejected = post(
+        &app,
+        &token,
+        &run(&c, Uuid::now_v7(), 5.0, 10, hours_ago(8)),
+    )
+    .await;
     assert_eq!(rejected.status, StatusCode::UNPROCESSABLE_ENTITY);
 
     for workout in [&held.json, &rejected.json["workout"]] {
@@ -317,7 +385,10 @@ async fn simultaneous_workouts_are_scored_in_turn(
     let one = strength(&c, Uuid::now_v7(), hours_ago(5));
     let two = lifting(&c, Uuid::now_v7(), hours_ago(2), 105.0, 5);
     let (a, b) = tokio::join!(post(&app, &token, &one), post(&app, &token, &two));
-    assert_eq!((a.status, b.status), (StatusCode::CREATED, StatusCode::CREATED));
+    assert_eq!(
+        (a.status, b.status),
+        (StatusCode::CREATED, StatusCode::CREATED)
+    );
 
     let quests: i64 = sqlx::query_scalar(
         "SELECT COUNT(*) FROM xp_transactions WHERE user_id = ? AND reason = 'QUEST'",
@@ -331,8 +402,8 @@ async fn simultaneous_workouts_are_scored_in_turn(
 }
 
 fn recorded() -> Value {
-    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../mobile-rn/assets/demo/api.json");
+    let path =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../mobile-rn/assets/demo/api.json");
     serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap()
 }
 
