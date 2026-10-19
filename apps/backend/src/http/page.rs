@@ -103,7 +103,10 @@ mod tests {
     }
 
     fn code(e: AppError) -> String {
-        e.summary()["errors"][0]["code"].as_str().unwrap().to_owned()
+        e.summary()["errors"][0]["code"]
+            .as_str()
+            .unwrap()
+            .to_owned()
     }
 
     #[test]
@@ -119,21 +122,39 @@ mod tests {
         let cursor = encode(&s, &key()).unwrap();
         let (body, sig) = cursor.split_once('.').unwrap();
         // The position moved, the signature kept: refused.
-        let forged = format!("{}.{sig}", URL_SAFE_NO_PAD.encode(br#"{"p":"2030-01-01","id":"0"}"#));
-        assert_eq!(code(decode::<Key>(&s, &forged).unwrap_err()), "INVALID_CURSOR");
+        let forged = format!(
+            "{}.{sig}",
+            URL_SAFE_NO_PAD.encode(br#"{"p":"2030-01-01","id":"0"}"#)
+        );
+        assert_eq!(
+            code(decode::<Key>(&s, &forged).unwrap_err()),
+            "INVALID_CURSOR"
+        );
         let mut flipped = sig.to_owned().into_bytes();
         flipped[0] = if flipped[0] == b'A' { b'B' } else { b'A' };
         let flipped = format!("{body}.{}", String::from_utf8(flipped).unwrap());
-        assert_eq!(code(decode::<Key>(&s, &flipped).unwrap_err()), "INVALID_CURSOR");
-        assert_eq!(code(decode::<Key>(&s, "no-dot").unwrap_err()), "INVALID_CURSOR");
-        assert_eq!(code(decode::<Key>(&s, &"x".repeat(513)).unwrap_err()), "MAXLENGTH");
+        assert_eq!(
+            code(decode::<Key>(&s, &flipped).unwrap_err()),
+            "INVALID_CURSOR"
+        );
+        assert_eq!(
+            code(decode::<Key>(&s, "no-dot").unwrap_err()),
+            "INVALID_CURSOR"
+        );
+        assert_eq!(
+            code(decode::<Key>(&s, &"x".repeat(513)).unwrap_err()),
+            "MAXLENGTH"
+        );
     }
 
     #[test]
     fn another_secret_is_refused() {
         let cursor = encode(&secret("test-hmac-secret-0123456789abcdef"), &key()).unwrap();
         let other = secret("another-secret-0123456789abcdefgh");
-        assert_eq!(code(decode::<Key>(&other, &cursor).unwrap_err()), "INVALID_CURSOR");
+        assert_eq!(
+            code(decode::<Key>(&other, &cursor).unwrap_err()),
+            "INVALID_CURSOR"
+        );
     }
 
     #[test]

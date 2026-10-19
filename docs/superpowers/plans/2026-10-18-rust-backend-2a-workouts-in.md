@@ -610,3 +610,15 @@ A 5xx fails the whole batch. The items already done replay on the retry.
 - The app's outbox flush (`workout-sync.ts`) receives `CREATED`, `REPLAYED`, `CONFLICT`, `REJECTED` and `INVALID`
   as it expects.
 - `BodyScreen` shows its consent screen on the 403.
+
+## Built (2026-10-19): where the code departs from this plan
+
+- `E1rmFormula` lives in `rules.rs`, next to the rule set that names it, not in `metrics.rs`.
+- `OVERLAP_TOLERANCE_S: i64` replaces a const `Duration`, because it is compared with seconds.
+- The body structs (`WorkoutBody`, `ExerciseBody`, `SetBody`) live in `intake.rs`, next to their checks.
+- `page::encode` returns a `Result`: serialising the key can fail, and nothing may panic.
+- `Config::health_data_keys` holds `SecretString`, like the other secrets, not `SecretBox`.
+- The security suite changed in one line. A 403 counts as a refusal only when its code is `FORBIDDEN`.
+  Otherwise the body-measurement routes' 403 `CONSENT_REQUIRED` would read as a refused role.
+- `main.rs::shutdown` waits for Ctrl-C alone on Windows. `tokio::signal::unix` exists only on Unix, and the
+  binary did not build natively there.

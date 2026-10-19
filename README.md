@@ -55,7 +55,10 @@ reference lists and accounts (plan 1b): registration, sign-in with lockout, sess
 refresh tokens, email verification and password reset through links, the admin panel's sign-in, and
 `GET /me`; and the profile (plan 1c): profile and settings changes, onboarding, the data export, and
 account deletion after a 30-day grace period, carried out by the worker's daily sweep. Part 1 of the spec
-is complete; parts 2 to 6 (training loop, gyms and social, competitions, admin, cut-over) come next.
+is complete. Part 2 (training loop) is under way. Plan 2a takes workouts in: `POST /workouts`,
+`POST /workouts/sync` for the app's offline queue, `GET /workouts` and `GET /workouts/{id}`, checked by
+anti-cheat layer 1. It also adds `GET` and `POST /me/body-measurements`, stored encrypted and only with the
+`HEALTH_DATA` consent. Parts 3 to 6 (gyms and social, competitions, admin, cut-over) come after.
 
 One-time setup (Rust 1.99 through `rustup`, Docker for MariaDB, Redis and Mailpit):
 
@@ -65,6 +68,7 @@ cd apps/backend
 cp .env.example .env
 cargo run -q -- keys >> .env
 printf 'APP_HMAC_SECRET=%s\n' "$(openssl rand -base64 48)" >> .env
+printf 'HEALTH_DATA_KEYS=k1:%s\n' "$(openssl rand -base64 32)" >> .env   # encrypts body measurements
 cargo run -- migrate
 cargo run -- seed ../../infra/seed-data
 ```
@@ -84,6 +88,11 @@ The emails go to Mailpit locally: http://localhost:8025.
 - **SQL is checked at compile time.** After changing a query, run `cargo sqlx prepare` and commit `.sqlx/`.
 - **If the repository is in a synced folder** (OneDrive, Dropbox), set
   `CARGO_TARGET_DIR="$HOME/.cache/fitness-league/target"` so the build output stays outside it.
+- **Native Windows** (not WSL) needs the Visual Studio C++ Build Tools and `AWS_LC_SYS_PREBUILT_NASM=1`, so
+  `aws-lc-sys` uses its prebuilt assembly instead of asking for NASM. On a machine with 16 GB of memory or
+  less, build with `-j 4`.
+- **`HEALTH_DATA_KEYS`** is a list of `id:base64(32 bytes)` separated by commas. The first key encrypts and
+  every key decrypts, so to rotate, put the new key first and keep the old ones.
 
 ## Tests
 

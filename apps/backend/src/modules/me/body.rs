@@ -20,7 +20,8 @@ const BODY_MEASUREMENTS: &str = "/api/v1/me/body-measurements";
 const HEALTH_DATA: &str = "HEALTH_DATA";
 
 pub fn routes(api: Api) -> Api {
-    api.get(BODY_MEASUREMENTS, list).post(BODY_MEASUREMENTS, add)
+    api.get(BODY_MEASUREMENTS, list)
+        .post(BODY_MEASUREMENTS, add)
 }
 
 #[derive(Clone, Copy, Deserialize)]

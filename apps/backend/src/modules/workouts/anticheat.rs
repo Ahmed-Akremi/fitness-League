@@ -119,7 +119,12 @@ pub struct Evaluation {
 /// Higher is suspicious (loads, distances, speeds).
 fn above(rule: &'static str, value: f64, limits: &Limits) -> Option<RuleHit> {
     if value > limits.reject {
-        Some(RuleHit::new(rule, Severity::Hard, value, Some(limits.reject)))
+        Some(RuleHit::new(
+            rule,
+            Severity::Hard,
+            value,
+            Some(limits.reject),
+        ))
     } else if value > limits.hold {
         Some(RuleHit::new(rule, Severity::Soft, value, Some(limits.hold)))
     } else {
@@ -130,7 +135,12 @@ fn above(rule: &'static str, value: f64, limits: &Limits) -> Option<RuleHit> {
 /// Lower is suspicious (paces, race times).
 fn below(rule: &'static str, value: f64, limits: &Limits) -> Option<RuleHit> {
     if value < limits.reject {
-        Some(RuleHit::new(rule, Severity::Hard, value, Some(limits.reject)))
+        Some(RuleHit::new(
+            rule,
+            Severity::Hard,
+            value,
+            Some(limits.reject),
+        ))
     } else if value < limits.hold {
         Some(RuleHit::new(rule, Severity::Soft, value, Some(limits.hold)))
     } else {
@@ -324,8 +334,12 @@ fn timed_hits(ex: &ExerciseInput, index: usize, p: &Plausibility) -> Vec<RuleHit
             (p.hold_s, p.reject_s, s.duration_s.filter(|d| *d > 0))
         {
             out.extend(
-                below("FINISH_TIME_S", f64::from(seconds), &Limits { hold, reject })
-                    .map(|h| h.at(index, Some(set_index))),
+                below(
+                    "FINISH_TIME_S",
+                    f64::from(seconds),
+                    &Limits { hold, reject },
+                )
+                .map(|h| h.at(index, Some(set_index))),
             );
         }
         if let (Some(hold), Some(reject), Some(reps)) = (p.hold_reps, p.reject_reps, s.reps) {
@@ -365,7 +379,9 @@ fn cardio_hits(ex: &ExerciseInput, index: usize, w: &WorkoutInput, r: &Anticheat
         match ex.code.as_str() {
             "RUN" => {
                 if meters >= 1000 {
-                    out.extend(below("RUN_PACE", (secs / km).round(), &r.run_pace_s_per_km).map(at));
+                    out.extend(
+                        below("RUN_PACE", (secs / km).round(), &r.run_pace_s_per_km).map(at),
+                    );
                 }
                 for (metric, race, rule) in RACE_TIMES {
                     if let (true, Some(limits)) = (meters >= race, r.run_time_s.get(metric)) {
@@ -377,7 +393,12 @@ fn cardio_hits(ex: &ExerciseInput, index: usize, w: &WorkoutInput, r: &Anticheat
             "RIDE" => out.extend(above("RIDE_SPEED", round_to(kmh, 1), &r.ride_speed_kmh).map(at)),
             "WALK" => out.extend(above("WALK_SPEED", round_to(kmh, 1), &r.walk_speed_kmh).map(at)),
             "SWIM_FREESTYLE" if meters >= 200 => out.extend(
-                below("SWIM_PACE", (secs / (m / 100.0)).round(), &r.swim_pace_s_per_100m).map(at),
+                below(
+                    "SWIM_PACE",
+                    (secs / (m / 100.0)).round(),
+                    &r.swim_pace_s_per_100m,
+                )
+                .map(at),
             ),
             _ => {}
         }
@@ -386,7 +407,9 @@ fn cardio_hits(ex: &ExerciseInput, index: usize, w: &WorkoutInput, r: &Anticheat
     let whole = |h: RuleHit| h.at(index, None);
     match ex.code.as_str() {
         "RUN" => out.extend(above("RUN_DISTANCE", distance as f64, &r.run_distance_m).map(whole)),
-        "RIDE" => out.extend(above("RIDE_DISTANCE", distance as f64, &r.ride_distance_m).map(whole)),
+        "RIDE" => {
+            out.extend(above("RIDE_DISTANCE", distance as f64, &r.ride_distance_m).map(whole))
+        }
         _ => {}
     }
     out
@@ -495,58 +518,346 @@ mod tests {
             )
         };
         let cases: Vec<(&str, WorkoutInput, &Context, &str, Option<Severity>)> = vec![
-            ("pace 196 s/km", timed("RUN", 5_000, 980), &base, "RUN_PACE", None),
-            ("pace 194 s/km", timed("RUN", 5_000, 970), &base, "RUN_PACE", Some(Soft)),
-            ("pace 149 s/km", timed("RUN", 5_000, 745), &base, "RUN_PACE", Some(Hard)),
-            ("run 60,001 m", timed("RUN", 60_001, 18_000), &base, "RUN_DISTANCE", Some(Soft)),
-            ("run 120,001 m", timed("RUN", 120_001, 36_000), &base, "RUN_DISTANCE", Some(Hard)),
-            ("run 60,000 m", timed("RUN", 60_000, 18_000), &base, "RUN_DISTANCE", None),
-            ("5K in 901 s", timed("RUN", 5_000, 901), &base, "RUN_TIME_5K", None),
-            ("5K in 899 s", timed("RUN", 5_000, 899), &base, "RUN_TIME_5K", Some(Soft)),
-            ("5K in 749 s", timed("RUN", 5_000, 749), &base, "RUN_TIME_5K", Some(Hard)),
-            ("10K in 1,859 s", timed("RUN", 10_000, 1_859), &base, "RUN_TIME_10K", Some(Soft)),
-            ("21.1K in 3,419 s", timed("RUN", 21_097, 3_419), &base, "RUN_TIME_21K", Some(Hard)),
-            ("ride 44 km/h", timed("RIDE", 44_000, 3_600), &base, "RIDE_SPEED", None),
-            ("ride 46 km/h", timed("RIDE", 46_000, 3_600), &base, "RIDE_SPEED", Some(Soft)),
-            ("ride 61 km/h", timed("RIDE", 61_000, 3_600), &base, "RIDE_SPEED", Some(Hard)),
-            ("ride 250,001 m", timed("RIDE", 250_001, 36_000), &base, "RIDE_DISTANCE", Some(Soft)),
-            ("ride 400,001 m", timed("RIDE", 400_001, 72_000), &base, "RIDE_DISTANCE", Some(Hard)),
-            ("walk 9.5 km/h", timed("WALK", 9_500, 3_600), &base, "WALK_SPEED", Some(Soft)),
-            ("walk 16 km/h", timed("WALK", 16_000, 3_600), &base, "WALK_SPEED", Some(Hard)),
-            ("swim 200 m in 1:58", timed("SWIM_FREESTYLE", 200, 118), &base, "SWIM_PACE", Some(Soft)),
-            ("swim 200 m in 1:28", timed("SWIM_FREESTYLE", 200, 88), &base, "SWIM_PACE", Some(Hard)),
-            ("swim 150 m", timed("SWIM_FREESTYLE", 150, 60), &base, "SWIM_PACE", None),
-            ("squat 299 kg", lift("BACK_SQUAT", 299.0, 1), &base, "LIFT_ABSOLUTE_KG", None),
-            ("squat 301 kg", lift("BACK_SQUAT", 301.0, 1), &base, "LIFT_ABSOLUTE_KG", Some(Soft)),
-            ("squat 501 kg", lift("BACK_SQUAT", 501.0, 1), &base, "LIFT_ABSOLUTE_KG", Some(Hard)),
-            ("squat 3.1 × 70 kg", lift("BACK_SQUAT", 217.0, 1), &weighed, "LIFT_BODYWEIGHT_RATIO", Some(Soft)),
-            ("squat 4.6 × 70 kg", lift("BACK_SQUAT", 322.0, 1), &weighed, "LIFT_BODYWEIGHT_RATIO", Some(Hard)),
-            ("squat 217 kg, no weight", lift("BACK_SQUAT", 217.0, 1), &base, "LIFT_BODYWEIGHT_RATIO", None),
-            ("leg press 401 kg", lift("LEG_PRESS", 401.0, 5), &base, "LOAD_KG", Some(Soft)),
-            ("leg press 601 kg", lift("LEG_PRESS", 601.0, 5), &base, "LOAD_KG", Some(Hard)),
-            ("51 weighted reps", lift("CURL", 20.0, 51), &base, "REPS_PER_SET", Some(Soft)),
-            ("201 weighted reps", lift("CURL", 20.0, 201), &base, "REPS_PER_SET", Some(Hard)),
-            ("50 weighted reps", lift("CURL", 20.0, 50), &base, "REPS_PER_SET", None),
-            ("151 push-ups", bodyweight(151), &base, "REPS_PER_SET", Some(Soft)),
-            ("1,001 push-ups", bodyweight(1_001), &base, "REPS_PER_SET", Some(Hard)),
+            (
+                "pace 196 s/km",
+                timed("RUN", 5_000, 980),
+                &base,
+                "RUN_PACE",
+                None,
+            ),
+            (
+                "pace 194 s/km",
+                timed("RUN", 5_000, 970),
+                &base,
+                "RUN_PACE",
+                Some(Soft),
+            ),
+            (
+                "pace 149 s/km",
+                timed("RUN", 5_000, 745),
+                &base,
+                "RUN_PACE",
+                Some(Hard),
+            ),
+            (
+                "run 60,001 m",
+                timed("RUN", 60_001, 18_000),
+                &base,
+                "RUN_DISTANCE",
+                Some(Soft),
+            ),
+            (
+                "run 120,001 m",
+                timed("RUN", 120_001, 36_000),
+                &base,
+                "RUN_DISTANCE",
+                Some(Hard),
+            ),
+            (
+                "run 60,000 m",
+                timed("RUN", 60_000, 18_000),
+                &base,
+                "RUN_DISTANCE",
+                None,
+            ),
+            (
+                "5K in 901 s",
+                timed("RUN", 5_000, 901),
+                &base,
+                "RUN_TIME_5K",
+                None,
+            ),
+            (
+                "5K in 899 s",
+                timed("RUN", 5_000, 899),
+                &base,
+                "RUN_TIME_5K",
+                Some(Soft),
+            ),
+            (
+                "5K in 749 s",
+                timed("RUN", 5_000, 749),
+                &base,
+                "RUN_TIME_5K",
+                Some(Hard),
+            ),
+            (
+                "10K in 1,859 s",
+                timed("RUN", 10_000, 1_859),
+                &base,
+                "RUN_TIME_10K",
+                Some(Soft),
+            ),
+            (
+                "21.1K in 3,419 s",
+                timed("RUN", 21_097, 3_419),
+                &base,
+                "RUN_TIME_21K",
+                Some(Hard),
+            ),
+            (
+                "ride 44 km/h",
+                timed("RIDE", 44_000, 3_600),
+                &base,
+                "RIDE_SPEED",
+                None,
+            ),
+            (
+                "ride 46 km/h",
+                timed("RIDE", 46_000, 3_600),
+                &base,
+                "RIDE_SPEED",
+                Some(Soft),
+            ),
+            (
+                "ride 61 km/h",
+                timed("RIDE", 61_000, 3_600),
+                &base,
+                "RIDE_SPEED",
+                Some(Hard),
+            ),
+            (
+                "ride 250,001 m",
+                timed("RIDE", 250_001, 36_000),
+                &base,
+                "RIDE_DISTANCE",
+                Some(Soft),
+            ),
+            (
+                "ride 400,001 m",
+                timed("RIDE", 400_001, 72_000),
+                &base,
+                "RIDE_DISTANCE",
+                Some(Hard),
+            ),
+            (
+                "walk 9.5 km/h",
+                timed("WALK", 9_500, 3_600),
+                &base,
+                "WALK_SPEED",
+                Some(Soft),
+            ),
+            (
+                "walk 16 km/h",
+                timed("WALK", 16_000, 3_600),
+                &base,
+                "WALK_SPEED",
+                Some(Hard),
+            ),
+            (
+                "swim 200 m in 1:58",
+                timed("SWIM_FREESTYLE", 200, 118),
+                &base,
+                "SWIM_PACE",
+                Some(Soft),
+            ),
+            (
+                "swim 200 m in 1:28",
+                timed("SWIM_FREESTYLE", 200, 88),
+                &base,
+                "SWIM_PACE",
+                Some(Hard),
+            ),
+            (
+                "swim 150 m",
+                timed("SWIM_FREESTYLE", 150, 60),
+                &base,
+                "SWIM_PACE",
+                None,
+            ),
+            (
+                "squat 299 kg",
+                lift("BACK_SQUAT", 299.0, 1),
+                &base,
+                "LIFT_ABSOLUTE_KG",
+                None,
+            ),
+            (
+                "squat 301 kg",
+                lift("BACK_SQUAT", 301.0, 1),
+                &base,
+                "LIFT_ABSOLUTE_KG",
+                Some(Soft),
+            ),
+            (
+                "squat 501 kg",
+                lift("BACK_SQUAT", 501.0, 1),
+                &base,
+                "LIFT_ABSOLUTE_KG",
+                Some(Hard),
+            ),
+            (
+                "squat 3.1 × 70 kg",
+                lift("BACK_SQUAT", 217.0, 1),
+                &weighed,
+                "LIFT_BODYWEIGHT_RATIO",
+                Some(Soft),
+            ),
+            (
+                "squat 4.6 × 70 kg",
+                lift("BACK_SQUAT", 322.0, 1),
+                &weighed,
+                "LIFT_BODYWEIGHT_RATIO",
+                Some(Hard),
+            ),
+            (
+                "squat 217 kg, no weight",
+                lift("BACK_SQUAT", 217.0, 1),
+                &base,
+                "LIFT_BODYWEIGHT_RATIO",
+                None,
+            ),
+            (
+                "leg press 401 kg",
+                lift("LEG_PRESS", 401.0, 5),
+                &base,
+                "LOAD_KG",
+                Some(Soft),
+            ),
+            (
+                "leg press 601 kg",
+                lift("LEG_PRESS", 601.0, 5),
+                &base,
+                "LOAD_KG",
+                Some(Hard),
+            ),
+            (
+                "51 weighted reps",
+                lift("CURL", 20.0, 51),
+                &base,
+                "REPS_PER_SET",
+                Some(Soft),
+            ),
+            (
+                "201 weighted reps",
+                lift("CURL", 20.0, 201),
+                &base,
+                "REPS_PER_SET",
+                Some(Hard),
+            ),
+            (
+                "50 weighted reps",
+                lift("CURL", 20.0, 50),
+                &base,
+                "REPS_PER_SET",
+                None,
+            ),
+            (
+                "151 push-ups",
+                bodyweight(151),
+                &base,
+                "REPS_PER_SET",
+                Some(Soft),
+            ),
+            (
+                "1,001 push-ups",
+                bodyweight(1_001),
+                &base,
+                "REPS_PER_SET",
+                Some(Hard),
+            ),
             ("5.1 h", long(18_360), &base, "WORKOUT_DURATION", Some(Soft)),
-            ("12.1 h", long(43_560), &base, "WORKOUT_DURATION", Some(Hard)),
+            (
+                "12.1 h",
+                long(43_560),
+                &base,
+                "WORKOUT_DURATION",
+                Some(Hard),
+            ),
             ("60 sets", sets(60), &base, "SETS_PER_WORKOUT", None),
             ("61 sets", sets(61), &base, "SETS_PER_WORKOUT", Some(Soft)),
             ("151 sets", sets(151), &base, "SETS_PER_WORKOUT", Some(Hard)),
-            ("3 others today", lift("CURL", 20.0, 5), &three_today, "WORKOUTS_PER_DAY", None),
-            ("4 others today", lift("CURL", 20.0, 5), &four_today, "WORKOUTS_PER_DAY", Some(Soft)),
-            ("1 identical", lift("CURL", 20.0, 5), &one_identical, "REPEATED_IDENTICAL_WORKOUT", None),
-            ("2 identical", lift("CURL", 20.0, 5), &two_identical, "REPEATED_IDENTICAL_WORKOUT", Some(Soft)),
-            ("overlap", lift("CURL", 20.0, 5), &overlap, "OVERLAPPING_WORKOUT", Some(Hard)),
-            ("duplicate", lift("CURL", 20.0, 5), &duplicate, "DUPLICATE_WORKOUT", Some(Hard)),
-            ("clock 23 h off", lift("CURL", 20.0, 5), &skew_23, "CLOCK_SKEW", None),
-            ("clock 25 h off", lift("CURL", 20.0, 5), &skew_25, "CLOCK_SKEW", Some(Soft)),
-            ("Fran in 119 s", fran(100, 119), &base, "FINISH_TIME_S", Some(Soft)),
-            ("Fran in 59 s", fran(100, 59), &base, "FINISH_TIME_S", Some(Hard)),
-            ("Fran 301 reps", fran(301, 300), &base, "WOD_TOTAL_REPS", Some(Soft)),
-            ("Fran 501 reps", fran(501, 300), &base, "WOD_TOTAL_REPS", Some(Hard)),
-            ("Fran 501 reps, not per set", fran(501, 300), &base, "REPS_PER_SET", None),
+            (
+                "3 others today",
+                lift("CURL", 20.0, 5),
+                &three_today,
+                "WORKOUTS_PER_DAY",
+                None,
+            ),
+            (
+                "4 others today",
+                lift("CURL", 20.0, 5),
+                &four_today,
+                "WORKOUTS_PER_DAY",
+                Some(Soft),
+            ),
+            (
+                "1 identical",
+                lift("CURL", 20.0, 5),
+                &one_identical,
+                "REPEATED_IDENTICAL_WORKOUT",
+                None,
+            ),
+            (
+                "2 identical",
+                lift("CURL", 20.0, 5),
+                &two_identical,
+                "REPEATED_IDENTICAL_WORKOUT",
+                Some(Soft),
+            ),
+            (
+                "overlap",
+                lift("CURL", 20.0, 5),
+                &overlap,
+                "OVERLAPPING_WORKOUT",
+                Some(Hard),
+            ),
+            (
+                "duplicate",
+                lift("CURL", 20.0, 5),
+                &duplicate,
+                "DUPLICATE_WORKOUT",
+                Some(Hard),
+            ),
+            (
+                "clock 23 h off",
+                lift("CURL", 20.0, 5),
+                &skew_23,
+                "CLOCK_SKEW",
+                None,
+            ),
+            (
+                "clock 25 h off",
+                lift("CURL", 20.0, 5),
+                &skew_25,
+                "CLOCK_SKEW",
+                Some(Soft),
+            ),
+            (
+                "Fran in 119 s",
+                fran(100, 119),
+                &base,
+                "FINISH_TIME_S",
+                Some(Soft),
+            ),
+            (
+                "Fran in 59 s",
+                fran(100, 59),
+                &base,
+                "FINISH_TIME_S",
+                Some(Hard),
+            ),
+            (
+                "Fran 301 reps",
+                fran(301, 300),
+                &base,
+                "WOD_TOTAL_REPS",
+                Some(Soft),
+            ),
+            (
+                "Fran 501 reps",
+                fran(501, 300),
+                &base,
+                "WOD_TOTAL_REPS",
+                Some(Hard),
+            ),
+            (
+                "Fran 501 reps, not per set",
+                fran(501, 300),
+                &base,
+                "REPS_PER_SET",
+                None,
+            ),
         ];
         for (name, w, c, rule, expected) in cases {
             assert_eq!(severity(&w, c, rule), expected, "{name}: {rule}");
@@ -561,7 +872,10 @@ mod tests {
             ..lift("CURL", 20.0, 5)
         };
         let c = Context { now, ..ctx() };
-        assert_eq!(severity(&at(Duration::minutes(9)), &c, "PERFORMED_IN_FUTURE"), None);
+        assert_eq!(
+            severity(&at(Duration::minutes(9)), &c, "PERFORMED_IN_FUTURE"),
+            None
+        );
         assert_eq!(
             severity(&at(Duration::minutes(11)), &c, "PERFORMED_IN_FUTURE"),
             Some(Severity::Hard)
@@ -572,7 +886,9 @@ mod tests {
         assert_eq!(late.hits[0].severity, Severity::Info);
         assert_eq!(late.outcome, Outcome::Accepted);
         assert!(!late.counts_for_competition);
-        assert!(evaluate(&at(-Duration::hours(71)), &c, &seeded(), &catalog).counts_for_competition);
+        assert!(
+            evaluate(&at(-Duration::hours(71)), &c, &seeded(), &catalog).counts_for_competition
+        );
     }
 
     #[test]
@@ -585,9 +901,15 @@ mod tests {
             distance_m: Some(5_000),
             ..set(None, None)
         };
-        assert_eq!(severity(&alone(vec![run()]), &ctx(), "RUN_PACE"), Some(Severity::Hard));
+        assert_eq!(
+            severity(&alone(vec![run()]), &ctx(), "RUN_PACE"),
+            Some(Severity::Hard)
+        );
         // With a second set, neither has a duration to be judged by.
-        assert_eq!(severity(&alone(vec![run(), run()]), &ctx(), "RUN_PACE"), None);
+        assert_eq!(
+            severity(&alone(vec![run(), run()]), &ctx(), "RUN_PACE"),
+            None
+        );
     }
 
     #[test]
@@ -600,13 +922,19 @@ mod tests {
         assert!(clean.hits.is_empty() && clean.confidence == 0.0 && clean.counts_for_competition);
 
         let held = judge(&lift("BACK_SQUAT", 320.0, 1));
-        assert_eq!((held.outcome, held.confidence), (Outcome::HeldForReview, 0.6));
+        assert_eq!(
+            (held.outcome, held.confidence),
+            (Outcome::HeldForReview, 0.6)
+        );
 
         // A hard hit wins over a soft one in the same workout.
         let mut both = lift("BACK_SQUAT", 320.0, 1);
         both.exercises.extend(timed("RUN", 5_000, 700).exercises);
         let rejected = judge(&both);
-        assert_eq!((rejected.outcome, rejected.confidence), (Outcome::Rejected, 0.99));
+        assert_eq!(
+            (rejected.outcome, rejected.confidence),
+            (Outcome::Rejected, 0.99)
+        );
         assert_eq!(rejected.hits[0].exercise_index, Some(0));
     }
 
@@ -619,6 +947,11 @@ mod tests {
                                "threshold": 150.0, "exerciseIndex": 0, "setIndex": 2})
         );
         let bare = RuleHit::new("OVERLAPPING_WORKOUT", Severity::Hard, 1.0, None);
-        assert!(serde_json::to_value(&bare).unwrap().get("threshold").is_none());
+        assert!(
+            serde_json::to_value(&bare)
+                .unwrap()
+                .get("threshold")
+                .is_none()
+        );
     }
 }

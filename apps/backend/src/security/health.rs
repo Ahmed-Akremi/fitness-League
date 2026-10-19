@@ -47,8 +47,8 @@ impl HealthCipher {
             .keys
             .first()
             .ok_or_else(|| AppError::internal("no health-data key"))?;
-        let id_len =
-            u8::try_from(id.len()).map_err(|_| AppError::internal("health-data key id too long"))?;
+        let id_len = u8::try_from(id.len())
+            .map_err(|_| AppError::internal("health-data key id too long"))?;
         let mut nonce = [0u8; NONCE_LEN];
         self.random
             .fill(&mut nonce)
