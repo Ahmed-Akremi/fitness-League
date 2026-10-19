@@ -85,6 +85,17 @@ struct RuleSetFile {
     version: i32,
     change_note: String,
     config: Value,
+    expected_progression: Vec<Expected>,
+}
+
+/// Expected improvement, in percent per progress window, at one level.
+#[derive(Deserialize)]
+struct Expected {
+    level: String,
+    /// An exercise code, or `null` for every exercise without a row of its own.
+    exercise: Option<String>,
+    metric: String,
+    pct: f64,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -127,6 +138,20 @@ pub async fn run(db: &MySqlPool, dir: &Path) -> Result<Summary, String> {
             return Err(format!(
                 "catalog.json: exercise {} names the unknown metric {metric}",
                 exercise.code
+            ));
+        }
+    }
+
+    let exercises: HashSet<&str> = catalog.exercises.iter().map(|e| e.code.as_str()).collect();
+    for row in &rules.expected_progression {
+        let unknown = row
+            .exercise
+            .as_deref()
+            .filter(|code| !exercises.contains(code))
+            .or(Some(row.metric.as_str()).filter(|code| !metrics.contains(code)));
+        if let Some(code) = unknown {
+            return Err(format!(
+                "ruleset-v2.json: expectedProgression names the unknown code {code}"
             ));
         }
     }
@@ -354,6 +379,23 @@ async fn write(
             rules.version,
             rules.config.to_string(),
             rules.change_note
+        )
+        .execute(db)
+        .await?;
+    }
+    // For the rule set of the file's version, whatever its status.
+    for row in &rules.expected_progression {
+        sqlx::query!(
+            "INSERT INTO expected_progression (id, rule_set_id, experience_level, exercise_id, metric_type_id, expected_pct)
+             SELECT ?, r.id, ?, (SELECT id FROM exercises WHERE code = ?), m.id, ?
+             FROM rule_sets r JOIN metric_types m ON m.code = ? WHERE r.version = ?
+             ON DUPLICATE KEY UPDATE expected_pct = VALUES(expected_pct)",
+            Uuid::now_v7(),
+            row.level,
+            row.exercise,
+            format!("{:.3}", row.pct),
+            row.metric,
+            rules.version
         )
         .execute(db)
         .await?;
