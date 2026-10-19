@@ -14,9 +14,9 @@ Opening prompt to paste:
 First steps, in order:
 1. **Find where `main` is.** `git fetch && git log --oneline -5 origin/main`. The owner commits and merges
    during sessions.
-   - `feat/rust-backend-2b` holds plan 2b and, under it, the three unpushed commits of `feat/rust-backend-2`
-     (`aece338`, `47753da`, `9bb2cdc`). If they are not in `origin/main`, push `feat/rust-backend-2b` and open
-     its PR, or ask the owner to.
+   - `feat/rust-backend-2b` holds plan 2b, on top of `9bb2cdc`, which PR #17 merged (`origin/main` at
+     `0ff4baa`). If plan 2b is not in `origin/main`, push `feat/rust-backend-2b` and open its PR, or ask the
+     owner to.
    - Start plan 2c on a new branch from `origin/main` once 2b is merged, or from `feat/rust-backend-2b` if it
      is not. Local `main` is 145 commits behind, so never branch from it.
 2. **Check Docker.** `docker ps` should show three healthy containers. Otherwise see section 5,
@@ -86,14 +86,14 @@ endpoints in plans 2a to 2d, and its « Rulings » section lists the choices the
   - #13 and #14: part 1;
   - #15: the part 2 spec, plan 2a and its code;
   - #16: formatting, the Windows build, and the README, spec and plan updates.
-- **Local branch `feat/rust-backend-2b`** (this session) is `origin/main` plus:
-  - `aece338`, `47753da`, `9bb2cdc`: the three unpushed commits of `feat/rust-backend-2` (Windows test skip,
-    plan 2a handoff, « Start here »);
-  - plan 2b: `f5cff26` (the plan), then `10d74a4`, `f013d88`, `f2e94c9`, `e6a8ae1`, `0148bfa` (tasks 1 to 5),
-    then the docs commit.
+- **PR #17** merged `feat/rust-backend-2` (`aece338`, `47753da`, `9bb2cdc`): `origin/main` is at `0ff4baa`.
+- **Local branch `feat/rust-backend-2b`** (this session) starts at `9bb2cdc` and holds plan 2b: `f5cff26`
+  (the plan), then `10d74a4`, `f013d88`, `95e7588`, `f2e94c9`, `e6a8ae1`, `0148bfa` (tasks 1 to 5), then the
+  docs commits. `95e7588` was committed by the owner mid-task from the working tree; `f2e94c9` finishes that
+  task.
 
-  **Nothing is pushed.** The owner commits and merges through PRs, sometimes during a session: run `git log`
-  before building on the branch. `feat/rust-backend-2` is now contained in `feat/rust-backend-2b`.
+  **Not pushed.** The owner commits and merges through PRs, sometimes during a session: run `git log` before
+  building on the branch.
 - **Other local branches:**
   - `main` is 145 commits behind `origin/main`, so don't use it;
   - `feat/rust-backend` is merged (#14);
@@ -251,8 +251,9 @@ endpoints in plans 2a to 2d, and its « Rulings » section lists the choices the
 - `10d74a4`: the scoring engine as pure rules (`scoring/engine.rs`), the rule-set fields it reads,
   `ExperienceLevel` ordered and readable by sqlx.
 - `f013d88`: migration `0007_points`, and the seed's expected progression.
-- `f2e94c9`: scoring in `intake::create`'s transaction (`records.rs`, `ledger.rs`, `score`), the
-  `user_stats` lock, `GET /workouts/{id}/points`; the workout test helpers moved to `tests/common/workouts.rs`.
+- `95e7588` (committed by the owner from the working tree, mid-task) and `f2e94c9`: scoring in
+  `intake::create`'s transaction (`records.rs`, `ledger.rs`, `score`), the `user_stats` lock,
+  `GET /workouts/{id}/points`; the workout test helpers moved to `tests/common/workouts.rs`.
 - `e6a8ae1`: `GET /me/records`, `/me/progress` and its metric series.
 - `0148bfa`: the export carries the records and the XP ledger.
 - The docs commit: README, spec status, this handoff, the plan's « Built » section, `.sqlx/`.
