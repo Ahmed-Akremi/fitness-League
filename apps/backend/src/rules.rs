@@ -29,6 +29,49 @@ pub struct Rules {
     pub e1rm_formula: E1rmFormula,
     pub e1rm_max_reps: i32,
     pub anticheat: Anticheat,
+
+    // XP (docs/ARCHITECTURE.md §5.6).
+    pub workout_base_xp: i64,
+    pub workout_max_xp: i64,
+    pub workout_xp_minutes_per_point: i64,
+    pub workout_min_duration_min: i64,
+    /// Workouts of a business day that earn full XP; the next ones take `diminishing_multipliers`.
+    pub diminishing_returns_after: i64,
+    pub diminishing_multipliers: Vec<f64>,
+    pub daily_xp_cap: i64,
+    pub weekly_xp_cap: i64,
+    pub pr_xp_min: i64,
+    pub pr_xp_max: i64,
+    pub calibration_pr_xp: i64,
+    pub pr_same_metric_cooldown_days: i64,
+    pub first_workout_quest_xp: i64,
+    pub level_base_xp: f64,
+    pub level_exponent: f64,
+
+    // Fairness (§5.4): baselines, expected progress and the levels that set it.
+    /// Sessions of an exercise first seen after calibration before its baseline is final.
+    pub baseline_first_logs: i64,
+    /// A record beyond this many times the expected progress is held for review.
+    pub progress_ceiling_ratio: f64,
+    /// By exercise code.
+    pub strength_standards: HashMap<String, StrengthStandard>,
+    /// By metric code, in seconds: lower is better.
+    pub running_standards: HashMap<String, Tiers>,
+}
+
+/// The value from which an athlete is intermediate, then advanced.
+#[derive(Deserialize)]
+pub struct Tiers {
+    pub intermediate: f64,
+    pub advanced: f64,
+}
+
+#[derive(Deserialize)]
+pub struct StrengthStandard {
+    #[serde(rename = "bwRatio")]
+    pub bw_ratio: Tiers,
+    #[serde(rename = "absoluteKg")]
+    pub absolute_kg: Tiers,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
@@ -131,5 +174,12 @@ pub mod tests {
         assert_eq!(rules.anticheat.lifts["BACK_SQUAT"].absolute_kg.hold, 300.0);
         assert_eq!(rules.anticheat.run_time_s["TIME_5K"].reject, 750.0);
         assert_eq!(rules.anticheat.identical_fingerprint_hold.days, 14);
+        assert_eq!(rules.daily_xp_cap, 400);
+        assert_eq!(
+            rules.strength_standards["BACK_SQUAT"]
+                .absolute_kg
+                .intermediate,
+            100.0
+        );
     }
 }
