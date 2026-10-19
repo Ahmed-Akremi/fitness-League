@@ -1,4 +1,4 @@
-# Handoff — fitness-league (2026-10-19: Rust backend plan 2b built, on `feat/rust-backend-2b`, not pushed)
+# Handoff — fitness-league (2026-10-19: Rust backend plan 2b built, on `feat/rust-backend-2b`, not pushed; `security-audit` skill installed)
 
 Earlier handoffs are in git: `git show 61b7787:handoff.md` (the full history since 2026-10-04),
 `git show 02a732e:handoff.md` (part 1 complete) and `git show 9bb2cdc:handoff.md` (plan 2a built). This one
@@ -32,6 +32,8 @@ First steps, in order:
    - `apps/mobile-rn/src/features/{goals,badges}` for what the app actually reads.
 5. **Don't ask the owner product questions.** Their words: « you will find everything in the .md files ».
    Take the technical calls yourself and list them in the plan's « Rulings » section.
+6. **A new skill is available: `security-audit`** (section 2, « Tools »). It loads by itself on security
+   questions, in guidance mode, and never starts a full audit or writes report files unless asked.
 
 ## 1. Goal
 
@@ -151,6 +153,16 @@ endpoints in plans 2a to 2d, and its « Rulings » section lists the choices the
   - No API process is running.
 - **`gh` is not on the PATH, on Windows or in WSL's default shell.** Pushing and PRs go through the owner,
   who has been merging them.
+- **Tools: the `security-audit` skill** (Cloudflare's, installed 2026-10-19 from
+  `https://github.com/cloudflare/security-audit-skill`, commit `c1c8a8c`, MIT):
+  - in `~/.claude/skills/security-audit/` (user level, outside the repository). Its 21 files were reviewed
+    before installing: Markdown methodology, a JSON schema, and two zero-dependency Node validators that only
+    read files (no network, no child process);
+  - **guidance mode** (default): security questions and focused reviews, no files written;
+  - **full audit mode**, only on an explicit request (« security audit this codebase »): six phases with
+    sub-agents, output in `~/security-audit-skill/<repo>/run-<N>`, never in the repository. It runs target
+    code only inside an OS sandbox without network; otherwise a lead stays `needs_validation`;
+  - **its validators refuse to run on native Windows** (see section 5), so a full audit must run from WSL.
 - **Other apps, unchanged this session.** Last runs:
   - RN: 53 suites / 366 tests (`npx jest --maxWorkers=2`) + `npx tsc --noEmit`;
   - admin panel: 13 tests + typecheck;
@@ -265,6 +277,8 @@ endpoints in plans 2a to 2d, and its « Rulings » section lists the choices the
   - `cargo audit` (264 crates) and `cargo deny check`.
 
   Not done this session: a live run against the real binaries, and the mobile app against the Rust API.
+- Then, outside the repository: the `security-audit` skill installed (section 2, « Tools »), and this
+  handoff's last commit.
 
 ## 5. Traps (still true)
 
@@ -311,6 +325,12 @@ endpoints in plans 2a to 2d, and its « Rulings » section lists the choices the
   - never log a database error message (MariaDB quotes values in it); use `db::describe`.
 
 **Tooling and hooks**
+- **The `security-audit` validators fail closed on native Windows.** `validate-findings.cjs` and
+  `validate-coverage-ledger.cjs` need `O_NOFOLLOW` and `O_NONBLOCK`, which Node lacks there. They answer
+  « OS no-follow and nonblocking input protection is unavailable », and 7 of the skill's 65 tests fail for
+  that reason (46 pass, 12 skipped). This is their safety design, not a bug: don't patch it. Run a full audit
+  from WSL, pointed at the Windows checkout (`/mnt/c/Users/moham/OneDrive/Desktop/Projects/fitness-League`),
+  never at the stale WSL copy. Guidance mode is unaffected.
 - **GateGuard refuses the first Edit or Write of every file once.** State the facts (importers, affected API,
   data, the user's words) and retry. It also blocks Bash commands that contain a recursive folder deletion or
   destructive-looking SQL, even inside a heredoc: write such text with the Edit or Write tool. `git checkout
@@ -423,7 +443,9 @@ endpoints in plans 2a to 2d, and its « Rulings » section lists the choices the
      absolute `og:image`;
    - a logo per competition (still the app icon);
    - the offline demo `assets/demo/api.json` was recorded before `MOVEMENT_REPS`: re-record it;
-   - the tutorial voice-off is synthetic.
+   - the tutorial voice-off is synthetic;
+   - a full security audit of `apps/backend` (and of `apps/admin`), with the `security-audit` skill, from
+     WSL, before the cut-over. Optional; only when the owner asks for it.
 8. **Needs the owner's accounts or choices:**
    - online payment for competitions (Konnect, Stripe…);
    - push notifications (Firebase project + `google-services.json`);
