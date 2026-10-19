@@ -75,6 +75,10 @@ async fn ready_reports_the_database_and_redis(opts: MySqlPoolOptions, conn: MySq
 const PROMPT: Duration = Duration::from_secs(4);
 
 #[sqlx::test]
+#[cfg_attr(
+    windows,
+    ignore = "Windows takes 2 s to refuse a local connection, so each request waits the 1 s Redis timeout"
+)]
 async fn a_redis_outage_does_not_stall_requests(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
     let real = std::env::var("TEST_REDIS_URL").unwrap();
     let (address, relay) = common::relay("127.0.0.1:0", host_port(&real).to_owned()).await;

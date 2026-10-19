@@ -1,0 +1,487 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT w.id AS \"id: Uuid\", w.client_id AS \"client_id: Uuid\", w.sport_id AS \"sport_id: Uuid\",\n                  w.workout_type, w.performed_at, w.duration_s, w.notes, w.visibility, w.status,\n                  w.is_verified AS \"is_verified: bool\", w.version,\n                  CAST(w.total_volume_kg AS DOUBLE) AS \"total_volume_kg!: f64\", w.total_distance_m,\n                  w.received_at, ev.outcome, ev.rule_hits, ev.reviewed_at,\n                  e.id AS \"exercise_row: Uuid\", e.exercise_id AS \"exercise_id: Uuid\", e.position,\n                  e.notes AS exercise_notes,\n                  s.set_index, s.reps, CAST(s.weight_kg AS DOUBLE) AS \"weight_kg?: f64\", s.distance_m,\n                  s.duration_s AS set_duration_s, s.is_warmup AS \"is_warmup: bool\",\n                  CAST(s.rpe AS DOUBLE) AS \"rpe?: f64\", CAST(s.e1rm_kg AS DOUBLE) AS \"e1rm_kg?: f64\"\n           FROM (SELECT id FROM workouts\n                 WHERE user_id = ?\n                   AND (? IS NULL OR id = ?)\n                   AND (? IS NULL OR performed_at < ? OR (performed_at = ? AND id < ?))\n                   AND (? IS NULL OR performed_at >= ?)\n                   AND (? IS NULL OR performed_at < ?)\n                   AND (? IS NULL OR sport_id = ?)\n                 ORDER BY performed_at DESC, id DESC\n                 LIMIT ?) page\n           JOIN workouts w ON w.id = page.id\n           JOIN workout_evaluations ev ON ev.workout_id = w.id\n           JOIN workout_exercises e ON e.workout_id = w.id\n           JOIN workout_sets s ON s.workout_exercise_id = e.id\n           ORDER BY w.performed_at DESC, w.id DESC, e.position, s.set_index",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | PRIMARY_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.workouts",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "client_id: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.workouts",
+            "name": "client_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "sport_id: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | MULTIPLE_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.workouts",
+            "name": "sport_id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "workout_type",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | BINARY | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 160
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.workouts",
+            "name": "workout_type"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "performed_at",
+        "type_info": {
+          "type": "Datetime",
+          "flags": "NOT_NULL | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 26
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.workouts",
+            "name": "performed_at"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "duration_s",
+        "type_info": {
+          "type": "Long",
+          "flags": "NOT_NULL | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 11
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.workouts",
+            "name": "duration_s"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "notes",
+        "type_info": {
+          "type": "VarString",
+          "flags": "",
+          "collation": 224,
+          "max_size": 8000
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.workouts",
+            "name": "notes"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "visibility",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | ENUM | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 28
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.workouts",
+            "name": "visibility"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "status",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | ENUM | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 60
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.workouts",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "is_verified: bool",
+        "type_info": {
+          "type": "Tiny",
+          "flags": "NOT_NULL",
+          "collation": 63,
+          "max_size": 1
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.workouts",
+            "name": "is_verified"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "version",
+        "type_info": {
+          "type": "Long",
+          "flags": "NOT_NULL",
+          "collation": 63,
+          "max_size": 11
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.workouts",
+            "name": "version"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "total_volume_kg!: f64",
+        "type_info": {
+          "type": "Double",
+          "flags": "BINARY",
+          "collation": 63,
+          "max_size": 22
+        },
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 12,
+        "name": "total_distance_m",
+        "type_info": {
+          "type": "LongLong",
+          "flags": "NOT_NULL | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 20
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.workouts",
+            "name": "total_distance_m"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "received_at",
+        "type_info": {
+          "type": "Datetime",
+          "flags": "NOT_NULL | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 26
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.workouts",
+            "name": "received_at"
+          }
+        }
+      },
+      {
+        "ordinal": 14,
+        "name": "outcome",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | ENUM | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 60
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.workout_evaluations",
+            "name": "outcome"
+          }
+        }
+      },
+      {
+        "ordinal": 15,
+        "name": "rule_hits",
+        "type_info": {
+          "type": "Blob",
+          "flags": "NOT_NULL | BLOB | BINARY | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 4294967295
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.workout_evaluations",
+            "name": "rule_hits"
+          }
+        }
+      },
+      {
+        "ordinal": 16,
+        "name": "reviewed_at",
+        "type_info": {
+          "type": "Datetime",
+          "flags": "BINARY",
+          "collation": 63,
+          "max_size": 26
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.workout_evaluations",
+            "name": "reviewed_at"
+          }
+        }
+      },
+      {
+        "ordinal": 17,
+        "name": "exercise_row: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | PRIMARY_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.workout_exercises",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 18,
+        "name": "exercise_id: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | MULTIPLE_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.workout_exercises",
+            "name": "exercise_id"
+          }
+        }
+      },
+      {
+        "ordinal": 19,
+        "name": "position",
+        "type_info": {
+          "type": "Short",
+          "flags": "NOT_NULL | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 6
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.workout_exercises",
+            "name": "position"
+          }
+        }
+      },
+      {
+        "ordinal": 20,
+        "name": "exercise_notes",
+        "type_info": {
+          "type": "VarString",
+          "flags": "",
+          "collation": 224,
+          "max_size": 2000
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.workout_exercises",
+            "name": "notes"
+          }
+        }
+      },
+      {
+        "ordinal": 21,
+        "name": "set_index",
+        "type_info": {
+          "type": "Short",
+          "flags": "NOT_NULL | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 6
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.workout_sets",
+            "name": "set_index"
+          }
+        }
+      },
+      {
+        "ordinal": 22,
+        "name": "reps",
+        "type_info": {
+          "type": "Short",
+          "flags": "",
+          "collation": 63,
+          "max_size": 6
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.workout_sets",
+            "name": "reps"
+          }
+        }
+      },
+      {
+        "ordinal": 23,
+        "name": "weight_kg?: f64",
+        "type_info": {
+          "type": "Double",
+          "flags": "BINARY",
+          "collation": 63,
+          "max_size": 22
+        },
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 24,
+        "name": "distance_m",
+        "type_info": {
+          "type": "Long",
+          "flags": "",
+          "collation": 63,
+          "max_size": 11
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.workout_sets",
+            "name": "distance_m"
+          }
+        }
+      },
+      {
+        "ordinal": 25,
+        "name": "set_duration_s",
+        "type_info": {
+          "type": "Long",
+          "flags": "",
+          "collation": 63,
+          "max_size": 11
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.workout_sets",
+            "name": "duration_s"
+          }
+        }
+      },
+      {
+        "ordinal": 26,
+        "name": "is_warmup: bool",
+        "type_info": {
+          "type": "Tiny",
+          "flags": "NOT_NULL",
+          "collation": 63,
+          "max_size": 1
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.workout_sets",
+            "name": "is_warmup"
+          }
+        }
+      },
+      {
+        "ordinal": 27,
+        "name": "rpe?: f64",
+        "type_info": {
+          "type": "Double",
+          "flags": "BINARY",
+          "collation": 63,
+          "max_size": 22
+        },
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 28,
+        "name": "e1rm_kg?: f64",
+        "type_info": {
+          "type": "Double",
+          "flags": "BINARY",
+          "collation": 63,
+          "max_size": 22
+        },
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 14
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "2d44604523d6ad4da7aac78903425b077ef61fb2efe08ea54d0ad46f5d4287cb"
+}

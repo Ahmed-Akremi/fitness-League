@@ -1,0 +1,65 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT performed_at, duration_s, fingerprint FROM workouts WHERE user_id = ? AND status <> 'REJECTED' AND performed_at >= ? AND performed_at < ?",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "performed_at",
+        "type_info": {
+          "type": "Datetime",
+          "flags": "NOT_NULL | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 26
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.workouts",
+            "name": "performed_at"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "duration_s",
+        "type_info": {
+          "type": "Long",
+          "flags": "NOT_NULL | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 11
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.workouts",
+            "name": "duration_s"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "fingerprint",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 32
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.workouts",
+            "name": "fingerprint"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "d08d39b334c8db11750ea6b387193f1efa6331b2d4c1b5cbb23aba0172d406fc"
+}

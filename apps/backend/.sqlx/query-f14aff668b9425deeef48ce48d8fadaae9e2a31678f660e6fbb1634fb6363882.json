@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "UPDATE workouts SET notes = NULL, visibility = 'PRIVATE' WHERE user_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "f14aff668b9425deeef48ce48d8fadaae9e2a31678f660e6fbb1634fb6363882"
+}

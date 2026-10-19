@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "UPDATE workout_exercises e JOIN workouts w ON w.id = e.workout_id SET e.notes = NULL WHERE w.user_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "bf82ffa586e4a97e9fd1dbedebc07b5d81ddf69a9cb219c2485cf8e55fbceb84"
+}
