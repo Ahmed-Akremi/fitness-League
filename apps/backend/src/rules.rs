@@ -115,7 +115,8 @@ pub mod tests {
 
     /// The configuration of the seeded rule set, version 2.
     pub fn seeded() -> Rules {
-        let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../infra/seed-data/ruleset-v2.json");
+        let path =
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("../../infra/seed-data/ruleset-v2.json");
         let file: serde_json::Value =
             serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
         serde_json::from_value(file["config"].clone()).unwrap()

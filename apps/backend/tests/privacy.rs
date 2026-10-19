@@ -415,7 +415,10 @@ async fn weigh_and_train(app: &TestApp, session: &Value) {
     let reply = app
         .send(
             common::request(Method::POST, "/api/v1/workouts")
-                .header("authorization", format!("Bearer {}", access(session).unwrap()))
+                .header(
+                    "authorization",
+                    format!("Bearer {}", access(session).unwrap()),
+                )
                 .header("content-type", "application/json")
                 .header("idempotency-key", client.to_string())
                 .body(axum::body::Body::from(body.to_string()))

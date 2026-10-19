@@ -188,6 +188,7 @@ dependencies = [
  "jsonwebtoken",
  "lettre",
  "redis",
+ "ring",
  "secrecy",
  "serde",
  "serde_json",

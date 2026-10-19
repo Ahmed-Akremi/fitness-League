@@ -106,6 +106,7 @@ async fn seed(dir: Option<&String>) -> Result<(), String> {
 }
 
 /// Ctrl-C, or the TERM signal that `docker stop` and process managers send.
+#[cfg(unix)]
 async fn shutdown() {
     use tokio::signal::unix::{SignalKind, signal};
     match signal(SignalKind::terminate()) {
@@ -119,6 +120,12 @@ async fn shutdown() {
             let _ = tokio::signal::ctrl_c().await;
         }
     }
+}
+
+/// Windows has no TERM signal: Ctrl-C only (local development).
+#[cfg(not(unix))]
+async fn shutdown() {
+    let _ = tokio::signal::ctrl_c().await;
 }
 
 fn now_ms() -> u64 {

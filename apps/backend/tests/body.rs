@@ -75,7 +75,10 @@ async fn a_measurement_is_kept_encrypted(opts: MySqlPoolOptions, conn: MySqlConn
             .unwrap();
     assert_eq!(stored.len(), 2);
     for blob in stored {
-        assert!(!blob.windows(4).any(|w| w == b"78.4"), "a weight is stored in clear");
+        assert!(
+            !blob.windows(4).any(|w| w == b"78.4"),
+            "a weight is stored in clear"
+        );
     }
 }
 
@@ -105,7 +108,10 @@ async fn withdrawing_the_consent_closes_both_routes(
         add(&app, &token, json!({"weightKg": 78.4})).await.status,
         StatusCode::FORBIDDEN
     );
-    assert_eq!(body::latest_weight_kg(&app.state, user).await.unwrap(), None);
+    assert_eq!(
+        body::latest_weight_kg(&app.state, user).await.unwrap(),
+        None
+    );
 }
 
 #[sqlx::test]
@@ -117,25 +123,59 @@ async fn measurement_limits(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
     for (body, field, code) in [
         (json!({"weightKg": 24}), "weightKg", "MIN"),
         (json!({"weightKg": 351}), "weightKg", "MAX"),
-        (json!({"weightKg": 70, "bodyFatPct": 71}), "bodyFatPct", "MAX"),
-        (json!({"weightKg": 70, "bodyFatPct": 1}), "bodyFatPct", "MIN"),
+        (
+            json!({"weightKg": 70, "bodyFatPct": 71}),
+            "bodyFatPct",
+            "MAX",
+        ),
+        (
+            json!({"weightKg": 70, "bodyFatPct": 1}),
+            "bodyFatPct",
+            "MIN",
+        ),
         (
             json!({"weightKg": 70, "measuredAt": at(Duration::minutes(20))}),
             "measuredAt",
             "IN_FUTURE",
         ),
-        (json!({"weightKg": 70, "measuredAt": "yesterday"}), "measuredAt", "ISISO8601"),
-        (json!({"weightKg": 70, "source": "FITBIT"}), "source", "INVALID"),
+        (
+            json!({"weightKg": 70, "measuredAt": "yesterday"}),
+            "measuredAt",
+            "ISISO8601",
+        ),
+        (
+            json!({"weightKg": 70, "source": "FITBIT"}),
+            "source",
+            "INVALID",
+        ),
         (json!({"weightKg": 70, "bmi": 22}), "bmi", "UNKNOWN_FIELD"),
     ] {
         let reply = add(&app, &token, body.clone()).await;
-        assert_eq!(reply.status, StatusCode::UNPROCESSABLE_ENTITY, "{body}: {}", reply.json);
-        assert_eq!(reply.json["errors"][0]["field"], field, "{body}: {}", reply.json);
-        assert_eq!(reply.json["errors"][0]["code"], code, "{body}: {}", reply.json);
+        assert_eq!(
+            reply.status,
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "{body}: {}",
+            reply.json
+        );
+        assert_eq!(
+            reply.json["errors"][0]["field"], field,
+            "{body}: {}",
+            reply.json
+        );
+        assert_eq!(
+            reply.json["errors"][0]["code"], code,
+            "{body}: {}",
+            reply.json
+        );
     }
 
     // A float with more decimals than the app shows is rounded, not refused.
-    let reply = add(&app, &token, json!({"weightKg": 78.456, "bodyFatPct": 18.44})).await;
+    let reply = add(
+        &app,
+        &token,
+        json!({"weightKg": 78.456, "bodyFatPct": 18.44}),
+    )
+    .await;
     assert_eq!(reply.status, StatusCode::CREATED, "{}", reply.json);
     assert_eq!(reply.json["weightKg"], 78.46);
     assert_eq!(reply.json["bodyFatPct"], 18.4);

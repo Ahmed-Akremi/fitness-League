@@ -164,13 +164,7 @@ pub async fn create(state: &AppState, user: Uuid, body: WorkoutBody) -> Result<C
     let now = Utc::now();
     let device = body.device_submitted_at.as_deref().and_then(rfc3339);
     let ctx = context(state, user, workout, &rules, now, device, fingerprint).await?;
-    let plausibility = |code: &str| {
-        resolved
-            .plausibility
-            .get(code)
-            .cloned()
-            .unwrap_or_default()
-    };
+    let plausibility = |code: &str| resolved.plausibility.get(code).cloned().unwrap_or_default();
     let evaluation = anticheat::evaluate(workout, &ctx, &rules, &plausibility);
 
     let visibility = match body.visibility {

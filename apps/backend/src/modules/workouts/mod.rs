@@ -108,7 +108,12 @@ async fn sync(
     AppUser(user): AppUser,
     ValidJson(body): ValidJson<SyncBody>,
 ) -> Result<Json<Value>, AppError> {
-    rate_limit::check(&state, &rate_limit::WORKOUTS_SYNC_USER, &user.id.to_string()).await?;
+    rate_limit::check(
+        &state,
+        &rate_limit::WORKOUTS_SYNC_USER,
+        &user.id.to_string(),
+    )
+    .await?;
     let mut results = Vec::with_capacity(body.items.len());
     for item in body.items {
         let client_id = item.get("clientId").cloned().unwrap_or(Value::Null);
@@ -123,7 +128,9 @@ async fn sync(
             Ok(Created::New(w) | Created::Replayed(w)) if w["status"] == "REJECTED" => {
                 json!({"clientId": client_id, "result": "REJECTED", "workout": w})
             }
-            Ok(Created::New(w)) => json!({"clientId": client_id, "result": "CREATED", "workout": w}),
+            Ok(Created::New(w)) => {
+                json!({"clientId": client_id, "result": "CREATED", "workout": w})
+            }
             Ok(Created::Replayed(w)) => {
                 json!({"clientId": client_id, "result": "REPLAYED", "workout": w})
             }
