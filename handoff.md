@@ -3,6 +3,33 @@
 Earlier handoffs are in git: `git show 61b7787:handoff.md` (the full history since 2026-10-04) and
 `git show 02a732e:handoff.md` (part 1 complete). This one keeps what is still true and still to do.
 
+## 0. Start here (next session)
+
+Opening prompt to paste:
+
+> Read `handoff.md`, then continue the backend: write plan 2b (points) of the Rust backend part 2 from the
+> spec, then build it. Work in this Windows checkout only.
+
+First steps, in order:
+1. **Find where `main` is.** `git fetch && git log --oneline -5 origin/main`. The owner commits and merges
+   during sessions.
+   - If `aece338` and `47753da` (or this handoff's commit) are not in `origin/main`, push
+     `feat/rust-backend-2`, or ask the owner to.
+   - Start plan 2b on a new branch from `origin/main`. Local `main` is 145 commits behind, so never branch from
+     it.
+2. **Check Docker.** `docker ps` should show three healthy containers. Otherwise see section 5,
+   « Containers stopped ».
+3. **Set up the environment.** Use section 2's environment line in Git Bash for every cargo command, then
+   check the build: `cargo test -j 4 --lib` (98 green).
+4. **Read the plan's inputs:**
+   - the spec, `docs/superpowers/specs/2026-10-18-rust-backend-training-loop-design.md`: its scope, the
+     **plans table** (row « 2b, points ») and its rulings;
+   - plan 2a, `docs/superpowers/plans/2026-10-18-rust-backend-2a-workouts-in.md`: the house style to copy;
+   - the old API modules `apps/api/src/modules/{scoring,ledger,progress}`, which are the contract;
+   - `apps/mobile-rn/src` for what the app actually reads.
+5. **Don't ask the owner product questions.** Their words: « you will find everything in the .md files ».
+   Take the technical calls yourself and list them in the plan's « Rulings » section.
+
 ## 1. Goal
 
 Fitness League: a training and competition app for athletes, gyms and event organizers in Tunisia
@@ -56,9 +83,16 @@ endpoints in plans 2a to 2d, and its « Rulings » section lists the choices the
   - #13 and #14: part 1;
   - #15: the part 2 spec, plan 2a and its code;
   - #16: formatting, the Windows build, and the README, spec and plan updates.
-- **Local branch `feat/rust-backend-2`** tracks `origin/main` and holds this session's last commit (not
-  pushed). The owner commits and merges through PRs, sometimes during a session: run `git log` before
-  building on the branch.
+- **Local branch `feat/rust-backend-2`** tracks `origin/main` and is ahead of it by `aece338`, `47753da` and
+  this handoff's commit. None of them is pushed. The owner commits and merges through PRs, sometimes during a
+  session: run `git log` before building on the branch.
+- **Other local branches:**
+  - `main` is 145 commits behind `origin/main`, so don't use it;
+  - `feat/rust-backend` is merged (#14);
+  - `feat/gyms-sports-mobile` is old. It is 55 commits ahead of its remote, but every one is in
+    `origin/main`.
+
+  None was deleted (owner's call). No stash.
 - **Rust backend, part 1 complete and plan 2a built.** 32 endpoints. Plan 2a's six:
   - `POST /workouts` and `POST /workouts/sync`: idempotent on `clientId`, checked by anti-cheat layer 1
     (the old `rules.ts`, rule for rule, with rule set v2's thresholds);
@@ -188,10 +222,10 @@ endpoints in plans 2a to 2d, and its « Rulings » section lists the choices the
   - `main.rs::shutdown` builds on Windows (Ctrl-C only; `tokio::signal::unix` is Unix-only);
   - README, spec status, the plan's « Built » section.
 - Merged through PRs #15 and #16. `main` is at `02a732e`.
-- Last commit (local, not pushed):
-  - the Windows-only ignore of the Redis outage test;
-  - this handoff;
-  - `.sqlx/` regenerated.
+- Local, not pushed:
+  - `aece338`: the Windows-only ignore of the Redis outage test;
+  - `47753da`: this handoff and the regenerated `.sqlx/`;
+  - the handoff's last commit: the « Start here » section.
 - **Checks (2026-10-19, native Windows, after the last commit's changes):**
   - `cargo test`: 234 green, 1 ignored (the Windows skip). That is 98 unit tests, plus 136 integration
     tests in 18 files;
@@ -251,6 +285,11 @@ endpoints in plans 2a to 2d, and its « Rulings » section lists the choices the
   destructive-looking SQL, even inside a heredoc: write such text with the Edit or Write tool. `git checkout
   -- <file>` is blocked: restore with `git show HEAD:<path> > <path>`. Adding the repository to
   `GATEGUARD_EXEMPT_GLOBS` would remove the first-touch refusals (owner's call).
+  - Only a Grep, Glob or LS call (or a shell `grep`/`find`) counts as the search it asks for. A Read does not.
+  - It also wants the user's instruction verbatim, and the first Bash command of a session needs the request
+    and the purpose of the command.
+- **Glob or Grep from the repository root can time out** (20 s, because of `node_modules`). Give them a path
+  such as `apps/backend` or `apps/api/src`, or use `ls`.
 - **`pkill -f <pattern>` can kill the calling shell:** kill by PID (`ss -ltnp`).
 - **RN app:**
   - run jest with `npx jest --maxWorkers=2`;
@@ -284,9 +323,15 @@ endpoints in plans 2a to 2d, and its « Rulings » section lists the choices the
    - reading body measurements also needs the consent;
    - a malformed id answers 404;
    - no soft delete and no `data_source` on workouts.
-3. **By hand:** the mobile app pointed at the Rust API (`EXPO_PUBLIC_API_URL=http://<this
-   machine>:3100/api/v1`, its origin in `CORS_ORIGINS`) registers, finishes onboarding and shows its profile.
-   The same flow passed over HTTP.
+3. **By hand:** point the mobile app at the Rust API (`EXPO_PUBLIC_API_URL=http://<this
+   machine>:3100/api/v1`, with its origin in `CORS_ORIGINS`). Seed the database first, since it is empty
+   after the Docker reset. Part 1's flow (register, onboarding, profile) passed over HTTP. Still to see in the
+   app, plan 2a's « Done when »:
+   - the outbox flush (`workout-sync.ts`) gets `CREATED`, `REPLAYED`, `CONFLICT`, `REJECTED` and
+     `INVALID` as it expects;
+   - `BodyScreen` shows its consent screen on the 403 `CONSENT_REQUIRED`.
+
+   The tests cover both through the recorded shapes; nobody has watched them in the app yet.
 4. **Rust backend, open points for the owner:**
    - **Plan 1c rulings:**
      - baseline values are rounded to 3 decimals, not refused;
@@ -356,7 +401,9 @@ endpoints in plans 2a to 2d, and its « Rulings » section lists the choices the
    - drop `competition_submissions.video_media_id` and `COMPETITION_VIDEO`;
    - rename `apps/mobile-rn` to `apps/mobile`;
    - delete the merged remote branches (`feat/competitions`, `feat/gyms-sports-mobile`, `feat/home-news`,
-     `feat/landing`, `feat/organizer-space`, `feat/rn-ui-polish`) and the local `feat/rust-backend-1c`.
+     `feat/landing`, `feat/organizer-space`, `feat/rn-ui-polish`), the local `feat/rust-backend` and
+     `feat/gyms-sports-mobile`, and in the WSL copy `feat/rust-backend-1c` and the stray
+     `feat/rust-backend-2`.
 9. **Owner's other PC:** Expo answered « Cannot read properties of undefined (reading 'transformFile') ».
    Likely causes: the checkout in OneDrive, or `npm install` run inside `apps/mobile-rn` in a pnpm workspace.
    Advised: move it out of OneDrive, `pnpm install`, `npx expo start --clear`. The real line
