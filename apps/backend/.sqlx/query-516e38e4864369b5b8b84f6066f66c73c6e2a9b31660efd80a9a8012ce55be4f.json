@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "INSERT INTO xp_daily_counters (user_id, day, xp_granted, workouts_counted) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE xp_granted = xp_granted + VALUES(xp_granted), workouts_counted = workouts_counted + VALUES(workouts_counted)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "516e38e4864369b5b8b84f6066f66c73c6e2a9b31660efd80a9a8012ce55be4f"
+}

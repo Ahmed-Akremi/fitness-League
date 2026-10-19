@@ -1,0 +1,31 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT status FROM workouts WHERE id = ? AND user_id = ?",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "status",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | ENUM | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 60
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.workouts",
+            "name": "status"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "1755f4f59c6a8f4335875142a76ff2acf389ce47a8f7fb16214e79776961795f"
+}

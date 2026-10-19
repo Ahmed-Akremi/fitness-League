@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "UPDATE baselines SET status = 'FINAL', finalized_at = UTC_TIMESTAMP(6), effective_value = ?, experience_level = ? WHERE user_id = ? AND exercise_id = ? AND metric_type_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 5
+    },
+    "nullable": []
+  },
+  "hash": "a6cf99b6d34ee554aff40cf5f70a283f5232176649df0610abc60985b257600f"
+}

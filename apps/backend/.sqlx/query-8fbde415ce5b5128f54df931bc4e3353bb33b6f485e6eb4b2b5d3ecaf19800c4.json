@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "INSERT INTO xp_transactions (id, user_id, amount, reason, source_type, source_id, workout_id, rule_set_version, explanation, effective_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 10
+    },
+    "nullable": []
+  },
+  "hash": "8fbde415ce5b5128f54df931bc4e3353bb33b6f485e6eb4b2b5d3ecaf19800c4"
+}

@@ -1,0 +1,60 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT exercise_id AS \"exercise_id: Uuid\", metric_type_id AS \"metric_id: Uuid\",\n                  CAST(effective_value AS DOUBLE) AS \"value!: f64\"\n           FROM baselines WHERE user_id = ?",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "exercise_id: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | MULTIPLE_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.baselines",
+            "name": "exercise_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "metric_id: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | MULTIPLE_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.baselines",
+            "name": "metric_type_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "value!: f64",
+        "type_info": {
+          "type": "Double",
+          "flags": "BINARY",
+          "collation": 63,
+          "max_size": 22
+        },
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "3575ba038d738ff51cde7e46b1c7e0a668fe718d5ae95e4701fd089fcf9e683f"
+}

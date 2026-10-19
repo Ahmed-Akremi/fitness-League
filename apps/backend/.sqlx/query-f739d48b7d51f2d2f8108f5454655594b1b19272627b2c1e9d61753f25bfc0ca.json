@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "INSERT INTO personal_records (id, user_id, exercise_id, metric_type_id, qualifier, value, previous_value, workout_id, status, is_current, achieved_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 11
+    },
+    "nullable": []
+  },
+  "hash": "f739d48b7d51f2d2f8108f5454655594b1b19272627b2c1e9d61753f25bfc0ca"
+}

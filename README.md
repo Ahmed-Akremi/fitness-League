@@ -58,7 +58,11 @@ account deletion after a 30-day grace period, carried out by the worker's daily 
 is complete. Part 2 (training loop) is under way. Plan 2a takes workouts in: `POST /workouts`,
 `POST /workouts/sync` for the app's offline queue, `GET /workouts` and `GET /workouts/{id}`, checked by
 anti-cheat layer 1. It also adds `GET` and `POST /me/body-measurements`, stored encrypted and only with the
-`HEALTH_DATA` consent. Parts 3 to 6 (gyms and social, competitions, admin, cut-over) come after.
+`HEALTH_DATA` consent. Plan 2b scores an accepted workout in the transaction that saves it: records,
+calibration, the append-only XP ledger with its daily and weekly caps, the level, the daily streak and the
+first quest. The app reads them through `GET /workouts/{id}/points`, `GET /me/records`, `GET /me/progress`
+and `GET /me/progress/metrics/{exerciseId}/{metricCode}`. Plans 2c (goals, badges) and 2d (league) come
+next, then parts 3 to 6 (gyms and social, competitions, admin, cut-over).
 
 One-time setup (Rust 1.99 through `rustup`, Docker for MariaDB, Redis and Mailpit):
 

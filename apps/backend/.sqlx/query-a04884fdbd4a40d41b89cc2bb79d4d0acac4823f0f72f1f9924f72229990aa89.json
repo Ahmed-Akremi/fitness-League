@@ -1,0 +1,65 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT current_days, longest_days, last_training_date FROM user_streaks WHERE user_id = ? FOR UPDATE",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "current_days",
+        "type_info": {
+          "type": "Long",
+          "flags": "NOT_NULL",
+          "collation": 63,
+          "max_size": 11
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.user_streaks",
+            "name": "current_days"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "longest_days",
+        "type_info": {
+          "type": "Long",
+          "flags": "NOT_NULL",
+          "collation": 63,
+          "max_size": 11
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.user_streaks",
+            "name": "longest_days"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "last_training_date",
+        "type_info": {
+          "type": "Date",
+          "flags": "BINARY",
+          "collation": 63,
+          "max_size": 10
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.user_streaks",
+            "name": "last_training_date"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "a04884fdbd4a40d41b89cc2bb79d4d0acac4823f0f72f1f9924f72229990aa89"
+}

@@ -1,0 +1,31 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT workouts_counted FROM xp_daily_counters WHERE user_id = ? AND day = ?",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "workouts_counted",
+        "type_info": {
+          "type": "Long",
+          "flags": "NOT_NULL",
+          "collation": 63,
+          "max_size": 11
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.xp_daily_counters",
+            "name": "workouts_counted"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "191a09ea222001517cf913dc70e7c04d73fb238b758bd3d686f0af97d8ec546e"
+}

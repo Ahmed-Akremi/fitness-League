@@ -1,0 +1,48 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT x.amount, x.explanation FROM xp_transactions x WHERE x.user_id = ? AND x.source_type = 'pr' AND x.reason IN ('PR', 'CALIBRATION_PR') AND x.effective_at >= ? AND NOT EXISTS (SELECT 1 FROM xp_transactions r WHERE r.reverses_id = x.id)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "amount",
+        "type_info": {
+          "type": "Long",
+          "flags": "NOT_NULL | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 11
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.xp_transactions",
+            "name": "amount"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "explanation",
+        "type_info": {
+          "type": "Blob",
+          "flags": "NOT_NULL | BLOB | BINARY | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 4294967295
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.xp_transactions",
+            "name": "explanation"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "fe3feddc1a4384cbaafa2e9a8b5d50964dcaa7885a7defeb6cfaa7b1b45ee0f7"
+}

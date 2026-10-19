@@ -434,3 +434,19 @@ for the rule set whose `version` is the file's (`ON DUPLICATE KEY UPDATE expecte
 - `cargo test` passes with `points` next to the earlier suites, and the security suite passes unchanged.
 - In the app, the workout screen's « Why these points » card lists the entries with their steps, the progress
   screen shows before and now per metric with its chart, and the home screen's level bar moves.
+
+## Built (2026-10-19): where the code departs from this plan
+
+- `caps_follow_the_day_of_the_workout`: the third workout is a 30-minute run, so its full workout XP is 20
+  (10 + 30/3), not the 30 the plan wrote. What it proves is unchanged: another day has its own room.
+- `an_implausible_jump_is_held` reads the current record in SQL: `/me/records` arrives in task 4, whose own test
+  covers the route.
+- `records.rs` also defines `Metric` (id, code, direction) and `Expected` (the expected progression, with the
+  exercise's own row winning over the generic one). `engine::step` is public, for the diminishing multiplier's
+  step.
+- The explanation is a serialised struct (`Explanation` in `scoring/mod.rs`) rather than a merged JSON object.
+- One query reads the day's and the week's granted XP together (`granted`).
+- The seed writes the expected progression with one `INSERT … SELECT` per row, joined to the rule set by
+  version, so it needs no lookup first.
+- `intake.rs` reads the exercise's metric codes with `GROUP_CONCAT` in its catalog query; the `DISTANCE` flag
+  now comes from that list, replacing the former `EXISTS`.
