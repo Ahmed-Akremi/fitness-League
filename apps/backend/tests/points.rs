@@ -439,3 +439,189 @@ async fn points_belong_to_their_owner(opts: MySqlPoolOptions, conn: MySqlConnect
     let (key, answer) = recorded_answer("/workouts/", "/points");
     common::assert_same_shape(&key, &answer, &points(&app, &token, &workout).await.json);
 }
+
+/// The entry of `metric` in a list of records or progress metrics.
+fn of<'a>(list: &'a Value, metric: &str) -> &'a Value {
+    list.as_array()
+        .unwrap()
+        .iter()
+        .find(|m| m["metric"]["code"] == metric)
+        .unwrap_or_else(|| panic!("no {metric} in {list}"))
+}
+
+/// Squats at 100 then 110 kg × 5: E1RM 116.67 then 128.33.
+async fn squat_twice(app: &TestApp, c: &Catalog, token: &str, first_hours_ago: i64) {
+    created(
+        app,
+        token,
+        &lifting(c, Uuid::now_v7(), hours_ago(first_hours_ago), 100.0, 5),
+    )
+    .await;
+    created(
+        app,
+        token,
+        &lifting(c, Uuid::now_v7(), hours_ago(48), 110.0, 5),
+    )
+    .await;
+}
+
+#[sqlx::test]
+async fn records_list_the_current_bests(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let app = seeded(opts, conn).await;
+    let c = catalog(&app).await;
+    let (_, token) = athlete(&app, "records").await;
+    squat_twice(&app, &c, &token, 72).await;
+
+    let records = get(&app, &token, "/api/v1/me/records").await;
+    assert_eq!(records.status, StatusCode::OK);
+    assert_eq!(
+        records.json.as_array().unwrap().len(),
+        2,
+        "{}",
+        records.json
+    );
+    for (metric, value, previous) in [("E1RM", 128.33, 116.67), ("MAX_WEIGHT", 110.0, 100.0)] {
+        let record = of(&records.json, metric);
+        assert_eq!(record["value"].as_f64(), Some(value));
+        assert_eq!(record["previousValue"].as_f64(), Some(previous));
+        assert_eq!(record["status"], "CALIBRATION");
+        assert_eq!(record["exercise"]["code"], "BACK_SQUAT");
+        assert!(record["exercise"]["name"]["fr"].is_string());
+        assert_eq!(record["metric"]["unit"], "kg");
+        assert!(record["workoutId"].is_string() && record["achievedAt"].is_string());
+    }
+}
+
+async fn progress(app: &TestApp, token: &str, period: &str) -> Reply {
+    get(app, token, &format!("/api/v1/me/progress?period={period}")).await
+}
+
+#[sqlx::test]
+async fn progress_compares_the_period_with_before(
+    opts: MySqlPoolOptions,
+    conn: MySqlConnectOptions,
+) {
+    let app = seeded(opts, conn).await;
+    let c = catalog(&app).await;
+    let (_, token) = athlete(&app, "compare").await;
+    squat_twice(&app, &c, &token, 40 * 24).await;
+
+    let month = progress(&app, &token, "30d").await;
+    assert_eq!(month.status, StatusCode::OK);
+    assert_eq!(month.json["period"], "30d");
+    let e1rm = of(&month.json["metrics"], "E1RM");
+    assert_eq!(e1rm["exercise"]["code"], "BACK_SQUAT");
+    assert_eq!(e1rm["metric"]["direction"], "HIGHER_IS_BETTER");
+    assert_eq!(e1rm["before"].as_f64(), Some(116.67));
+    assert_eq!(e1rm["now"].as_f64(), Some(128.33));
+    assert_eq!(e1rm["changePct"].as_f64(), Some(10.0));
+    assert_eq!(e1rm["sessions"], 1);
+    // The 40-day-old workout was a late log: only the recent one earned its record XP.
+    assert_eq!(e1rm["xpFromRecords"], 10);
+
+    // Nothing before a year: the baseline, which calibration raised to the best logged.
+    let year = progress(&app, &token, "1y").await;
+    let e1rm = of(&year.json["metrics"], "E1RM");
+    assert_eq!(e1rm["before"].as_f64(), Some(128.33));
+    assert_eq!(e1rm["changePct"].as_f64(), Some(0.0));
+    assert_eq!(e1rm["sessions"], 2);
+}
+
+#[sqlx::test]
+async fn the_series_reads_oldest_first(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let app = seeded(opts, conn).await;
+    let c = catalog(&app).await;
+    let (_, token) = athlete(&app, "series").await;
+    squat_twice(&app, &c, &token, 72).await;
+
+    let path = format!("/api/v1/me/progress/metrics/{}/E1RM?period=1y", c.squat);
+    let series = get(&app, &token, &path).await;
+    assert_eq!(series.status, StatusCode::OK);
+    assert_eq!(series.json["metric"]["direction"], "HIGHER_IS_BETTER");
+    let points = series.json["points"].as_array().unwrap();
+    let values: Vec<f64> = points
+        .iter()
+        .map(|p| p["value"].as_f64().unwrap())
+        .collect();
+    assert_eq!(values, [116.67, 128.33]);
+    assert!(
+        points
+            .iter()
+            .all(|p| p["workoutId"].is_string() && p["at"].is_string())
+    );
+
+    let unknown = format!("/api/v1/me/progress/metrics/{}/NOPE", c.squat);
+    assert_eq!(
+        get(&app, &token, &unknown).await.status,
+        StatusCode::NOT_FOUND
+    );
+    let malformed = "/api/v1/me/progress/metrics/not-a-uuid/E1RM";
+    assert_eq!(
+        get(&app, &token, malformed).await.status,
+        StatusCode::NOT_FOUND
+    );
+}
+
+#[sqlx::test]
+async fn body_weight_shows_only_with_the_consent(
+    opts: MySqlPoolOptions,
+    conn: MySqlConnectOptions,
+) {
+    let app = seeded(opts, conn).await;
+    let (user, token) = athlete(&app, "weighed").await;
+    common::set_consent(&app, user, "HEALTH_DATA", true).await;
+    for (kg, at) in [(80.0, hours_ago(72)), (79.0, hours_ago(1))] {
+        let reply = app
+            .call(
+                Method::POST,
+                "/api/v1/me/body-measurements",
+                Some(&token),
+                Some(json!({"weightKg": kg, "measuredAt": rfc(at)})),
+            )
+            .await;
+        assert_eq!(reply.status, StatusCode::CREATED, "{}", reply.json);
+    }
+    assert_eq!(
+        progress(&app, &token, "30d").await.json["bodyWeight"],
+        json!({"first": 80.0, "last": 79.0, "points": 2})
+    );
+
+    common::set_consent(&app, user, "HEALTH_DATA", false).await;
+    assert!(progress(&app, &token, "30d").await.json["bodyWeight"].is_null());
+}
+
+#[sqlx::test]
+async fn progress_periods(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let app = seeded(opts, conn).await;
+    let (_, token) = athlete(&app, "periods").await;
+    let wrong = progress(&app, &token, "2w").await;
+    assert_eq!(wrong.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(
+        wrong.json["errors"],
+        json!([{"field": "period", "code": "ISIN"}])
+    );
+    let default = get(&app, &token, "/api/v1/me/progress").await;
+    assert_eq!(default.json["period"], "30d");
+    assert_eq!(default.json["metrics"], json!([]));
+}
+
+#[sqlx::test]
+async fn progress_has_the_shape_recorded_from_the_old_api(
+    opts: MySqlPoolOptions,
+    conn: MySqlConnectOptions,
+) {
+    let app = seeded(opts, conn).await;
+    let c = catalog(&app).await;
+    let (_, token) = athlete(&app, "shape").await;
+    squat_twice(&app, &c, &token, 72).await;
+    let recorded = recorded();
+    for (key, path) in [
+        (
+            "GET /me/progress?period=30d",
+            "/api/v1/me/progress?period=30d",
+        ),
+        ("GET /me/records", "/api/v1/me/records"),
+    ] {
+        common::assert_same_shape(key, &recorded[key], &get(&app, &token, path).await.json);
+    }
+}

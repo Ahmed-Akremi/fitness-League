@@ -2,6 +2,7 @@
 
 pub mod engine;
 pub mod ledger;
+pub mod progress;
 pub mod records;
 
 use std::collections::{HashMap, HashSet};
@@ -32,7 +33,7 @@ use crate::{
 };
 
 pub fn routes(api: Api) -> Api {
-    api.get("/api/v1/workouts/{id}/points", workout_points)
+    progress::routes(api).get("/api/v1/workouts/{id}/points", workout_points)
 }
 
 /// Metrics whose records earn XP; `REPS_AT_WEIGHT` records are kept for history only.
