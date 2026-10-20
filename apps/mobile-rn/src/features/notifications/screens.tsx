@@ -17,7 +17,7 @@ export function NotificationBell() {
   const t = useT();
   const count = useUnreadCount().data ?? 0;
   return (
-    <Pressable testID="notification-bell" accessibilityRole="button" accessibilityLabel={t('notifications')} onPress={() => router.push('/notifications')} hitSlop={8} style={{ padding: 8 }}>
+    <Pressable testID="notification-bell" accessibilityRole="button" accessibilityLabel={t('notificationsUnread', { count })} onPress={() => router.push('/notifications')} hitSlop={8} style={{ padding: 8 }}>
       <Icon name="notifications-none" />
       <CountBadge count={count} />
     </Pressable>

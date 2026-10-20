@@ -5,7 +5,7 @@ import { useLocale, useT } from '../../core/prefs';
 import { useApi } from '../../core/services';
 import { displayText, useTheme } from '../../core/theme';
 import { formatNumber, localized } from '../../core/utils/format';
-import { AvatarBadge, EmptyState, GymLogo, Loading, MovementBadge } from '../../core/widgets/common';
+import { AvatarBadge, divisionColor, divisionLabel, EmptyState, GymLogo, Loading, MovementBadge, StatusPill } from '../../core/widgets/common';
 import { ErrorView } from '../../core/widgets/error';
 import { Card, Icon, Segmented, Txt } from '../../core/widgets/kit';
 import { LeaguesTab } from '../leagues/screens';
@@ -137,13 +137,14 @@ export function LeaderboardList({ scope, target = {}, myId }: { scope: LeagueSco
         refreshControl={<RefreshControl refreshing={false} onRefresh={() => load({ reset: true })} tintColor={colors.primary} />}
         renderItem={({ item: r }) => {
           const mine = r.athlete.id === myId;
-          const medal = r.rank === 1 ? '#FFD166' : r.rank === 2 ? '#C0C4CC' : r.rank === 3 ? '#E09F6B' : colors.text;
+          const medal = r.rank === 1 ? colors.tier.GOLD : r.rank === 2 ? colors.tier.SILVER : r.rank === 3 ? colors.tier.BRONZE : colors.text;
+          const division = divisionLabel(t, r.division);
           const subtitle = [r.gym?.name, localized(r.governorate?.name, locale), t('level', { level: r.level })].filter(Boolean).join(' · ');
           return (
             <View
               testID={`rank-${r.athlete.id}`}
               accessible
-              accessibilityLabel={`#${r.rank}, ${r.athlete.fullName}, ${r.lp} LP`}
+              accessibilityLabel={`#${r.rank}, ${r.athlete.fullName}, ${division}, ${r.lp} LP${mine ? `, ${t('you')}` : ''}`}
               style={{
                 flexDirection: 'row',
                 alignItems: 'center',
@@ -158,8 +159,15 @@ export function LeaderboardList({ scope, target = {}, myId }: { scope: LeagueSco
               <Txt style={[displayText(22), { width: 44, color: medal }]}>#{r.rank}</Txt>
               <AvatarBadge name={r.athlete.fullName} division={r.division} size={40} />
               <View style={{ flex: 1 }}>
-                <Txt numberOfLines={1} style={{ fontSize: 16, fontWeight: '600' }}>{r.athlete.fullName}</Txt>
-                <Txt variant="small" color={colors.outline} numberOfLines={1}>{subtitle}</Txt>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Txt numberOfLines={1} style={{ flexShrink: 1, fontSize: 16, fontWeight: '600' }}>{r.athlete.fullName}</Txt>
+                  {mine && <StatusPill label={t('you')} color={colors.primary} />}
+                </View>
+                {/* The division in words next to its colour: the ring alone says nothing in grayscale. */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Txt variant="small" color={divisionColor(r.division, colors)} style={{ fontWeight: '800' }}>{division}</Txt>
+                  <Txt variant="small" color={colors.outline} numberOfLines={1} style={{ flexShrink: 1 }}>{subtitle}</Txt>
+                </View>
               </View>
               <View style={{ alignItems: 'flex-end' }}>
                 <Txt style={displayText(20)}>{`${formatNumber(r.lp, locale)} LP`}</Txt>

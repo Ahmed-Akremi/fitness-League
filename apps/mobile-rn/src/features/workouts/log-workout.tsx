@@ -215,6 +215,12 @@ function ExerciseCard({ index, entry, onChange, onRemove }: { index: number; ent
         <TimeField testID={`time-${index}`} label={t('finishTime')} initialSeconds={entry.seconds ?? undefined} onChange={(v) => onChange((e) => ({ ...e, seconds: v }))} />
       ) : (
         <>
+          {/* Names the checkbox column (VoiceOver reads the checkbox's own label instead). */}
+          {!cardio && entry.sets.length > 0 && (
+            <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+              <Txt testID={`warmup-label-${index}`} variant="small" color={colors.outline}>{t('warmup')}</Txt>
+            </View>
+          )}
           {entry.sets.map((s, i) => (
             <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 8 }}>
               <Txt variant="title" style={{ width: 20, paddingBottom: 14 }}>{String(i + 1)}</Txt>
@@ -231,7 +237,8 @@ function ExerciseCard({ index, entry, onChange, onRemove }: { index: number; ent
                   accessibilityLabel={t('warmup')}
                   accessibilityState={{ checked: s.warmup }}
                   onPress={() => setField(i, { warmup: !s.warmup })}
-                  style={{ paddingBottom: 12 }}
+                  hitSlop={10}
+                  style={{ minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' }}
                 >
                   <Icon name={s.warmup ? 'check-box' : 'check-box-outline-blank'} color={s.warmup ? colors.primary : colors.outline} />
                 </Pressable>

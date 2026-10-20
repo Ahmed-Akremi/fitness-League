@@ -918,5 +918,16 @@
   "orgFinNoMatch": "Aucun paiement ne correspond.",
   "orgCouponToggleFailed": "« {code} » n'a pas changé : réessaie.",
   "orgKpiUnavailable": "Indisponible pour l'instant",
-  "orgLoading": "Chargement"
+  "orgLoading": "Chargement",
+  "divisionBronze": "Bronze",
+  "divisionSilver": "Argent",
+  "divisionGold": "Or",
+  "divisionPlatinum": "Platine",
+  "divisionDiamond": "Diamant",
+  "divisionElite": "Élite",
+  "you": "Toi",
+  "notificationsUnread": "{count, plural, =0{Notifications} =1{Notifications, 1 non lue} other{Notifications, {count} non lues}}",
+  "stepOf": "Étape {current} sur {total}",
+  "mainSport": "sport principal",
+  "done": "OK"
 }

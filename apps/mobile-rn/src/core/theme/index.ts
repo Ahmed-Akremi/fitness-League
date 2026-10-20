@@ -20,7 +20,21 @@ export interface Colors {
   onPrimary: string;
   error: string;
   success: string;
+  /** "Under review" status. */
+  warning: string;
+  /** Unread count bubble; white text on it. */
+  badge: string;
+  /** News like. */
+  heart: string;
+  /** Streak icon. */
+  flame: string;
+  /** Division colours: bold text, avatar rings, podium ranks. */
+  tier: Record<Division, string>;
+  /** Badge rarity icons (COMMON uses `primary`). */
+  rarity: Record<'RARE' | 'EPIC' | 'LEGENDARY', string>;
 }
+
+export type Division = 'BRONZE' | 'SILVER' | 'GOLD' | 'PLATINUM' | 'DIAMOND' | 'ELITE';
 
 /** Colour of `accent` darkened as Flutter's alphaBlend(black 45%, accent) — readable on white. */
 function darken(hex: string, alpha = 0.45): string {
@@ -41,26 +55,39 @@ export const palettes = {
     onPrimary: '#000000',
     error: '#FF6B6B',
     success: '#3DDC84',
+    warning: '#FFB020',
+    badge: '#E5484D',
+    heart: '#FF4D6D',
+    flame: '#FF8A3D',
+    tier: { BRONZE: '#E09F6B', SILVER: '#C0C4CC', GOLD: '#FFD166', PLATINUM: '#7FDBDA', DIAMOND: '#3DA9FC', ELITE: '#C6F432' },
+    rarity: { RARE: '#40C4FF', EPIC: '#E040FB', LEGENDARY: '#FFC107' },
   }),
+  /**
+   * A darker accent with white on it and darker secondary text, so every text reaches 4.5:1 (WCAG AA) on each light
+   * surface; tier and status colours are darker shades that reach 4.5:1 on `surface` (HIG: check contrast in both appearances).
+   */
   light: (accent: string): Colors => ({
     background: '#FFFFFF',
     surface: '#F6F7F9',
     surfaceHigh: '#E9EBEF',
     text: '#14161A',
-    outline: '#6B7079',
+    outline: '#62666F',
     border: '#0000000F',
-    primary: darken(accent),
-    onPrimary: '#000000',
+    primary: darken(accent, 0.55),
+    onPrimary: '#FFFFFF',
     error: '#C62828',
     success: '#1E8E4E',
+    warning: '#9A5B00',
+    badge: '#C62828',
+    heart: '#C2185B',
+    flame: '#B4531A',
+    tier: { BRONZE: '#9A5A2B', SILVER: '#626872', GOLD: '#8A6400', PLATINUM: '#1C7A79', DIAMOND: '#1D6FB5', ELITE: '#596E16' },
+    rarity: { RARE: '#0B6FA4', EPIC: '#9C27B0', LEGENDARY: '#8A6400' },
   }),
 };
 
-/**
- * The light palette on a computer (lot Web 3): a darker accent with white on it, and darker secondary text, so every
- * text reaches 4.5:1 (WCAG AA) on each light surface — the light side panel included. Phones keep `palettes.light`.
- */
-export const denseLight = (accent: string): Colors => ({ ...palettes.light(accent), primary: darken(accent, 0.55), onPrimary: '#FFFFFF', outline: '#62666F' });
+/** The light palette on a computer (lot Web 3). Phones now use the same one, so the computer layout is unchanged. */
+export const denseLight = (accent: string): Colors => palettes.light(accent);
 
 export const fonts = {
   display: 'BarlowCondensed-ExtraBold',

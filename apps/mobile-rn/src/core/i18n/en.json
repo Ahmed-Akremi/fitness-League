@@ -918,5 +918,16 @@
   "orgFinNoMatch": "No payment matches.",
   "orgCouponToggleFailed": "« {code} » did not change: try again.",
   "orgKpiUnavailable": "Not available right now",
-  "orgLoading": "Loading"
+  "orgLoading": "Loading",
+  "divisionBronze": "Bronze",
+  "divisionSilver": "Silver",
+  "divisionGold": "Gold",
+  "divisionPlatinum": "Platinum",
+  "divisionDiamond": "Diamond",
+  "divisionElite": "Elite",
+  "you": "You",
+  "notificationsUnread": "{count, plural, =0{Notifications} =1{Notifications, 1 unread} other{Notifications, {count} unread}}",
+  "stepOf": "Step {current} of {total}",
+  "mainSport": "main sport",
+  "done": "Done"
 }

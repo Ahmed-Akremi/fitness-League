@@ -119,7 +119,7 @@ export function Card({ children, onPress, style, testID }: { children: ReactNode
   );
 }
 
-export function Chip({ label, selected, onPress, icon, testID }: { label: string; selected?: boolean; onPress?: () => void; icon?: IconName; testID?: string }) {
+export function Chip({ label, selected, onPress, icon, testID, accessibilityLabel }: { label: string; selected?: boolean; onPress?: () => void; icon?: IconName; testID?: string; accessibilityLabel?: string }) {
   const { colors, dense } = useTheme();
   const ring = useFocusRing();
   const fg = selected ? colors.onPrimary : colors.text;
@@ -127,6 +127,7 @@ export function Chip({ label, selected, onPress, icon, testID }: { label: string
     <Pressable
       testID={testID}
       accessibilityRole={onPress ? 'button' : 'text'}
+      accessibilityLabel={accessibilityLabel}
       accessibilityState={{ selected }}
       disabled={!onPress}
       onPress={onPress}
@@ -250,7 +251,7 @@ export function CountBadge({ count }: { count: number }) {
   const { colors } = useTheme();
   if (count <= 0) return null;
   return (
-    <View style={{ position: 'absolute', top: 2, end: 2, minWidth: 18, height: 18, borderRadius: 9, backgroundColor: colors.error, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 }}>
+    <View style={{ position: 'absolute', top: 2, end: 2, minWidth: 18, height: 18, borderRadius: 9, backgroundColor: colors.badge, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 }}>
       <Text style={{ color: '#FFFFFF', fontSize: 11, fontWeight: '800' }}>{count > 99 ? '99+' : String(count)}</Text>
     </View>
   );

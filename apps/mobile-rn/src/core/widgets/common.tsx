@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { AccessibilityInfo, ActivityIndicator, Animated, Image, Pressable, TextInput, View } from 'react-native';
 
-import { useLocale, useT } from '../prefs';
-import { displayText, fonts, radius, space, useTheme, webDense } from '../theme';
+import { useLocale, useT, type T } from '../prefs';
+import { displayText, fonts, radius, space, useTheme, webDense, type Colors, type Division } from '../theme';
 import { formatDuration, localized, parseDuration } from '../utils/format';
 import { Button, Chip, Icon, LinkButton, Txt, type IconName } from './kit';
 
@@ -51,7 +51,7 @@ export function XpBar({ value, label }: { value: number; label?: string }) {
     else Animated.timing(anim, { toValue: v, duration: 900, useNativeDriver: false }).start();
   }, [v, reduced, anim]);
   return (
-    <View accessibilityLabel={label} accessibilityValue={{ min: 0, max: 100, now: Math.round(v * 100) }} style={{ height: 10, borderRadius: 8, backgroundColor: colors.surfaceHigh, overflow: 'hidden' }}>
+    <View accessible accessibilityRole="progressbar" accessibilityLabel={label} accessibilityValue={{ min: 0, max: 100, now: Math.round(v * 100) }} style={{ height: 10, borderRadius: 8, backgroundColor: colors.surfaceHigh, overflow: 'hidden' }}>
       <Animated.View style={{ height: 10, borderRadius: 8, backgroundColor: colors.primary, width: anim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }) }} />
     </View>
   );
@@ -97,7 +97,7 @@ export function MovementBadge({ movement }: { movement: unknown }) {
   if (m === 0) return <Txt variant="small" color={colors.outline}>–</Txt>;
   const up = m > 0;
   return (
-    <Txt variant="small" accessibilityLabel={`${up ? '+' : '-'}${Math.abs(m)}`} color={up ? '#3DDC84' : '#FF6B6B'} style={{ fontWeight: '800' }}>
+    <Txt variant="small" accessibilityLabel={`${up ? '+' : '-'}${Math.abs(m)}`} color={up ? colors.success : colors.error} style={{ fontWeight: '800' }}>
       {`${up ? '↑' : '↓'}${Math.abs(m)}`}
     </Txt>
   );
@@ -132,20 +132,31 @@ export function SkeletonList({ count = 6, height, label }: { count?: number; hei
 
 // ───────────── Athletes, ranks, sports ─────────────
 
-export function divisionColor(code?: string | null): string {
-  switch (code) {
+const DIVISIONS: Division[] = ['BRONZE', 'SILVER', 'GOLD', 'PLATINUM', 'DIAMOND', 'ELITE'];
+const asDivision = (code?: string | null): Division | null => (DIVISIONS.includes(code as Division) ? (code as Division) : null);
+
+/** Colour of a division in the current appearance; Bronze when unknown or none. */
+export function divisionColor(code: string | null | undefined, colors: Colors): string {
+  return colors.tier[asDivision(code) ?? 'BRONZE'];
+}
+
+/** Translated division name ("Gold", "Or", "ذهبي"); "—" without one. */
+export function divisionLabel(t: T, code?: string | null): string {
+  switch (asDivision(code)) {
+    case 'BRONZE':
+      return t('divisionBronze');
     case 'SILVER':
-      return '#C0C4CC';
+      return t('divisionSilver');
     case 'GOLD':
-      return '#FFD166';
+      return t('divisionGold');
     case 'PLATINUM':
-      return '#7FDBDA';
+      return t('divisionPlatinum');
     case 'DIAMOND':
-      return '#3DA9FC';
+      return t('divisionDiamond');
     case 'ELITE':
-      return '#C6F432';
+      return t('divisionElite');
     default:
-      return '#E09F6B'; // BRONZE / none
+      return code ?? '—';
   }
 }
 
@@ -154,7 +165,7 @@ export function AvatarBadge({ name, division, size = 44 }: { name: string; divis
   const { colors } = useTheme();
   const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => [...w][0].toUpperCase()).join('');
   return (
-    <View style={{ width: size, height: size, borderRadius: size / 2, borderWidth: 2.5, borderColor: divisionColor(division), padding: 2.5 }}>
+    <View style={{ width: size, height: size, borderRadius: size / 2, borderWidth: 2.5, borderColor: divisionColor(division, colors), padding: 2.5 }}>
       <View style={{ flex: 1, borderRadius: size, backgroundColor: colors.surfaceHigh, alignItems: 'center', justifyContent: 'center' }}>
         <Txt style={{ fontWeight: '800', fontSize: size * 0.32 }}>{initials}</Txt>
       </View>
@@ -165,7 +176,7 @@ export function AvatarBadge({ name, division, size = 44 }: { name: string; divis
 /** Leaderboard row: rank (medal colours for the podium), optional avatar, name, value; "me" highlighted. */
 export function RankRow({ rank, name, value, highlight, leading, subtitle, trailing, onPress, onLongPress, testID }: { rank: number; name: string; value: string; highlight?: boolean; leading?: ReactNode; subtitle?: string; trailing?: ReactNode; onPress?: () => void; onLongPress?: () => void; testID?: string }) {
   const { colors } = useTheme();
-  const medal = rank === 1 ? '#FFD166' : rank === 2 ? '#C0C4CC' : rank === 3 ? '#E09F6B' : colors.outline;
+  const medal = rank === 1 ? colors.tier.GOLD : rank === 2 ? colors.tier.SILVER : rank === 3 ? colors.tier.BRONZE : colors.outline;
   return (
     <Pressable
       testID={testID}

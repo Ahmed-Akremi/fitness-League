@@ -47,7 +47,7 @@ export function LoginScreen() {
     <Screen edges={['top', 'bottom']}>
       <View style={{ width: '100%', maxWidth: 420, alignSelf: 'center', gap: 12, paddingTop: 32 }}>
         <View style={{ width: 64, height: 64, borderRadius: 18, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' }}>
-          <Icon name="bolt" size={40} color="#0E0F12" />
+          <Icon name="bolt" size={40} color={colors.onPrimary} />
         </View>
         <Txt style={[displayText(36), { color: colors.primary, marginTop: 8 }]}>{config.appName.toUpperCase()}</Txt>
         <Txt color={colors.outline} style={{ fontSize: 16, marginBottom: 28 }}>{t('appTagline')}</Txt>

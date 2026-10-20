@@ -918,5 +918,16 @@
   "orgFinNoMatch": "لا توجد دفعة مطابقة.",
   "orgCouponToggleFailed": "لم يتغيّر « {code} »: أعد المحاولة.",
   "orgKpiUnavailable": "غير متوفر حاليًا",
-  "orgLoading": "جارٍ التحميل"
+  "orgLoading": "جارٍ التحميل",
+  "divisionBronze": "برونزي",
+  "divisionSilver": "فضي",
+  "divisionGold": "ذهبي",
+  "divisionPlatinum": "بلاتيني",
+  "divisionDiamond": "ماسي",
+  "divisionElite": "النخبة",
+  "you": "أنت",
+  "notificationsUnread": "{count, plural, =0{الإشعارات} =1{الإشعارات، إشعار واحد غير مقروء} other{الإشعارات، {count} غير مقروءة}}",
+  "stepOf": "الخطوة {current} من {total}",
+  "mainSport": "الرياضة الأساسية",
+  "done": "تم"
 }

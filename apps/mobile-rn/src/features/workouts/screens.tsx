@@ -89,7 +89,7 @@ function WorkoutTile({ workout, sportCode }: { workout: Workout; sportCode?: str
   const locale = useLocale();
   const { colors } = useTheme();
   const [label, color] =
-    workout.status === 'ACCEPTED' ? [t('statusAccepted'), colors.primary] : workout.status === 'HELD_FOR_REVIEW' ? [t('statusHeld'), '#FFB020'] : [t('statusRejected'), colors.error];
+    workout.status === 'ACCEPTED' ? [t('statusAccepted'), colors.primary] : workout.status === 'HELD_FOR_REVIEW' ? [t('statusHeld'), colors.warning] : [t('statusRejected'), colors.error];
   const volume = workout.totalVolumeKg;
   const distance = workout.totalDistanceM;
   const subtitle = [volume && volume > 0 ? `${formatNumber(volume, locale)} kg` : null, distance && distance > 0 ? formatMetric(distance, 'm', locale) : null].filter(Boolean).join(' · ');

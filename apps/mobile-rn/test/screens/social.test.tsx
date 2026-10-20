@@ -30,7 +30,7 @@ describe('public profile', () => {
       .on('POST', '/friends/requests', [201, {}]);
     const screen = await renderScreen(() => <PublicProfileScreen username="sami" />, backend);
     expect(await screen.findByText('420')).toBeTruthy();
-    expect(screen.getByText('GOLD')).toBeTruthy();
+    expect(screen.getByText('Gold')).toBeTruthy();
     await fireEvent.press(screen.getByTestId('profile-add-friend'));
     await waitFor(() => expect(backend.calls('POST', '/friends/requests')[0]?.body).toEqual({ userId: 'u9' }));
   });

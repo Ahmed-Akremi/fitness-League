@@ -10,7 +10,6 @@ import { Button, Card, Icon, LinkButton, Txt } from '../../core/widgets/kit';
 import { useNews, useToggleLike, type News } from './api';
 
 const LOGO = require('../../../assets/icon.png');
-const HEART = '#FF4D6D';
 /** Long texts start folded so the feed stays scannable. */
 const FOLDED_LINES = 6;
 
@@ -95,9 +94,9 @@ function LikeButton({ news: n }: { news: News }) {
       style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: space.xs, paddingHorizontal: space.sm, paddingVertical: space.sm, borderRadius: radius.pill, opacity: pressed ? 0.7 : 1 })}
     >
       <Animated.View style={{ transform: [{ scale }] }}>
-        <Icon name={n.likedByMe ? 'favorite' : 'favorite-border'} color={n.likedByMe ? HEART : colors.outline} size={24} />
+        <Icon name={n.likedByMe ? 'favorite' : 'favorite-border'} color={n.likedByMe ? colors.heart : colors.outline} size={24} />
       </Animated.View>
-      <Txt testID={`news-like-${n.id}-count`} style={{ fontWeight: '700', color: n.likedByMe ? HEART : colors.text }}>{String(n.likeCount)}</Txt>
+      <Txt testID={`news-like-${n.id}-count`} style={{ fontWeight: '700', color: n.likedByMe ? colors.heart : colors.text }}>{String(n.likeCount)}</Txt>
     </Pressable>
   );
 }

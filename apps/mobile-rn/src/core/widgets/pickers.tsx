@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { FlatList, Modal, Platform, Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { useLocale } from '../prefs';
+import { useLocale, useT } from '../prefs';
 import { isFocused, useFocusRing } from '../focus';
 import { radius, useTheme, webDense } from '../theme';
 import { formatDate } from '../utils/format';
@@ -16,13 +16,14 @@ export interface Option {
 
 /** Field that opens a list (Flutter DropdownButtonFormField): full screen on a phone, a small centered box on a computer. `bare`: no label above (toolbars). */
 export function Select({ label, value, options, onChange, error, testID, placeholder, bare }: { label: string; value: string | null | undefined; options: Option[]; onChange: (v: string) => void; error?: string | null; testID?: string; placeholder?: string; bare?: boolean }) {
+  const t = useT();
   const { colors, dense } = useTheme();
   const [open, setOpen] = useState(false);
   const selected = options.find((o) => o.value === value);
   const head = (
     <View style={{ flexDirection: 'row', alignItems: 'center', padding: 16 }}>
       <Txt variant="title" style={{ flex: 1 }}>{label}</Txt>
-      <Pressable accessibilityRole="button" accessibilityLabel="close" onPress={() => setOpen(false)} hitSlop={8}>
+      <Pressable accessibilityRole="button" accessibilityLabel={t('cancel')} onPress={() => setOpen(false)} hitSlop={8}>
         <Icon name="close" />
       </Pressable>
     </View>
@@ -99,6 +100,7 @@ export function FieldButton({ label, value, icon, error, onPress, testID, bare }
 
 /** Date (and optionally time) field backed by the platform picker. */
 export function DateField({ label, value, onChange, minimumDate, maximumDate, mode = 'date', placeholder, error, testID }: { label: string; value: Date | null; onChange: (d: Date) => void; minimumDate?: Date; maximumDate?: Date; mode?: 'date' | 'datetime'; placeholder?: string; error?: string | null; testID?: string }) {
+  const t = useT();
   const locale = useLocale();
   const [step, setStep] = useState<'date' | 'time' | null>(null);
   const [draft, setDraft] = useState<Date | null>(null);
@@ -130,7 +132,7 @@ export function DateField({ label, value, onChange, minimumDate, maximumDate, mo
           }}
         />
       )}
-      {step && Platform.OS === 'ios' && <Button kind="text" label="OK" onPress={() => setStep(null)} />}
+      {step && Platform.OS === 'ios' && <Button kind="text" label={t('done')} onPress={() => setStep(null)} />}
     </View>
   );
 }
