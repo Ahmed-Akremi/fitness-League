@@ -2,6 +2,7 @@
 //! A port of the old API's `GoalsService`. Weight goals are health data: their values are stored
 //! encrypted and shown only while the `HEALTH_DATA` consent is granted.
 
+pub mod milestones;
 pub mod planning;
 
 use std::collections::HashMap;

@@ -25,7 +25,7 @@ use self::{
 use crate::{
     error::AppError,
     http::{Api, auth::AppUser},
-    modules::workouts::metrics::WorkoutInput,
+    modules::{goals, workouts::metrics::WorkoutInput},
     rules::Rules,
     security::policy,
     state::AppState,
@@ -111,7 +111,7 @@ pub async fn score(
         body_weight_kg: s.body_weight_kg,
         counts_for_competition: s.counts_for_competition,
     };
-    let (_observations, prs) = records::record(tx, &ctx).await?;
+    let (observations, prs) = records::record(tx, &ctx).await?;
 
     let day = policy::business_today(performed, state.cfg.business_utc_offset_minutes);
     daily_streak(tx, s.user, day, profile.streak_freeze_days_per_week).await?;
@@ -145,8 +145,14 @@ pub async fn score(
     };
     grant(tx, &at, ask).await?;
 
-    // 2. One record reward per exercise, with a cooldown per metric.
-    for pr in rewardable(tx, &at, &prs, &metrics).await? {
+    // 2. One record reward per exercise, with a cooldown per metric. An exercise with a record
+    // held for review earns none, and reaches no goal milestone.
+    let held: HashSet<Uuid> = prs
+        .iter()
+        .filter(|p| p.status == "HELD")
+        .map(|p| p.exercise_id)
+        .collect();
+    for pr in rewardable(tx, &at, &prs, &held, &metrics).await? {
         let calibration = pr.status == "CALIBRATION";
         let ask = Ask {
             reason: if calibration { "CALIBRATION_PR" } else { "PR" },
@@ -181,9 +187,20 @@ pub async fn score(
         }
     }
 
-    // plan 2c: goal milestones here.
+    // 3. The goal milestones this workout reached.
+    goals::milestones::on_workout(
+        tx,
+        state,
+        rules,
+        s.user,
+        s.workout_id,
+        performed,
+        &observations,
+        &held,
+    )
+    .await?;
 
-    // 3. The first quest, once per account; quests are onboarding rewards, outside the caps.
+    // 4. The first quest, once per account; quests are onboarding rewards, outside the caps.
     let quest_done = sqlx::query_scalar!(
         "SELECT EXISTS (SELECT 1 FROM xp_transactions \
            WHERE user_id = ? AND reason = 'QUEST' AND source_type = 'quest' AND source_id = 'FIRST_WORKOUT')",
@@ -410,13 +427,9 @@ async fn rewardable<'p>(
     tx: &mut MySqlConnection,
     at: &Grant<'_>,
     prs: &'p [PrOutcome],
+    held: &HashSet<Uuid>,
     metrics: &HashMap<String, Metric>,
 ) -> Result<Vec<&'p PrOutcome>, AppError> {
-    let held: HashSet<Uuid> = prs
-        .iter()
-        .filter(|p| p.status == "HELD")
-        .map(|p| p.exercise_id)
-        .collect();
     let rank = |p: &PrOutcome| PR_PRIORITY.iter().position(|m| *m == p.metric);
     let mut best: Vec<&PrOutcome> = Vec::new();
     for pr in prs {

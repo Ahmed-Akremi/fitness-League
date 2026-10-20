@@ -384,3 +384,153 @@ async fn goals_belong_to_their_owner(opts: MySqlPoolOptions, conn: MySqlConnectO
     assert_eq!(malformed.status, StatusCode::NOT_FOUND);
     assert_eq!(list(&app, &token).await[0]["status"], "ACTIVE");
 }
+
+/// Saves a workout the anti-cheat accepts and returns it.
+async fn logged(app: &TestApp, token: &str, body: &Value) -> Value {
+    let reply = post(app, token, body).await;
+    assert_eq!(reply.status, StatusCode::CREATED, "{}", reply.json);
+    assert_eq!(reply.json["status"], "ACCEPTED", "{}", reply.json);
+    reply.json
+}
+
+fn squat(c: &Catalog, kg: f64, hours_ago: i64) -> Value {
+    lifting(c, Uuid::now_v7(), Utc::now() - Duration::hours(hours_ago), kg, 5)
+}
+
+/// The XP entries a workout earned.
+async fn earned(app: &TestApp, token: &str, workout: &Value) -> Vec<Value> {
+    let id = workout["id"].as_str().unwrap();
+    let reply = get(app, token, &format!("{WORKOUTS}/{id}/points")).await;
+    assert_eq!(reply.status, StatusCode::OK, "{}", reply.json);
+    reply.json["entries"].as_array().unwrap().clone()
+}
+
+fn reasons(entries: &[Value]) -> Vec<(String, i64)> {
+    entries
+        .iter()
+        .map(|e| (e["reason"].as_str().unwrap().to_owned(), e["amount"].as_i64().unwrap()))
+        .collect()
+}
+
+fn milestone_entries(entries: &[Value]) -> usize {
+    entries.iter().filter(|e| e["reason"] == "GOAL_MILESTONE").count()
+}
+
+async fn goal(app: &TestApp, token: &str, id: &Value) -> Value {
+    list(app, token).await.into_iter().find(|g| g["id"] == *id).unwrap()
+}
+
+#[sqlx::test]
+async fn workouts_reach_milestones_once(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let app = seeded(opts, conn).await;
+    let (user, token, c) = trained(&app, "steps").await;
+    let id = create(&app, &token, squat_goal(&c, 125.0)).await.json["id"].clone();
+
+    // E1RM 122.5 passes 120 and 122.5 at once.
+    let second = logged(&app, &token, &squat(&c, 105.0, 4)).await;
+    let entries = earned(&app, &token, &second).await;
+    assert_eq!(
+        reasons(&entries),
+        [("WORKOUT".to_owned(), 30), ("GOAL_MILESTONE".to_owned(), 150), ("GOAL_MILESTONE".to_owned(), 150)]
+    );
+    assert_eq!(
+        entries[1]["explanation"],
+        json!({"formula": "goal_milestone_xp", "inputs": {"goalId": id, "milestone": 1, "of": 3},
+               "workoutId": second["id"], "result": 150})
+    );
+    let g = goal(&app, &token, &id).await;
+    assert_eq!(g["milestonesReached"], 2);
+    let reached: Vec<bool> = g["milestones"].as_array().unwrap().iter().map(|m| !m["reachedAt"].is_null()).collect();
+    assert_eq!(reached, [true, true, false]);
+
+    let third = logged(&app, &token, &squat(&c, 110.0, 2)).await;
+    assert_eq!(milestone_entries(&earned(&app, &token, &third).await), 1);
+    assert_eq!(goal(&app, &token, &id).await["status"], "COMPLETED");
+
+    // A completed goal earns nothing more.
+    let fourth = logged(&app, &token, &lifting(&c, Uuid::now_v7(), Utc::now() - Duration::minutes(30), 112.5, 5)).await;
+    assert_eq!(milestone_entries(&earned(&app, &token, &fourth).await), 0);
+    let (cached, sum): (i64, i64) = sqlx::query_as(
+        "SELECT s.xp_total, CAST(COALESCE((SELECT SUM(amount) FROM xp_transactions WHERE user_id = s.user_id), 0) AS SIGNED) \
+         FROM user_stats s WHERE s.user_id = ?",
+    )
+    .bind(user)
+    .fetch_one(&app.db)
+    .await
+    .unwrap();
+    assert_eq!(cached, sum);
+}
+
+#[sqlx::test]
+async fn an_abandoned_goal_is_not_credited(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let app = seeded(opts, conn).await;
+    let (_, token, c) = trained(&app, "quit").await;
+    let id = create(&app, &token, squat_goal(&c, 125.0)).await.json["id"].clone();
+    let path = format!("{GOALS}/{}", id.as_str().unwrap());
+    assert_eq!(app.call(Method::DELETE, &path, Some(&token), None).await.status, StatusCode::NO_CONTENT);
+    let workout = logged(&app, &token, &squat(&c, 110.0, 1)).await;
+    assert_eq!(milestone_entries(&earned(&app, &token, &workout).await), 0);
+    assert_eq!(goal(&app, &token, &id).await["milestonesReached"], 0);
+}
+
+#[sqlx::test]
+async fn a_held_record_reaches_no_milestone(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let app = seeded(opts, conn).await;
+    let c = catalog(&app).await;
+    let (user, token) = athlete(&app, "held").await;
+    sqlx::query("UPDATE profiles SET calibration_ends_at = UTC_TIMESTAMP(6) - INTERVAL 30 DAY WHERE user_id = ?")
+        .bind(user)
+        .execute(&app.db)
+        .await
+        .unwrap();
+    logged(&app, &token, &squat(&c, 100.0, 60)).await;
+    let id = create(&app, &token, squat_goal(&c, 125.0)).await.json["id"].clone();
+    // E1RM 163.33: far beyond the expected progress, held for review.
+    let jump = logged(&app, &token, &squat(&c, 140.0, 1)).await;
+    let status: String = sqlx::query_scalar(
+        "SELECT p.status FROM personal_records p JOIN metric_types m ON m.id = p.metric_type_id \
+         WHERE p.workout_id = ? AND m.code = 'E1RM'",
+    )
+    .bind(Uuid::parse_str(jump["id"].as_str().unwrap()).unwrap())
+    .fetch_one(&app.db)
+    .await
+    .unwrap();
+    assert_eq!(status, "HELD");
+    assert_eq!(goal(&app, &token, &id).await["milestonesReached"], 0);
+}
+
+#[sqlx::test]
+async fn a_late_workout_reaches_no_milestone(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let app = seeded(opts, conn).await;
+    let (_, token, c) = trained(&app, "late").await;
+    let id = create(&app, &token, squat_goal(&c, 125.0)).await.json["id"].clone();
+    logged(&app, &token, &squat(&c, 110.0, 80)).await;
+    assert_eq!(goal(&app, &token, &id).await["milestonesReached"], 0);
+}
+
+#[sqlx::test]
+async fn only_the_safe_rate_counts_toward_a_weight_goal(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let app = seeded(opts, conn).await;
+    let (user, token) = athlete(&app, "slim").await;
+    set_consent(&app, user, "HEALTH_DATA", true).await;
+    weigh(&app, &token, 80.0).await;
+    let id = create(&app, &token, weight_goal(76.0)).await.json["id"].clone();
+    sqlx::query("UPDATE goals SET start_date = start_date - INTERVAL 28 DAY WHERE id = ?")
+        .bind(Uuid::parse_str(id.as_str().unwrap()).unwrap())
+        .execute(&app.db)
+        .await
+        .unwrap();
+    // 4 kg in four weeks: only 3.2 kg count at 1 % a week, so 76.8 reaches 78, not 76.
+    weigh(&app, &token, 76.0).await;
+    let entries: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM xp_transactions WHERE user_id = ? AND reason = 'GOAL_MILESTONE' AND workout_id IS NULL",
+    )
+    .bind(user)
+    .fetch_one(&app.db)
+    .await
+    .unwrap();
+    assert_eq!(entries, 1);
+    let g = goal(&app, &token, &id).await;
+    assert_eq!(g["milestonesReached"], 1);
+    assert_eq!(g["status"], "ACTIVE");
+}
