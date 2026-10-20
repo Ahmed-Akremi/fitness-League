@@ -16,15 +16,12 @@ First steps, in order:
    during sessions (twice this session, see §4).
    - `origin/main` is at `a3fa77d` (PR #18): plan 2b, plan 2c's text, and the first files of its task 1.
    - `origin/feat/rust-backend-2c` stops at `deb1cb7` (plan 2c tasks 1 to 5).
-   - **Local `feat/rust-backend-2c` is ahead of it** with `973b090` (task 6), `d5348bb` (rustfmt) and the docs
-     commit. Push it and open its PR, or ask the owner to (`gh` is not installed).
+   - **Local `feat/rust-backend-2c` is ahead of it** with `973b090` (task 6), `d5348bb` (rustfmt), the docs
+     commit and the review's handoff commit. Push it and open its PR, or ask the owner to (`gh` is not installed).
    - Start plan 2d on a new branch from `origin/main` once 2c is merged, or from `feat/rust-backend-2c` if it is
      not. Local `main` is far behind: never branch from it.
-2. **Plan 2c's whole-branch review is not done** (the executing-plans skill asks for one fresh review at the end).
-   Its inputs: the plan's « Review focus » section, and the ledger
-   `.superpowers/sdd/2026-10-19-rust-backend-2c-goals-badges/progress.md` (git-ignored, local only), which holds
-   every `Ruling:` line. Run it before plan 2d, or ask the owner whether to skip it. Delete that folder once the
-   review is done.
+2. **Plan 2c's whole-branch review is done** (2026-10-20, a fresh session): no critical or important finding, two
+   minors in §6 item 2. The five « Review focus » points each have a passing test. The ledger folder is deleted.
 3. **Check Docker.** `docker ps` should show three healthy containers. Otherwise see section 5,
    « Containers stopped ». It stopped twice this session.
 4. **Set up the environment.** Use section 2's environment line in Git Bash for every cargo command, then
@@ -329,8 +326,8 @@ endpoints in plans 2a to 2d, and its « Rulings » section lists the choices the
   - Clippy `-D warnings`, online and with `SQLX_OFFLINE=true`;
   - `cargo audit` (264 crates, nothing found) and `cargo deny check` (advisories, bans, licenses, sources ok).
 
-  Not done this session: the whole-branch review (§0 step 2), a live run against the real binaries, and the
-  mobile app against the Rust API.
+  Not done in the build session: the whole-branch review (done since, §6 item 2), a live run against the real
+  binaries, and the mobile app against the Rust API.
 - **The rulings plan 2c took** (its « Rulings » section, for the owner's review):
   1. the goal limits the rule set lacks stay constants, as in the old API: 10 active goals, ±25 % and 40 to
      250 kg for weight, habit milestones at 2, 4, 8 and 12 weeks, 104 weeks as unrealistic, at most 6
@@ -443,7 +440,17 @@ endpoints in plans 2a to 2d, and its « Rulings » section lists the choices the
 ## 6. Next steps
 
 1. **Push `feat/rust-backend-2c`** (the last three commits) and open its PR, or ask the owner to.
-2. **Plan 2c's whole-branch review** (§0 step 2), with the plan's « Review focus » list.
+2. **Plan 2c's whole-branch review: done**, against the old API's `goals` and `badges` modules and the plan.
+   Re-run after it: `--lib` and the `goals`, `badges`, `body`, `points`, `privacy`, `onboarding` and `schema`
+   suites, 195 green. Two minors, left as they are:
+   - `DELETE /goals/{id}` takes no lock. Sent at the instant a workout reaches a goal's last milestone, it can
+     leave the goal `ABANDONED` with every milestone paid, and no `GOAL_COMPLETED` badge. The fix, if wanted:
+     lock the `user_stats` row first, as the XP writers do.
+   - A `HABIT` target is rounded to 2 decimals before the integer check (plan 2a ruling 1), so 3.004 is taken as
+     3; the old API refused it.
+
+   The onboarding test that was never seen red is sound: the code before it answered `goals: false` always, and
+   the test asserts `true` after the first goal.
 3. **Plan 2d, league.** Write the plan from the spec's plans table in the house style of plan 2c, then build it.
    - Scope: seasons and divisions, the weekly score, the LP ledger, `job_runs` and the six jobs, `/me/ranks`,
      `/me/lp`, `/me/weekly-scores/current`, the national and governorate leaderboards.
