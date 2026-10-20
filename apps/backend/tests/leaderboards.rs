@@ -142,7 +142,12 @@ async fn the_national_board(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
     assert!(first["gym"].is_null());
     assert_eq!(first["movement"], "NEW");
     assert!(first["governorate"]["name"]["fr"].is_string());
-    let keys: BTreeSet<&str> = first.as_object().unwrap().keys().map(String::as_str).collect();
+    let keys: BTreeSet<&str> = first
+        .as_object()
+        .unwrap()
+        .keys()
+        .map(String::as_str)
+        .collect();
     assert_eq!(
         keys,
         BTreeSet::from([
@@ -163,11 +168,7 @@ async fn the_national_board(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
         .map(String::as_str)
         .collect();
     assert_eq!(athlete, BTreeSet::from(["id", "username", "fullName"]));
-    assert_same_shape(
-        "page",
-        &recorded("GET /leaderboards/national"),
-        &page,
-    );
+    assert_same_shape("page", &recorded("GET /leaderboards/national"), &page);
 }
 
 #[sqlx::test]
@@ -202,7 +203,10 @@ async fn only_eligible_athletes_rank(opts: MySqlPoolOptions, conn: MySqlConnectO
     let (good, token) = ranked(&app, "eligible", 100).await;
     let mut outsiders = Vec::new();
     for (name, sql) in [
-        ("unverified", "UPDATE users SET email_verified_at = NULL WHERE id = ?"),
+        (
+            "unverified",
+            "UPDATE users SET email_verified_at = NULL WHERE id = ?",
+        ),
         (
             "calibrating",
             "UPDATE profiles SET calibration_ends_at = UTC_TIMESTAMP(6) + INTERVAL 1 DAY WHERE user_id = ?",
@@ -215,7 +219,10 @@ async fn only_eligible_athletes_rank(opts: MySqlPoolOptions, conn: MySqlConnectO
             "seasonless",
             "UPDATE user_stats SET current_season_id = NULL WHERE user_id = ?",
         ),
-        ("deleted", "UPDATE users SET status = 'DELETED' WHERE id = ?"),
+        (
+            "deleted",
+            "UPDATE users SET status = 'DELETED' WHERE id = ?",
+        ),
     ] {
         let (user, t) = ranked(&app, name, 500).await;
         sqlx::query(sql).bind(user).execute(&app.db).await.unwrap();
@@ -245,11 +252,7 @@ async fn my_page_is_centred_on_me(opts: MySqlPoolOptions, conn: MySqlConnectOpti
     assert_eq!(page["me"]["rank"], 5);
     assert_eq!(ranks(&page), [3, 4, 5, 6]);
     assert_eq!(page["page"]["hasMore"], true);
-    assert_same_shape(
-        "page",
-        &recorded("GET /leaderboards/national/me"),
-        &page,
-    );
+    assert_same_shape("page", &recorded("GET /leaderboards/national/me"), &page);
 }
 
 #[sqlx::test]
@@ -356,7 +359,12 @@ async fn a_forged_cursor_is_refused(opts: MySqlPoolOptions, conn: MySqlConnectOp
     let app = seeded(opts, conn).await;
     let (_, token) = ranked(&app, "forger", 100).await;
     let reply = get(&app, &token, &format!("{NATIONAL}?cursor=abc.def")).await;
-    assert_eq!(reply.status, StatusCode::UNPROCESSABLE_ENTITY, "{}", reply.json);
+    assert_eq!(
+        reply.status,
+        StatusCode::UNPROCESSABLE_ENTITY,
+        "{}",
+        reply.json
+    );
     assert_eq!(reply.json["errors"][0]["field"], "cursor");
     assert_eq!(reply.json["errors"][0]["code"], "INVALID_CURSOR");
 }
@@ -383,6 +391,11 @@ async fn no_active_season(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
         "/api/v1/me/lp".to_owned(),
     ] {
         let reply = get(&app, &token, &path).await;
-        assert_eq!(reply.status, StatusCode::NOT_FOUND, "{path}: {}", reply.json);
+        assert_eq!(
+            reply.status,
+            StatusCode::NOT_FOUND,
+            "{path}: {}",
+            reply.json
+        );
     }
 }

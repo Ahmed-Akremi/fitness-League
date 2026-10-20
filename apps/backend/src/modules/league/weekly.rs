@@ -402,7 +402,14 @@ async fn rescore(
     .await?;
     for w in weeks {
         if let Some(paid) = w.paid {
-            ledger::reverse_lp(tx, rules, user, paid, "baseline corrected (anti-sandbagging)").await?;
+            ledger::reverse_lp(
+                tx,
+                rules,
+                user,
+                paid,
+                "baseline corrected (anti-sandbagging)",
+            )
+            .await?;
         }
         let start = week_of(w.week_start, offset);
         let score = compute(tx, rules, user, start, offset).await?;

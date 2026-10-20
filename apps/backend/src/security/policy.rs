@@ -51,7 +51,10 @@ pub fn week_start(at: DateTime<Utc>, utc_offset_minutes: i32) -> DateTime<Utc> {
 
 /// The first instants of the calendar quarter holding `at` and of the next one, in business time:
 /// a season's bounds.
-pub fn quarter_bounds(at: DateTime<Utc>, utc_offset_minutes: i32) -> (DateTime<Utc>, DateTime<Utc>) {
+pub fn quarter_bounds(
+    at: DateTime<Utc>,
+    utc_offset_minutes: i32,
+) -> (DateTime<Utc>, DateTime<Utc>) {
     let today = business_today(at, utc_offset_minutes);
     let first = today.month0() / 3 * 3 + 1;
     let start = NaiveDate::from_ymd_opt(today.year(), first, 1);

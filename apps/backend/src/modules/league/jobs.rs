@@ -10,9 +10,7 @@ use sqlx::MySqlPool;
 use uuid::Uuid;
 
 use super::{boards, engine, seasons, weekly};
-use crate::{
-    error::AppError, modules::badges, rules::Rules, security::policy, state::AppState,
-};
+use crate::{error::AppError, modules::badges, rules::Rules, security::policy, state::AppState};
 
 /// A run still `RUNNING` after this long belongs to a worker that died.
 const STALE_RUN: Duration = Duration::hours(1);
@@ -117,14 +115,20 @@ pub async fn run_due(state: &AppState, now: DateTime<Utc>) -> Result<(), AppErro
     let week = engine::last_closable_week(now, rules.week_grace_hours, offset);
     let key = policy::business_today(week, offset).to_string();
     let work = weekly::close_week(state, &rules, week);
-    logged("weekly-close", once(db, "weekly-close", &key, now, work).await);
+    logged(
+        "weekly-close",
+        once(db, "weekly-close", &key, now, work).await,
+    );
     let work = finalize_calibrations(db, now);
     logged(
         "calibration-finalize",
         once(db, "calibration-finalize", &today, now, work).await,
     );
     let work = badge_sweep(db, now);
-    logged("badge-sweep", once(db, "badge-sweep", &today, now, work).await);
+    logged(
+        "badge-sweep",
+        once(db, "badge-sweep", &today, now, work).await,
+    );
     let work = boards::snapshot(db, now, offset);
     logged(
         "leaderboard-snapshot",

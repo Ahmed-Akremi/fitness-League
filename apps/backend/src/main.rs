@@ -147,6 +147,7 @@ async fn worker() -> Result<(), String> {
     tracing::info!(consumer, "worker started");
     let mut stop = std::pin::pin!(shutdown());
     let mut next_sweep = tokio::time::Instant::now();
+    let mut next_league = tokio::time::Instant::now();
     loop {
         // The day's key decides which worker sweeps; the others only look every ten minutes.
         if tokio::time::Instant::now() >= next_sweep {
@@ -165,6 +166,21 @@ async fn worker() -> Result<(), String> {
                 }
             };
             next_sweep = tokio::time::Instant::now() + std::time::Duration::from_secs(wait);
+        }
+        // The league's jobs: each runs once per key, whichever worker takes it.
+        if tokio::time::Instant::now() >= next_league {
+            let wait =
+                match backend::modules::league::jobs::run_due(&state, chrono::Utc::now()).await {
+                    Ok(()) => 600,
+                    Err(cause) => {
+                        tracing::error!(
+                            ?cause,
+                            "the league jobs could not run; trying again in a minute"
+                        );
+                        60
+                    }
+                };
+            next_league = tokio::time::Instant::now() + std::time::Duration::from_secs(wait);
         }
         let tick = jobs.tick(now_ms(), true, async |job| {
             backend::modules::auth::emails::handle(&state, &mailer, job).await

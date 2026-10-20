@@ -91,9 +91,11 @@ pub fn division_for(lp: i64, t: &HashMap<Division, i64>) -> Division {
 
 /// The next division up and the LP still missing to reach it; `None` at the top.
 pub fn next_division(lp: i64, t: &HashMap<Division, i64>) -> Option<(Division, i64)> {
-    Division::ALL
-        .into_iter()
-        .find_map(|d| t.get(&d).filter(|floor| **floor > lp).map(|floor| (d, floor - lp)))
+    Division::ALL.into_iter().find_map(|d| {
+        t.get(&d)
+            .filter(|floor| **floor > lp)
+            .map(|floor| (d, floor - lp))
+    })
 }
 
 pub fn division_floor(lp: i64, t: &HashMap<Division, i64>) -> i64 {

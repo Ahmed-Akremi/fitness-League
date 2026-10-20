@@ -99,11 +99,7 @@ async fn the_running_week_is_provisional(opts: MySqlPoolOptions, conn: MySqlConn
     assert_eq!(week["breakdown"]["formula"], "weekly_score");
     assert_eq!(week["breakdown"]["topN"], 3);
     assert_eq!(week["breakdown"]["weights"]["progress"], 0.4);
-    assert_same_shape(
-        "week",
-        &recorded("GET /me/weekly-scores/current"),
-        &week,
-    );
+    assert_same_shape("week", &recorded("GET /me/weekly-scores/current"), &week);
 }
 
 #[sqlx::test]
@@ -447,7 +443,12 @@ async fn my_lp_in_the_season(opts: MySqlPoolOptions, conn: MySqlConnectOptions) 
     let lp = my_lp(&app, &token).await;
     assert_eq!(lp["season"]["id"], season.to_string());
     assert_eq!(lp["season"]["status"], "ACTIVE");
-    assert!(lp["season"]["name"].as_str().unwrap().starts_with("Season "));
+    assert!(
+        lp["season"]["name"]
+            .as_str()
+            .unwrap()
+            .starts_with("Season ")
+    );
     assert_eq!(lp["lp"], 1240);
     assert_eq!(lp["division"], "GOLD");
     assert_eq!(lp["nextDivision"], "PLATINUM");
@@ -457,7 +458,12 @@ async fn my_lp_in_the_season(opts: MySqlPoolOptions, conn: MySqlConnectOptions) 
     let (_, fresh) = league_athlete(&app, "fresh").await;
     let lp = my_lp(&app, &fresh).await;
     assert_eq!(
-        (&lp["lp"], &lp["division"], &lp["nextDivision"], &lp["lpToNextDivision"]),
+        (
+            &lp["lp"],
+            &lp["division"],
+            &lp["nextDivision"],
+            &lp["lpToNextDivision"]
+        ),
         (&json!(0), &json!("BRONZE"), &json!("SILVER"), &json!(400))
     );
 }
@@ -519,14 +525,27 @@ async fn closing_a_season_soft_resets_into_the_next(
     assert_eq!(
         standings,
         [
-            (a, 1240, "GOLD".to_owned(), Some(1), true, Some("NATIONAL".to_owned())),
+            (
+                a,
+                1240,
+                "GOLD".to_owned(),
+                Some(1),
+                true,
+                Some("NATIONAL".to_owned())
+            ),
             (b, 86, "BRONZE".to_owned(), Some(2), false, None),
         ]
     );
-    assert_eq!(stats(&app, a).await, (1070, Some(next), Some("GOLD".to_owned())));
+    assert_eq!(
+        stats(&app, a).await,
+        (1070, Some(next), Some("GOLD".to_owned()))
+    );
     assert_eq!(stats(&app, b).await.0, 43);
     // 500 is Silver, floor 400: 400 + 100 × 0.5.
-    assert_eq!(stats(&app, c).await, (450, Some(next), Some("SILVER".to_owned())));
+    assert_eq!(
+        stats(&app, c).await,
+        (450, Some(next), Some("SILVER".to_owned()))
+    );
     let reset: Vec<(i32, Uuid, chrono::NaiveDateTime)> = sqlx::query_as(
         "SELECT amount, season_id, effective_at FROM league_point_transactions \
          WHERE user_id = ? AND reason = 'SEASON_SOFT_RESET'",
@@ -668,17 +687,26 @@ async fn a_job_runs_once_per_key(opts: MySqlPoolOptions, conn: MySqlConnectOptio
         runs.fetch_add(1, Ordering::SeqCst);
         Ok(json!({"n": 1}))
     };
-    assert!(jobs::once(&app.db, "test", "k1", now, work()).await.unwrap());
-    assert!(!jobs::once(&app.db, "test", "k1", now, work()).await.unwrap());
-    assert_eq!(
-        job_row(&app, "test", "k1").await.0,
-        "DONE".to_owned()
+    assert!(
+        jobs::once(&app.db, "test", "k1", now, work())
+            .await
+            .unwrap()
     );
+    assert!(
+        !jobs::once(&app.db, "test", "k1", now, work())
+            .await
+            .unwrap()
+    );
+    assert_eq!(job_row(&app, "test", "k1").await.0, "DONE".to_owned());
     let result: Value =
         serde_json::from_str(&job_row(&app, "test", "k1").await.1.unwrap()).unwrap();
     assert_eq!(result, json!({"n": 1}));
 
-    for (key, status, minutes) in [("dead", "RUNNING", 120), ("busy", "RUNNING", 10), ("failed", "FAILED", 1)] {
+    for (key, status, minutes) in [
+        ("dead", "RUNNING", 120),
+        ("busy", "RUNNING", 10),
+        ("failed", "FAILED", 1),
+    ] {
         sqlx::query(
             "INSERT INTO job_runs (id, job, run_key, status, started_at) VALUES (?, 'test', ?, ?, ?)",
         )
@@ -690,9 +718,21 @@ async fn a_job_runs_once_per_key(opts: MySqlPoolOptions, conn: MySqlConnectOptio
         .await
         .unwrap();
     }
-    assert!(jobs::once(&app.db, "test", "dead", now, work()).await.unwrap());
-    assert!(!jobs::once(&app.db, "test", "busy", now, work()).await.unwrap());
-    assert!(jobs::once(&app.db, "test", "failed", now, work()).await.unwrap());
+    assert!(
+        jobs::once(&app.db, "test", "dead", now, work())
+            .await
+            .unwrap()
+    );
+    assert!(
+        !jobs::once(&app.db, "test", "busy", now, work())
+            .await
+            .unwrap()
+    );
+    assert!(
+        jobs::once(&app.db, "test", "failed", now, work())
+            .await
+            .unwrap()
+    );
 
     let before = runs.load(Ordering::SeqCst);
     let (a, b) = tokio::join!(
@@ -756,7 +796,10 @@ async fn calibration_finalizes_on_its_day(opts: MySqlPoolOptions, conn: MySqlCon
     .fetch_one(&app.db)
     .await
     .unwrap();
-    assert_eq!((status.as_str(), effective, on_time), ("FINAL", 100.0, true));
+    assert_eq!(
+        (status.as_str(), effective, on_time),
+        ("FINAL", 100.0, true)
+    );
 }
 
 #[sqlx::test]
@@ -780,11 +823,12 @@ async fn balances_are_reconciled(opts: MySqlPoolOptions, conn: MySqlConnectOptio
     };
     ledger::append_lp(&mut tx, &rules, entry).await.unwrap();
     tx.commit().await.unwrap();
-    let before: (i64, i32) = sqlx::query_as("SELECT xp_total, level FROM user_stats WHERE user_id = ?")
-        .bind(user)
-        .fetch_one(&app.db)
-        .await
-        .unwrap();
+    let before: (i64, i32) =
+        sqlx::query_as("SELECT xp_total, level FROM user_stats WHERE user_id = ?")
+            .bind(user)
+            .fetch_one(&app.db)
+            .await
+            .unwrap();
     sqlx::query(
         "UPDATE user_stats SET xp_total = 99999, level = 40, season_lp = 5, division_code = 'ELITE' WHERE user_id = ?",
     )
@@ -793,11 +837,12 @@ async fn balances_are_reconciled(opts: MySqlPoolOptions, conn: MySqlConnectOptio
     .await
     .unwrap();
     jobs::run_due(&app.state, Utc::now()).await.unwrap();
-    let after: (i64, i32) = sqlx::query_as("SELECT xp_total, level FROM user_stats WHERE user_id = ?")
-        .bind(user)
-        .fetch_one(&app.db)
-        .await
-        .unwrap();
+    let after: (i64, i32) =
+        sqlx::query_as("SELECT xp_total, level FROM user_stats WHERE user_id = ?")
+            .bind(user)
+            .fetch_one(&app.db)
+            .await
+            .unwrap();
     assert_eq!(after, before);
     assert_eq!(
         stats(&app, user).await,
@@ -867,5 +912,8 @@ async fn the_sweep_awards_division_and_streak_badges(
         .iter()
         .find(|b| b["code"] == "GOLD_DIVISION")
         .unwrap();
-    assert_eq!(badge["progress"], json!({"current": 3, "target": 3, "met": true}));
+    assert_eq!(
+        badge["progress"],
+        json!({"current": 3, "target": 3, "met": true})
+    );
 }
