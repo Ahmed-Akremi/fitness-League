@@ -36,7 +36,7 @@ pub enum Event {
 }
 
 /// In rank order: Bronze is 1, Elite 6.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum Division {
     Bronze,
@@ -45,6 +45,32 @@ pub enum Division {
     Platinum,
     Diamond,
     Elite,
+}
+
+impl Division {
+    pub const ALL: [Division; 6] = [
+        Division::Bronze,
+        Division::Silver,
+        Division::Gold,
+        Division::Platinum,
+        Division::Diamond,
+        Division::Elite,
+    ];
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Division::Bronze => "BRONZE",
+            Division::Silver => "SILVER",
+            Division::Gold => "GOLD",
+            Division::Platinum => "PLATINUM",
+            Division::Diamond => "DIAMOND",
+            Division::Elite => "ELITE",
+        }
+    }
+
+    pub fn rank(self) -> i64 {
+        self as i64 + 1
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -88,7 +114,7 @@ impl Rule {
     pub fn target(&self) -> i64 {
         match self {
             Rule::Count { gte, .. } | Rule::Level { gte } | Rule::StreakWeeks { gte } => *gte,
-            Rule::Division { gte } => *gte as i64 + 1,
+            Rule::Division { gte } => gte.rank(),
         }
     }
 }
