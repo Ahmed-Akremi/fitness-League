@@ -50,11 +50,20 @@ pub enum Division {
 #[derive(Debug, Deserialize)]
 #[serde(tag = "type", rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum Rule {
-    Count { event: Event, gte: i64 },
-    Level { gte: i64 },
-    Division { gte: Division },
+    Count {
+        event: Event,
+        gte: i64,
+    },
+    Level {
+        gte: i64,
+    },
+    Division {
+        gte: Division,
+    },
     /// Consecutive closed weeks with the training plan fully met.
-    StreakWeeks { gte: i64 },
+    StreakWeeks {
+        gte: i64,
+    },
 }
 
 /// One fact about the athlete. `Division` is the rank of the best division reached, 0 for none.
@@ -243,6 +252,7 @@ async fn catalogue(
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used)]
     use std::collections::HashMap;
 
     use super::*;

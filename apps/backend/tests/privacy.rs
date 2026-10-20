@@ -581,11 +581,12 @@ async fn anonymisation_deletes_weight_goals(opts: MySqlPoolOptions, conn: MySqlC
         .await
         .unwrap();
     assert_eq!(kinds, ["STRENGTH"]);
-    let milestones: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM goal_milestones WHERE goal_id = ?")
-        .bind(weight)
-        .fetch_one(&app.db)
-        .await
-        .unwrap();
+    let milestones: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM goal_milestones WHERE goal_id = ?")
+            .bind(weight)
+            .fetch_one(&app.db)
+            .await
+            .unwrap();
     assert_eq!(milestones, 0);
     let badges: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM user_badges WHERE user_id = ?")
         .bind(user)

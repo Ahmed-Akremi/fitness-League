@@ -39,7 +39,9 @@ pub fn plan_milestones(
     } else {
         range.abs()
     };
-    let n = (range.abs() / step - 1e-9).ceil().clamp(1.0, MAX_MILESTONES) as i64;
+    let n = (range.abs() / step - 1e-9)
+        .ceil()
+        .clamp(1.0, MAX_MILESTONES) as i64;
     let mut out: Vec<f64> = Vec::new();
     for i in 1..=n {
         let value = if i == n {
