@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "INSERT INTO baselines (id, user_id, exercise_id, metric_type_id, calibrated_value, effective_value, status, experience_level, logs_counted, finalized_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, IF(?, UTC_TIMESTAMP(6), NULL)) ON DUPLICATE KEY UPDATE calibrated_value = VALUES(calibrated_value), effective_value = VALUES(effective_value), status = VALUES(status), experience_level = VALUES(experience_level), logs_counted = VALUES(logs_counted), finalized_at = VALUES(finalized_at)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 10
+    },
+    "nullable": []
+  },
+  "hash": "260a3c2f0e8115d8a023c183e916f87ac0c73bc84a319b2893cc4c3258d98d79"
+}

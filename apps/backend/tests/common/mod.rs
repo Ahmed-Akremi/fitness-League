@@ -24,6 +24,8 @@ use sqlx::{
 use tower::ServiceExt;
 use uuid::Uuid;
 
+pub mod workouts;
+
 pub struct TestApp {
     pub state: AppState,
     pub db: MySqlPool,
@@ -63,6 +65,10 @@ pub fn env() -> HashMap<String, String> {
             "test-hmac-secret-0123456789abcdef".to_owned(),
         ),
         ("RATE_LIMIT_ENABLED", "false".to_owned()),
+        (
+            "HEALTH_DATA_KEYS",
+            "test:BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc=".to_owned(),
+        ),
     ]
     .into_iter()
     .map(|(k, v)| (k.to_owned(), v))
@@ -257,6 +263,20 @@ pub async fn create_user(app: &TestApp, name: &str, role: backend::types::Role) 
         .expect("the defaults row");
     }
     id
+}
+
+/// Records a consent decision, as the app's consent screen would. The latest decision counts.
+pub async fn set_consent(app: &TestApp, user: Uuid, kind: &str, granted: bool) {
+    sqlx::query(
+        "INSERT INTO consents (id, user_id, type, document_version, granted) VALUES (?, ?, ?, '2026-09', ?)",
+    )
+    .bind(Uuid::now_v7())
+    .bind(user)
+    .bind(kind)
+    .bind(granted)
+    .execute(&app.db)
+    .await
+    .expect("the consent row");
 }
 
 /// Every key of `expected` exists in `actual` with the same JSON type. `null` on either side matches

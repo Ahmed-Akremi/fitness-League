@@ -1,0 +1,77 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT p.experience_level AS \"level: ExperienceLevel\", p.exercise_id AS \"exercise?: Uuid\",\n                  p.metric_type_id AS \"metric: Uuid\", CAST(p.expected_pct AS DOUBLE) AS \"pct!: f64\"\n           FROM expected_progression p JOIN rule_sets r ON r.id = p.rule_set_id WHERE r.version = ?",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "level: ExperienceLevel",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | ENUM | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 48
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.expected_progression",
+            "name": "experience_level"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "exercise?: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "MULTIPLE_KEY | BINARY",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.expected_progression",
+            "name": "exercise_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "metric: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | MULTIPLE_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.expected_progression",
+            "name": "metric_type_id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "pct!: f64",
+        "type_info": {
+          "type": "Double",
+          "flags": "BINARY",
+          "collation": 63,
+          "max_size": 22
+        },
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      true,
+      false,
+      true
+    ]
+  },
+  "hash": "e2e79d113aa1909e56a33d4f47fd0ca602788cd6b7cf6db2bd711091a4e54bab"
+}

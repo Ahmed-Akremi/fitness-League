@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "UPDATE user_settings SET locale = COALESCE(?, locale), theme = COALESCE(?, theme), reduced_motion = IF(?, ?, reduced_motion), default_visibility = COALESCE(?, default_visibility), show_age_bracket = COALESCE(?, show_age_bracket), show_on_leaderboards = COALESCE(?, show_on_leaderboards), streak_freeze_days_per_week = COALESCE(?, streak_freeze_days_per_week) WHERE user_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 9
+    },
+    "nullable": []
+  },
+  "hash": "591c6e2c2cc2e5dba9616fba76b87cec4ef19f19f465ef96b81b661a98658cbc"
+}

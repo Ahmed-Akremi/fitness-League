@@ -1,0 +1,89 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT CAST(declared_value AS DOUBLE) AS \"declared?: f64\",\n                  CAST(calibrated_value AS DOUBLE) AS \"calibrated?: f64\", status,\n                  experience_level AS \"level?: ExperienceLevel\", logs_counted\n           FROM baselines WHERE user_id = ? AND exercise_id = ? AND metric_type_id = ?",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "declared?: f64",
+        "type_info": {
+          "type": "Double",
+          "flags": "BINARY",
+          "collation": 63,
+          "max_size": 22
+        },
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "calibrated?: f64",
+        "type_info": {
+          "type": "Double",
+          "flags": "BINARY",
+          "collation": 63,
+          "max_size": 22
+        },
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 2,
+        "name": "status",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | ENUM",
+          "collation": 224,
+          "max_size": 44
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.baselines",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "level?: ExperienceLevel",
+        "type_info": {
+          "type": "String",
+          "flags": "ENUM",
+          "collation": 224,
+          "max_size": 48
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.baselines",
+            "name": "experience_level"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "logs_counted",
+        "type_info": {
+          "type": "Long",
+          "flags": "NOT_NULL",
+          "collation": 63,
+          "max_size": 11
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.baselines",
+            "name": "logs_counted"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": [
+      true,
+      true,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "2eeb912916aee1a3f01b16b8938ad8ef2687a3c8b20d87b59ceb92c6717f5a4d"
+}

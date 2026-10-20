@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "INSERT INTO deletion_requests (id, user_id, scheduled_for) VALUES (?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "1e74e795f0ae356d62ce2e31e01cadac61d3863b7d2c93b4f8bbdfea9520b734"
+}

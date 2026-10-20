@@ -6,6 +6,7 @@ use axum::{
     extract::{FromRequest, FromRequestParts, Query, Request},
     http::{StatusCode, header, request::Parts},
 };
+use chrono::{DateTime, Utc};
 use serde::de::DeserializeOwned;
 use uuid::Uuid;
 
@@ -42,6 +43,15 @@ impl Check {
     }
 
     pub fn range(&mut self, field: &str, value: i64, min: i64, max: i64) {
+        if value < min {
+            self.fail(field, "MIN");
+        } else if value > max {
+            self.fail(field, "MAX");
+        }
+    }
+
+    /// `range` for decimals: weights, percentages, effort ratings.
+    pub fn within(&mut self, field: &str, value: f64, min: f64, max: f64) {
         if value < min {
             self.fail(field, "MIN");
         } else if value > max {
@@ -103,12 +113,18 @@ where
                 )
             }
         })?;
-        let value: T = parse(&bytes)?;
-        let mut check = Check::default();
-        value.validate(&mut check);
-        check.finish()?;
-        Ok(Self(value))
+        valid(&bytes).map(Self)
     }
+}
+
+/// Strict JSON → `T`, then its rules: what `ValidJson` does to a request body, for a value read
+/// another way (one item of a batch).
+pub fn valid<T: DeserializeOwned + Validate>(bytes: &[u8]) -> Result<T, AppError> {
+    let value: T = parse(bytes)?;
+    let mut check = Check::default();
+    value.validate(&mut check);
+    check.finish()?;
+    Ok(value)
 }
 
 /// Strict JSON → `T`. A syntax error is a 400; anything wrong with the data is a 422 naming the field.
@@ -201,6 +217,60 @@ pub fn uuid_param(field: &str, value: Option<&str>) -> Result<Option<Uuid>, AppE
     value
         .map(|raw| Uuid::parse_str(raw).map_err(|_| AppError::field(field, "ISUUID")))
         .transpose()
+}
+
+/// An instant written in RFC 3339 (`2026-09-25T07:30:00Z`), the form the clients send.
+pub fn rfc3339(raw: &str) -> Option<DateTime<Utc>> {
+    DateTime::parse_from_rfc3339(raw)
+        .ok()
+        .map(|at| at.with_timezone(&Utc))
+}
+
+/// A decimal kept to `decimals` places. Clients send floats such as `82.35000000000001`; the value
+/// stored, compared and hashed is the rounded one.
+pub fn round_to(value: f64, decimals: i32) -> f64 {
+    let factor = 10f64.powi(decimals);
+    (value * factor).round() / factor
+}
+
+/// For a field the client may clear: absent is `None`, `null` is `Some(None)`. Use with
+/// `#[serde(default, deserialize_with = "nullable")]`.
+pub fn nullable<'de, D, T>(de: D) -> Result<Option<Option<T>>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+    T: serde::Deserialize<'de>,
+{
+    serde::Deserialize::deserialize(de).map(Some)
+}
+
+/// Characters that change how text is shown without being seen: the zero-width ones, the direction
+/// overrides, the soft hyphen. In a name they serve to pass for someone else, or for nobody.
+fn is_invisible(c: char) -> bool {
+    matches!(
+        c,
+        '\u{00AD}'
+            | '\u{034F}'
+            | '\u{061C}'
+            | '\u{115F}'
+            | '\u{1160}'
+            | '\u{180E}'
+            | '\u{200B}'..='\u{200F}'
+            | '\u{202A}'..='\u{202E}'
+            | '\u{2060}'..='\u{2069}'
+            | '\u{2800}'
+            | '\u{3164}'
+            | '\u{FEFF}'
+            | '\u{FFA0}'
+            | '\u{E0000}'..='\u{E007F}'
+    )
+}
+
+/// A full name a person can read: no character that hides or reorders the others, and at least two
+/// letters or digits. The second rule is what holds when a new invisible character is missing from
+/// the list of the first. A name shorter than two characters is left to the length rule.
+pub fn readable_name(name: &str) -> bool {
+    !name.chars().any(|c| c.is_control() || is_invisible(c))
+        && (name.chars().count() < 2 || name.chars().filter(|c| c.is_alphanumeric()).count() >= 2)
 }
 
 /// An email as it is stored and compared: trimmed and lower-cased. `None` unless it is a plausible

@@ -24,7 +24,7 @@ use crate::{
     security::{password, tokens::Audience},
     state::AppState,
     types::{Gender, Locale},
-    validate::{Check, ValidJson, Validate, normalise_email},
+    validate::{Check, ValidJson, Validate, normalise_email, readable_name},
 };
 
 pub fn routes(api: Api) -> Api {
@@ -112,28 +112,6 @@ fn parse_date(raw: &str) -> Option<NaiveDate> {
         .filter(|date| date.year() >= 1900)
 }
 
-/// Characters that change how text is shown without being seen: the zero-width ones, the direction
-/// overrides, the soft hyphen. In a name they serve to pass for someone else, or for nobody.
-fn is_invisible(c: char) -> bool {
-    matches!(
-        c,
-        '\u{00AD}'
-            | '\u{034F}'
-            | '\u{061C}'
-            | '\u{115F}'
-            | '\u{1160}'
-            | '\u{180E}'
-            | '\u{200B}'..='\u{200F}'
-            | '\u{202A}'..='\u{202E}'
-            | '\u{2060}'..='\u{2069}'
-            | '\u{2800}'
-            | '\u{3164}'
-            | '\u{FEFF}'
-            | '\u{FFA0}'
-            | '\u{E0000}'..='\u{E007F}'
-    )
-}
-
 /// `+` and 8 to 15 digits, the first of which is not 0 (E.164).
 fn is_phone(raw: &str) -> bool {
     raw.strip_prefix('+').is_some_and(|digits| {
@@ -153,13 +131,7 @@ impl Validate for RegisterBody {
         check.ensure("username", username_ok, "MATCHES");
         let name = self.full_name.trim();
         check.length("fullName", name, 2, 80);
-        // Something a person can read: no character that hides or reorders the others, and at least
-        // two letters or digits. The second rule is what holds when a new invisible character is
-        // missing from the list of the first.
-        let readable = !name.chars().any(|c| c.is_control() || is_invisible(c))
-            && (name.chars().count() < 2
-                || name.chars().filter(|c| c.is_alphanumeric()).count() >= 2);
-        check.ensure("fullName", readable, "MATCHES");
+        check.ensure("fullName", readable_name(name), "MATCHES");
         check.ensure("email", normalise_email(&self.email).is_some(), "ISEMAIL");
         check.length(
             "password",

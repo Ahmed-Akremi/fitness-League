@@ -45,6 +45,18 @@ struct Catalog {
     metric_types: Vec<MetricType>,
     sports: Vec<Sport>,
     exercises: Vec<Exercise>,
+    badges: Vec<Badge>,
+}
+
+#[derive(Deserialize)]
+struct Badge {
+    code: String,
+    category: String,
+    icon: Option<String>,
+    rarity: String,
+    rule: Value,
+    name: I18n,
+    description: I18n,
 }
 
 #[derive(Deserialize)]
@@ -85,6 +97,17 @@ struct RuleSetFile {
     version: i32,
     change_note: String,
     config: Value,
+    expected_progression: Vec<Expected>,
+}
+
+/// Expected improvement, in percent per progress window, at one level.
+#[derive(Deserialize)]
+struct Expected {
+    level: String,
+    /// An exercise code, or `null` for every exercise without a row of its own.
+    exercise: Option<String>,
+    metric: String,
+    pct: f64,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -94,6 +117,7 @@ pub struct Summary {
     pub sports: usize,
     pub metric_types: usize,
     pub exercises: usize,
+    pub badges: usize,
 }
 
 pub async fn run(db: &MySqlPool, dir: &Path) -> Result<Summary, String> {
@@ -129,6 +153,32 @@ pub async fn run(db: &MySqlPool, dir: &Path) -> Result<Summary, String> {
                 exercise.code
             ));
         }
+    }
+
+    let exercises: HashSet<&str> = catalog.exercises.iter().map(|e| e.code.as_str()).collect();
+    for row in &rules.expected_progression {
+        let unknown = row
+            .exercise
+            .as_deref()
+            .filter(|code| !exercises.contains(code))
+            .or(Some(row.metric.as_str()).filter(|code| !metrics.contains(code)));
+        if let Some(code) = unknown {
+            return Err(format!(
+                "ruleset-v2.json: expectedProgression names the unknown code {code}"
+            ));
+        }
+    }
+
+    // A rule the engine cannot read would never award its badge.
+    if let Some(badge) = catalog
+        .badges
+        .iter()
+        .find(|b| crate::modules::badges::parse_rule(&b.rule.to_string()).is_none())
+    {
+        return Err(format!(
+            "catalog.json: badge {} has an invalid rule",
+            badge.code
+        ));
     }
 
     write(db, &tunisia, &catalog, &rules)
@@ -358,6 +408,50 @@ async fn write(
         .execute(db)
         .await?;
     }
+    // For the rule set of the file's version, whatever its status.
+    for row in &rules.expected_progression {
+        sqlx::query!(
+            "INSERT INTO expected_progression (id, rule_set_id, experience_level, exercise_id, metric_type_id, expected_pct)
+             SELECT ?, r.id, ?, (SELECT id FROM exercises WHERE code = ?), m.id, ?
+             FROM rule_sets r JOIN metric_types m ON m.code = ? WHERE r.version = ?
+             ON DUPLICATE KEY UPDATE expected_pct = VALUES(expected_pct)",
+            Uuid::now_v7(),
+            row.level,
+            row.exercise,
+            format!("{:.3}", row.pct),
+            row.metric,
+            rules.version
+        )
+        .execute(db)
+        .await?;
+    }
+
+    // `enabled` stays out of the update: turning a badge off is an admin's choice.
+    for b in &catalog.badges {
+        sqlx::query!(
+            "INSERT INTO badges (id, code, category, name_fr, name_en, name_ar, description_fr, description_en,
+                                 description_ar, icon, rarity, rule)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE category = VALUES(category), name_fr = VALUES(name_fr), name_en = VALUES(name_en),
+                 name_ar = VALUES(name_ar), description_fr = VALUES(description_fr),
+                 description_en = VALUES(description_en), description_ar = VALUES(description_ar),
+                 icon = VALUES(icon), rarity = VALUES(rarity), rule = VALUES(rule)",
+            Uuid::now_v7(),
+            b.code,
+            b.category,
+            b.name.fr,
+            b.name.en,
+            b.name.ar,
+            b.description.fr,
+            b.description.en,
+            b.description.ar,
+            b.icon,
+            b.rarity,
+            b.rule.to_string()
+        )
+        .execute(db)
+        .await?;
+    }
 
     Ok(Summary {
         governorates: tunisia.governorates.len(),
@@ -365,6 +459,7 @@ async fn write(
         sports: catalog.sports.len(),
         metric_types: catalog.metric_types.len(),
         exercises: catalog.exercises.len(),
+        badges: catalog.badges.len(),
     })
 }
 

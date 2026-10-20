@@ -207,6 +207,10 @@ mod tests {
             ("JWT_PUBLIC_KEY_B64", public),
             ("JWT_EXTRA_PUBLIC_KEYS", extra),
             ("APP_HMAC_SECRET", "0123456789abcdef0123456789abcdef"),
+            (
+                "HEALTH_DATA_KEYS",
+                "test:BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc=",
+            ),
         ]
         .into_iter()
         .map(|(k, v)| (k.to_owned(), v.to_owned()))

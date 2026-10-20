@@ -30,6 +30,8 @@ pub struct Config {
     pub access_token_ttl_s: u64,
     pub refresh_token_ttl_days: i64,
     pub app_hmac_secret: SecretString,
+    /// `(key id, base64 of a 32-byte key)` for the health-data cipher. The first one encrypts.
+    pub health_data_keys: Vec<(String, SecretString)>,
     pub cors_origins: Vec<String>,
     pub trusted_proxies: Vec<IpNet>,
     pub smtp_url: Option<SecretString>,
@@ -53,6 +55,14 @@ impl fmt::Debug for Config {
                     .jwt_public_keys
                     .iter()
                     .map(|(kid, _)| kid)
+                    .collect::<Vec<_>>(),
+            )
+            .field(
+                "health_data_key_ids",
+                &self
+                    .health_data_keys
+                    .iter()
+                    .map(|(id, _)| id)
                     .collect::<Vec<_>>(),
             )
             .field("jwt_issuer", &self.jwt_issuer)
@@ -155,6 +165,28 @@ impl Config {
                 .push("APP_HMAC_SECRET: at least 32 characters".into());
         }
 
+        let mut health_data_keys: Vec<(String, SecretString)> = Vec::new();
+        for pair in r.required("HEALTH_DATA_KEYS").split(',').map(str::trim) {
+            let key = pair.split_once(':').filter(|(id, b64)| {
+                (1..=32).contains(&id.len())
+                    && id
+                        .bytes()
+                        .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_')
+                    && !health_data_keys.iter().any(|(known, _)| known == id)
+                    && STANDARD.decode(b64).is_ok_and(|bytes| bytes.len() == 32)
+            });
+            match key {
+                Some((id, b64)) => health_data_keys.push((id.to_owned(), b64.to_owned().into())),
+                // An empty value was just reported as missing.
+                None if pair.is_empty() => {}
+                None => {
+                    r.problems
+                        .push("HEALTH_DATA_KEYS: expected id:base64(32 bytes)[,…]".into());
+                    break;
+                }
+            }
+        }
+
         let mut trusted_proxies = Vec::new();
         for item in r.list("TRUSTED_PROXIES") {
             match item
@@ -194,6 +226,7 @@ impl Config {
             access_token_ttl_s: r.number("ACCESS_TOKEN_TTL_S", 900u64, 60, 3600),
             refresh_token_ttl_days: r.number("REFRESH_TOKEN_TTL_DAYS", 30i64, 1, 90),
             app_hmac_secret: app_hmac_secret.into(),
+            health_data_keys,
             cors_origins: r.list("CORS_ORIGINS"),
             trusted_proxies,
             smtp_url: r.get("SMTP_URL").map(|s| s.to_owned().into()),
@@ -335,10 +368,15 @@ mod tests {
                 "APP_HMAC_SECRET",
                 "0123456789abcdef0123456789abcdef".to_owned(),
             ),
+            ("HEALTH_DATA_KEYS", format!("hk1:{}", health_key())),
         ]
         .into_iter()
         .map(|(k, v)| (k.to_owned(), v))
         .collect()
+    }
+
+    fn health_key() -> String {
+        STANDARD.encode([9u8; 32])
     }
 
     fn with(pairs: &[(&str, &str)]) -> HashMap<String, String> {
@@ -371,6 +409,7 @@ mod tests {
             "JWT_PRIVATE_KEY_B64",
             "JWT_PUBLIC_KEY_B64",
             "APP_HMAC_SECRET",
+            "HEALTH_DATA_KEYS",
         ] {
             assert!(
                 err.contains(&format!("{key}: required")),
@@ -481,12 +520,44 @@ mod tests {
             "0123456789abcdef0123456789abcdef",
             "smtp-pass-1234",
             "AAAA",
+            health_key().as_str(),
         ] {
             assert!(
                 !printed.contains(secret),
                 "secret {secret} leaked in: {printed}"
             );
         }
+        // Key ids are not secret, and tell which keys are loaded.
+        assert!(printed.contains("hk1"), "{printed}");
+    }
+
+    #[test]
+    fn health_keys_are_checked() {
+        let short = format!("hk1:{}", STANDARD.encode([1u8; 16]));
+        let twice = format!("a:{k},a:{k}", k = health_key());
+        let bad_id = format!("bad id:{}", health_key());
+        for value in [
+            short.as_str(),
+            "hk1",
+            "hk1:not-base64",
+            twice.as_str(),
+            bad_id.as_str(),
+        ] {
+            let err = Config::from_map(&with(&[("HEALTH_DATA_KEYS", value)])).unwrap_err();
+            assert!(
+                err.contains("HEALTH_DATA_KEYS: expected id:base64"),
+                "{value}: {err}"
+            );
+        }
+        let rotated = format!("new:{k}, old:{k}", k = health_key());
+        let cfg = Config::from_map(&with(&[("HEALTH_DATA_KEYS", &rotated)])).unwrap();
+        assert_eq!(
+            cfg.health_data_keys
+                .iter()
+                .map(|(id, _)| id.as_str())
+                .collect::<Vec<_>>(),
+            ["new", "old"]
+        );
     }
 
     #[test]

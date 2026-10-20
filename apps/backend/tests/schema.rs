@@ -362,3 +362,225 @@ async fn an_audit_entry_records_the_actor_the_action_and_the_request(
         json!({"to": "ADMIN"})
     );
 }
+
+async fn insert_xp(
+    db: &MySqlPool,
+    user: Uuid,
+    reason: &str,
+    amount: i32,
+    reverses: Option<Uuid>,
+) -> Result<Uuid, sqlx::Error> {
+    let id = Uuid::now_v7();
+    sqlx::query(
+        "INSERT INTO xp_transactions (id, user_id, amount, reason, source_type, source_id, reverses_id, \
+           rule_set_version, explanation, effective_at) \
+         VALUES (?, ?, ?, ?, 'workout', 'w#v1', ?, 2, '{}', UTC_TIMESTAMP(6))",
+    )
+    .bind(id)
+    .bind(user)
+    .bind(amount)
+    .bind(reason)
+    .bind(reverses)
+    .execute(db)
+    .await?;
+    Ok(id)
+}
+
+#[sqlx::test]
+async fn the_xp_ledger_is_append_only_and_grants_once(
+    opts: MySqlPoolOptions,
+    conn: MySqlConnectOptions,
+) {
+    let db = backend::db::pool(opts, conn);
+    let user = insert_user(&db, "xp@example.tn", "xp_user").await.unwrap();
+    let entry = insert_xp(&db, user, "WORKOUT", 30, None).await.unwrap();
+
+    for sql in [
+        "UPDATE xp_transactions SET amount = 3000 WHERE id = ?",
+        "DELETE FROM xp_transactions WHERE id = ?",
+    ] {
+        let e = sqlx::query(sql).bind(entry).execute(&db).await.unwrap_err();
+        assert!(e.to_string().contains("append-only"), "{e}");
+    }
+    let again = insert_xp(&db, user, "WORKOUT", 30, None).await.unwrap_err();
+    assert!(is_unique_violation(&again), "{again}");
+
+    insert_xp(&db, user, "REVERSAL", -30, Some(entry))
+        .await
+        .unwrap();
+    let twice = insert_xp(&db, user, "REVERSAL", -30, Some(entry))
+        .await
+        .unwrap_err();
+    assert!(is_unique_violation(&twice), "{twice}");
+
+    let negative = sqlx::query(
+        "INSERT INTO xp_transactions (id, user_id, amount, reason, source_type, source_id, \
+           rule_set_version, explanation, effective_at) \
+         VALUES (?, ?, -5, 'WORKOUT', 'workout', 'other#v1', 2, '{}', UTC_TIMESTAMP(6))",
+    )
+    .bind(Uuid::now_v7())
+    .bind(user)
+    .execute(&db)
+    .await;
+    assert!(negative.is_err(), "a negative WORKOUT amount was stored");
+}
+
+fn seed_dir() -> std::path::PathBuf {
+    std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../infra/seed-data")
+}
+
+#[sqlx::test]
+async fn a_record_is_current_once(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let db = backend::db::pool(opts, conn);
+    backend::seed::run(&db, &seed_dir()).await.unwrap();
+    let user = insert_user(&db, "pr@example.tn", "pr_user").await.unwrap();
+    let workout = Uuid::now_v7();
+    sqlx::query(
+        "INSERT INTO workouts (id, user_id, client_id, payload_hash, fingerprint, sport_id, workout_type, \
+           performed_at, duration_s, visibility, status, received_at, total_volume_kg, total_distance_m) \
+         SELECT ?, ?, ?, REPEAT('a', 32), REPEAT('b', 32), id, 'STRENGTH', UTC_TIMESTAMP(6), 3600, \
+           'PRIVATE', 'ACCEPTED', UTC_TIMESTAMP(6), 0, 0 FROM sports WHERE code = 'WEIGHT_TRAINING'",
+    )
+    .bind(workout)
+    .bind(user)
+    .bind(Uuid::now_v7())
+    .execute(&db)
+    .await
+    .unwrap();
+    let record = |current: bool| {
+        sqlx::query(
+            "INSERT INTO personal_records (id, user_id, exercise_id, metric_type_id, value, workout_id, \
+               status, is_current, achieved_at) \
+             SELECT ?, ?, e.id, m.id, 100, ?, 'AWARDED', ?, UTC_TIMESTAMP(6) \
+             FROM exercises e, metric_types m WHERE e.code = 'BACK_SQUAT' AND m.code = 'E1RM'",
+        )
+        .bind(Uuid::now_v7())
+        .bind(user)
+        .bind(workout)
+        .bind(current)
+        .execute(&db)
+    };
+    record(true).await.unwrap();
+    let second = record(true).await.unwrap_err();
+    assert!(is_unique_violation(&second), "{second}");
+    record(false).await.unwrap();
+    record(false).await.unwrap();
+}
+
+#[sqlx::test]
+async fn the_seed_loads_the_expected_progression(
+    opts: MySqlPoolOptions,
+    conn: MySqlConnectOptions,
+) {
+    let db = backend::db::pool(opts, conn);
+    let count = || {
+        sqlx::query_scalar::<_, i64>(
+            "SELECT COUNT(*) FROM expected_progression p JOIN rule_sets r ON r.id = p.rule_set_id \
+             WHERE r.version = 2",
+        )
+        .fetch_one(&db)
+    };
+    backend::seed::run(&db, &seed_dir()).await.unwrap();
+    assert_eq!(count().await.unwrap(), 30);
+    backend::seed::run(&db, &seed_dir()).await.unwrap();
+    assert_eq!(count().await.unwrap(), 30);
+}
+
+/// A goal row of `user` on the squat, or on no exercise for a `HABIT` goal.
+async fn insert_goal(
+    db: &MySqlPool,
+    user: Uuid,
+    kind: &str,
+    status: &str,
+    plain: Option<f64>,
+    encrypted: Option<&[u8]>,
+) -> Result<(), sqlx::Error> {
+    let (exercise, metric) = match kind {
+        "WEIGHT" => ("", "BODY_WEIGHT"),
+        "HABIT" => ("", "WORKOUTS_PER_WEEK"),
+        _ => ("BACK_SQUAT", "E1RM"),
+    };
+    sqlx::query(
+        "INSERT INTO goals (id, user_id, type, exercise_id, metric_type_id, direction, start_value, target_value, \
+           start_value_enc, target_value_enc, start_date, status) \
+         SELECT ?, ?, ?, (SELECT id FROM exercises WHERE code = ?), m.id, 'INCREASE', ?, ?, ?, ?, CURRENT_DATE, ? \
+         FROM metric_types m WHERE m.code = ?",
+    )
+    .bind(Uuid::now_v7())
+    .bind(user)
+    .bind(kind)
+    .bind(exercise)
+    .bind(plain)
+    .bind(plain)
+    .bind(encrypted)
+    .bind(encrypted)
+    .bind(status)
+    .bind(metric)
+    .execute(db)
+    .await
+    .map(|_| ())
+}
+
+#[sqlx::test]
+async fn a_weight_goal_holds_no_clear_value(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let db = backend::db::pool(opts, conn);
+    backend::seed::run(&db, &seed_dir()).await.unwrap();
+    let user = insert_user(&db, "goal@example.tn", "goal_user").await.unwrap();
+    let blob: &[u8] = b"k1:sealed";
+    assert!(insert_goal(&db, user, "WEIGHT", "ACTIVE", Some(80.0), None).await.is_err());
+    insert_goal(&db, user, "WEIGHT", "ACTIVE", None, Some(blob)).await.unwrap();
+    assert!(insert_goal(&db, user, "STRENGTH", "ACTIVE", None, Some(blob)).await.is_err());
+    // Neither form at all is refused too.
+    assert!(insert_goal(&db, user, "STRENGTH", "ACTIVE", None, None).await.is_err());
+}
+
+#[sqlx::test]
+async fn one_active_goal_per_metric(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let db = backend::db::pool(opts, conn);
+    backend::seed::run(&db, &seed_dir()).await.unwrap();
+    let user = insert_user(&db, "goals@example.tn", "goals_user").await.unwrap();
+    insert_goal(&db, user, "STRENGTH", "ACTIVE", Some(120.0), None).await.unwrap();
+    let second = insert_goal(&db, user, "STRENGTH", "ACTIVE", Some(125.0), None)
+        .await
+        .unwrap_err();
+    assert!(is_unique_violation(&second), "{second}");
+    sqlx::query("UPDATE goals SET status = 'ABANDONED' WHERE user_id = ?")
+        .bind(user)
+        .execute(&db)
+        .await
+        .unwrap();
+    insert_goal(&db, user, "STRENGTH", "ACTIVE", Some(125.0), None).await.unwrap();
+
+    insert_goal(&db, user, "HABIT", "ACTIVE", Some(3.0), None).await.unwrap();
+    let habit = insert_goal(&db, user, "HABIT", "ACTIVE", Some(4.0), None)
+        .await
+        .unwrap_err();
+    assert!(is_unique_violation(&habit), "{habit}");
+}
+
+#[sqlx::test]
+async fn the_seed_loads_the_badges(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let db = backend::db::pool(opts, conn);
+    let count = || sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM badges").fetch_one(&db);
+    backend::seed::run(&db, &seed_dir()).await.unwrap();
+    assert_eq!(count().await.unwrap(), 22);
+    let rule: String = sqlx::query_scalar("SELECT rule FROM badges WHERE code = 'FIRST_STEP'")
+        .fetch_one(&db)
+        .await
+        .unwrap();
+    assert_eq!(
+        serde_json::from_str::<Value>(&rule).unwrap(),
+        json!({"type": "COUNT", "event": "WORKOUT_ACCEPTED", "gte": 1})
+    );
+    sqlx::query("UPDATE badges SET enabled = FALSE WHERE code = 'CENTURY'")
+        .execute(&db)
+        .await
+        .unwrap();
+    backend::seed::run(&db, &seed_dir()).await.unwrap();
+    assert_eq!(count().await.unwrap(), 22);
+    let enabled: bool = sqlx::query_scalar("SELECT enabled FROM badges WHERE code = 'CENTURY'")
+        .fetch_one(&db)
+        .await
+        .unwrap();
+    assert!(!enabled, "the seed turned an admin's choice back");
+}

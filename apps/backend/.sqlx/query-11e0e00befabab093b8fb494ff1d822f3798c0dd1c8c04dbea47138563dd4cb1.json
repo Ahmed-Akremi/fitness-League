@@ -1,0 +1,26 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT EXISTS (SELECT 1 FROM xp_transactions WHERE user_id = ? AND reason = 'QUEST' AND source_type = 'quest' AND source_id = 'FIRST_WORKOUT')",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "EXISTS (SELECT 1 FROM xp_transactions WHERE user_id = ? AND reason = 'QUEST' AND source_type = 'quest' AND source_id = 'FIRST_WORKOUT')",
+        "type_info": {
+          "type": "Long",
+          "flags": "NOT_NULL | BINARY",
+          "collation": 63,
+          "max_size": 1
+        },
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "11e0e00befabab093b8fb494ff1d822f3798c0dd1c8c04dbea47138563dd4cb1"
+}

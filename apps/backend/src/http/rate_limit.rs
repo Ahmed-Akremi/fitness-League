@@ -57,6 +57,8 @@ pub const RESET_IP: Rule = rule("reset", 10, 3600, true);
 pub const VERIFY_IP: Rule = rule("email-verify", 20, 3600, true);
 pub const RESEND_USER: Rule = rule("email-resend", 3, 3600, true);
 pub const EXPORT_USER: Rule = rule("export", 3, 86_400, true);
+pub const WORKOUTS_USER: Rule = rule("workouts", 30, 3600, false);
+pub const WORKOUTS_SYNC_USER: Rule = rule("workouts-sync", 10, 3600, false);
 
 /// Sliding-window counter: the previous fixed window counts in proportion to how much of it still
 /// overlaps the last `window` seconds. KEYS: current window, previous window. ARGV: limit, window

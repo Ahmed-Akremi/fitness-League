@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "INSERT INTO workouts (id, user_id, client_id, payload_hash, fingerprint, sport_id, workout_type, performed_at, duration_s, notes, visibility, status, received_at, device_submitted_at, total_volume_kg, total_distance_m) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 16
+    },
+    "nullable": []
+  },
+  "hash": "805542cc86e8f41bfabf83f12cf63d51843bead8b0c2dbdaba102191e805a5c7"
+}

@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "UPDATE profiles SET full_name = COALESCE(?, full_name), bio = IF(?, ?, bio), gender = IF(?, ?, gender), governorate_id = COALESCE(?, governorate_id), city_id = COALESCE(?, city_id), experience_level_declared = COALESCE(?, experience_level_declared), planned_training_days_per_week = COALESCE(?, planned_training_days_per_week) WHERE user_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 10
+    },
+    "nullable": []
+  },
+  "hash": "1f1c107f29eabec9fb60f181e33d14f7679c6d65510888be4a8e8c38bb7509bb"
+}

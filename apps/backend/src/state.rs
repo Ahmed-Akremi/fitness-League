@@ -7,7 +7,7 @@ use sqlx::MySqlPool;
 use crate::{
     config::Config,
     db,
-    security::{password::Passwords, tokens::Tokens},
+    security::{health::HealthCipher, password::Passwords, tokens::Tokens},
 };
 
 /// The longest Redis is given to accept a connection, and to answer a command.
@@ -23,6 +23,7 @@ pub struct AppState {
     pub redis_prefix: Arc<str>,
     pub tokens: Arc<Tokens>,
     pub passwords: Arc<Passwords>,
+    pub health: Arc<HealthCipher>,
 }
 
 impl AppState {
@@ -30,6 +31,7 @@ impl AppState {
         // Both are checked now: a wrong key pair must stop the process, not refuse every sign-in.
         let tokens = Arc::new(Tokens::new(&cfg)?);
         let passwords = Arc::new(Passwords::new()?);
+        let health = Arc::new(HealthCipher::new(&cfg.health_data_keys)?);
         let client = redis::Client::open(cfg.redis_url.expose_secret())
             .map_err(|e| format!("REDIS_URL: {e}"))?;
         // No retry inside a request. The crate's default is six attempts with a growing delay, and
@@ -50,6 +52,7 @@ impl AppState {
             redis_prefix: redis_prefix.into(),
             tokens,
             passwords,
+            health,
         })
     }
 

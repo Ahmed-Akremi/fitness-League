@@ -3,6 +3,7 @@
 
 use axum::{Json, extract::State};
 use chrono::Utc;
+use serde::Deserialize;
 use serde_json::{Value, json};
 use uuid::Uuid;
 
@@ -12,17 +13,163 @@ use crate::{
     rules::Rules,
     security::policy,
     state::AppState,
-    types::{Role, iso},
+    types::{ExperienceLevel, Gender, Locale, Role, Theme, Visibility, iso},
+    validate::{Check, ValidJson, Validate, nullable, readable_name},
 };
 
+pub mod body;
+pub mod onboarding;
+pub mod privacy;
+
 pub fn routes(api: Api) -> Api {
-    api.get("/api/v1/me", me)
+    let api = api
+        .get("/api/v1/me", me)
+        .patch("/api/v1/me/profile", update_profile)
+        .patch("/api/v1/me/settings", update_settings);
+    body::routes(privacy::routes(onboarding::routes(api)))
 }
 
 async fn me(
     State(state): State<AppState>,
     AppUser(user): AppUser,
 ) -> Result<Json<Value>, AppError> {
+    Ok(Json(payload(&state, user.id).await?))
+}
+
+/// Every field is optional: what is absent stays as it is. `bio` and `gender` can also be cleared
+/// with `null`.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+struct ProfileBody {
+    full_name: Option<String>,
+    #[serde(default, deserialize_with = "nullable")]
+    bio: Option<Option<String>>,
+    #[serde(default, deserialize_with = "nullable")]
+    gender: Option<Option<Gender>>,
+    governorate_id: Option<Uuid>,
+    city_id: Option<Uuid>,
+    experience_level_declared: Option<ExperienceLevel>,
+    planned_training_days_per_week: Option<i64>,
+}
+
+impl Validate for ProfileBody {
+    fn validate(&self, check: &mut Check) {
+        if let Some(name) = &self.full_name {
+            let name = name.trim();
+            check.length("fullName", name, 2, 80);
+            check.ensure("fullName", readable_name(name), "MATCHES");
+        }
+        if let Some(Some(bio)) = &self.bio {
+            check.length("bio", bio, 0, 280);
+        }
+        // A city only makes sense with its governorate: both or neither.
+        if self.governorate_id.is_some() != self.city_id.is_some() {
+            let missing = if self.city_id.is_some() {
+                "governorateId"
+            } else {
+                "cityId"
+            };
+            check.fail(missing, "REQUIRED_TOGETHER");
+        }
+        if let Some(days) = self.planned_training_days_per_week {
+            check.range("plannedTrainingDaysPerWeek", days, 1, 7);
+        }
+    }
+}
+
+async fn update_profile(
+    State(state): State<AppState>,
+    AppUser(user): AppUser,
+    ValidJson(body): ValidJson<ProfileBody>,
+) -> Result<Json<Value>, AppError> {
+    if let (Some(governorate), Some(city)) = (body.governorate_id, body.city_id) {
+        // In the country of the account, as at registration.
+        let places = sqlx::query_scalar!(
+            r#"SELECT COUNT(*) AS "n!: i64"
+               FROM cities c
+               JOIN governorates g ON g.id = c.governorate_id
+               JOIN profiles p ON p.country_code = g.country_code
+               WHERE c.id = ? AND g.id = ? AND p.user_id = ?"#,
+            city,
+            governorate,
+            user.id
+        )
+        .fetch_one(&state.db)
+        .await?;
+        if places != 1 {
+            return Err(AppError::field("cityId", "NOT_IN_GOVERNORATE"));
+        }
+    }
+    sqlx::query!(
+        "UPDATE profiles SET full_name = COALESCE(?, full_name), bio = IF(?, ?, bio), \
+         gender = IF(?, ?, gender), governorate_id = COALESCE(?, governorate_id), \
+         city_id = COALESCE(?, city_id), \
+         experience_level_declared = COALESCE(?, experience_level_declared), \
+         planned_training_days_per_week = COALESCE(?, planned_training_days_per_week) \
+         WHERE user_id = ?",
+        body.full_name.as_deref().map(str::trim),
+        body.bio.is_some(),
+        body.bio.flatten(),
+        body.gender.is_some(),
+        body.gender.flatten().map(Gender::as_str),
+        body.governorate_id,
+        body.city_id,
+        body.experience_level_declared.map(ExperienceLevel::as_str),
+        body.planned_training_days_per_week,
+        user.id
+    )
+    .execute(&state.db)
+    .await?;
+    Ok(Json(payload(&state, user.id).await?))
+}
+
+/// Every field is optional; `reducedMotion: null` means "follow the device".
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+struct SettingsBody {
+    locale: Option<Locale>,
+    theme: Option<Theme>,
+    #[serde(default, deserialize_with = "nullable")]
+    reduced_motion: Option<Option<bool>>,
+    default_visibility: Option<Visibility>,
+    show_age_bracket: Option<bool>,
+    show_on_leaderboards: Option<bool>,
+    streak_freeze_days_per_week: Option<i64>,
+}
+
+impl Validate for SettingsBody {
+    fn validate(&self, check: &mut Check) {
+        if let Some(days) = self.streak_freeze_days_per_week {
+            check.range("streakFreezeDaysPerWeek", days, 0, 4);
+        }
+    }
+}
+
+async fn update_settings(
+    State(state): State<AppState>,
+    AppUser(user): AppUser,
+    ValidJson(body): ValidJson<SettingsBody>,
+) -> Result<Json<Value>, AppError> {
+    sqlx::query!(
+        "UPDATE user_settings SET locale = COALESCE(?, locale), theme = COALESCE(?, theme), \
+         reduced_motion = IF(?, ?, reduced_motion), \
+         default_visibility = COALESCE(?, default_visibility), \
+         show_age_bracket = COALESCE(?, show_age_bracket), \
+         show_on_leaderboards = COALESCE(?, show_on_leaderboards), \
+         streak_freeze_days_per_week = COALESCE(?, streak_freeze_days_per_week) \
+         WHERE user_id = ?",
+        body.locale.map(Locale::as_str),
+        body.theme.map(Theme::as_str),
+        body.reduced_motion.is_some(),
+        body.reduced_motion.flatten(),
+        body.default_visibility.map(Visibility::as_str),
+        body.show_age_bracket,
+        body.show_on_leaderboards,
+        body.streak_freeze_days_per_week,
+        user.id
+    )
+    .execute(&state.db)
+    .await?;
     Ok(Json(payload(&state, user.id).await?))
 }
 

@@ -106,6 +106,7 @@ async fn seed(dir: Option<&String>) -> Result<(), String> {
 }
 
 /// Ctrl-C, or the TERM signal that `docker stop` and process managers send.
+#[cfg(unix)]
 async fn shutdown() {
     use tokio::signal::unix::{SignalKind, signal};
     match signal(SignalKind::terminate()) {
@@ -119,6 +120,12 @@ async fn shutdown() {
             let _ = tokio::signal::ctrl_c().await;
         }
     }
+}
+
+/// Windows has no TERM signal: Ctrl-C only (local development).
+#[cfg(not(unix))]
+async fn shutdown() {
+    let _ = tokio::signal::ctrl_c().await;
 }
 
 fn now_ms() -> u64 {
@@ -139,7 +146,26 @@ async fn worker() -> Result<(), String> {
     let jobs = backend::jobs::Worker::new(state.clone(), &consumer);
     tracing::info!(consumer, "worker started");
     let mut stop = std::pin::pin!(shutdown());
+    let mut next_sweep = tokio::time::Instant::now();
     loop {
+        // The day's key decides which worker sweeps; the others only look every ten minutes.
+        if tokio::time::Instant::now() >= next_sweep {
+            let wait = match backend::modules::me::privacy::daily_sweep(&state, chrono::Utc::now())
+                .await
+            {
+                Ok(swept) => {
+                    if let Some(swept) = swept {
+                        tracing::info!(?swept, "daily sweep done");
+                    }
+                    600
+                }
+                Err(cause) => {
+                    tracing::error!(cause = %cause, "daily sweep failed; trying again in a minute");
+                    60
+                }
+            };
+            next_sweep = tokio::time::Instant::now() + std::time::Duration::from_secs(wait);
+        }
         let tick = jobs.tick(now_ms(), true, async |job| {
             backend::modules::auth::emails::handle(&state, &mailer, job).await
         });

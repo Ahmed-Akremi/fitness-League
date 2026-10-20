@@ -1,0 +1,225 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT p.id AS \"id: Uuid\", p.exercise_id AS \"exercise_id: Uuid\", e.code AS exercise_code,\n                  e.name_fr, e.name_en, e.name_ar, m.code AS metric_code, m.unit,\n                  CAST(p.value AS DOUBLE) AS \"value!: f64\",\n                  CAST(p.previous_value AS DOUBLE) AS \"previous_value?: f64\",\n                  p.status, p.achieved_at, p.workout_id AS \"workout_id: Uuid\"\n           FROM personal_records p\n           JOIN exercises e ON e.id = p.exercise_id\n           JOIN metric_types m ON m.id = p.metric_type_id\n           WHERE p.user_id = ? AND p.is_current AND m.code <> 'REPS_AT_WEIGHT'\n           ORDER BY p.achieved_at DESC, p.id DESC",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | PRIMARY_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.personal_records",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "exercise_id: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | MULTIPLE_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.personal_records",
+            "name": "exercise_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "exercise_code",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | UNIQUE_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 240
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.exercises",
+            "name": "code"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "name_fr",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 480
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.exercises",
+            "name": "name_fr"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "name_en",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 480
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.exercises",
+            "name": "name_en"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "name_ar",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 480
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.exercises",
+            "name": "name_ar"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "metric_code",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | UNIQUE_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 160
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.metric_types",
+            "name": "code"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "unit",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 64
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.metric_types",
+            "name": "unit"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "value!: f64",
+        "type_info": {
+          "type": "Double",
+          "flags": "BINARY",
+          "collation": 63,
+          "max_size": 22
+        },
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 9,
+        "name": "previous_value?: f64",
+        "type_info": {
+          "type": "Double",
+          "flags": "BINARY",
+          "collation": 63,
+          "max_size": 22
+        },
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 10,
+        "name": "status",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | ENUM | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 44
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.personal_records",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "achieved_at",
+        "type_info": {
+          "type": "Datetime",
+          "flags": "NOT_NULL | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 26
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.personal_records",
+            "name": "achieved_at"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "workout_id: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | MULTIPLE_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.personal_records",
+            "name": "workout_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "197426e3e2cb6187186458e6b9d55a45ce5babcdad9731805025eee730d7b1bd"
+}

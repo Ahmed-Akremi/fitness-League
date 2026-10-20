@@ -87,6 +87,65 @@ impl Locale {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum Theme {
+    Dark,
+    Light,
+    System,
+}
+
+impl Theme {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Theme::Dark => "DARK",
+            Theme::Light => "LIGHT",
+            Theme::System => "SYSTEM",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum Visibility {
+    Public,
+    Friends,
+    Private,
+}
+
+impl Visibility {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Visibility::Public => "PUBLIC",
+            Visibility::Friends => "FRIENDS",
+            Visibility::Private => "PRIVATE",
+        }
+    }
+}
+
+/// What the athlete says of their level. A hint only: the scoring engine derives the real one.
+/// Declared in level order, so `max` gives the higher level.
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, sqlx::Type,
+)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+#[sqlx(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum ExperienceLevel {
+    Beginner,
+    Intermediate,
+    Advanced,
+}
+
+impl ExperienceLevel {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            ExperienceLevel::Beginner => "BEGINNER",
+            ExperienceLevel::Intermediate => "INTERMEDIATE",
+            ExperienceLevel::Advanced => "ADVANCED",
+        }
+    }
+}
+
 /// Timestamps leave the API as UTC with milliseconds, like `2026-10-06T09:30:00.000Z`.
 pub fn iso(at: NaiveDateTime) -> String {
     at.and_utc().to_rfc3339_opts(SecondsFormat::Millis, true)

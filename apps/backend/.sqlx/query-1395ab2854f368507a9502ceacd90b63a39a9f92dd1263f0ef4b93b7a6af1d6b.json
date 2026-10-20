@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "INSERT INTO expected_progression (id, rule_set_id, experience_level, exercise_id, metric_type_id, expected_pct)\n             SELECT ?, r.id, ?, (SELECT id FROM exercises WHERE code = ?), m.id, ?\n             FROM rule_sets r JOIN metric_types m ON m.code = ? WHERE r.version = ?\n             ON DUPLICATE KEY UPDATE expected_pct = VALUES(expected_pct)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 6
+    },
+    "nullable": []
+  },
+  "hash": "1395ab2854f368507a9502ceacd90b63a39a9f92dd1263f0ef4b93b7a6af1d6b"
+}

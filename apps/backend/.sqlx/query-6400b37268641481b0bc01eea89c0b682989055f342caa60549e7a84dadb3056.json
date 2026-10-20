@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "UPDATE deletion_requests SET status = 'COMPLETED', completed_at = ? WHERE id = ? AND status = 'PENDING'",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "6400b37268641481b0bc01eea89c0b682989055f342caa60549e7a84dadb3056"
+}

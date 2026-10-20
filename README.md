@@ -50,8 +50,19 @@ On WSL, keep the repository on the Linux filesystem (`~/…`), not under `/mnt/c
 
 ## Rust backend (in progress)
 
-`apps/backend` is the API that will replace `apps/api`. Today it serves the health checks and the public
-reference lists; accounts come next.
+`apps/backend` is the API that will replace `apps/api`. Today it serves the health checks, the public
+reference lists and accounts (plan 1b): registration, sign-in with lockout, sessions with single-use
+refresh tokens, email verification and password reset through links, the admin panel's sign-in, and
+`GET /me`; and the profile (plan 1c): profile and settings changes, onboarding, the data export, and
+account deletion after a 30-day grace period, carried out by the worker's daily sweep. Part 1 of the spec
+is complete. Part 2 (training loop) is under way. Plan 2a takes workouts in: `POST /workouts`,
+`POST /workouts/sync` for the app's offline queue, `GET /workouts` and `GET /workouts/{id}`, checked by
+anti-cheat layer 1. It also adds `GET` and `POST /me/body-measurements`, stored encrypted and only with the
+`HEALTH_DATA` consent. Plan 2b scores an accepted workout in the transaction that saves it: records,
+calibration, the append-only XP ledger with its daily and weekly caps, the level, the daily streak and the
+first quest. The app reads them through `GET /workouts/{id}/points`, `GET /me/records`, `GET /me/progress`
+and `GET /me/progress/metrics/{exerciseId}/{metricCode}`. Plans 2c (goals, badges) and 2d (league) come
+next, then parts 3 to 6 (gyms and social, competitions, admin, cut-over).
 
 One-time setup (Rust 1.99 through `rustup`, Docker for MariaDB, Redis and Mailpit):
 
@@ -61,11 +72,19 @@ cd apps/backend
 cp .env.example .env
 cargo run -q -- keys >> .env
 printf 'APP_HMAC_SECRET=%s\n' "$(openssl rand -base64 48)" >> .env
+printf 'HEALTH_DATA_KEYS=k1:%s\n' "$(openssl rand -base64 32)" >> .env   # encrypts body measurements
 cargo run -- migrate
 cargo run -- seed ../../infra/seed-data
 ```
 
 Then `cargo run -- serve` listens on http://localhost:3100/api/v1 and `cargo test` runs the test suites.
+
+```bash
+cargo run -- worker                                   # sends the emails; run one next to the API
+cargo run -- promote someone@example.com ADMIN        # the first staff account; roles are never self-assigned
+```
+
+The emails go to Mailpit locally: http://localhost:8025.
 
 - **Database accounts.** `fl_migrate` owns the schema and is used only by `migrate`. The API uses `fl_app`,
   which can read and write rows but cannot change the schema; the audit log refuses updates and deletes
@@ -73,6 +92,11 @@ Then `cargo run -- serve` listens on http://localhost:3100/api/v1 and `cargo tes
 - **SQL is checked at compile time.** After changing a query, run `cargo sqlx prepare` and commit `.sqlx/`.
 - **If the repository is in a synced folder** (OneDrive, Dropbox), set
   `CARGO_TARGET_DIR="$HOME/.cache/fitness-league/target"` so the build output stays outside it.
+- **Native Windows** (not WSL) needs the Visual Studio C++ Build Tools and `AWS_LC_SYS_PREBUILT_NASM=1`, so
+  `aws-lc-sys` uses its prebuilt assembly instead of asking for NASM. On a machine with 16 GB of memory or
+  less, build with `-j 4`.
+- **`HEALTH_DATA_KEYS`** is a list of `id:base64(32 bytes)` separated by commas. The first key encrypts and
+  every key decrypts, so to rotate, put the new key first and keep the old ones.
 
 ## Tests
 

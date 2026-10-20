@@ -1,0 +1,38 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT CAST(COALESCE(SUM(IF(day = ?, xp_granted, 0)), 0) AS SIGNED) AS \"today!: i64\",\n                  CAST(COALESCE(SUM(xp_granted), 0) AS SIGNED) AS \"week!: i64\"\n           FROM xp_daily_counters WHERE user_id = ? AND day >= ? AND day < ?",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "today!: i64",
+        "type_info": {
+          "type": "LongLong",
+          "flags": "NOT_NULL | BINARY",
+          "collation": 63,
+          "max_size": 21
+        },
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "week!: i64",
+        "type_info": {
+          "type": "LongLong",
+          "flags": "NOT_NULL | BINARY",
+          "collation": 63,
+          "max_size": 21
+        },
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "4bbfd0d38252e6a4f67f2eb71921593e500f78ef5ca89be6fd24bd9624feaf96"
+}

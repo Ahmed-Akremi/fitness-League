@@ -80,15 +80,17 @@ pub async fn start(
 ) -> Result<Session, AppError> {
     let now = Utc::now().naive_utc();
     let mut tx = state.db.begin().await?;
+    // The account row first, then its deletion requests: the order every writer of both follows,
+    // so a sign-in and the daily sweep never wait on each other in a circle.
     sqlx::query!(
-        "UPDATE deletion_requests SET status = 'CANCELLED' WHERE user_id = ? AND status = 'PENDING'",
+        "UPDATE users SET failed_login_count = 0, locked_until = NULL, last_login_at = ? WHERE id = ?",
+        now,
         holder.id
     )
     .execute(&mut *tx)
     .await?;
     sqlx::query!(
-        "UPDATE users SET failed_login_count = 0, locked_until = NULL, last_login_at = ? WHERE id = ?",
-        now,
+        "UPDATE deletion_requests SET status = 'CANCELLED' WHERE user_id = ? AND status = 'PENDING'",
         holder.id
     )
     .execute(&mut *tx)
