@@ -344,10 +344,10 @@ async fn audit(
         )
         .fetch_all(&mut *tx)
         .await?;
-        let Some(best) = observed.iter().fold(None, |acc: Option<&_>, o| match acc {
-            Some(a) if !is_better(o.value, a.value, d) => Some(a),
-            _ => Some(o),
-        }) else {
+        let Some(best) = observed
+            .iter()
+            .reduce(|a, o| if is_better(o.value, a.value, d) { o } else { a })
+        else {
             continue;
         };
         let lookup = |level| expected.get(level, b.exercise, b.metric);
