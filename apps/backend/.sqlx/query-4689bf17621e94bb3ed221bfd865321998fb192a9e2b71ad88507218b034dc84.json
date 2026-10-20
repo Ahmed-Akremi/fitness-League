@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "UPDATE goals SET status = 'COMPLETED' WHERE id = ? AND user_id = ? AND status = 'ACTIVE'",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "4689bf17621e94bb3ed221bfd865321998fb192a9e2b71ad88507218b034dc84"
+}

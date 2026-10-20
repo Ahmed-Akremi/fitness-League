@@ -1,0 +1,94 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT mi.goal_id AS \"goal_id: Uuid\", mi.position, CAST(mi.target_value AS DOUBLE) AS \"target_value?: f64\",\n                  mi.target_value_enc, mi.reached_at\n           FROM goal_milestones mi JOIN goals g ON g.id = mi.goal_id\n           WHERE g.user_id = ? AND (? IS NULL OR g.id = ?)\n           ORDER BY mi.goal_id, mi.position",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "goal_id: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | MULTIPLE_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.goal_milestones",
+            "name": "goal_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "position",
+        "type_info": {
+          "type": "Short",
+          "flags": "NOT_NULL | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 6
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.goal_milestones",
+            "name": "position"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "target_value?: f64",
+        "type_info": {
+          "type": "Double",
+          "flags": "BINARY",
+          "collation": 63,
+          "max_size": 22
+        },
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 3,
+        "name": "target_value_enc",
+        "type_info": {
+          "type": "VarString",
+          "flags": "BINARY",
+          "collation": 63,
+          "max_size": 128
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.goal_milestones",
+            "name": "target_value_enc"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "reached_at",
+        "type_info": {
+          "type": "Datetime",
+          "flags": "BINARY",
+          "collation": 63,
+          "max_size": 26
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.goal_milestones",
+            "name": "reached_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "e5e4fed34f8a5651c1445585b3df70e9ff30a830353f98a7dacd07a00b9d9b44"
+}

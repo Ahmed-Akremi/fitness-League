@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "INSERT INTO badges (id, code, category, name_fr, name_en, name_ar, description_fr, description_en,\n                                 description_ar, icon, rarity, rule)\n             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\n             ON DUPLICATE KEY UPDATE category = VALUES(category), name_fr = VALUES(name_fr), name_en = VALUES(name_en),\n                 name_ar = VALUES(name_ar), description_fr = VALUES(description_fr),\n                 description_en = VALUES(description_en), description_ar = VALUES(description_ar),\n                 icon = VALUES(icon), rarity = VALUES(rarity), rule = VALUES(rule)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 12
+    },
+    "nullable": []
+  },
+  "hash": "1c2062fc56154e0fb06b6624bd4a291f04572baba601bb88b7feec0b446ec86e"
+}

@@ -1,0 +1,31 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT status FROM goals WHERE id = ? AND user_id = ?",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "status",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | ENUM",
+          "collation": 224,
+          "max_size": 36
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.goals",
+            "name": "status"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "59b48269a3fa4aef6082f2390006a64e806cff28da136fa85be79ddad3bb8bbe"
+}

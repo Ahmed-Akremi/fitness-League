@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "INSERT INTO goals (id, user_id, type, exercise_id, metric_type_id, direction, start_value, target_value, start_value_enc, target_value_enc, start_date, target_date, was_suggested, safety_adjustment, visibility) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 15
+    },
+    "nullable": []
+  },
+  "hash": "8054ec45f578d230d63700dd86388ec5f3d41c5e0193116d6643f8b047535405"
+}

@@ -1,0 +1,31 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT level FROM user_stats WHERE user_id = ?",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "level",
+        "type_info": {
+          "type": "Long",
+          "flags": "NOT_NULL",
+          "collation": 63,
+          "max_size": 11
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.user_stats",
+            "name": "level"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "46d03c9524cdf1c16cd53020518892602dd73beb87c845745610da051eeae47f"
+}

@@ -1,0 +1,48 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT b.id AS \"id: Uuid\", b.rule FROM badges b\n           WHERE b.enabled AND NOT EXISTS (SELECT 1 FROM user_badges ub WHERE ub.user_id = ? AND ub.badge_id = b.id)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | PRIMARY_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.badges",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "rule",
+        "type_info": {
+          "type": "Blob",
+          "flags": "NOT_NULL | BLOB | BINARY | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 4294967295
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.badges",
+            "name": "rule"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "9599f4700ef0abc43c6be5cfa550aaa20e06b0c007d9652405981f4dbc225c97"
+}

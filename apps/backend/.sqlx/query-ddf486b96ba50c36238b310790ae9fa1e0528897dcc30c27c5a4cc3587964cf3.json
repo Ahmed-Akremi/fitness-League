@@ -1,0 +1,26 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT EXISTS (SELECT 1 FROM exercises e JOIN exercise_metrics em ON em.exercise_id = e.id WHERE e.id = ? AND e.enabled AND em.metric_type_id = ?)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "EXISTS (SELECT 1 FROM exercises e JOIN exercise_metrics em ON em.exercise_id = e.id WHERE e.id = ? AND e.enabled AND em.metric_type_id = ?)",
+        "type_info": {
+          "type": "Long",
+          "flags": "NOT_NULL | BINARY",
+          "collation": 63,
+          "max_size": 1
+        },
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "ddf486b96ba50c36238b310790ae9fa1e0528897dcc30c27c5a4cc3587964cf3"
+}

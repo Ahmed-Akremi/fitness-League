@@ -1,0 +1,43 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT p.experience_level_declared AS \"declared?: ExperienceLevel\",\n                  (SELECT b.experience_level FROM baselines b\n                   WHERE b.user_id = p.user_id AND b.exercise_id = ? AND b.metric_type_id = ?)\n                    AS \"measured?: ExperienceLevel\"\n           FROM profiles p WHERE p.user_id = ?",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "declared?: ExperienceLevel",
+        "type_info": {
+          "type": "String",
+          "flags": "ENUM",
+          "collation": 224,
+          "max_size": 48
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.profiles",
+            "name": "experience_level_declared"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "measured?: ExperienceLevel",
+        "type_info": {
+          "type": "VarString",
+          "flags": "",
+          "collation": 224,
+          "max_size": 48
+        },
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": [
+      true,
+      true
+    ]
+  },
+  "hash": "2bf51bf0b9872688a81f1a275608ef00424d5f2aca0ed361f3d83714f1dfac61"
+}

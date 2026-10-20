@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "INSERT INTO user_badges (id, user_id, badge_id, awarded_at, source_ref) VALUES (?, ?, ?, UTC_TIMESTAMP(6), ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "a7abf303d90d9b0f44da5d29072fadf8108aeb70c61c43613309504226e40657"
+}

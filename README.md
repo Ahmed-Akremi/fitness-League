@@ -61,8 +61,12 @@ anti-cheat layer 1. It also adds `GET` and `POST /me/body-measurements`, stored 
 `HEALTH_DATA` consent. Plan 2b scores an accepted workout in the transaction that saves it: records,
 calibration, the append-only XP ledger with its daily and weekly caps, the level, the daily streak and the
 first quest. The app reads them through `GET /workouts/{id}/points`, `GET /me/records`, `GET /me/progress`
-and `GET /me/progress/metrics/{exerciseId}/{metricCode}`. Plans 2c (goals, badges) and 2d (league) come
-next, then parts 3 to 6 (gyms and social, competitions, admin, cut-over).
+and `GET /me/progress/metrics/{exerciseId}/{metricCode}`. Plan 2c adds goals: `GET` and `POST /goals`,
+`POST /goals/suggestions` and `DELETE /goals/{id}`, with milestones that workouts and weigh-ins reach, safe
+pacing for body-weight goals (their values encrypted), and the onboarding `goals` step. It also adds badges:
+`GET /badges` lists the catalogue with the athlete's progress, and badges are awarded in the same
+transactions. Plan 2d (league) comes next, then parts 3 to 6 (gyms and social, competitions, admin,
+cut-over).
 
 One-time setup (Rust 1.99 through `rustup`, Docker for MariaDB, Redis and Mailpit):
 

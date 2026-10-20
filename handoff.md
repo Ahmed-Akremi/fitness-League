@@ -1,39 +1,46 @@
-# Handoff — fitness-league (2026-10-19: Rust backend plan 2b built, on `feat/rust-backend-2b`, not pushed; `security-audit` skill installed)
+# Handoff — fitness-league (2026-10-20: Rust backend plan 2c built, on `feat/rust-backend-2c`; its last commits not pushed)
 
 Earlier handoffs are in git: `git show 61b7787:handoff.md` (the full history since 2026-10-04),
-`git show 02a732e:handoff.md` (part 1 complete) and `git show 9bb2cdc:handoff.md` (plan 2a built). This one
-keeps what is still true and still to do.
+`git show 02a732e:handoff.md` (part 1 complete), `git show 9bb2cdc:handoff.md` (plan 2a built) and
+`git show a4464bc:handoff.md` (plan 2b built). This one keeps what is still true and still to do.
 
 ## 0. Start here (next session)
 
 Opening prompt to paste:
 
-> Read `handoff.md`, then continue the backend: write plan 2c (goals and badges) of the Rust backend part 2
-> from the spec, then build it. Work in this Windows checkout only.
+> Read `handoff.md`, then continue the backend: write plan 2d (league) of the Rust backend part 2 from the spec,
+> then build it. Work in this Windows checkout only.
 
 First steps, in order:
 1. **Find where `main` is.** `git fetch && git log --oneline -5 origin/main`. The owner commits and merges
-   during sessions.
-   - `feat/rust-backend-2b` holds plan 2b, on top of `9bb2cdc`, which PR #17 merged (`origin/main` at
-     `0ff4baa`). If plan 2b is not in `origin/main`, push `feat/rust-backend-2b` and open its PR, or ask the
-     owner to.
-   - Start plan 2c on a new branch from `origin/main` once 2b is merged, or from `feat/rust-backend-2b` if it
-     is not. Local `main` is 145 commits behind, so never branch from it.
-2. **Check Docker.** `docker ps` should show three healthy containers. Otherwise see section 5,
-   « Containers stopped ».
-3. **Set up the environment.** Use section 2's environment line in Git Bash for every cargo command, then
-   check the build: `cargo test -j 4 --lib` (109 green).
-4. **Read the plan's inputs:**
+   during sessions (twice this session, see §4).
+   - `origin/main` is at `a3fa77d` (PR #18): plan 2b, plan 2c's text, and the first files of its task 1.
+   - `origin/feat/rust-backend-2c` stops at `deb1cb7` (plan 2c tasks 1 to 5).
+   - **Local `feat/rust-backend-2c` is ahead of it** with `973b090` (task 6), `d5348bb` (rustfmt) and the docs
+     commit. Push it and open its PR, or ask the owner to (`gh` is not installed).
+   - Start plan 2d on a new branch from `origin/main` once 2c is merged, or from `feat/rust-backend-2c` if it is
+     not. Local `main` is far behind: never branch from it.
+2. **Plan 2c's whole-branch review is not done** (the executing-plans skill asks for one fresh review at the end).
+   Its inputs: the plan's « Review focus » section, and the ledger
+   `.superpowers/sdd/2026-10-19-rust-backend-2c-goals-badges/progress.md` (git-ignored, local only), which holds
+   every `Ruling:` line. Run it before plan 2d, or ask the owner whether to skip it. Delete that folder once the
+   review is done.
+3. **Check Docker.** `docker ps` should show three healthy containers. Otherwise see section 5,
+   « Containers stopped ». It stopped twice this session.
+4. **Set up the environment.** Use section 2's environment line in Git Bash for every cargo command, then
+   check the build: `cargo test -j 4 --lib` (117 green).
+5. **Read the plan's inputs:**
    - the spec, `docs/superpowers/specs/2026-10-18-rust-backend-training-loop-design.md`: its scope, the
-     **plans table** (row « 2c, goals and badges ») and its rulings;
-   - plan 2b, `docs/superpowers/plans/2026-10-19-rust-backend-2b-points.md`: the house style to copy, and the
-     two comments 2c fills in `scoring::score` (`plan 2c: goal milestones here`, `plan 2c: badges here`);
-   - the old API modules `apps/api/src/modules/{goals,badges}`, which are the contract;
-   - `apps/mobile-rn/src/features/{goals,badges}` for what the app actually reads.
-5. **Don't ask the owner product questions.** Their words: « you will find everything in the .md files ».
+     **plans table** (row « 2d, league »), « How a workout becomes points » steps 4 and 5, « Leaderboards »,
+     « Background jobs » (ruling 4, `job_runs`) and the testing list (Sami 85.6 and Karim 78.1, Nour 55.2 kg,
+     1,240 LP → 1,070);
+   - plan 2c, `docs/superpowers/plans/2026-10-19-rust-backend-2c-goals-badges.md`: the house style to copy, and
+     what it leaves to 2d (section 6, item 3);
+   - the old API modules `apps/api/src/modules/{seasons,leaderboards,scoring,ledger,jobs}`, which are the
+     contract;
+   - `apps/mobile-rn/src/features/{league,me}` for what the app actually reads.
+6. **Don't ask the owner product questions.** Their words: « you will find everything in the .md files ».
    Take the technical calls yourself and list them in the plan's « Rulings » section.
-6. **A new skill is available: `security-audit`** (section 2, « Tools »). It loads by itself on security
-   questions, in guidance mode, and never starts a full audit or writes report files unless asked.
 
 ## 1. Goal
 
@@ -54,7 +61,7 @@ frontends call (about 166 endpoints), not the 301 routes of `apps/api`. The job 
 BullMQ (a Node library). Six parts:
 
 1. Foundation and accounts: **done**.
-2. Training loop: **in progress**. Plans 2a and 2b are done; plans 2c and 2d come next.
+2. Training loop: **in progress**. Plans 2a, 2b and 2c are done; plan 2d comes next.
 3. Gyms and social.
 4. Competitions.
 5. Admin and moderation.
@@ -84,36 +91,59 @@ endpoints in plans 2a to 2d, and its « Rulings » section lists the choices the
 
 ## 2. Current state
 
-- **`main`** is at `02a732e`. Merged so far:
+- **`origin/main`** is at `a3fa77d`. Merged so far:
   - #13 and #14: part 1;
   - #15: the part 2 spec, plan 2a and its code;
-  - #16: formatting, the Windows build, and the README, spec and plan updates.
-- **PR #17** merged `feat/rust-backend-2` (`aece338`, `47753da`, `9bb2cdc`): `origin/main` is at `0ff4baa`.
-- **Local branch `feat/rust-backend-2b`** (this session) starts at `9bb2cdc` and holds plan 2b: `f5cff26`
-  (the plan), then `10d74a4`, `f013d88`, `95e7588`, `f2e94c9`, `e6a8ae1`, `0148bfa` (tasks 1 to 5), then the
-  docs commits. `95e7588` was committed by the owner mid-task from the working tree; `f2e94c9` finishes that
-  task.
+  - #16: formatting, the Windows build, and the README, spec and plan updates;
+  - #17: plan 2a's handoff;
+  - #18: plan 2b, then plan 2c's text and `7353d06` (the first files of its task 1).
+- **Branch `feat/rust-backend-2c`** (this session) starts at `a4464bc` (plan 2b built):
+  - `e30866f` (the plan), `7353d06` (committed by the owner mid-task 1);
+  - `4dd130f`, `324069a`, `02e4c8e`, `5801416` (tasks 1 to 4);
+  - `deb1cb7` (task 5, committed by the owner from the working tree; the content is as written);
+  - `973b090` (task 6), `d5348bb` (rustfmt and a Clippy fix in a test module), then the docs commit.
 
-  **Not pushed.** The owner commits and merges through PRs, sometimes during a session: run `git log` before
-  building on the branch.
+  **`origin/feat/rust-backend-2c` stops at `deb1cb7`.** The last three commits are local.
 - **Other local branches:**
-  - `main` is 145 commits behind `origin/main`, so don't use it;
+  - `main` is far behind `origin/main`, so don't use it;
+  - `feat/rust-backend-2b` (plan 2b) is merged through #18;
   - `feat/rust-backend` is merged (#14);
-  - `feat/gyms-sports-mobile` is old. It is 55 commits ahead of its remote, but every one is in
+  - `feat/gyms-sports-mobile` is old. It is ahead of its remote, but every one of its commits is in
     `origin/main`.
 
   None was deleted (owner's call). No stash.
-- **Rust backend, part 1 complete and plan 2a built.** 32 endpoints. Plan 2a's six:
-  - `POST /workouts` and `POST /workouts/sync`: idempotent on `clientId`, checked by anti-cheat layer 1
-    (the old `rules.ts`, rule for rule, with rule set v2's thresholds);
-  - `GET /workouts` (newest first, signed keyset cursor) and `GET /workouts/{id}`;
-  - `GET` and `POST /me/body-measurements`: AES-256-GCM through `HEALTH_DATA_KEYS`, behind the
-    `HEALTH_DATA` consent.
+- **Rust backend: part 1 complete; plans 2a, 2b and 2c built. 41 endpoints.**
+- **Plan 2c built: goals and badges.** Five routes:
+  - `GET /goals`: active goals first, newest first;
+  - `POST /goals` (201, with `disclaimerKey`):
+    - milestones planned by the old `goal-planning.ts` maths;
+    - the old API's checks and codes (`NOT_ALLOWED_FOR_TYPE`, `METRIC_NOT_TRACKED`, `REST_DAY_REQUIRED`,
+      `NO_CURRENT_VALUE`, `TARGET_NOT_BETTER`, `UNSAFE_TARGET`, `UNREALISTIC_TARGET`, `MUST_BE_IN_FUTURE`);
+    - 409 `CONFLICT` at 10 active goals or for a second active goal on one metric;
+    - a too-early date is moved, with its `safetyAdjustment`;
+  - `POST /goals/suggestions`: three targets with an ETA range;
+  - `DELETE /goals/{id}`: abandons an active goal;
+  - `GET /badges`: the catalogue with the athlete's progress.
 
-  The export carries workouts and weigh-ins. Anonymisation deletes the weigh-ins and clears the workout
-  notes, making the workouts private.
-- **Plan 2b built: points.** 36 endpoints in all. An accepted workout is scored in the transaction that saves
-  it (`scoring::score`, called from `intake::create`, which first locks the athlete's `user_stats` row):
+  Behaviour:
+  - **Weight goals are health data.** Their values are stored only encrypted (check constraints refuse a clear
+    value), always private, answered `null` without the `HEALTH_DATA` consent, and paced at 1 %/week.
+  - **Milestones are credited in the transaction that earns them:**
+    - in `scoring::score`, after the record rewards; a late log or a held record reaches none;
+    - in `POST /me/body-measurements`, which now locks `user_stats` and runs in a transaction; only the
+      safe-rate part of a weight change counts.
+  - **Milestone XP** is 150 (`goal_milestone_xp`) and outside the caps.
+  - **Badges** are evaluated at the end of both paths and awarded once, under the `user_stats` lock. A revoked
+    badge is never given again.
+  - **Facts read today:** workouts accepted, records awarded, goals completed, level. The others are 0 until
+    plan 2d (division, weekly streak) or parts 3 and 4 (friends, gyms, battles, duels, gym wars, challenges).
+  - **Onboarding:** `steps.goals` is true once the account has a goal.
+  - **The export** fills `goals` (weight values decrypted) and adds `account.badges`.
+  - **Anonymisation** deletes weight goals and their milestones; the other goals and the badges stay.
+  - **The seed** loads the 22 badges of `catalog.json` and refuses an invalid rule. A second run keeps an
+    admin's `enabled` choice.
+- **Plan 2b** (points): an accepted workout is scored in the transaction that saves it (`scoring::score`, called
+  from `intake::create`, which first locks the athlete's `user_stats` row):
   - observations, baselines (calibration), personal records judged against the expected progression, the
     plausibility hold;
   - the append-only XP ledger (`xp_transactions`, triggers, granted once per source) with the daily and weekly
@@ -121,9 +151,14 @@ endpoints in plans 2a to 2d, and its « Rulings » section lists the choices the
   - a late log (> 72 h) keeps its records and streak, earns no XP; held and rejected workouts earn nothing.
 
   Routes: `GET /workouts/{id}/points`, `GET /me/records`, `GET /me/progress` (`period` 7d to 1y; `bodyWeight`
-  only with the health consent) and `GET /me/progress/metrics/{exerciseId}/{metricCode}`. `GET /me` `stats`
-  and `streak` now move. The export adds `account.personalRecords` and `xpTransactions`; anonymisation keeps
-  them. The plan's « Rulings » and « Built » sections list the calls the owner can change.
+  only with the health consent) and `GET /me/progress/metrics/{exerciseId}/{metricCode}`. `GET /me` `stats` and
+  `streak` move.
+- **Plan 2a** (workouts in):
+  - `POST /workouts` and `POST /workouts/sync`: idempotent on `clientId`, checked by anti-cheat layer 1 (the old
+    `rules.ts`, rule for rule, with rule set v2's thresholds);
+  - `GET /workouts` (newest first, signed keyset cursor) and `GET /workouts/{id}`;
+  - `GET` and `POST /me/body-measurements`: AES-256-GCM through `HEALTH_DATA_KEYS`, behind the `HEALTH_DATA`
+    consent.
 - **Part 1's 26 endpoints:**
   - health and readiness;
   - the four `/ref` lists;
@@ -134,7 +169,7 @@ endpoints in plans 2a to 2d, and its « Rulings » section lists the choices the
 - **Worker:** sends the emails and runs the **daily sweep**. Once per business day (Redis key `sweep:<day>`)
   it anonymises accounts whose 30-day grace is over and deletes expired tokens.
 - **CLI:** `backend promote <email> <role>` creates the first staff account.
-- **Last checks (2026-10-19, native Windows):** see section 4.
+- **Last checks (2026-10-20, native Windows):** see section 4.
 - **Local machine: Windows checkout `C:\Users\moham\OneDrive\Desktop\Projects\fitness-League`.**
   - **Owner's instruction: work here, never in the WSL copy** `/home/th3r3bel/Projects/fitness-League`. That
     copy is stale. It holds a stray `feat/rust-backend-2` (commit `229890e` plus uncommitted spec edits),
@@ -146,9 +181,8 @@ endpoints in plans 2a to 2d, and its « Rulings » section lists the choices the
   - Every cargo command runs in Git Bash with:
     `export PATH="$USERPROFILE/.cargo/bin:$PATH" CARGO_TARGET_DIR="$LOCALAPPDATA/fitness-league/target" AWS_LC_SYS_PREBUILT_NASM=1`,
     and `-j 4`.
-  - Docker Desktop's data was reset on 2026-10-19. The disk had filled up, with `docker_data.vhdx` at 72 GB.
-    The MariaDB (host port 3307), Redis and Mailpit containers are **running**. The dev database is migrated
-    to `0007` but **not seeded** (`cargo run -- seed ../../infra/seed-data`).
+  - The MariaDB (host port 3307), Redis and Mailpit containers are **running** (restarted twice this session).
+    The dev database is migrated to `0008` but **not seeded** (`cargo run -- seed ../../infra/seed-data`).
   - `apps/backend/.env` holds dev keys, including `HEALTH_DATA_KEYS` (git-ignored, never printed).
   - No API process is running.
 - **`gh` is not on the PATH, on Windows or in WSL's default shell.** Pushing and PRs go through the owner,
@@ -181,12 +215,18 @@ endpoints in plans 2a to 2d, and its « Rulings » section lists the choices the
 - `migrations/`:
   - `0001_reference`, `0002_identity`, `0003_profile`, `0004_audit` (the append-only triggers);
   - `0005_one_pending_deletion` (generated `pending_user` under a unique index);
-  - `0006_workouts`:
-    - `workouts`, `workout_exercises`, `workout_sets` and `workout_evaluations`;
-    - `body_measurements`, with the values encrypted in `VARBINARY`;
+  - `0006_workouts`: `workouts`, `workout_exercises`, `workout_sets`, `workout_evaluations`; `body_measurements`
+    with the values encrypted in `VARBINARY`;
   - `0007_points`: `expected_progression`, `metric_observations`, `personal_records` (one current per key),
     `xp_transactions` (append-only by trigger, granted once per source), `xp_daily_counters`; new columns in
-    `baselines` and `user_streaks`.
+    `baselines` and `user_streaks`;
+  - `0008_goals_badges`:
+    - `goals`: clear values or encrypted ones, exactly one form, and the encrypted one exactly for `WEIGHT`, by
+      check constraints. One active goal per `(user, metric, exercise)`, by a unique index on generated columns;
+    - `goal_milestones` (`position`, a value in one form, `reached_at`, `workout_id`, `xp_transaction_id`);
+    - `badges` (code, category enum in the old order, names and descriptions in three languages, icon, rarity,
+      rule JSON, `enabled`);
+    - `user_badges` (once per badge, `source_ref`, `revoked_at`).
 - `src/main.rs`: subcommands `serve`, `worker` (job loop plus the sweep every 10 min, 1 min after a failure),
   `migrate`, `seed [dir]`, `promote`, `keys`.
 - Infrastructure:
@@ -200,8 +240,9 @@ endpoints in plans 2a to 2d, and its « Rulings » section lists the choices the
   - `rules.rs`: the active rule set and its `version`:
     - `min_age_years`, `level_titles`, `calibration_days`;
     - the e1RM formula, `late_log_max_hours`;
+    - the XP numbers, the fairness numbers, `goal_milestone_xp`, `weight_change_max_pct_per_week`;
     - `anticheat` (every threshold of v2).
-  - `audit.rs`, `jobs.rs` (the Redis Stream queue), `mail.rs`, `seed.rs`.
+  - `audit.rs`, `jobs.rs` (the Redis Stream queue), `mail.rs`, `seed.rs` (now with the badges).
 - `src/http/`:
   - `mod.rs`: `Api` route builder, middleware, `route_table()`;
   - `auth.rs`: the `AppUser` and `PanelUser` extractors;
@@ -218,21 +259,29 @@ endpoints in plans 2a to 2d, and its « Rulings » section lists the choices the
   - `health.rs`, `reference.rs`, `admin_auth.rs`;
   - `auth/{mod,accounts,sessions,emails}.rs`;
   - `me/mod.rs`: `GET /me`, profile, settings, `payload`;
-  - `me/onboarding.rs`;
-  - `me/privacy.rs`: export, `DELETE /me`, `daily_sweep`, `sweep`, `anonymise`;
-  - `me/body.rs`: body measurements, `has_consent`, `latest_weight_kg` (`None` without the consent);
+  - `me/onboarding.rs` (the `goals` step reads `goals`);
+  - `me/privacy.rs`: export (goals, badges), `DELETE /me`, `daily_sweep`, `sweep`, `anonymise` (deletes weight
+    goals);
+  - `me/body.rs`: body measurements, `has_consent`, `HEALTH_DATA`, `latest_weight_kg` (`None` without the
+    consent). `add` locks `user_stats`, credits weight goals and evaluates badges in its transaction;
   - `workouts/`:
     - `mod.rs`: routes, the sync batch, the list;
-    - `intake.rs`: `create`, which locks the athlete's `user_stats` row, then hashes, replays, evaluates,
-      stores and scores (an accepted workout) in one transaction. Also `load` and `one`, which give the app's
-      JSON;
-    - `metrics.rs`: e1RM, volume, distance, fingerprint;
+    - `intake.rs`: `create`, which locks the athlete's `user_stats` row, then hashes, replays, evaluates, stores
+      and scores (an accepted workout) in one transaction. Also `load` and `one`, which give the app's JSON;
+    - `metrics.rs`: e1RM (2 decimals), volume, distance, fingerprint;
     - `anticheat.rs`: layer 1, pure.
   - `scoring/`:
     - `engine.rs`: the pure rules (XP, caps, level, fairness, observations, daily streak);
-    - `records.rs`: observations, baselines and records; `ledger.rs`: the only writer of the XP ledger;
-    - `mod.rs`: `score` and `GET /workouts/{id}/points`, with two `plan 2c` comments where goals and badges
-      go; `progress.rs`: `/me/records`, `/me/progress` and its series.
+    - `records.rs`: observations, baselines and records (`decimal`); `ledger.rs`: the only writer of the XP
+      ledger;
+    - `mod.rs`: `score` (1 workout XP, 2 record rewards, 3 goal milestones, 4 the first quest, 5 badges),
+      `expected`, `GET /workouts/{id}/points`; `progress.rs`: `/me/records`, `/me/progress` and its series.
+  - `goals/`:
+    - `planning.rs`: the pure goal maths (`round_for`, `plan_milestones`, `reached`, `weeks_at_rate`,
+      `suggest_targets`, `safe_weight_weeks`, `credited_weight_change`);
+    - `mod.rs`: the four routes, `views` (used by the export), the old API's limits as constants;
+    - `milestones.rs`: `on_workout` and `on_weigh_in`, the only writers of `goal_milestones.reached_at`.
+  - `badges.rs`: `Rule`, `Fact`, `parse_rule`, `progress`, `evaluate`, `GET /badges`.
 - `tests/`:
   - `common/mod.rs`: `TestApp`, `seeded`, `register`, `create_user`, `open_session`,
     `seeded_with_cuttable_redis`, `deliver_mail`, `assert_same_shape`, `set_consent`;
@@ -240,12 +289,13 @@ endpoints in plans 2a to 2d, and its « Rulings » section lists the choices the
     `strength`, `single`, `run`) and `post`, `get`;
   - suites: `schema`, `http_shell`, `rate_limit`, `reference`, `jobs`, `mail`, `emails`, `sessions`,
     `register`, `login`, `admin_auth`, `me`, `profile`, `onboarding`, `privacy`, `security`, `body`,
-    `workouts`, `points`.
+    `workouts`, `points`, `goals`, `badges`.
   - `security.rs` holds `PUBLIC`, the 14 routes that answer without a session. **A new public route must be
     added there**; any other new route must answer 401 without a token, or the suite fails. Its role walker
     counts a 403 as a refusal only when the code is `FORBIDDEN`, so `CONSENT_REQUIRED` is not one.
   - `workouts.rs` checks the list against the shape recorded from the old API
-    (`apps/mobile-rn/assets/demo/api.json`).
+    (`apps/mobile-rn/assets/demo/api.json`). That file records `GET /goals` as an empty list and no badges, so
+    `goals.rs` and `badges.rs` pin the shapes themselves.
 - Plans:
   - `docs/superpowers/plans/2026-10-06-rust-backend-1a-foundation.md`;
   - `docs/superpowers/plans/2026-10-07-rust-backend-1b-accounts.md`;
@@ -253,32 +303,52 @@ endpoints in plans 2a to 2d, and its « Rulings » section lists the choices the
     the choices the owner can change);
   - `docs/superpowers/plans/2026-10-18-rust-backend-2a-workouts-in.md`: rulings, and at the end « Built »,
     where the code departs from the plan;
-  - `docs/superpowers/plans/2026-10-19-rust-backend-2b-points.md`: the same two sections.
+  - `docs/superpowers/plans/2026-10-19-rust-backend-2b-points.md`: the same two sections;
+  - `docs/superpowers/plans/2026-10-19-rust-backend-2c-goals-badges.md`: the same two sections, and a
+    « Review focus » list.
 - CI: job `backend` in `.github/workflows/ci.yml`: fmt, Clippy, tests with MariaDB and Redis services,
   audit, deny.
 
-## 4. Changes made this session (2026-10-19, on `feat/rust-backend-2b`)
+## 4. Changes made this session (2026-10-19 and 20, on `feat/rust-backend-2c`)
 
-- `f5cff26`: plan 2b, `docs/superpowers/plans/2026-10-19-rust-backend-2b-points.md`.
-- `10d74a4`: the scoring engine as pure rules (`scoring/engine.rs`), the rule-set fields it reads,
-  `ExperienceLevel` ordered and readable by sqlx.
-- `f013d88`: migration `0007_points`, and the seed's expected progression.
-- `95e7588` (committed by the owner from the working tree, mid-task) and `f2e94c9`: scoring in
-  `intake::create`'s transaction (`records.rs`, `ledger.rs`, `score`), the `user_stats` lock,
-  `GET /workouts/{id}/points`; the workout test helpers moved to `tests/common/workouts.rs`.
-- `e6a8ae1`: `GET /me/records`, `/me/progress` and its metric series.
-- `0148bfa`: the export carries the records and the XP ledger.
-- The docs commit: README, spec status, this handoff, the plan's « Built » section, `.sqlx/`.
-- **Checks (2026-10-19, native Windows, after the last code commit):**
-  - `cargo test`: 265 green, 1 ignored (the Windows skip). That is 109 unit tests, plus 156 integration
-    tests in 19 files;
+- `e30866f`: plan 2c, `docs/superpowers/plans/2026-10-19-rust-backend-2c-goals-badges.md`.
+- `7353d06` (the owner, from the working tree mid-task 1) and `4dd130f`: the goal maths and the badge rules as
+  pure functions, with the vectors of the old `goal-planning.spec.ts` and `badge-rules.spec.ts`; the two
+  rule-set fields.
+- `324069a`: migration `0008_goals_badges`, the badges in the seed.
+- `02e4c8e`: the four goal routes and the onboarding `goals` step.
+- `5801416`: milestones from workouts and weigh-ins; `body::add` in a transaction.
+- `deb1cb7` (the owner, from the working tree): badges awarded in both paths, `GET /badges`.
+- `973b090`: the export (goals, badges) and the anonymisation (weight goals).
+- `d5348bb`: rustfmt, and `allow(clippy::unwrap_used)` in the badge rules' test module.
+- The docs commit: README, spec status (plan 2c built), the plan's « Built » section, this handoff, `.sqlx/`.
+- **Checks (2026-10-20, native Windows, after the last code commit):**
+  - `cargo test --no-fail-fast`: **303 green, 1 ignored** (the Windows skip). That is 117 unit tests, plus 186
+    integration tests in 21 files;
   - `cargo fmt --check`;
   - Clippy `-D warnings`, online and with `SQLX_OFFLINE=true`;
-  - `cargo audit` (264 crates) and `cargo deny check`.
+  - `cargo audit` (264 crates, nothing found) and `cargo deny check` (advisories, bans, licenses, sources ok).
 
-  Not done this session: a live run against the real binaries, and the mobile app against the Rust API.
-- Then, outside the repository: the `security-audit` skill installed (section 2, « Tools »), and this
-  handoff's last commit.
+  Not done this session: the whole-branch review (§0 step 2), a live run against the real binaries, and the
+  mobile app against the Rust API.
+- **The rulings plan 2c took** (its « Rulings » section, for the owner's review):
+  1. the goal limits the rule set lacks stay constants, as in the old API: 10 active goals, ±25 % and 40 to
+     250 kg for weight, habit milestones at 2, 4, 8 and 12 weeks, 104 weeks as unrealistic, at most 6
+     milestones, 1.5 × as the fast rate;
+  2. creating a goal locks the account row, and a unique index holds one active goal per metric;
+  3. weight goal values answer `null` without the `HEALTH_DATA` consent; the export shows them;
+  4. a weigh-in credits weight goals and evaluates badges in its own transaction (the old API used the outbox);
+  5. `HABIT` goals are created but do not move until plan 2d's weekly close;
+  6. milestone XP is outside the caps; a late log and a held record reach no milestone;
+  7. no soft delete: `DELETE` abandons;
+  8. anonymisation deletes weight goals and keeps the rest;
+  9. a goal's exercise must be enabled;
+  10. no notification and no activity event for a badge or a completed goal (part 3), no badge sweep (plan 2d);
+  11. the export's `goals` is the app's view; `account.badges` lists code, dates and source.
+
+  And during the build (the plan's « Built » section): e1RM values are 116.67, not 116.667; spaced test
+  workouts; `evaluate` returns nothing; the rule set read on every weigh-in; milestone dates (workout:
+  `performed_at`, weigh-in: now).
 
 ## 5. Traps (still true)
 
@@ -294,12 +364,17 @@ endpoints in plans 2a to 2d, and its « Rulings » section lists the choices the
   `query!` fails with « error reading dotenv file ».
 - **An offline Clippy run can hit the cache** and check nothing: `touch src/lib.rs` before
   `SQLX_OFFLINE=true cargo clippy`.
-- **Containers stopped after a PC restart, or after Docker Desktop's engine stopped mid-session** (twice on
-  2026-10-19; `docker ps` then says « failed to connect to the docker API »):
+- **Containers stopped after a PC restart, or after Docker Desktop's engine stopped mid-session.** It happened
+  twice on 2026-10-19 and twice more on 2026-10-20 (overnight, and during a full test run). `docker ps` then
+  says « failed to connect to the docker API », and the sqlx test harness panics in `testing/mod.rs`:
   - start `Docker Desktop.exe` and wait for `docker info`;
-  - then `docker compose -f infra/docker-compose.yml up -d --wait mariadb redis mailpit`.
+  - then `docker compose -f infra/docker-compose.yml up -d --wait mariadb redis mailpit`, from the repository
+    root (the path is relative).
 
   Otherwise every `query!` reports « error communicating with database ». The dev data survives.
+- **The whole `cargo test` now takes more than 10 minutes on Windows.** Run it in the background, or suite by
+  suite (`--test goals --test badges …`), and pass `--no-fail-fast` so one failing binary does not hide the
+  others.
 - **Native Windows build** (section 2 has the full environment line):
   - `CARGO_TARGET_DIR="$LOCALAPPDATA/fitness-league/target"` keeps the build out of OneDrive;
   - `AWS_LC_SYS_PREBUILT_NASM=1`, or `aws-lc-sys` asks for NASM;
@@ -310,32 +385,42 @@ endpoints in plans 2a to 2d, and its « Rulings » section lists the choices the
 - **Docker Desktop's disk** (`%LOCALAPPDATA%\Docker\wsl\disk\docker_data.vhdx`) grows without shrinking. It
   filled the drive once. `docker builder prune` and `docker image prune` before it does.
 - `#[sqlx::test]` leaves a `_sqlx_test_databases` table in the dev database: harmless.
+- **Test data traps:**
+  - e1RM values are kept to 2 decimals (3 × 5 × 100 gives 116.67);
+  - two 60-minute workouts less than an hour apart are rejected as `OVERLAPPING_WORKOUT`;
+  - after calibration, an exercise's first log is a calibration record, and its second is judged.
 - **Library and language traps from earlier plans:**
   - serde fills a struct from a JSON array (`validate::parse` refuses non-objects);
   - sqlx reads `GROUP_CONCAT` as bytes (alias `AS "x?: String"`);
-  - `EXISTS (...)` decodes as an integer (compare with `!= 0`);
-  - DECIMAL needs `CAST(... AS DOUBLE)` to be read, or a string to be written exactly;
-  - Axum 0.8 writes path parameters as `/{id}`; a malformed id answers 404, not 400 (plan 2a ruling).
+  - `EXISTS (...)` and `x IS NOT NULL` decode as integers (read `i64`, compare with `!= 0`);
+  - DECIMAL needs `CAST(... AS DOUBLE)` to be read, or a string to be written exactly (`records::decimal`);
+  - Axum 0.8 writes path parameters as `/{id}`; a malformed id answers 404, not 400 (plan 2a ruling);
+  - serde_json compares `3` and `3.0` as different numbers: compare decimals in tests with `as_f64()`.
 - **The Redis stall lesson (keep the fix):** `ConnectionManagerConfig::set_number_of_retries(0)` with 1 s
   timeouts. No deadline or pause of our own; the identity routes fail closed during an outage.
 - **Rules for every new route:**
   - a per-address limit uses `ClientIp::subject()`, never the raw address;
   - every query on user-owned data carries the owner in its `WHERE`;
   - every organizer query uses `{ id, competitionId }`;
-  - never log a database error message (MariaDB quotes values in it); use `db::describe`.
+  - never log a database error message (MariaDB quotes values in it); use `db::describe`;
+  - every XP writer locks the athlete's `user_stats` row first (the weekly close of plan 2d too).
 
 **Tooling and hooks**
+- **The owner commits the working tree during sessions**, sometimes mid-task (`7353d06`, `deb1cb7` this
+  session). A `git commit` that finds « nothing to commit » means that happened: check `git log`, and record
+  the task against their commit.
 - **The `security-audit` validators fail closed on native Windows.** `validate-findings.cjs` and
   `validate-coverage-ledger.cjs` need `O_NOFOLLOW` and `O_NONBLOCK`, which Node lacks there. They answer
   « OS no-follow and nonblocking input protection is unavailable », and 7 of the skill's 65 tests fail for
   that reason (46 pass, 12 skipped). This is their safety design, not a bug: don't patch it. Run a full audit
   from WSL, pointed at the Windows checkout (`/mnt/c/Users/moham/OneDrive/Desktop/Projects/fitness-League`),
   never at the stale WSL copy. Guidance mode is unaffected.
-- **GateGuard refuses the first Edit or Write of every file once.** State the facts (importers, affected API,
-  data, the user's words) and retry. It also blocks Bash commands that contain a recursive folder deletion or
-  destructive-looking SQL, even inside a heredoc: write such text with the Edit or Write tool. `git checkout
-  -- <file>` is blocked: restore with `git show HEAD:<path> > <path>`. Adding the repository to
-  `GATEGUARD_EXEMPT_GLOBS` would remove the first-touch refusals (owner's call).
+- **GateGuard refuses the first Edit or Write of every file once**, and the first Bash command of a session
+  (twice this session: after the `/clear` and after a usage-limit pause). State the facts (importers, affected
+  API, data, the user's words) and retry. It also blocks Bash commands that contain a recursive folder deletion
+  or destructive-looking SQL, even inside a heredoc: write such text (a migration) with the Edit or Write
+  tool. `git checkout -- <file>` is blocked: restore with `git show HEAD:<path> > <path>`. Adding the
+  repository to `GATEGUARD_EXEMPT_GLOBS` would remove the first-touch refusals (owner's call).
   - Only a Grep, Glob or LS call (or a shell `grep`/`find`) counts as the search it asks for. A Read does not.
   - It also wants the user's instruction verbatim, and the first Bash command of a session needs the request
     and the purpose of the command.
@@ -357,35 +442,47 @@ endpoints in plans 2a to 2d, and its « Rulings » section lists the choices the
 
 ## 6. Next steps
 
-1. **Plan 2c, goals and badges.** Write the plan from the spec's plans table in the house style of plan 2b,
-   then build it. Scope: the four goal routes, milestones, suggestions, weight-goal safety, `GET /badges`,
-   awarding in the scoring path, the onboarding `goals` step. Milestones and badges go in `scoring::score` at
-   its two `plan 2c` comments. The old API is the contract: `apps/api/src/modules/{goals,badges}`. Then **2d**
-   (league). Each plan extends `GET /me/export` and `anonymise` for its own tables.
-2. **Owner's review of the plan 2b rulings** (the plan's « Rulings » section): the `user_stats` lock that
+1. **Push `feat/rust-backend-2c`** (the last three commits) and open its PR, or ask the owner to.
+2. **Plan 2c's whole-branch review** (§0 step 2), with the plan's « Review focus » list.
+3. **Plan 2d, league.** Write the plan from the spec's plans table in the house style of plan 2c, then build it.
+   - Scope: seasons and divisions, the weekly score, the LP ledger, `job_runs` and the six jobs, `/me/ranks`,
+     `/me/lp`, `/me/weekly-scores/current`, the national and governorate leaderboards.
+   - What plan 2c leaves to it:
+     - the weekly close credits `HABIT` goals (`habit_weeks_met`; the old `onWeekClosed`), through
+       `goals::milestones` with the direction `HIGHER_IS_BETTER`;
+     - the badge facts `DIVISION` and `STREAK_WEEKS` in `badges::facts` (the old `currentStreak`, with its spec
+       vectors);
+     - the `badge-sweep` job, which calls `badges::evaluate`;
+     - the baseline columns `corrected_from` and `rule_set_version` (plan 2b ruling 6);
+     - the export's `leaguePointTransactions`, and the anonymisation of its own tables.
+   - The old API is the contract: `apps/api/src/modules/{seasons,leaderboards,scoring,ledger,jobs}`.
+4. **Owner's review of the plan 2c rulings** (§4, and the plan's « Rulings » section).
+5. **Owner's review of the plan 2b rulings** (the plan's « Rulings » section): the `user_stats` lock that
    serialises one athlete's workouts; `workout_id` on XP entries; `bodyWeight` in `/me/progress` only with the
    consent; a malformed exercise id in the series answers 404; the baseline columns of plan 2d left for it;
    no activity events until part 3.
-3. **Owner's review of the plan 2a rulings** (the plan's « Rulings » section):
+6. **Owner's review of the plan 2a rulings** (the plan's « Rulings » section):
    - decimals are rounded, not refused;
    - a sync batch checks each item on its own;
    - reading body measurements also needs the consent;
    - a malformed id answers 404;
    - no soft delete and no `data_source` on workouts.
-4. **By hand:** point the mobile app at the Rust API (`EXPO_PUBLIC_API_URL=http://<this
-   machine>:3100/api/v1`, with its origin in `CORS_ORIGINS`). Seed the database first, since it is empty
-   after the Docker reset. Part 1's flow (register, onboarding, profile) passed over HTTP. Still to see in the
-   app, the « Done when » of plans 2a and 2b:
+7. **By hand:** point the mobile app at the Rust API (`EXPO_PUBLIC_API_URL=http://<this
+   machine>:3100/api/v1`, with its origin in `CORS_ORIGINS`). Seed the database first: it is migrated to `0008`
+   but empty. Part 1's flow (register, onboarding, profile) passed over HTTP. Still to see in the app, the
+   « Done when » of plans 2a to 2c:
    - the outbox flush (`workout-sync.ts`) gets `CREATED`, `REPLAYED`, `CONFLICT`, `REJECTED` and
      `INVALID` as it expects;
    - `BodyScreen` shows its consent screen on the 403 `CONSENT_REQUIRED`;
-   - the workout screen's « Why these points » card lists the entries with their steps; the progress screen
-     shows before and now per metric, with its chart; the home screen's level bar moves.
+   - the workout screen's « Why these points » card lists the entries with their steps, including
+     `GOAL_MILESTONE`; the progress screen shows before and now per metric, with its chart; the home screen's
+     level bar moves;
+   - the goals screen lists goals with their milestone bar; « Nouvel objectif » shows three suggestions and
+     saves one; the badges screen shows earned badges and progress bars.
 
-   The tests cover them through the recorded shapes; nobody has watched them in the app yet. The recorded
-   points, records and progress answers are empty lists, so the shape check of plan 2b covers their outer
-   keys only.
-5. **Rust backend, open points for the owner:**
+   The tests cover them through the recorded shapes or their own assertions; nobody has watched them in the app
+   yet.
+8. **Rust backend, open points for the owner:**
    - **Plan 1c rulings:**
      - baseline values are rounded to 3 decimals, not refused;
      - a wrong password on `DELETE /me` counts toward the lock;
@@ -415,7 +512,7 @@ endpoints in plans 2a to 2d, and its « Rulings » section lists the choices the
      - the `DRAFT` guard on publish-leaderboard;
      - the YouTube-only submission;
      - the `MOVEMENT_REPS` score.
-6. **Organizer space, waiting for the owner:**
+9. **Organizer space, waiting for the owner:**
    - a creation limit per user per day on `POST /competitions` (spam drafts crowd the admin list);
    - cancellation by organizers (admins only today);
    - « Publier » silently wins when two admins act at once;
@@ -435,31 +532,32 @@ endpoints in plans 2a to 2d, and its « Rulings » section lists the choices the
      - lot Web 1: two separate « Demander la publication » guards; badge vs dashboard « À encaisser »; the
        shared link is still `fitnessleague://…`.
    - To check on a phone: the 30 s reload pauses in the background.
-7. **Before anything goes public:**
-   - the default banner and the tutorial video show **Alamy watermarks**. Replace
-     `apps/mobile-rn/assets/competition-cover.jpg` (about 1440×596), then re-render
-     `apps/landing/public/media/tutorial.mp4`;
-   - landing: WhatsApp number and store links in `apps/landing/src/config.ts`, a host and a domain, an
-     absolute `og:image`;
-   - a logo per competition (still the app icon);
-   - the offline demo `assets/demo/api.json` was recorded before `MOVEMENT_REPS`: re-record it;
-   - the tutorial voice-off is synthetic;
-   - a full security audit of `apps/backend` (and of `apps/admin`), with the `security-audit` skill, from
-     WSL, before the cut-over. Optional; only when the owner asks for it.
-8. **Needs the owner's accounts or choices:**
-   - online payment for competitions (Konnect, Stripe…);
-   - push notifications (Firebase project + `google-services.json`);
-   - EAS builds (Expo account);
-   - regenerate the old API's dev JWT keys (`cd apps/api && pnpm keys:generate`; a `.env` read once printed
-     their start).
-9. **Optional cleanups:**
-   - drop `competition_submissions.video_media_id` and `COMPETITION_VIDEO`;
-   - rename `apps/mobile-rn` to `apps/mobile`;
-   - delete the merged remote branches (`feat/competitions`, `feat/gyms-sports-mobile`, `feat/home-news`,
-     `feat/landing`, `feat/organizer-space`, `feat/rn-ui-polish`), the local `feat/rust-backend` and
-     `feat/gyms-sports-mobile`, and in the WSL copy `feat/rust-backend-1c` and the stray
-     `feat/rust-backend-2`.
-10. **Owner's other PC:** Expo answered « Cannot read properties of undefined (reading 'transformFile') ».
-   Likely causes: the checkout in OneDrive, or `npm install` run inside `apps/mobile-rn` in a pnpm workspace.
-   Advised: move it out of OneDrive, `pnpm install`, `npx expo start --clear`. The real line
-   (`Failed to construct transformer: …`) is still awaited.
+10. **Before anything goes public:**
+    - the default banner and the tutorial video show **Alamy watermarks**. Replace
+      `apps/mobile-rn/assets/competition-cover.jpg` (about 1440×596), then re-render
+      `apps/landing/public/media/tutorial.mp4`;
+    - landing: WhatsApp number and store links in `apps/landing/src/config.ts`, a host and a domain, an
+      absolute `og:image`;
+    - a logo per competition (still the app icon);
+    - the offline demo `assets/demo/api.json` was recorded before `MOVEMENT_REPS`: re-record it (it would also
+      give real goal and badge shapes);
+    - the tutorial voice-off is synthetic;
+    - a full security audit of `apps/backend` (and of `apps/admin`), with the `security-audit` skill, from
+      WSL, before the cut-over. Optional; only when the owner asks for it.
+11. **Needs the owner's accounts or choices:**
+    - online payment for competitions (Konnect, Stripe…);
+    - push notifications (Firebase project + `google-services.json`);
+    - EAS builds (Expo account);
+    - regenerate the old API's dev JWT keys (`cd apps/api && pnpm keys:generate`; a `.env` read once printed
+      their start).
+12. **Optional cleanups:**
+    - drop `competition_submissions.video_media_id` and `COMPETITION_VIDEO`;
+    - rename `apps/mobile-rn` to `apps/mobile`;
+    - delete the merged remote branches (`feat/competitions`, `feat/gyms-sports-mobile`, `feat/home-news`,
+      `feat/landing`, `feat/organizer-space`, `feat/rn-ui-polish`, `feat/rust-backend`, `feat/rust-backend-2`),
+      the local `feat/rust-backend`, `feat/rust-backend-2b` and `feat/gyms-sports-mobile`, and in the WSL copy
+      `feat/rust-backend-1c` and the stray `feat/rust-backend-2`.
+13. **Owner's other PC:** Expo answered « Cannot read properties of undefined (reading 'transformFile') ».
+    Likely causes: the checkout in OneDrive, or `npm install` run inside `apps/mobile-rn` in a pnpm workspace.
+    Advised: move it out of OneDrive, `pnpm install`, `npx expo start --clear`. The real line
+    (`Failed to construct transformer: …`) is still awaited.

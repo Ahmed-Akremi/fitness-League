@@ -1,0 +1,218 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT b.code, b.category, b.name_fr, b.name_en, b.name_ar, b.description_fr, b.description_en,\n                  b.description_ar, b.icon, b.rarity, b.rule, ub.awarded_at AS \"awarded_at?\"\n           FROM badges b\n             LEFT JOIN user_badges ub ON ub.badge_id = b.id AND ub.user_id = ? AND ub.revoked_at IS NULL\n           WHERE b.enabled ORDER BY b.category, b.code",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "code",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | UNIQUE_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 160
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.badges",
+            "name": "code"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "category",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | ENUM | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 44
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.badges",
+            "name": "category"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "name_fr",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 320
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.badges",
+            "name": "name_fr"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "name_en",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 320
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.badges",
+            "name": "name_en"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "name_ar",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 320
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.badges",
+            "name": "name_ar"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "description_fr",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 1020
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.badges",
+            "name": "description_fr"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "description_en",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 1020
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.badges",
+            "name": "description_en"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "description_ar",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 1020
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.badges",
+            "name": "description_ar"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "icon",
+        "type_info": {
+          "type": "VarString",
+          "flags": "",
+          "collation": 224,
+          "max_size": 160
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.badges",
+            "name": "icon"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "rarity",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | ENUM",
+          "collation": 224,
+          "max_size": 36
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.badges",
+            "name": "rarity"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "rule",
+        "type_info": {
+          "type": "Blob",
+          "flags": "NOT_NULL | BLOB | BINARY | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 4294967295
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.badges",
+            "name": "rule"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "awarded_at?",
+        "type_info": {
+          "type": "Datetime",
+          "flags": "BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 26
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.user_badges",
+            "name": "awarded_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "27b793564622a533235a785a974186df39eaea5c17dc93c07c30799de8e29506"
+}

@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "UPDATE goal_milestones SET reached_at = ?, workout_id = ?, xp_transaction_id = ? WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "1bf975553438f4b9690c6da1ff401dc18d59a5f3eb1fc1d4af5ee5ed65cd9877"
+}

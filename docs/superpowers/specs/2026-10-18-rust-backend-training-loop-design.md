@@ -1,6 +1,6 @@
 # Rust + MariaDB backend, part 2: training loop — design
 
-Date: 2026-10-18 · Status: plans 2a and 2b built (2026-10-19); plans 2c and 2d to come; the rulings are open to the owner's review · Frame: part 1
+Date: 2026-10-18 · Status: plans 2a and 2b built (2026-10-19), plan 2c built (2026-10-20); plan 2d to come; the rulings are open to the owner's review · Frame: part 1
 (`docs/superpowers/specs/2026-10-06-rust-backend-foundation-design.md`): its conventions, security rules, rate-limit
 plumbing, testing approach and CI apply unchanged and are not repeated here.
 

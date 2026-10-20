@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "UPDATE goals SET status = 'ABANDONED' WHERE id = ? AND user_id = ? AND status = 'ACTIVE'",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "d4b5e9bb931d09784d7dec25c66515a69c271b23d3b85bb1c1c2a878ac99cffb"
+}

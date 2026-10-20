@@ -1,6 +1,6 @@
 {
   "db_name": "MySQL",
-  "query": "SELECT onboarding_completed_at, calibration_ends_at,\n                  EXISTS (SELECT 1 FROM user_sports WHERE user_id = p.user_id) AS \"sports!\",\n                  EXISTS (SELECT 1 FROM baselines WHERE user_id = p.user_id) AS \"baselines!\"\n           FROM profiles p WHERE p.user_id = ?",
+  "query": "SELECT onboarding_completed_at, calibration_ends_at,\n                  EXISTS (SELECT 1 FROM user_sports WHERE user_id = p.user_id) AS \"sports!\",\n                  EXISTS (SELECT 1 FROM baselines WHERE user_id = p.user_id) AS \"baselines!\",\n                  EXISTS (SELECT 1 FROM goals WHERE user_id = p.user_id) AS \"goals!\"\n           FROM profiles p WHERE p.user_id = ?",
   "describe": {
     "columns": [
       {
@@ -56,6 +56,17 @@
           "max_size": 1
         },
         "origin": "Expression"
+      },
+      {
+        "ordinal": 4,
+        "name": "goals!",
+        "type_info": {
+          "type": "Long",
+          "flags": "NOT_NULL | BINARY",
+          "collation": 63,
+          "max_size": 1
+        },
+        "origin": "Expression"
       }
     ],
     "parameters": {
@@ -65,8 +76,9 @@
       true,
       true,
       false,
+      false,
       false
     ]
   },
-  "hash": "66528d3e52b35a5ef842a60c259728fa7e9aa1a36dba99bc119d000059f72fc8"
+  "hash": "73368d21bf7de6d5994a5e92a7cbd1732fbcec5bd6f3868999c8aa9ab99aa240"
 }
