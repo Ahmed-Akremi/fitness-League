@@ -1,0 +1,188 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Fitness League — system architecture",
+    "output": ".archify/architecture-fitness-league-20261015-223541/fitness-league.html",
+    "quality_profile": "showcase",
+    "locale": "en",
+    "repository": {
+      "url": "https://github.com/Ahmed-Akremi/fitness-League.git",
+      "provider": "github",
+      "link_mode": "web",
+      "revision": "b12e58c346b5af5dd2026d1a9dc482dd70a9680d"
+    }
+  },
+  "components": [
+    {
+      "id": "mobile", "type": "frontend", "label": "Mobile app", "sublabel": "Expo React Native", "tag": "offline outbox",
+      "pos": [290, 40], "size": [150, 60],
+      "sources": [
+        { "path": "apps/mobile-rn/src/core/config.ts", "line": 8, "label": "API base URL :3000" },
+        { "path": "apps/mobile-rn/src/core/api/client.ts", "line": 109, "end_line": 115, "label": "REST client" },
+        { "path": "apps/mobile-rn/src/core/offline/sqlite-outbox.ts", "line": 14, "end_line": 27, "label": "SQLite offline outbox" }
+      ]
+    },
+    {
+      "id": "admin", "type": "frontend", "label": "Admin panel", "sublabel": "React + Vite · staff",
+      "pos": [540, 40], "size": [150, 60],
+      "sources": [
+        { "path": "apps/admin/src/api.ts", "line": 28, "end_line": 37, "label": "AdminApi base /api/v1" },
+        { "path": "apps/admin/vite.config.ts", "line": 7, "end_line": 11, "label": "proxy /api to :3000" }
+      ]
+    },
+    {
+      "id": "storage", "type": "cloud", "label": "Media storage", "sublabel": "local disk or S3/MinIO",
+      "pos": [790, 40], "size": [150, 60],
+      "sources": [
+        { "path": "apps/api/src/common/storage/storage.module.ts", "line": 14, "end_line": 29, "label": "driver choice" },
+        { "path": "apps/api/src/common/storage/s3-storage.ts", "line": 17, "end_line": 30, "label": "S3 PutObject" }
+      ]
+    },
+    {
+      "id": "ws", "type": "backend", "label": "Realtime gateway", "sublabel": "Socket.IO /ws",
+      "pos": [40, 210], "size": [150, 60],
+      "sources": [
+        { "path": "apps/api/src/modules/realtime/realtime.gateway.ts", "line": 11, "end_line": 43, "label": "LISTEN, emit to rooms" },
+        { "path": "apps/api/src/modules/realtime/realtime.gateway.ts", "line": 49, "end_line": 58, "label": "token check on connect" }
+      ]
+    },
+    {
+      "id": "api", "type": "backend", "label": "NestJS API", "sublabel": "REST /api/v1 · :3000 · modular monolith",
+      "pos": [290, 200], "size": [650, 80],
+      "sources": [
+        { "path": "apps/api/src/bootstrap.ts", "line": 16, "end_line": 29, "label": "HTTP pipeline" },
+        { "path": "apps/api/src/app.module.ts", "line": 42, "end_line": 45, "label": "domain modules" },
+        { "path": "apps/api/src/modules/workouts/workouts.controller.ts", "line": 26, "end_line": 50, "label": "POST /workouts, /sync" }
+      ]
+    },
+    {
+      "id": "smtp", "type": "external", "label": "SMTP server", "sublabel": "Mailpit in dev",
+      "pos": [1050, 210], "size": [140, 60],
+      "sources": [
+        { "path": "apps/api/src/common/mail/mail-sender.ts", "line": 16, "end_line": 28, "label": "nodemailer SMTP" },
+        { "path": "apps/api/src/modules/auth/auth.service.ts", "line": 484, "end_line": 491, "label": "verify / reset mails" },
+        { "path": "infra/docker-compose.yml", "line": 58, "end_line": 60, "label": "mailpit service" }
+      ]
+    },
+    {
+      "id": "outbox", "type": "messagebus", "label": "Event outbox", "sublabel": "table in PostgreSQL",
+      "pos": [290, 360], "size": [150, 60],
+      "sources": [
+        { "path": "apps/api/src/common/outbox/outbox.service.ts", "line": 8, "end_line": 17, "label": "enqueue in caller's tx" },
+        { "path": "apps/api/prisma/schema.prisma", "line": 1868, "end_line": 1879, "label": "domain_event_outbox" },
+        { "path": "apps/api/src/modules/workouts/workouts.service.ts", "line": 58, "end_line": 78, "label": "workout + event, one tx" }
+      ]
+    },
+    {
+      "id": "pg", "type": "database", "label": "PostgreSQL 16", "sublabel": "Prisma · domain data",
+      "pos": [540, 360], "size": [150, 60],
+      "sources": [
+        { "path": "apps/api/prisma/schema.prisma", "line": 10, "end_line": 14, "label": "datasource" },
+        { "path": "apps/api/src/common/prisma/prisma.service.ts", "line": 4, "end_line": 13, "label": "PrismaClient" },
+        { "path": "infra/docker-compose.yml", "line": 8, "end_line": 19, "label": "db service" }
+      ]
+    },
+    {
+      "id": "worker", "type": "backend", "label": "Worker", "sublabel": "outbox 1 s · jobs 60 s",
+      "pos": [290, 520], "size": [150, 60],
+      "sources": [
+        { "path": "apps/api/src/worker.ts", "line": 11, "end_line": 48, "label": "drain loop + jobs tick" },
+        { "path": "apps/api/src/worker.module.ts", "line": 4, "end_line": 6, "label": "same modules, no HTTP" },
+        { "path": "apps/api/src/modules/jobs/jobs.service.ts", "line": 47, "end_line": 80, "label": "weekly close, duels, wars" }
+      ]
+    },
+    {
+      "id": "fcm", "type": "external", "label": "Firebase FCM", "sublabel": "HTTP v1 push",
+      "pos": [290, 680], "size": [150, 60],
+      "sources": [
+        { "path": "apps/api/src/modules/push/push-sender.ts", "line": 45, "end_line": 50, "label": "messages:send" },
+        { "path": "apps/api/src/modules/push/push.module.ts", "line": 13, "end_line": 31, "label": "PUSH_DRIVER, outbox hook" }
+      ]
+    },
+    {
+      "id": "mariadb", "type": "database", "label": "MariaDB 11.4", "sublabel": "sqlx · accounts",
+      "pos": [770, 360], "size": [140, 60],
+      "sources": [
+        { "path": "apps/backend/src/state.rs", "line": 56, "end_line": 62, "label": "connect pool" },
+        { "path": "apps/backend/src/db.rs", "line": 26, "end_line": 30, "label": "MySqlPool" },
+        { "path": "infra/docker-compose.yml", "line": 32, "end_line": 47, "label": "mariadb service" }
+      ]
+    },
+    {
+      "id": "rworker", "type": "backend", "label": "Rust worker", "sublabel": "email jobs",
+      "pos": [1050, 360], "size": [140, 60],
+      "sources": [
+        { "path": "apps/backend/src/main.rs", "line": 131, "end_line": 156, "label": "worker loop" },
+        { "path": "apps/backend/src/modules/auth/emails.rs", "line": 26, "end_line": 56, "label": "read user, write token" }
+      ]
+    },
+    {
+      "id": "rust", "type": "backend", "label": "Rust API", "sublabel": "axum · :3100",
+      "pos": [770, 520], "size": [140, 60],
+      "sources": [
+        { "path": "apps/backend/src/main.rs", "line": 55, "end_line": 73, "label": "serve" },
+        { "path": "apps/backend/src/http/mod.rs", "line": 98, "end_line": 105, "label": "routes: health, reference, auth, me" },
+        { "path": "apps/backend/.env.example", "line": 3, "end_line": 13, "label": "PORT 3100, MariaDB, Redis" }
+      ]
+    },
+    {
+      "id": "redis", "type": "messagebus", "label": "Redis 7", "sublabel": "job stream · counters",
+      "pos": [1050, 520], "size": [140, 60],
+      "sources": [
+        { "path": "apps/backend/src/jobs.rs", "line": 1, "end_line": 8, "label": "jobs on a Redis Stream" },
+        { "path": "apps/backend/src/jobs.rs", "line": 69, "end_line": 88, "label": "XADD" },
+        { "path": "apps/backend/src/http/rate_limit.rs", "line": 164, "end_line": 185, "label": "rate-limit counters" }
+      ]
+    }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "NestJS API process", "wraps": ["ws", "api"] },
+    { "kind": "region", "label": "Rust backend (in progress)", "wraps": ["mariadb", "rworker", "rust", "redis"] }
+  ],
+  "connections": [
+    { "id": "mobile-rest", "from": "mobile", "to": "api", "label": "REST /api/v1", "variant": "emphasis" },
+    { "id": "admin-rest", "from": "admin", "to": "api", "label": "REST /api/v1" },
+    { "id": "api-media", "from": "api", "to": "storage", "label": "media uploads" },
+    { "id": "ws-push", "from": "ws", "to": "mobile", "label": "WebSocket events", "fromSide": "top", "toSide": "left" },
+    { "id": "api-mail", "from": "api", "to": "smtp", "label": "mail (SMTP)" },
+    { "id": "api-outbox", "from": "api", "to": "outbox", "label": "event, same tx", "variant": "emphasis" },
+    { "id": "api-sql", "from": "api", "to": "pg", "label": "SQL (Prisma)" },
+    { "id": "outbox-drain", "from": "outbox", "to": "worker", "label": "polled every 1 s", "variant": "dashed" },
+    { "id": "worker-sql", "from": "worker", "to": "pg", "label": "scores, ledgers", "fromSide": "right", "toSide": "bottom" },
+    { "id": "worker-notify", "from": "worker", "to": "ws", "label": "pg NOTIFY / LISTEN", "variant": "dashed", "fromSide": "left", "toSide": "bottom" },
+    { "id": "worker-push", "from": "worker", "to": "fcm", "label": "push notifications" },
+    { "id": "rust-sql", "from": "rust", "to": "mariadb", "label": "SQL (sqlx)" },
+    { "id": "rust-redis", "from": "rust", "to": "redis", "label": "jobs, rate limits" },
+    { "id": "redis-rworker", "from": "redis", "to": "rworker", "label": "XREADGROUP", "variant": "dashed" },
+    { "id": "rworker-sql", "from": "rworker", "to": "mariadb", "label": "user + token rows" },
+    { "id": "rworker-mail", "from": "rworker", "to": "smtp", "label": "emails" }
+  ],
+  "cards": [
+    {
+      "dot": "emerald", "title": "Workout to points",
+      "items": [
+        "POST /workouts runs anti-cheat, then saves the workout and its outbox event in one transaction",
+        "The worker drains the outbox: scoring and ledgers, challenges, live battle scores, push",
+        "Live events travel worker → PostgreSQL NOTIFY → gateway; the app keeps polling as a fallback"
+      ]
+    },
+    {
+      "dot": "amber", "title": "Rust backend",
+      "items": [
+        "Replaces apps/api part by part: today health, reference lists, accounts and admin sign-in",
+        "No client calls :3100 yet: the app and admin panel still call the NestJS API on :3000",
+        "Own MariaDB and Redis; email goes through the same SMTP server"
+      ]
+    },
+    {
+      "dot": "slate", "title": "Not drawn",
+      "items": [
+        "apps/landing: static marketing site with no API calls",
+        "Google / Apple sign-in: the API checks app-supplied ID tokens against their JWKS",
+        "docker-compose gives the NestJS API a REDIS_URL, but its code never uses Redis",
+        "The NestJS worker is not in docker-compose yet (pnpm start:worker)"
+      ]
+    }
+  ]
+}
