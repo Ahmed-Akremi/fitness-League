@@ -48,6 +48,10 @@ pub struct Rules {
     pub level_base_xp: f64,
     pub level_exponent: f64,
 
+    // Goals (§5): a milestone's reward, and the fastest safe body-weight change.
+    pub goal_milestone_xp: i64,
+    pub weight_change_max_pct_per_week: f64,
+
     // Fairness (§5.4): baselines, expected progress and the levels that set it.
     /// Sessions of an exercise first seen after calibration before its baseline is final.
     pub baseline_first_logs: i64,
@@ -175,6 +179,8 @@ pub mod tests {
         assert_eq!(rules.anticheat.run_time_s["TIME_5K"].reject, 750.0);
         assert_eq!(rules.anticheat.identical_fingerprint_hold.days, 14);
         assert_eq!(rules.daily_xp_cap, 400);
+        assert_eq!(rules.goal_milestone_xp, 150);
+        assert_eq!(rules.weight_change_max_pct_per_week, 1.0);
         assert_eq!(
             rules.strength_standards["BACK_SQUAT"]
                 .absolute_kg
