@@ -514,7 +514,8 @@ async fn closing_a_season_soft_resets_into_the_next(
     assert_eq!(closed["standings"], 2, "{closed}");
     assert_eq!(closed["nextSeasonId"], next.to_string());
 
-    let standings: Vec<(Uuid, i32, String, Option<i32>, bool, Option<String>)> = sqlx::query_as(
+    type Standing = (Uuid, i32, String, Option<i32>, bool, Option<String>);
+    let standings: Vec<Standing> = sqlx::query_as(
         "SELECT user_id, final_lp, division, rank_national, is_champion, champion_scope \
          FROM season_standings WHERE season_id = ? ORDER BY rank_national",
     )

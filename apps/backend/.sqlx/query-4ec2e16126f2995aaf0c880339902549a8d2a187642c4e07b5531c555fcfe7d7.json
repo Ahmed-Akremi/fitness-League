@@ -1,0 +1,31 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT country_code FROM profiles WHERE user_id = ?",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "country_code",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | MULTIPLE_KEY | BINARY",
+          "collation": 224,
+          "max_size": 8
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.profiles",
+            "name": "country_code"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "4ec2e16126f2995aaf0c880339902549a8d2a187642c4e07b5531c555fcfe7d7"
+}

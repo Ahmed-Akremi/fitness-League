@@ -1,0 +1,65 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT week_start, season_id AS \"season?: Uuid\", lp_transaction_id AS \"paid?: Uuid\"\n           FROM weekly_scores WHERE user_id = ? AND week_start >= ? AND week_start < ? ORDER BY week_start",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "week_start",
+        "type_info": {
+          "type": "Date",
+          "flags": "NOT_NULL | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 10
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.weekly_scores",
+            "name": "week_start"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "season?: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "MULTIPLE_KEY | BINARY",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.weekly_scores",
+            "name": "season_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "paid?: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "BINARY",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.weekly_scores",
+            "name": "lp_transaction_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": [
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "7ab416f2d506a87eafe1922fb4ed93e1db34a80fd5c5e0169ac94802d40fd08c"
+}

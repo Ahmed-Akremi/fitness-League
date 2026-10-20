@@ -1,0 +1,48 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT season_lp, current_season_id AS \"current: Uuid\" FROM user_stats WHERE user_id = ? FOR UPDATE",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "season_lp",
+        "type_info": {
+          "type": "Long",
+          "flags": "NOT_NULL",
+          "collation": 63,
+          "max_size": 11
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.user_stats",
+            "name": "season_lp"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "current: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "MULTIPLE_KEY | BINARY",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.user_stats",
+            "name": "current_season_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      true
+    ]
+  },
+  "hash": "903a282a1f083007b628193160c1eb33a2d1d44c3b9502b33cc169f8ab0f54b7"
+}

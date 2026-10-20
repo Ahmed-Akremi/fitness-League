@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "UPDATE user_stats SET xp_total = ?, level = ?, xp_into_level = ?, xp_for_next_level = ?, season_lp = ?, division_code = ? WHERE user_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 7
+    },
+    "nullable": []
+  },
+  "hash": "1e58417f51602be92dac3aee566825a68a47565041fad8a3f525003bcdbf2b59"
+}

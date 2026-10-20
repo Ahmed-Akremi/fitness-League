@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "INSERT IGNORE INTO season_standings (season_id, user_id, final_lp, division, rank_national, rank_governorate, rank_gym, is_champion, champion_scope) SELECT ?, r.user_id, r.lp, r.division, r.national, r.governorate, r.gym, r.national = 1 OR r.governorate = 1, CASE WHEN r.national = 1 THEN 'NATIONAL' WHEN r.governorate = 1 THEN 'GOVERNORATE' END FROM (SELECT us.user_id, us.season_lp AS lp, COALESCE(us.division_code, 'BRONZE') AS division, RANK() OVER (ORDER BY us.season_lp DESC) AS national, RANK() OVER (PARTITION BY p.governorate_id ORDER BY us.season_lp DESC) AS governorate, IF(p.primary_gym_id IS NULL, NULL, RANK() OVER (PARTITION BY p.primary_gym_id ORDER BY us.season_lp DESC)) AS gym FROM user_stats us JOIN users u ON u.id = us.user_id JOIN profiles p ON p.user_id = us.user_id WHERE us.current_season_id = ? AND u.status = 'ACTIVE' AND u.email_verified_at IS NOT NULL AND us.season_lp > 0) r",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "17371bea78194ee22b2c241b2968a070f126a175346c9a7b6ec216c000ae4280"
+}

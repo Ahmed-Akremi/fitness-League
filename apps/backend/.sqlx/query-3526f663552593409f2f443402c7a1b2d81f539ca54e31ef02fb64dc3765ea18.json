@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "UPDATE goals SET habit_weeks_met = ? WHERE id = ? AND user_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "3526f663552593409f2f443402c7a1b2d81f539ca54e31ef02fb64dc3765ea18"
+}

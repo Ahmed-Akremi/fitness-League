@@ -1,0 +1,31 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT governorate_id AS \"id: Uuid\" FROM profiles WHERE user_id = ?",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | MULTIPLE_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.profiles",
+            "name": "governorate_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "c562f2bd8cedfd978cec1a1d9c060283ca525fc6cf27408491a4ed051edf6125"
+}

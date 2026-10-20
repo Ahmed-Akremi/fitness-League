@@ -1,0 +1,26 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT MAX(snapshot_date) FROM leaderboard_snapshots WHERE season_id = ? AND scope_type = ? AND scope_id = ? AND snapshot_date < ?",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "MAX(snapshot_date)",
+        "type_info": {
+          "type": "Date",
+          "flags": "BINARY",
+          "collation": 63,
+          "max_size": 10
+        },
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "90f458b786c7ce3da04c84550e5ce3f6695813be395698ea80475404d879d751"
+}

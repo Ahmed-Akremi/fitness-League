@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "UPDATE baselines SET status = 'CORRECTED', corrected_from = effective_value, effective_value = ?, rule_set_version = ? WHERE id = ? AND user_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "d01f683b9999f4189f097b64280e7c5522b42b906894b24962b5d9bf2458bcac"
+}

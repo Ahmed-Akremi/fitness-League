@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "UPDATE baselines b JOIN profiles p ON p.user_id = b.user_id JOIN metric_types m ON m.id = b.metric_type_id SET b.status = 'FINAL', b.finalized_at = p.calibration_ends_at, b.effective_value = IF(m.direction = 'HIGHER_IS_BETTER', GREATEST(b.calibrated_value, COALESCE(b.declared_value, b.calibrated_value)), LEAST(b.calibrated_value, COALESCE(b.declared_value, b.calibrated_value))) WHERE b.status = 'PROVISIONAL' AND b.calibrated_value IS NOT NULL AND p.calibration_ends_at <= ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "d1d700d9a4abd019c6eca659cdcd29f3d83af39638cc3b98da290166012e03db"
+}

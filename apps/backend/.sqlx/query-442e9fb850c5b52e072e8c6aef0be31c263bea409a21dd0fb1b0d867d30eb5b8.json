@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "UPDATE job_runs SET status = 'DONE', result = ?, finished_at = ? WHERE job = ? AND run_key = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "442e9fb850c5b52e072e8c6aef0be31c263bea409a21dd0fb1b0d867d30eb5b8"
+}

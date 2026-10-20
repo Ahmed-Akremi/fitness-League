@@ -1,0 +1,31 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT us.user_id AS \"user: Uuid\" FROM user_stats us\n           WHERE us.xp_total <> COALESCE((SELECT SUM(x.amount) FROM xp_transactions x WHERE x.user_id = us.user_id), 0)\n              OR us.season_lp <> GREATEST(0, COALESCE((SELECT SUM(l.amount) FROM league_point_transactions l\n                                                       WHERE l.user_id = us.user_id AND l.season_id = us.current_season_id), 0))",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "user: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | PRIMARY_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.user_stats",
+            "name": "user_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "dce3b7f6553d4cba79dab76bb6eb4418e977c09009bc13a7bb5f576109d95766"
+}

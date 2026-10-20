@@ -1,0 +1,31 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT w.performed_at FROM workouts w JOIN workout_evaluations e ON e.workout_id = w.id\n           WHERE w.user_id = ? AND w.status = 'ACCEPTED' AND w.performed_at >= ? AND w.performed_at < ?\n             AND w.duration_s >= ? AND NOT JSON_CONTAINS(e.rule_hits, '{\"rule\": \"LATE_LOG\"}')",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "performed_at",
+        "type_info": {
+          "type": "Datetime",
+          "flags": "NOT_NULL | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 26
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.workouts",
+            "name": "performed_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "8b3ce1cfe815e72b1f56ed42d21b797e14ef59b6012ffd0bc4bca2a7a7442ec9"
+}

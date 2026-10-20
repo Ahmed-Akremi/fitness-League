@@ -1,0 +1,26 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT EXISTS (SELECT 1 FROM weekly_scores WHERE user_id = ? AND week_start = ?)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "EXISTS (SELECT 1 FROM weekly_scores WHERE user_id = ? AND week_start = ?)",
+        "type_info": {
+          "type": "Long",
+          "flags": "NOT_NULL | BINARY",
+          "collation": 63,
+          "max_size": 1
+        },
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "ad4ef76eeb2e0207919c40b9d1fd4e4c62bf2aa2a749dfb132bcb4a5d51a8955"
+}

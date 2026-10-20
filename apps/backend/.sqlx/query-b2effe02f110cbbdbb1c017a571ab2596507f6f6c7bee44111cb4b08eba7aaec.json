@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "INSERT INTO weekly_scores (id, user_id, week_start, season_id, rule_set_version, progress_c, consistency_c, performance_c, challenge_c, total, breakdown, lp_transaction_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE season_id = VALUES(season_id), rule_set_version = VALUES(rule_set_version), progress_c = VALUES(progress_c), consistency_c = VALUES(consistency_c), performance_c = VALUES(performance_c), challenge_c = VALUES(challenge_c), total = VALUES(total), breakdown = VALUES(breakdown), lp_transaction_id = VALUES(lp_transaction_id)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 12
+    },
+    "nullable": []
+  },
+  "hash": "b2effe02f110cbbdbb1c017a571ab2596507f6f6c7bee44111cb4b08eba7aaec"
+}

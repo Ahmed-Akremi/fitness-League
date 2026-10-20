@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "INSERT INTO seasons (id, name, country_code, starts_at, ends_at, status) VALUES (?, ?, ?, ?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 6
+    },
+    "nullable": []
+  },
+  "hash": "f755c47dc602fe883e43d9c53b8346e091d40289dd43e97e65661a4cf08ce312"
+}

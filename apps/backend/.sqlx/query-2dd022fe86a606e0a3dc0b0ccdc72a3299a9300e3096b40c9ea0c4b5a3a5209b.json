@@ -1,0 +1,60 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT id AS \"id: Uuid\", CAST(target_value AS DOUBLE) AS \"target!: f64\", habit_weeks_met\n           FROM goals WHERE user_id = ? AND type = 'HABIT' AND status = 'ACTIVE'",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | PRIMARY_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.goals",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "target!: f64",
+        "type_info": {
+          "type": "Double",
+          "flags": "BINARY",
+          "collation": 63,
+          "max_size": 22
+        },
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 2,
+        "name": "habit_weeks_met",
+        "type_info": {
+          "type": "Long",
+          "flags": "NOT_NULL",
+          "collation": 63,
+          "max_size": 11
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.goals",
+            "name": "habit_weeks_met"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "2dd022fe86a606e0a3dc0b0ccdc72a3299a9300e3096b40c9ea0c4b5a3a5209b"
+}
