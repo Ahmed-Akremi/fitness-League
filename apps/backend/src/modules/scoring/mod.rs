@@ -25,7 +25,7 @@ use self::{
 use crate::{
     error::AppError,
     http::{Api, auth::AppUser},
-    modules::{goals, workouts::metrics::WorkoutInput},
+    modules::{badges, goals, workouts::metrics::WorkoutInput},
     rules::Rules,
     security::policy,
     state::AppState,
@@ -222,8 +222,8 @@ pub async fn score(
         grant(tx, &at, ask).await?;
     }
 
-    // plan 2c: badges here.
-    Ok(())
+    // 5. The badges now met (docs §3.10).
+    badges::evaluate(tx, s.user, Some(&s.workout_id.to_string())).await
 }
 
 async fn metric_types(tx: &mut MySqlConnection) -> Result<HashMap<String, Metric>, AppError> {

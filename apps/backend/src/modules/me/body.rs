@@ -11,7 +11,7 @@ use uuid::Uuid;
 use crate::{
     error::AppError,
     http::{Api, auth::AppUser},
-    modules::goals::milestones,
+    modules::{badges, goals::milestones},
     rules::Rules,
     state::AppState,
     types::iso,
@@ -193,6 +193,8 @@ async fn add(
     .await?;
     let latest_kg = state.health.decrypt_number(&latest)?;
     milestones::on_weigh_in(&mut tx, &state, &rules, user.id, latest_kg).await?;
+    // A completed weight goal earns its badge now, not at the next workout.
+    badges::evaluate(&mut tx, user.id, None).await?;
     tx.commit().await?;
     Ok((
         StatusCode::CREATED,
