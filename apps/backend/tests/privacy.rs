@@ -515,3 +515,82 @@ async fn anonymising_removes_weigh_ins_and_workout_notes(
     .unwrap();
     assert_eq!(exercise_notes, None);
 }
+
+/// After `weigh_and_train`: a weight goal to 76 kg and a squat goal to 125 kg.
+async fn set_goals(app: &TestApp, session: &Value) -> (Uuid, Uuid) {
+    let squat: Uuid = sqlx::query_scalar("SELECT id FROM exercises WHERE code = 'BACK_SQUAT'")
+        .fetch_one(&app.db)
+        .await
+        .unwrap();
+    let mut ids = Vec::new();
+    for body in [
+        json!({"type": "WEIGHT", "metricCode": "BODY_WEIGHT", "targetValue": 76}),
+        json!({"type": "STRENGTH", "exerciseId": squat, "metricCode": "E1RM", "targetValue": 125}),
+    ] {
+        let reply = app
+            .call(Method::POST, "/api/v1/goals", access(session), Some(body))
+            .await;
+        assert_eq!(reply.status, StatusCode::CREATED, "{}", reply.json);
+        ids.push(Uuid::parse_str(reply.json["id"].as_str().unwrap()).unwrap());
+    }
+    (ids[0], ids[1])
+}
+
+#[sqlx::test]
+async fn the_export_holds_goals_and_badges(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let app = seeded(opts, conn).await;
+    let session = register(&app, "karim").await;
+    weigh_and_train(&app, &session).await;
+    set_goals(&app, &session).await;
+    // The athlete's own data, even after they stopped sharing it with the app.
+    common::set_consent(&app, user_of(&session), "HEALTH_DATA", false).await;
+    let reply = app
+        .call(Method::GET, "/api/v1/me/export", access(&session), None)
+        .await;
+    assert_eq!(reply.status, StatusCode::OK, "{}", reply.json);
+    let goals = reply.json["goals"].as_array().unwrap();
+    assert_eq!(goals.len(), 2);
+    let weight = goals.iter().find(|g| g["type"] == "WEIGHT").unwrap();
+    assert_eq!(weight["targetValue"].as_f64(), Some(76.0));
+    assert_eq!(weight["milestones"][0]["targetValue"].as_f64(), Some(77.0));
+    assert!(goals.iter().any(|g| g["type"] == "STRENGTH"));
+
+    let badges = reply.json["account"]["badges"].as_array().unwrap();
+    let first = badges.iter().find(|b| b["code"] == "FIRST_STEP").unwrap();
+    assert!(first["awardedAt"].is_string());
+    assert!(first["revokedAt"].is_null());
+    assert_eq!(first["sourceRef"], reply.json["workouts"][0]["id"]);
+}
+
+#[sqlx::test]
+async fn anonymisation_deletes_weight_goals(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let app = seeded(opts, conn).await;
+    let session = register(&app, "hela").await;
+    let user = user_of(&session);
+    weigh_and_train(&app, &session).await;
+    let (weight, _) = set_goals(&app, &session).await;
+    delete(&app, &session, PASSWORD).await;
+    let swept = privacy::sweep(&app.db, (Utc::now() + Duration::days(31)).naive_utc())
+        .await
+        .unwrap();
+    assert_eq!(swept.anonymised, 1);
+
+    let kinds: Vec<String> = sqlx::query_scalar("SELECT type FROM goals WHERE user_id = ?")
+        .bind(user)
+        .fetch_all(&app.db)
+        .await
+        .unwrap();
+    assert_eq!(kinds, ["STRENGTH"]);
+    let milestones: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM goal_milestones WHERE goal_id = ?")
+        .bind(weight)
+        .fetch_one(&app.db)
+        .await
+        .unwrap();
+    assert_eq!(milestones, 0);
+    let badges: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM user_badges WHERE user_id = ?")
+        .bind(user)
+        .fetch_one(&app.db)
+        .await
+        .unwrap();
+    assert!(badges >= 1);
+}

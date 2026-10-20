@@ -18,6 +18,7 @@ use crate::{
     },
     modules::{
         auth::{accounts, sessions},
+        goals,
         workouts::intake,
     },
     security::{password, policy},
@@ -116,6 +117,22 @@ async fn export(
         }))
     })
     .collect::<Result<Vec<_>, AppError>>()?;
+    let badges: Vec<Value> = sqlx::query!(
+        r#"SELECT b.code, ub.awarded_at, ub.revoked_at, ub.source_ref
+           FROM user_badges ub JOIN badges b ON b.id = ub.badge_id
+           WHERE ub.user_id = ? ORDER BY ub.awarded_at, ub.id"#,
+        user.id
+    )
+    .fetch_all(&state.db)
+    .await?
+    .into_iter()
+    .map(|b| {
+        json!({
+            "code": b.code, "awardedAt": iso(b.awarded_at), "revokedAt": b.revoked_at.map(iso),
+            "sourceRef": b.source_ref,
+        })
+    })
+    .collect();
 
     let extra = json!({
         "dateOfBirth": row.date_of_birth.to_string(),
@@ -136,6 +153,7 @@ async fn export(
             "updatedAt": iso(b.updated_at),
         })).collect::<Vec<_>>(),
         "personalRecords": records,
+        "badges": badges,
     });
     if let (Some(account), Value::Object(extra)) = (account.as_object_mut(), extra) {
         account.extend(extra);
@@ -161,8 +179,9 @@ async fn export(
         "bodyMeasurements": body_measurements,
         "workouts": workouts,
         "xpTransactions": xp_transactions,
-        // Plans 2c and 2d.
-        "goals": [],
+        // Weight goals decrypted, like the weigh-ins.
+        "goals": goals::views(&state, user.id, true).await?,
+        // Plan 2d.
         "leaguePointTransactions": [],
     })))
 }
@@ -354,6 +373,13 @@ async fn anonymise(
     sqlx::query!("DELETE FROM body_measurements WHERE user_id = ?", user)
         .execute(&mut *tx)
         .await?;
+    // Their milestones go with them; the XP they paid stays in the ledger, which names them by id.
+    sqlx::query!(
+        "DELETE FROM goals WHERE user_id = ? AND type = 'WEIGHT'",
+        user
+    )
+    .execute(&mut *tx)
+    .await?;
     sqlx::query!(
         "UPDATE workouts SET notes = NULL, visibility = 'PRIVATE' WHERE user_id = ?",
         user
