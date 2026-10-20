@@ -104,6 +104,7 @@ fn api() -> Api {
     let api = modules::admin_auth::routes(api);
     let api = modules::me::routes(api);
     let api = modules::workouts::routes(api);
+    let api = modules::goals::routes(api);
     modules::scoring::routes(api)
 }
 

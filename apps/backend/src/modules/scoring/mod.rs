@@ -226,7 +226,8 @@ async fn metric_types(tx: &mut MySqlConnection) -> Result<HashMap<String, Metric
         .collect())
 }
 
-async fn expected(tx: &mut MySqlConnection, version: i32) -> Result<Expected, AppError> {
+/// The expected progression of the rule set of `version`.
+pub(crate) async fn expected(tx: &mut MySqlConnection, version: i32) -> Result<Expected, AppError> {
     let rows = sqlx::query!(
         r#"SELECT p.experience_level AS "level: ExperienceLevel", p.exercise_id AS "exercise?: Uuid",
                   p.metric_type_id AS "metric: Uuid", CAST(p.expected_pct AS DOUBLE) AS "pct!: f64"

@@ -67,7 +67,8 @@ struct Baseline {
     establishing: bool,
 }
 
-fn decimal(value: f64) -> String {
+/// A metric value as `DECIMAL(12,3)` takes it, exactly.
+pub(crate) fn decimal(value: f64) -> String {
     format!("{value:.3}")
 }
 

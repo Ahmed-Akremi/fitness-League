@@ -297,3 +297,24 @@ async fn a_declaration_does_not_change_a_baseline_that_calibration_fixed(
     assert_eq!(reply.status, StatusCode::OK);
     assert_eq!(value().await, "120.000");
 }
+
+#[sqlx::test]
+async fn the_goals_step_follows_the_first_goal(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let app = seeded(opts, conn).await;
+    let session = register(&app, "goalie").await;
+    // An empty declaration changes nothing and answers the progress.
+    let steps = |reply: Reply| reply.json["steps"]["goals"].clone();
+    let before = post(&app, &session, "baselines", Some(json!({"entries": []}))).await;
+    assert_eq!(steps(before), false);
+    let goal = app
+        .call(
+            Method::POST,
+            "/api/v1/goals",
+            session["accessToken"].as_str(),
+            Some(json!({"type": "HABIT", "metricCode": "WORKOUTS_PER_WEEK", "targetValue": 3})),
+        )
+        .await;
+    assert_eq!(goal.status, StatusCode::CREATED, "{}", goal.json);
+    let after = post(&app, &session, "baselines", Some(json!({"entries": []}))).await;
+    assert_eq!(steps(after), true);
+}
