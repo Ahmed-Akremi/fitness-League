@@ -17,16 +17,20 @@ export function Icon({ name, size = 22, color }: { name: IconName; size?: number
 
 export function Txt({ children, style, variant = 'body', color, ...rest }: { children: ReactNode; variant?: 'body' | 'title' | 'label' | 'small' | 'display' | 'headline'; color?: string; style?: StyleProp<any> } & Omit<ComponentProps<typeof Text>, 'style'>) {
   const { colors } = useTheme();
+  // 17 pt body: Apple's default size (HIG Accessibility › Vision).
   const v = {
-    body: { fontSize: 15, fontFamily: fonts.body },
-    title: { fontSize: 17, fontFamily: fonts.body, fontWeight: '700' as const },
+    body: { fontSize: 17, fontFamily: fonts.body },
+    title: { fontSize: 19, fontFamily: fonts.body, fontWeight: '700' as const },
     label: { fontSize: 12, fontFamily: fonts.body, fontWeight: '700' as const, letterSpacing: 1.2, textTransform: 'uppercase' as const },
-    small: { fontSize: 13, fontFamily: fonts.body },
+    small: { fontSize: 15, fontFamily: fonts.body },
     display: { fontSize: 36, fontFamily: fonts.display, letterSpacing: -0.5 },
     headline: { fontSize: 28, fontFamily: fonts.display },
   }[variant];
+  // The big display numbers (20–72 pt) are already large: they grow with Larger Text up to 1.4× so they still fit.
+  const family = StyleSheet.flatten([v, style])?.fontFamily;
+  const cap = family === fonts.display || family === fonts.displaySemi ? 1.4 : undefined;
   return (
-    <Text style={[{ color: color ?? colors.text, textAlign: 'auto' }, v, style]} {...rest}>
+    <Text style={[{ color: color ?? colors.text, textAlign: 'auto' }, v, style]} maxFontSizeMultiplier={cap} {...rest}>
       {children}
     </Text>
   );
@@ -131,6 +135,8 @@ export function Chip({ label, selected, onPress, icon, testID, accessibilityLabe
       accessibilityState={{ selected }}
       disabled={!onPress}
       onPress={onPress}
+      // 32 pt tall: the slop brings the target to 44 pt without changing the look.
+      hitSlop={{ top: 6, bottom: 6 }}
       style={(state) => [styles.chip, dense && { borderRadius: webDense.radius.field, paddingVertical: 6 }, { backgroundColor: selected ? colors.primary : colors.surfaceHigh }, ring(isFocused(state))]}
     >
       {icon && <MaterialIcons name={icon} size={16} color={fg} />}

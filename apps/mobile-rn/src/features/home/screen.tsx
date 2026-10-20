@@ -1,7 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { Json } from '../../core/api/client';
@@ -76,6 +76,8 @@ function HomeBody({ me }: { me: Me }) {
   const division: string | undefined = lp.division ?? stats.division;
   const gym = profile.gym;
   const active = (goals.data ?? []).filter((g) => g.status === 'ACTIVE');
+  // Larger Text: three tiles side by side would clip their numbers, so they stack.
+  const stacked = useWindowDimensions().fontScale >= 1.5;
 
   return (
     <>
@@ -126,7 +128,7 @@ function HomeBody({ me }: { me: Me }) {
         </Card>
       )}
       {dashboard.isError && <ErrorView error={dashboard.error} onRetry={() => dashboard.refetch()} />}
-      <View style={{ flexDirection: 'row', gap: space.sm }}>
+      <View testID="home-tiles" style={{ flexDirection: stacked ? 'column' : 'row', gap: space.sm }}>
         <Tile label={t('rankNationalShort')} value={ranks.national == null ? '—' : `#${ranks.national}`} onPress={() => router.navigate('/league')} />
         <Tile label={localized(profile.governorate?.name, locale)} value={ranks.governorate == null ? '—' : `#${ranks.governorate}`} onPress={() => router.navigate('/league')} />
         <Tile label={t('thisWeek')} value={week.total == null ? '—' : String(Math.round(week.total))} caption={week.total == null ? undefined : `${week.trainingDays}/${week.plannedDays}`} />
@@ -193,7 +195,7 @@ function Tile({ label, value, caption, onPress }: { label: string; value: string
   const { colors } = useTheme();
   return (
     <Pressable accessibilityRole={onPress ? 'button' : undefined} accessibilityLabel={`${label}, ${value}`} onPress={onPress} disabled={!onPress} style={{ flex: 1, backgroundColor: colors.surface, borderRadius: radius.card, padding: space.md, borderWidth: 1, borderColor: colors.border }}>
-      <Txt variant="label" numberOfLines={1} color={colors.outline} style={{ fontSize: 11, letterSpacing: 1 }}>{label}</Txt>
+      <Txt variant="label" numberOfLines={2} color={colors.outline} style={{ fontSize: 11, letterSpacing: 1 }}>{label}</Txt>
       <Txt style={[displayText(28), { marginTop: 4 }]}>{value}</Txt>
       {caption ? <Txt variant="small">{caption}</Txt> : null}
     </Pressable>

@@ -23,7 +23,7 @@ export function Select({ label, value, options, onChange, error, testID, placeho
   const head = (
     <View style={{ flexDirection: 'row', alignItems: 'center', padding: 16 }}>
       <Txt variant="title" style={{ flex: 1 }}>{label}</Txt>
-      <Pressable accessibilityRole="button" accessibilityLabel={t('cancel')} onPress={() => setOpen(false)} hitSlop={8}>
+      <Pressable accessibilityRole="button" accessibilityLabel={t('cancel')} onPress={() => setOpen(false)} hitSlop={11}>
         <Icon name="close" />
       </Pressable>
     </View>

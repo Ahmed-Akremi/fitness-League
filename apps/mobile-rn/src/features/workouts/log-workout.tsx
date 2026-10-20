@@ -158,10 +158,10 @@ export function LogWorkoutScreen() {
         }}
       />
       <View style={{ flexDirection: 'row', gap: 12, alignItems: 'flex-end' }}>
-        <View style={{ flex: 1 }}>
+        <View style={{ flex: 2 }}>
           <DateField testID="log-date" label={t('performedAt')} mode="datetime" value={performedAt} onChange={setPerformedAt} minimumDate={monthAgo} maximumDate={new Date()} />
         </View>
-        <TextField testID="log-duration" style={{ width: 130 }} label={t('durationMin')} value={duration} onChangeText={setDuration} keyboardType="number-pad" />
+        <TextField testID="log-duration" style={{ flex: 1, minWidth: 96 }} label={t('durationMin')} value={duration} onChangeText={setDuration} keyboardType="number-pad" />
       </View>
 
       {entries.map((e, i) => (
