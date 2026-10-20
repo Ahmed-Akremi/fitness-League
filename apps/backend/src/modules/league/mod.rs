@@ -8,4 +8,5 @@ use crate::http::Api;
 
 pub fn routes(api: Api) -> Api {
     api.get("/api/v1/me/weekly-scores/current", weekly::current)
+        .get("/api/v1/me/lp", seasons::my_lp)
 }
