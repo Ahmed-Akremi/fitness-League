@@ -608,3 +608,124 @@ async fn the_seed_loads_the_badges(opts: MySqlPoolOptions, conn: MySqlConnectOpt
         .unwrap();
     assert!(!enabled, "the seed turned an admin's choice back");
 }
+
+/// The active `TN` season the seed opened.
+async fn active_season(db: &MySqlPool) -> Uuid {
+    sqlx::query_scalar("SELECT id FROM seasons WHERE country_code = 'TN' AND status = 'ACTIVE'")
+        .fetch_one(db)
+        .await
+        .unwrap()
+}
+
+async fn insert_lp(
+    db: &MySqlPool,
+    user: Uuid,
+    season: Uuid,
+    reason: &str,
+    amount: i32,
+    reverses: Option<Uuid>,
+) -> Result<Uuid, sqlx::Error> {
+    let id = Uuid::now_v7();
+    sqlx::query(
+        "INSERT INTO league_point_transactions (id, user_id, season_id, amount, reason, source_type, source_id, \
+           reverses_id, rule_set_version, explanation, effective_at) \
+         VALUES (?, ?, ?, ?, ?, 'week', '2026-10-19', ?, 2, '{}', UTC_TIMESTAMP(6))",
+    )
+    .bind(id)
+    .bind(user)
+    .bind(season)
+    .bind(amount)
+    .bind(reason)
+    .bind(reverses)
+    .execute(db)
+    .await?;
+    Ok(id)
+}
+
+#[sqlx::test]
+async fn the_lp_ledger_is_append_only_and_grants_once(
+    opts: MySqlPoolOptions,
+    conn: MySqlConnectOptions,
+) {
+    let db = backend::db::pool(opts, conn);
+    backend::seed::run(&db, &seed_dir()).await.unwrap();
+    let season = active_season(&db).await;
+    let user = insert_user(&db, "lp@example.tn", "lp_user").await.unwrap();
+    let entry = insert_lp(&db, user, season, "WEEKLY_SCORE", 60, None)
+        .await
+        .unwrap();
+
+    for sql in [
+        "UPDATE league_point_transactions SET amount = 6000 WHERE id = ?",
+        "DELETE FROM league_point_transactions WHERE id = ?",
+    ] {
+        let e = sqlx::query(sql).bind(entry).execute(&db).await.unwrap_err();
+        assert!(e.to_string().contains("append-only"), "{e}");
+    }
+    let again = insert_lp(&db, user, season, "WEEKLY_SCORE", 60, None)
+        .await
+        .unwrap_err();
+    assert!(is_unique_violation(&again), "{again}");
+
+    insert_lp(&db, user, season, "REVERSAL", -60, Some(entry))
+        .await
+        .unwrap();
+    let twice = insert_lp(&db, user, season, "REVERSAL", -60, Some(entry))
+        .await
+        .unwrap_err();
+    assert!(is_unique_violation(&twice), "{twice}");
+    let negative = insert_lp(&db, user, season, "SEASON_SOFT_RESET", -5, None).await;
+    assert!(negative.is_err(), "a negative soft reset was stored");
+}
+
+#[sqlx::test]
+async fn one_active_season_per_country(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let db = backend::db::pool(opts, conn);
+    backend::seed::run(&db, &seed_dir()).await.unwrap();
+    let insert = |status: &'static str| {
+        sqlx::query(
+            "INSERT INTO seasons (id, name, country_code, starts_at, ends_at, status) \
+             VALUES (?, 'Old', 'TN', '2020-01-01', '2020-04-01', ?)",
+        )
+        .bind(Uuid::now_v7())
+        .bind(status)
+        .execute(&db)
+    };
+    let second = insert("ACTIVE").await.unwrap_err();
+    assert!(is_unique_violation(&second), "{second}");
+    insert("CLOSED").await.unwrap();
+}
+
+#[sqlx::test]
+async fn the_seed_opens_this_quarter(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    use chrono::Datelike;
+    let db = backend::db::pool(opts, conn);
+    backend::seed::run(&db, &seed_dir()).await.unwrap();
+    let (name, holds_now, ends_at): (String, bool, chrono::NaiveDateTime) = sqlx::query_as(
+        "SELECT name, starts_at <= UTC_TIMESTAMP(6) AND ends_at > UTC_TIMESTAMP(6), ends_at \
+         FROM seasons WHERE country_code = 'TN' AND status = 'ACTIVE'",
+    )
+    .fetch_one(&db)
+    .await
+    .unwrap();
+    assert!(holds_now);
+    let (start, _) = backend::security::policy::quarter_bounds(chrono::Utc::now(), 60);
+    let local = start + chrono::Duration::hours(1);
+    assert_eq!(
+        name,
+        format!("Season {} Q{}", local.year(), local.month0() / 3 + 1)
+    );
+    let next: chrono::NaiveDateTime = sqlx::query_scalar(
+        "SELECT starts_at FROM seasons WHERE country_code = 'TN' AND status = 'SCHEDULED'",
+    )
+    .fetch_one(&db)
+    .await
+    .unwrap();
+    assert_eq!(next, ends_at);
+    backend::seed::run(&db, &seed_dir()).await.unwrap();
+    let all: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM seasons")
+        .fetch_one(&db)
+        .await
+        .unwrap();
+    assert_eq!(all, 2);
+}

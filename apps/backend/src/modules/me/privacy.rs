@@ -98,6 +98,25 @@ async fn export(
         })
     })
     .collect();
+    let league_points = sqlx::query!(
+        r#"SELECT id AS "id: Uuid", season_id AS "season_id: Uuid", amount, reason, source_type, source_id,
+                  reverses_id AS "reverses_id?: Uuid", rule_set_version, explanation, effective_at, created_at
+           FROM league_point_transactions WHERE user_id = ? ORDER BY created_at, id"#,
+        user.id
+    )
+    .fetch_all(&state.db)
+    .await?
+    .into_iter()
+    .map(|l| {
+        Ok(json!({
+            "id": l.id, "seasonId": l.season_id, "amount": l.amount, "reason": l.reason,
+            "sourceType": l.source_type, "sourceId": l.source_id, "reversesId": l.reverses_id,
+            "ruleSetVersion": l.rule_set_version,
+            "explanation": serde_json::from_str::<Value>(&l.explanation).map_err(AppError::internal)?,
+            "effectiveAt": iso(l.effective_at), "createdAt": iso(l.created_at),
+        }))
+    })
+    .collect::<Result<Vec<_>, AppError>>()?;
     let xp_transactions = sqlx::query!(
         r#"SELECT id AS "id: Uuid", amount, reason, source_type, source_id, workout_id AS "workout_id?: Uuid",
                   reverses_id AS "reverses_id?: Uuid", rule_set_version, explanation, effective_at, created_at
@@ -181,8 +200,7 @@ async fn export(
         "xpTransactions": xp_transactions,
         // Weight goals decrypted, like the weigh-ins.
         "goals": goals::views(&state, user.id, true).await?,
-        // Plan 2d.
-        "leaguePointTransactions": [],
+        "leaguePointTransactions": league_points,
     })))
 }
 

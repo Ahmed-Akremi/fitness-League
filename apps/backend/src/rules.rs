@@ -2,10 +2,10 @@
 
 use std::collections::HashMap;
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use sqlx::MySqlPool;
 
-use crate::error::AppError;
+use crate::{error::AppError, modules::badges::Division};
 
 #[derive(Deserialize)]
 pub struct LevelTitle {
@@ -57,10 +57,36 @@ pub struct Rules {
     pub baseline_first_logs: i64,
     /// A record beyond this many times the expected progress is held for review.
     pub progress_ceiling_ratio: f64,
+    /// Days after a baseline is final during which a too-good performance corrects it.
+    pub baseline_audit_days: i64,
+
+    // The weekly score and the league (§5.5, §5.10.4).
+    /// Progress is the best of these last days against the best before them.
+    pub progress_window_days: i64,
+    /// A progress ratio beyond this earns nothing more.
+    pub progress_reward_cap: f64,
+    /// How many metrics the progress and performance components average.
+    pub progress_top_n: usize,
+    pub lp_weights: LpWeights,
+    pub weekly_lp_per_point: f64,
+    /// A week closes this long after its end, so late syncs still count.
+    pub week_grace_hours: i64,
+    pub season_soft_reset_ratio: f64,
+    /// The LP from which each division starts.
+    pub division_thresholds: HashMap<Division, i64>,
     /// By exercise code.
     pub strength_standards: HashMap<String, StrengthStandard>,
     /// By metric code, in seconds: lower is better.
     pub running_standards: HashMap<String, Tiers>,
+}
+
+/// The share of each component in the weekly total.
+#[derive(Deserialize, Serialize)]
+pub struct LpWeights {
+    pub progress: f64,
+    pub consistency: f64,
+    pub performance: f64,
+    pub challenge: f64,
 }
 
 /// The value from which an athlete is intermediate, then advanced.
@@ -181,6 +207,12 @@ pub mod tests {
         assert_eq!(rules.daily_xp_cap, 400);
         assert_eq!(rules.goal_milestone_xp, 150);
         assert_eq!(rules.weight_change_max_pct_per_week, 1.0);
+        assert_eq!(rules.progress_top_n, 3);
+        assert_eq!(rules.division_thresholds[&Division::Gold], 900);
+        assert_eq!(rules.lp_weights.progress, 0.4);
+        assert_eq!(rules.week_grace_hours, 24);
+        assert_eq!(rules.season_soft_reset_ratio, 0.5);
+        assert_eq!(rules.baseline_audit_days, 28);
         assert_eq!(
             rules.strength_standards["BACK_SQUAT"]
                 .absolute_kg

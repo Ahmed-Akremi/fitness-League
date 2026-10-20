@@ -3,6 +3,7 @@ pub mod auth;
 pub mod badges;
 pub mod goals;
 pub mod health;
+pub mod league;
 pub mod me;
 pub mod reference;
 pub mod scoring;

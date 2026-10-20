@@ -40,6 +40,33 @@ pub fn business_today(now: DateTime<Utc>, utc_offset_minutes: i32) -> NaiveDate 
     (now + Duration::minutes(i64::from(utc_offset_minutes))).date_naive()
 }
 
+/// The instant the business week holding `at` began: Monday 00:00 local, written in UTC.
+pub fn week_start(at: DateTime<Utc>, utc_offset_minutes: i32) -> DateTime<Utc> {
+    let day = business_day_start(at, utc_offset_minutes);
+    let since_monday = business_today(at, utc_offset_minutes)
+        .weekday()
+        .num_days_from_monday();
+    day - Duration::days(i64::from(since_monday))
+}
+
+/// The first instants of the calendar quarter holding `at` and of the next one, in business time:
+/// a season's bounds.
+pub fn quarter_bounds(at: DateTime<Utc>, utc_offset_minutes: i32) -> (DateTime<Utc>, DateTime<Utc>) {
+    let today = business_today(at, utc_offset_minutes);
+    let first = today.month0() / 3 * 3 + 1;
+    let start = NaiveDate::from_ymd_opt(today.year(), first, 1);
+    let end = if first == 10 {
+        NaiveDate::from_ymd_opt(today.year() + 1, 1, 1)
+    } else {
+        NaiveDate::from_ymd_opt(today.year(), first + 3, 1)
+    };
+    let at_midnight = |date: Option<NaiveDate>| {
+        date.unwrap_or(today).and_time(NaiveTime::MIN).and_utc()
+            - Duration::minutes(i64::from(utc_offset_minutes))
+    };
+    (at_midnight(start), at_midnight(end))
+}
+
 /// The instant the business day holding `at` began: local midnight, written in UTC.
 pub fn business_day_start(at: DateTime<Utc>, utc_offset_minutes: i32) -> DateTime<Utc> {
     let offset = Duration::minutes(i64::from(utc_offset_minutes));
@@ -58,6 +85,19 @@ mod tests {
 
     fn date(y: i32, m: u32, d: u32) -> NaiveDate {
         NaiveDate::from_ymd_opt(y, m, d).unwrap()
+    }
+
+    #[test]
+    fn weeks_and_quarters() {
+        let at = |m, d, h, min| Utc.with_ymd_and_hms(2026, m, d, h, min, 0).unwrap();
+        // Monday 2026-10-19 00:00 in Tunis is 2026-10-18 23:00Z.
+        assert_eq!(week_start(at(10, 20, 10, 0), 60), at(10, 18, 23, 0));
+        assert_eq!(week_start(at(10, 18, 23, 30), 60), at(10, 18, 23, 0));
+        assert_eq!(week_start(at(10, 18, 22, 30), 60), at(10, 11, 23, 0));
+        assert_eq!(
+            quarter_bounds(at(10, 20, 10, 0), 60),
+            (at(9, 30, 23, 0), at(12, 31, 23, 0))
+        );
     }
 
     #[test]

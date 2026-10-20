@@ -38,13 +38,12 @@ struct Milestone {
     reached: bool,
 }
 
-/// The active goals of the account with their milestones in order: weight goals, or the
-/// strength and running ones. Habit goals move with the week (plan 2d).
+/// The active goals of the account of the two `types`, with their milestones in order.
 async fn active(
     tx: &mut MySqlConnection,
     state: &AppState,
     user: Uuid,
-    weight: bool,
+    types: [&str; 2],
 ) -> Result<Vec<Goal>, AppError> {
     let rows = sqlx::query!(
         r#"SELECT g.id AS "id: Uuid", g.exercise_id AS "exercise_id?: Uuid", m.code AS metric, g.direction,
@@ -53,10 +52,11 @@ async fn active(
                   mi.reached_at IS NOT NULL AS "reached!: i64"
            FROM goals g JOIN metric_types m ON m.id = g.metric_type_id
              JOIN goal_milestones mi ON mi.goal_id = g.id
-           WHERE g.user_id = ? AND g.status = 'ACTIVE' AND g.type <> 'HABIT' AND (g.type = 'WEIGHT') = ?
+           WHERE g.user_id = ? AND g.status = 'ACTIVE' AND g.type IN (?, ?)
            ORDER BY g.id, mi.position"#,
         user,
-        weight
+        types[0],
+        types[1]
     )
     .fetch_all(&mut *tx)
     .await?;
@@ -169,7 +169,7 @@ pub async fn on_workout(
     observations: &[Observation],
     held: &HashSet<Uuid>,
 ) -> Result<(), AppError> {
-    for goal in active(tx, state, user, false).await? {
+    for goal in active(tx, state, user, ["STRENGTH", "RUNNING"]).await? {
         let Some(exercise) = goal.exercise.filter(|e| !held.contains(e)) else {
             continue;
         };
@@ -194,7 +194,7 @@ pub async fn on_weigh_in(
     latest_kg: f64,
 ) -> Result<(), AppError> {
     let now = Utc::now();
-    for goal in active(tx, state, user, true).await? {
+    for goal in active(tx, state, user, ["WEIGHT", "WEIGHT"]).await? {
         let Some(start) = goal.start_kg else {
             continue;
         };
@@ -208,6 +208,47 @@ pub async fn on_weigh_in(
                 rules.weight_change_max_pct_per_week,
             );
         credit(tx, rules, user, &goal, credited, None, now).await?;
+    }
+    Ok(())
+}
+
+/// The habit goals at a week's close: a week with at least the target's training days counts one
+/// more, any other starts the count again (the old API's `onWeekClosed`).
+pub async fn on_week_closed(
+    tx: &mut MySqlConnection,
+    state: &AppState,
+    rules: &Rules,
+    user: Uuid,
+    training_days: i64,
+    at: DateTime<Utc>,
+) -> Result<(), AppError> {
+    let habits = sqlx::query!(
+        r#"SELECT id AS "id: Uuid", CAST(target_value AS DOUBLE) AS "target!: f64", habit_weeks_met
+           FROM goals WHERE user_id = ? AND type = 'HABIT' AND status = 'ACTIVE'"#,
+        user
+    )
+    .fetch_all(&mut *tx)
+    .await?;
+    let mut weeks = std::collections::HashMap::new();
+    for h in habits {
+        let met = if training_days as f64 >= h.target {
+            h.habit_weeks_met + 1
+        } else {
+            0
+        };
+        sqlx::query!(
+            "UPDATE goals SET habit_weeks_met = ? WHERE id = ? AND user_id = ?",
+            met,
+            h.id,
+            user
+        )
+        .execute(&mut *tx)
+        .await?;
+        weeks.insert(h.id, met);
+    }
+    for goal in active(tx, state, user, ["HABIT", "HABIT"]).await? {
+        let met = weeks.get(&goal.id).copied().unwrap_or_default();
+        credit(tx, rules, user, &goal, f64::from(met), None, at).await?;
     }
     Ok(())
 }
