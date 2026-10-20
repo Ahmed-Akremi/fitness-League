@@ -141,11 +141,12 @@ async fn progress_is_measured_against_the_expected_rate(
     assert_eq!(m["metric"], "E1RM");
     assert_eq!(m["reference"], 112.5);
     assert_eq!(m["current"], 116.67);
-    assert_eq!(m["ratio"], 1.235);
-    assert_eq!(m["progressScore"], 82.3);
+    // (116.67 − 112.5) / 112.5 = 3.707 %, against 3 % expected.
+    assert_eq!(m["ratio"], 1.236);
+    assert_eq!(m["progressScore"], 82.4);
     assert_eq!(m["cappedForPlausibility"], false);
     assert_eq!(m["weekBest"], 116.67);
     assert_eq!(m["performanceRatio"], 1.0);
-    assert_eq!(week["components"]["progress"], 82.3);
+    assert_eq!(week["components"]["progress"], 82.37);
     assert_eq!(week["components"]["performance"], 100.0);
 }
