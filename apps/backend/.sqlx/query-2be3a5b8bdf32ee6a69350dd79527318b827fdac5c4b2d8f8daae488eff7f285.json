@@ -1,6 +1,6 @@
 {
   "db_name": "MySQL",
-  "query": "SELECT g.id AS \"id: Uuid\", g.exercise_id AS \"exercise_id?: Uuid\", m.code AS metric, g.direction,\n                  g.start_date, g.start_value_enc, mi.id AS \"milestone_id: Uuid\", mi.position,\n                  CAST(mi.target_value AS DOUBLE) AS \"target_value?: f64\", mi.target_value_enc,\n                  mi.reached_at IS NOT NULL AS \"reached!: i64\"\n           FROM goals g JOIN metric_types m ON m.id = g.metric_type_id\n             JOIN goal_milestones mi ON mi.goal_id = g.id\n           WHERE g.user_id = ? AND g.status = 'ACTIVE' AND g.type <> 'HABIT' AND (g.type = 'WEIGHT') = ?\n           ORDER BY g.id, mi.position",
+  "query": "SELECT g.id AS \"id: Uuid\", g.exercise_id AS \"exercise_id?: Uuid\", m.code AS metric, g.direction,\n                  g.start_date, g.start_value_enc, mi.id AS \"milestone_id: Uuid\", mi.position,\n                  CAST(mi.target_value AS DOUBLE) AS \"target_value?: f64\", mi.target_value_enc,\n                  mi.reached_at IS NOT NULL AS \"reached!: i64\"\n           FROM goals g JOIN metric_types m ON m.id = g.metric_type_id\n             JOIN goal_milestones mi ON mi.goal_id = g.id\n           WHERE g.user_id = ? AND g.status = 'ACTIVE' AND g.type IN (?, ?)\n           ORDER BY g.id, mi.position",
   "describe": {
     "columns": [
       {
@@ -171,7 +171,7 @@
       }
     ],
     "parameters": {
-      "Right": 2
+      "Right": 3
     },
     "nullable": [
       false,
@@ -187,5 +187,5 @@
       false
     ]
   },
-  "hash": "55f184377dd111a023c016a8ddc0ef37e471795967a4804e57b961bb68fbf395"
+  "hash": "2be3a5b8bdf32ee6a69350dd79527318b827fdac5c4b2d8f8daae488eff7f285"
 }

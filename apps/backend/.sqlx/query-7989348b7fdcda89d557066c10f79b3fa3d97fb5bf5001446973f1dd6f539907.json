@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "UPDATE seasons SET status = 'ACTIVE' WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "7989348b7fdcda89d557066c10f79b3fa3d97fb5bf5001446973f1dd6f539907"
+}

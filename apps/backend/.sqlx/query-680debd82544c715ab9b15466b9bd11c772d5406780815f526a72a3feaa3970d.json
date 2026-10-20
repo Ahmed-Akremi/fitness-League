@@ -1,0 +1,230 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT t.user_id AS \"user_id!: Uuid\", t.lp AS \"lp!\", t.level AS \"level!\", t.division, t.ranked AS \"rank!: i64\",\n                      t.username AS \"username!\", t.full_name AS \"full_name!\", t.governorate_id AS \"governorate_id!: Uuid\",\n                      t.governorate_code AS \"governorate_code!\", t.name_fr AS \"name_fr!\", t.name_en AS \"name_en!\",\n                      t.name_ar AS \"name_ar!\", ls.`rank` AS \"previous?: i32\"\n               FROM (SELECT us.user_id, us.season_lp AS lp, us.level, us.division_code AS division,\n                            CAST(RANK() OVER (ORDER BY us.season_lp DESC) AS SIGNED) AS ranked,\n                            u.username, p.full_name, g.id AS governorate_id, g.code AS governorate_code,\n                            g.name_fr, g.name_en, g.name_ar\n                     FROM user_stats us JOIN users u ON u.id = us.user_id JOIN profiles p ON p.user_id = us.user_id\n                       JOIN user_settings s ON s.user_id = us.user_id JOIN governorates g ON g.id = p.governorate_id\n                     WHERE us.current_season_id = ? AND u.status = 'ACTIVE' AND u.email_verified_at IS NOT NULL\n                       AND p.calibration_ends_at <= ? AND s.show_on_leaderboards\n                       AND (? IS NULL OR p.governorate_id = ?)) t\n                 LEFT JOIN leaderboard_snapshots ls ON ls.snapshot_date = ? AND ls.season_id = ?\n                   AND ls.scope_type = ? AND ls.scope_id = ? AND ls.user_id = t.user_id\n               WHERE t.lp > ? OR (t.lp = ? AND t.user_id < ?)\n               ORDER BY t.lp, t.user_id DESC\n               LIMIT ?",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "user_id!: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": {
+          "Table": {
+            "table": "user_stats",
+            "name": "user_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "lp!",
+        "type_info": {
+          "type": "Long",
+          "flags": "",
+          "collation": 63,
+          "max_size": 11
+        },
+        "origin": {
+          "Table": {
+            "table": "user_stats",
+            "name": "lp"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "level!",
+        "type_info": {
+          "type": "Long",
+          "flags": "",
+          "collation": 63,
+          "max_size": 11
+        },
+        "origin": {
+          "Table": {
+            "table": "user_stats",
+            "name": "level"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "division",
+        "type_info": {
+          "type": "VarString",
+          "flags": "BINARY",
+          "collation": 224,
+          "max_size": 64
+        },
+        "origin": {
+          "Table": {
+            "table": "user_stats",
+            "name": "division"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "rank!: i64",
+        "type_info": {
+          "type": "LongLong",
+          "flags": "NOT_NULL",
+          "collation": 63,
+          "max_size": 21
+        },
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 5,
+        "name": "username!",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 80
+        },
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "username"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "full_name!",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 320
+        },
+        "origin": {
+          "Table": {
+            "table": "profiles",
+            "name": "full_name"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "governorate_id!: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": {
+          "Table": {
+            "table": "governorates",
+            "name": "governorate_id"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "governorate_code!",
+        "type_info": {
+          "type": "VarString",
+          "flags": "BINARY | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 64
+        },
+        "origin": {
+          "Table": {
+            "table": "governorates",
+            "name": "governorate_code"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "name_fr!",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 320
+        },
+        "origin": {
+          "Table": {
+            "table": "governorates",
+            "name": "name_fr"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "name_en!",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 320
+        },
+        "origin": {
+          "Table": {
+            "table": "governorates",
+            "name": "name_en"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "name_ar!",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 320
+        },
+        "origin": {
+          "Table": {
+            "table": "governorates",
+            "name": "name_ar"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "previous?: i32",
+        "type_info": {
+          "type": "Long",
+          "flags": "NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 11
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.leaderboard_snapshots",
+            "name": "rank"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 12
+    },
+    "nullable": [
+      true,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "680debd82544c715ab9b15466b9bd11c772d5406780815f526a72a3feaa3970d"
+}

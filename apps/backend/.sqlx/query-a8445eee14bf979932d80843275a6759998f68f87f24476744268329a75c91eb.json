@@ -1,0 +1,77 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT exercise_id AS \"exercise: Uuid\", metric_type_id AS \"metric: Uuid\",\n                  CAST(value AS DOUBLE) AS \"value!: f64\", observed_at\n           FROM metric_observations\n           WHERE user_id = ? AND qualifier = 0 AND counts_for_competition AND observed_at < ?",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "exercise: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | MULTIPLE_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.metric_observations",
+            "name": "exercise_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "metric: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | MULTIPLE_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.metric_observations",
+            "name": "metric_type_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "value!: f64",
+        "type_info": {
+          "type": "Double",
+          "flags": "BINARY",
+          "collation": 63,
+          "max_size": 22
+        },
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 3,
+        "name": "observed_at",
+        "type_info": {
+          "type": "Datetime",
+          "flags": "NOT_NULL | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 26
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.metric_observations",
+            "name": "observed_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "a8445eee14bf979932d80843275a6759998f68f87f24476744268329a75c91eb"
+}

@@ -1,0 +1,43 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT CAST(value AS DOUBLE) AS \"value!: f64\", observed_at FROM metric_observations\n               WHERE user_id = ? AND exercise_id = ? AND metric_type_id = ? AND qualifier = 0\n                 AND counts_for_competition AND observed_at > ? AND observed_at < ?\n               ORDER BY observed_at",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "value!: f64",
+        "type_info": {
+          "type": "Double",
+          "flags": "BINARY",
+          "collation": 63,
+          "max_size": 22
+        },
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "observed_at",
+        "type_info": {
+          "type": "Datetime",
+          "flags": "NOT_NULL | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 26
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.metric_observations",
+            "name": "observed_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 5
+    },
+    "nullable": [
+      true,
+      false
+    ]
+  },
+  "hash": "34635d356e2b7e47f1fc8bdcf96cb8d3760c455d447073b24f67da06e98daa5d"
+}

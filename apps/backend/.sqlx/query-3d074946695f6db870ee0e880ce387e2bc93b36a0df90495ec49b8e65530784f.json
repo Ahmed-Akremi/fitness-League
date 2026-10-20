@@ -1,0 +1,31 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT s.id AS \"id: Uuid\" FROM seasons s JOIN profiles p ON p.country_code = s.country_code\n           WHERE p.user_id = ? AND s.starts_at <= ? AND s.ends_at > ?\n           ORDER BY s.starts_at DESC LIMIT 1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | PRIMARY_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.seasons",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "3d074946695f6db870ee0e880ce387e2bc93b36a0df90495ec49b8e65530784f"
+}

@@ -547,3 +547,18 @@ division.
 - The worker closes a week and a season on a test clock (the tests of tasks 5 and 7).
 - In the app: the home screen shows the national and governorate ranks and this week's score; the league screen
   lists the national and governorate boards with the movement arrows, and jumps to my rank.
+
+## Built (2026-10-20): where the code departs from this plan
+
+- Test values: `progress_is_measured_against_the_expected_rate` reads a ratio of 1.236, a metric score of 82.4 and a
+  progress component of 82.37 (the plan computed 116.67 − 112.5 as 4.16); in the soft reset test, C at 500 LP is
+  Silver and keeps 450, not 250.
+- `ledger::reverse_lp` takes the athlete too and reverses only that athlete's entry (the house's `user_id = ?`
+  rule). `milestones::on_week_closed` takes the state, which `milestones::active` needs for weight goals;
+  `active` now selects goals by type.
+- `seasons::plan` (the seed's seasons) was written in task 2, in `seasons.rs`; `seed::Summary` gains no
+  `seasons` count, since it reports the catalogue and two runs must return the same summary.
+- The leaderboard query strings ignore unknown keys, as `GET /workouts` does.
+- `cargo audit` found two advisories published on 2026-10-19 and 20 (`rustls-webpki` 0.103.15,
+  RUSTSEC-2026-0382; `webpki-roots` 1.0.9, RUSTSEC-2026-0381): both crates are updated to their patched
+  releases.

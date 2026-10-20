@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "UPDATE user_streaks SET longest_weeks = GREATEST(longest_weeks, IF(?, current_weeks + 1, 0)), current_weeks = IF(?, current_weeks + 1, 0) WHERE user_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "e333288134585648285470067084a3225c18a3b46d01bd5ee5099ede22251812"
+}

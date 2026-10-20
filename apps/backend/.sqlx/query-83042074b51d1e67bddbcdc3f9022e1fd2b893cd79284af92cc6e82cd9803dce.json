@@ -1,0 +1,31 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT experience_level_declared AS \"level?: ExperienceLevel\" FROM profiles WHERE user_id = ?",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "level?: ExperienceLevel",
+        "type_info": {
+          "type": "String",
+          "flags": "ENUM",
+          "collation": 224,
+          "max_size": 48
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.profiles",
+            "name": "experience_level_declared"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "83042074b51d1e67bddbcdc3f9022e1fd2b893cd79284af92cc6e82cd9803dce"
+}

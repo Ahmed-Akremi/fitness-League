@@ -1,0 +1,65 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT starts_at, ends_at, status FROM seasons WHERE country_code = ? FOR UPDATE",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "starts_at",
+        "type_info": {
+          "type": "Datetime",
+          "flags": "NOT_NULL | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 26
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.seasons",
+            "name": "starts_at"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "ends_at",
+        "type_info": {
+          "type": "Datetime",
+          "flags": "NOT_NULL | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 26
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.seasons",
+            "name": "ends_at"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "status",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | ENUM",
+          "collation": 224,
+          "max_size": 36
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.seasons",
+            "name": "status"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "ad23197ee0945b4a373e1d538e132084a075ccc71b7ea712631118095c20530c"
+}

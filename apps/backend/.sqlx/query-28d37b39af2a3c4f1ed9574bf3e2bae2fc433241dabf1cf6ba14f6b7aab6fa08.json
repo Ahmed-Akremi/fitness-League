@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "INSERT INTO league_point_transactions (id, user_id, season_id, amount, reason, source_type, source_id, rule_set_version, explanation, effective_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 10
+    },
+    "nullable": []
+  },
+  "hash": "28d37b39af2a3c4f1ed9574bf3e2bae2fc433241dabf1cf6ba14f6b7aab6fa08"
+}

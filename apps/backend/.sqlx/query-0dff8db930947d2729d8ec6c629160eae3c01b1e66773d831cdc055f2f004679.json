@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "INSERT IGNORE INTO job_runs (id, job, run_key, status, started_at) VALUES (?, ?, ?, 'RUNNING', ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "0dff8db930947d2729d8ec6c629160eae3c01b1e66773d831cdc055f2f004679"
+}

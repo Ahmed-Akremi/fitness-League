@@ -65,8 +65,13 @@ and `GET /me/progress/metrics/{exerciseId}/{metricCode}`. Plan 2c adds goals: `G
 `POST /goals/suggestions` and `DELETE /goals/{id}`, with milestones that workouts and weigh-ins reach, safe
 pacing for body-weight goals (their values encrypted), and the onboarding `goals` step. It also adds badges:
 `GET /badges` lists the catalogue with the athlete's progress, and badges are awarded in the same
-transactions. Plan 2d (league) comes next, then parts 3 to 6 (gyms and social, competitions, admin,
-cut-over).
+transactions. Plan 2d adds the league: `GET /me/weekly-scores/current` (the running week's provisional score),
+`GET /me/lp`, `GET /me/ranks`, and the national and governorate leaderboards (`GET /leaderboards/national`,
+`/leaderboards/governorates/{id}`, each with `/me`). The worker closes each week into its final score and its
+League Points (with the baseline audit, the weekly streak and the habit goals), opens and closes seasons with a
+soft reset, finalizes calibrations, sweeps badges, snapshots the ranks for the movement arrows and reconciles the
+balances, each job once per key through `job_runs`. Part 2 is complete; parts 3 to 6 (gyms and social,
+competitions, admin, cut-over) come next.
 
 One-time setup (Rust 1.99 through `rustup`, Docker for MariaDB, Redis and Mailpit):
 

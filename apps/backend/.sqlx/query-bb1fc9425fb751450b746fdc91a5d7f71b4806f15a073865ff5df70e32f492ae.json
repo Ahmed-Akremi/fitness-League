@@ -1,0 +1,128 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT season_id AS \"season: Uuid\", amount, reason, source_type, source_id, effective_at,\n                  EXISTS (SELECT 1 FROM league_point_transactions r WHERE r.reverses_id = l.id) AS \"reversed!: bool\"\n           FROM league_point_transactions l WHERE id = ? AND user_id = ?",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "season: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | MULTIPLE_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.league_point_transactions",
+            "name": "season_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "amount",
+        "type_info": {
+          "type": "Long",
+          "flags": "NOT_NULL | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 11
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.league_point_transactions",
+            "name": "amount"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "reason",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | ENUM | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 80
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.league_point_transactions",
+            "name": "reason"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "source_type",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | BINARY | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 128
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.league_point_transactions",
+            "name": "source_type"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "source_id",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | BINARY | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 256
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.league_point_transactions",
+            "name": "source_id"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "effective_at",
+        "type_info": {
+          "type": "Datetime",
+          "flags": "NOT_NULL | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 26
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.league_point_transactions",
+            "name": "effective_at"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "reversed!: bool",
+        "type_info": {
+          "type": "Long",
+          "flags": "NOT_NULL | BINARY",
+          "collation": 63,
+          "max_size": 1
+        },
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "bb1fc9425fb751450b746fdc91a5d7f71b4806f15a073865ff5df70e32f492ae"
+}

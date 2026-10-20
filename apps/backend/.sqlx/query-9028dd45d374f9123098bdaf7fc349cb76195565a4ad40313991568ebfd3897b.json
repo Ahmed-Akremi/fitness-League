@@ -1,0 +1,26 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT CAST(GREATEST(\n                          COALESCE(FIELD(us.division_code, 'BRONZE', 'SILVER', 'GOLD', 'PLATINUM', 'DIAMOND', 'ELITE'), 0),\n                          COALESCE((SELECT MAX(ss.division + 0) FROM season_standings ss WHERE ss.user_id = us.user_id), 0))\n                        AS SIGNED) AS \"rank!: i64\"\n                   FROM user_stats us WHERE us.user_id = ?",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "rank!: i64",
+        "type_info": {
+          "type": "LongLong",
+          "flags": "NOT_NULL | BINARY",
+          "collation": 63,
+          "max_size": 10
+        },
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "9028dd45d374f9123098bdaf7fc349cb76195565a4ad40313991568ebfd3897b"
+}

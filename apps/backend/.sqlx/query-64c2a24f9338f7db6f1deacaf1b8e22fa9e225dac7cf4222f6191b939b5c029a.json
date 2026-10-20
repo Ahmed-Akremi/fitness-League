@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "UPDATE job_runs SET status = 'RUNNING', started_at = ?, finished_at = NULL, error = NULL WHERE job = ? AND run_key = ? AND (status = 'FAILED' OR (status = 'RUNNING' AND started_at < ?))",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "64c2a24f9338f7db6f1deacaf1b8e22fa9e225dac7cf4222f6191b939b5c029a"
+}

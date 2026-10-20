@@ -135,7 +135,7 @@ pub fn audited_baseline(
 /// Consecutive weeks met, counted back from the latest; a missed week or a gap stops it.
 pub fn current_streak(weeks: &[(NaiveDate, bool)]) -> i64 {
     let mut sorted = weeks.to_vec();
-    sorted.sort_by(|a, b| b.0.cmp(&a.0));
+    sorted.sort_by_key(|w| std::cmp::Reverse(w.0));
     let mut streak = 0;
     let mut expected: Option<NaiveDate> = None;
     for (week, met) in sorted {

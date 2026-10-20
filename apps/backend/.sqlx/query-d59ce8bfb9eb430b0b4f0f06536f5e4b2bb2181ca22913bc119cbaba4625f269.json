@@ -1,0 +1,26 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT user_id AS \"user: Uuid\" FROM workouts\n           WHERE status = 'ACCEPTED' AND performed_at >= ? AND performed_at < ?\n           UNION SELECT user_id FROM goals WHERE type = 'HABIT' AND status = 'ACTIVE'",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "user: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | BINARY",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "d59ce8bfb9eb430b0b4f0f06536f5e4b2bb2181ca22913bc119cbaba4625f269"
+}

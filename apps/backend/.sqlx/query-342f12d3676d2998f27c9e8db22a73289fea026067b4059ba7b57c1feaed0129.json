@@ -1,0 +1,128 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT b.id AS \"id: Uuid\", b.exercise_id AS \"exercise: Uuid\", b.metric_type_id AS \"metric: Uuid\",\n                  m.direction, CAST(b.effective_value AS DOUBLE) AS \"effective!: f64\",\n                  b.experience_level AS \"level?: ExperienceLevel\", b.finalized_at AS \"finalized!\"\n           FROM baselines b JOIN metric_types m ON m.id = b.metric_type_id\n           WHERE b.user_id = ? AND b.status = 'FINAL' AND b.finalized_at IS NOT NULL AND b.finalized_at < ?",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | PRIMARY_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.baselines",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "exercise: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | MULTIPLE_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.baselines",
+            "name": "exercise_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "metric: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | MULTIPLE_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.baselines",
+            "name": "metric_type_id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "direction",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | ENUM | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 64
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.metric_types",
+            "name": "direction"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "effective!: f64",
+        "type_info": {
+          "type": "Double",
+          "flags": "BINARY",
+          "collation": 63,
+          "max_size": 22
+        },
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 5,
+        "name": "level?: ExperienceLevel",
+        "type_info": {
+          "type": "String",
+          "flags": "ENUM",
+          "collation": 224,
+          "max_size": 48
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.baselines",
+            "name": "experience_level"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "finalized!",
+        "type_info": {
+          "type": "Datetime",
+          "flags": "BINARY",
+          "collation": 63,
+          "max_size": 26
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.baselines",
+            "name": "finalized_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "342f12d3676d2998f27c9e8db22a73289fea026067b4059ba7b57c1feaed0129"
+}

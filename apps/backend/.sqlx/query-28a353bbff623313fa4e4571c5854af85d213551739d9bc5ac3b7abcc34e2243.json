@@ -1,0 +1,65 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT experience_level_declared AS \"declared?: ExperienceLevel\",\n                  planned_training_days_per_week AS planned, calibration_ends_at\n           FROM profiles WHERE user_id = ?",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "declared?: ExperienceLevel",
+        "type_info": {
+          "type": "String",
+          "flags": "ENUM",
+          "collation": 224,
+          "max_size": 48
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.profiles",
+            "name": "experience_level_declared"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "planned",
+        "type_info": {
+          "type": "Tiny",
+          "flags": "NOT_NULL",
+          "collation": 63,
+          "max_size": 4
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.profiles",
+            "name": "planned_training_days_per_week"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "calibration_ends_at",
+        "type_info": {
+          "type": "Datetime",
+          "flags": "BINARY",
+          "collation": 63,
+          "max_size": 26
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.profiles",
+            "name": "calibration_ends_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      true
+    ]
+  },
+  "hash": "28a353bbff623313fa4e4571c5854af85d213551739d9bc5ac3b7abcc34e2243"
+}

@@ -1,0 +1,82 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT p.country_code, s.season_lp, s.current_season_id AS \"current: Uuid\", s.division_code\n           FROM profiles p JOIN user_stats s ON s.user_id = p.user_id WHERE p.user_id = ?",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "country_code",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | MULTIPLE_KEY | BINARY",
+          "collation": 224,
+          "max_size": 8
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.profiles",
+            "name": "country_code"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "season_lp",
+        "type_info": {
+          "type": "Long",
+          "flags": "NOT_NULL",
+          "collation": 63,
+          "max_size": 11
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.user_stats",
+            "name": "season_lp"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "current: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "MULTIPLE_KEY | BINARY",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.user_stats",
+            "name": "current_season_id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "division_code",
+        "type_info": {
+          "type": "VarString",
+          "flags": "BINARY",
+          "collation": 224,
+          "max_size": 64
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.user_stats",
+            "name": "division_code"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "91ec86b87c950475b94c0e42c236fc837471a37635a5fc7210cb9cf3f4da21a8"
+}

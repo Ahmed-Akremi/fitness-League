@@ -1,0 +1,38 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT CAST(COALESCE((SELECT SUM(x.amount) FROM xp_transactions x WHERE x.user_id = us.user_id), 0) AS SIGNED) AS \"xp!: i64\",\n                      CAST(COALESCE((SELECT SUM(l.amount) FROM league_point_transactions l\n                                     WHERE l.user_id = us.user_id AND l.season_id = us.current_season_id), 0) AS SIGNED) AS \"lp!: i64\"\n               FROM user_stats us WHERE us.user_id = ? FOR UPDATE",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "xp!: i64",
+        "type_info": {
+          "type": "LongLong",
+          "flags": "NOT_NULL | BINARY",
+          "collation": 63,
+          "max_size": 21
+        },
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "lp!: i64",
+        "type_info": {
+          "type": "LongLong",
+          "flags": "NOT_NULL | BINARY",
+          "collation": 63,
+          "max_size": 21
+        },
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "3330fa2812768f624c737db41962744153e162bc47f4fb026a6e5343f9ef76ec"
+}

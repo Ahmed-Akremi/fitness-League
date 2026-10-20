@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "UPDATE user_stats SET season_lp = ?, current_season_id = ?, division_code = ? WHERE user_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "47b8d3d5680690d1f459b3b16ad7cc87b632e072c7b064072aabe24005661e30"
+}

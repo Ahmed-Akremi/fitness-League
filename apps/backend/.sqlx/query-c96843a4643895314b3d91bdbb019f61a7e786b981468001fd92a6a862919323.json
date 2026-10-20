@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "UPDATE seasons SET status = 'CLOSED', closed_at = ?, rule_set_version_at_close = ? WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "c96843a4643895314b3d91bdbb019f61a7e786b981468001fd92a6a862919323"
+}

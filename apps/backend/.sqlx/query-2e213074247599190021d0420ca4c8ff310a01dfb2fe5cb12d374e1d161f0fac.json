@@ -1,0 +1,26 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT user_id AS \"user: Uuid\" FROM xp_transactions WHERE created_at >= ?\n           UNION SELECT user_id FROM league_point_transactions WHERE created_at >= ?\n           UNION SELECT user_id FROM weekly_scores WHERE updated_at >= ?",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "user: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | BINARY",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "2e213074247599190021d0420ca4c8ff310a01dfb2fe5cb12d374e1d161f0fac"
+}

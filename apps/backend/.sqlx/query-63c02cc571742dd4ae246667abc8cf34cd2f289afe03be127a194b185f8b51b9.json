@@ -1,0 +1,43 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT week_start, consistency_c >= 100 AS \"met!: i64\" FROM weekly_scores\n                       WHERE user_id = ? ORDER BY week_start DESC LIMIT 60",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "week_start",
+        "type_info": {
+          "type": "Date",
+          "flags": "NOT_NULL | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 10
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.weekly_scores",
+            "name": "week_start"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "met!: i64",
+        "type_info": {
+          "type": "Long",
+          "flags": "NOT_NULL | BINARY",
+          "collation": 63,
+          "max_size": 1
+        },
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "63c02cc571742dd4ae246667abc8cf34cd2f289afe03be127a194b185f8b51b9"
+}
