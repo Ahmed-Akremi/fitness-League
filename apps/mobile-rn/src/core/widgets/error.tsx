@@ -63,11 +63,11 @@ export function errorMessage(t: T, error: unknown): string {
   }
 }
 
-export function ErrorText({ error }: { error: unknown }) {
+export function ErrorText({ error, testID }: { error: unknown; testID?: string }) {
   const t = useT();
   const { colors } = useTheme();
   if (error == null) return null;
-  return <Txt color={colors.error}>{errorMessage(t, error)}</Txt>;
+  return <Txt testID={testID} color={colors.error}>{errorMessage(t, error)}</Txt>;
 }
 
 export function ErrorView({ error, onRetry }: { error: unknown; onRetry?: () => void }) {

@@ -3,7 +3,7 @@
   "navHome": "الرئيسية",
   "navTrain": "التدريب",
   "navLeague": "الدوري",
-  "navChallenges": "الأهداف",
+  "navChallenges": "التحديات",
   "navProfile": "الملف",
   "login": "تسجيل الدخول",
   "register": "إنشاء حساب",
@@ -929,5 +929,13 @@
   "notificationsUnread": "{count, plural, =0{الإشعارات} =1{الإشعارات، إشعار واحد غير مقروء} other{الإشعارات، {count} غير مقروءة}}",
   "stepOf": "الخطوة {current} من {total}",
   "mainSport": "الرياضة الأساسية",
-  "done": "تم"
+  "done": "تم",
+  "greetingAfternoon": "مساء الخير يا {name}",
+  "quietHoursStart": "البداية",
+  "quietHoursEnd": "النهاية",
+  "remove": "إزالة",
+  "removeExerciseTitle": "إزالة {exercise}؟",
+  "removeExerciseMessage": "ستضيع المجموعات التي أدخلتها.",
+  "deleteQueuedTitle": "حذف هذه الحصة؟",
+  "deleteQueuedMessage": "لم تُرسَل قط، لذا ستضيع."
 }

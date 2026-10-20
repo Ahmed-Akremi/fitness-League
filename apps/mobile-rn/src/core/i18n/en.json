@@ -3,7 +3,7 @@
   "navHome": "Home",
   "navTrain": "Train",
   "navLeague": "League",
-  "navChallenges": "Goals",
+  "navChallenges": "Challenges",
   "navProfile": "Profile",
   "login": "Sign in",
   "register": "Create account",
@@ -929,5 +929,13 @@
   "notificationsUnread": "{count, plural, =0{Notifications} =1{Notifications, 1 unread} other{Notifications, {count} unread}}",
   "stepOf": "Step {current} of {total}",
   "mainSport": "main sport",
-  "done": "Done"
+  "done": "Done",
+  "greetingAfternoon": "Good afternoon, {name}",
+  "quietHoursStart": "Start",
+  "quietHoursEnd": "End",
+  "remove": "Remove",
+  "removeExerciseTitle": "Remove {exercise}?",
+  "removeExerciseMessage": "The sets you entered will be lost.",
+  "deleteQueuedTitle": "Delete this workout?",
+  "deleteQueuedMessage": "It was never sent, so it will be lost."
 }

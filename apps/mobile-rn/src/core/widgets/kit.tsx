@@ -1,7 +1,7 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { useNavigation } from 'expo-router';
 import { Children, Fragment, isValidElement, useEffect, useLayoutEffect, useState, type ComponentProps, type ReactNode } from 'react';
-import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View, type StyleProp, type TextInputProps, type ViewStyle } from 'react-native';
+import { AccessibilityInfo, ActivityIndicator, Modal, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View, type StyleProp, type TextInputProps, type ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { create } from 'zustand';
 
@@ -319,8 +319,8 @@ export function Menu({ items, label, icon = 'more-vert', testID }: { items: { la
   );
 }
 
-/** Modal dialog (Flutter AlertDialog). `input` adds a text field whose value is passed to onConfirm. */
-export function Dialog({ visible, title, message, confirmLabel, cancelLabel, onConfirm, onCancel, input, destructive, confirmDisabled }: {
+/** Modal dialog (Flutter AlertDialog). `input` adds a text field whose value is passed to onConfirm; `children` go under the message (a picker). */
+export function Dialog({ visible, title, message, confirmLabel, cancelLabel, onConfirm, onCancel, input, destructive, confirmDisabled, children }: {
   visible: boolean;
   title: string;
   message?: string;
@@ -331,6 +331,7 @@ export function Dialog({ visible, title, message, confirmLabel, cancelLabel, onC
   input?: { label: string; secure?: boolean; keyboardType?: TextInputProps['keyboardType']; testID?: string; initial?: string; valid?: (text: string) => boolean };
   destructive?: boolean;
   confirmDisabled?: boolean;
+  children?: ReactNode;
 }) {
   const { colors, dense } = useTheme();
   const [text, setText] = useState(input?.initial ?? '');
@@ -345,6 +346,7 @@ export function Dialog({ visible, title, message, confirmLabel, cancelLabel, onC
           <Txt variant="title" style={{ fontSize: 20 }}>{title}</Txt>
           {message ? <Txt>{message}</Txt> : null}
           {input && <TextField testID={input.testID} label={input.label} value={text} onChangeText={setText} secureTextEntry={input.secure} keyboardType={input.keyboardType} autoFocus />}
+          {children}
           <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 8 }}>
             <Button kind="text" label={cancelLabel} onPress={onCancel} />
             <Button testID="dialog-confirm" label={confirmLabel} disabled={!ok} onPress={() => onConfirm(text)} style={destructive ? { backgroundColor: colors.error } : undefined} />
@@ -359,21 +361,37 @@ export function Dialog({ visible, title, message, confirmLabel, cancelLabel, onC
 
 const useToastStore = create<{ message: string | null; id: number }>(() => ({ message: null, id: 0 }));
 
-export const toast = (message: string) => useToastStore.setState((s) => ({ message, id: s.id + 1 }));
+/** Shows a short message; screen readers read it out at once (the web relies on the live region below). */
+export const toast = (message: string) => {
+  useToastStore.setState((s) => ({ message, id: s.id + 1 }));
+  AccessibilityInfo.announceForAccessibility?.(message);
+};
+
+function useScreenReader() {
+  const [on, setOn] = useState(false);
+  useEffect(() => {
+    AccessibilityInfo.isScreenReaderEnabled?.().then(setOn).catch(() => {});
+    const sub = AccessibilityInfo.addEventListener?.('screenReaderChanged', setOn);
+    return () => sub?.remove();
+  }, []);
+  return on;
+}
 
 export function ToastHost() {
   const { message, id } = useToastStore();
   const { colors } = useTheme();
+  // HIG: minimise time-boxed elements — with VoiceOver or TalkBack on, the message stays long enough to be reached.
+  const reader = useScreenReader();
   useEffect(() => {
     if (!message) return;
-    const t = setTimeout(() => useToastStore.setState({ message: null }), 3500);
+    const t = setTimeout(() => useToastStore.setState({ message: null }), reader ? 10_000 : 3500);
     return () => clearTimeout(t);
-  }, [message, id]);
+  }, [message, id, reader]);
   if (!message) return null;
   return (
     <SafeAreaView edges={['bottom']} pointerEvents="none" style={StyleSheet.absoluteFill}>
       <View style={{ flex: 1, justifyContent: 'flex-end', padding: 16, paddingBottom: 72 }}>
-        <View accessibilityLiveRegion="polite" style={{ backgroundColor: colors.surfaceHigh, borderRadius: 12, padding: 14 }}>
+        <View accessibilityLiveRegion={Platform.OS === 'web' ? 'polite' : undefined} style={{ backgroundColor: colors.surfaceHigh, borderRadius: 12, padding: 14 }}>
           <Txt>{message}</Txt>
         </View>
       </View>

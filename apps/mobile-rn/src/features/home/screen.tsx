@@ -5,7 +5,7 @@ import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { Json } from '../../core/api/client';
-import { useLocale, useT } from '../../core/prefs';
+import { useLocale, useT, type T } from '../../core/prefs';
 import { displayText, radius, space, useTheme } from '../../core/theme';
 import { formatDate, formatMetric, localized } from '../../core/utils/format';
 import { AvatarBadge, CountdownText, divisionColor, divisionLabel, GymLogo, Loading, SectionHeader, StatCard, XpBar } from '../../core/widgets/common';
@@ -21,6 +21,13 @@ import { CompetitionCarousel } from './competition-carousel';
 import { NotificationBell } from '../notifications/screens';
 import { useRecords } from '../progress/api';
 import { useApi } from '../../core/services';
+
+/** Greeting for the hour: morning before noon, afternoon until 6 pm, evening after. */
+export const greetingKey = (hour: number) => (hour < 12 ? 'greetingMorning' : hour < 18 ? 'greetingAfternoon' : 'greetingEvening');
+const greeting = (t: T, hour: number, name: string) => {
+  const key = greetingKey(hour);
+  return key === 'greetingMorning' ? t('greetingMorning', { name }) : key === 'greetingAfternoon' ? t('greetingAfternoon', { name }) : t('greetingEvening', { name });
+};
 
 /** "I have a goal. I have progress. I have a rank. I have a reason to train today." (spec §1, §19.3) */
 export function HomeScreen() {
@@ -74,7 +81,7 @@ function HomeBody({ me }: { me: Me }) {
     <>
       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
         <Txt color={colors.outline} style={{ flex: 1, fontWeight: '800', letterSpacing: 1.1, fontSize: 16 }}>
-          {(new Date().getHours() < 17 ? t('greetingMorning', { name: firstName }) : t('greetingEvening', { name: firstName })).toUpperCase()}
+          {greeting(t, new Date().getHours(), firstName).toUpperCase()}
         </Txt>
         <NotificationBell />
       </View>
@@ -159,7 +166,7 @@ function HomeBody({ me }: { me: Me }) {
           </Pressable>
         ))}
       </ScrollView>
-      <Button testID="home-log-workout" icon="add" label={t('logWorkout').toUpperCase()} onPress={() => router.push('/workouts/new')} style={{ marginTop: 8 }} />
+      <Button testID="home-log-workout" icon="add" label={t('logWorkout')} onPress={() => router.push('/workouts/new')} style={{ marginTop: 8 }} />
       <NewsSection />
     </>
   );

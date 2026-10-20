@@ -12,7 +12,7 @@ import { localized } from '../../core/utils/format';
 import { newClientId } from '../../core/utils/ids';
 import { Loading, SectionHeader, TimeField } from '../../core/widgets/common';
 import { ErrorText, ErrorView } from '../../core/widgets/error';
-import { Button, Card, Icon, IconButton, Screen, TextField, Txt, toast } from '../../core/widgets/kit';
+import { Button, Card, Dialog, Icon, IconButton, Screen, TextField, Txt, toast } from '../../core/widgets/kit';
 import { DateField, Select } from '../../core/widgets/pickers';
 import { meKey } from '../me/api';
 import { useExercises, useSports, type RefItem } from '../reference/api';
@@ -36,6 +36,8 @@ interface Entry {
 }
 
 const emptySet = (): SetRow => ({ reps: '', weight: '', distance: '', time: '', warmup: false });
+/** Something typed that removing the exercise would lose. */
+const hasWork = (e: Entry) => e.seconds != null || e.sets.some((s) => [s.reps, s.weight, s.distance, s.time].some((v) => v.trim() !== ''));
 const metrics = (e: RefItem) => (Array.isArray(e.trackedMetrics) ? (e.trackedMetrics as string[]) : []);
 const isCardio = (e: RefItem) => metrics(e).includes('DISTANCE');
 const isBodyweight = (e: RefItem) => e.isBodyweight === true;
@@ -76,7 +78,9 @@ export function LogWorkoutScreen() {
   const nextKey = useRef(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
+  const [removing, setRemoving] = useState<Entry | null>(null);
 
+  const remove = (key: number) => setEntries((l) => l.filter((x) => x.key !== key));
   const update = (key: number, fn: (e: Entry) => Entry) => setEntries((list) => list.map((e) => (e.key === key ? fn(e) : e)));
   const add = (exercise: RefItem, seconds: number | null = null) => ({ key: nextKey.current++, exercise, sets: [emptySet()], seconds });
   const timesComplete = entries.every((e) => !isTimed(e.exercise) || (e.seconds != null && e.seconds > 0));
@@ -161,7 +165,7 @@ export function LogWorkoutScreen() {
       </View>
 
       {entries.map((e, i) => (
-        <ExerciseCard key={e.key} index={i} entry={e} onChange={(fn) => update(e.key, fn)} onRemove={() => setEntries((l) => l.filter((x) => x.key !== e.key))} />
+        <ExerciseCard key={e.key} index={i} entry={e} onChange={(fn) => update(e.key, fn)} onRemove={() => (hasWork(e) ? setRemoving(e) : remove(e.key))} />
       ))}
 
       {sportId &&
@@ -192,6 +196,19 @@ export function LogWorkoutScreen() {
       {!timesComplete && <Txt color={colors.error}>{t('timeRequired')}</Txt>}
       <ErrorText error={error} />
       <Button testID="log-save" label={t('save')} busy={busy} disabled={!sportId || entries.length === 0 || !timesComplete} onPress={() => save(workoutType(sport))} />
+      <Dialog
+        visible={removing != null}
+        title={t('removeExerciseTitle', { exercise: removing ? localized(removing.exercise.name, locale) : '' })}
+        message={t('removeExerciseMessage')}
+        confirmLabel={t('remove')}
+        cancelLabel={t('cancel')}
+        destructive
+        onCancel={() => setRemoving(null)}
+        onConfirm={() => {
+          if (removing) remove(removing.key);
+          setRemoving(null);
+        }}
+      />
     </Screen>
   );
 }
@@ -209,7 +226,7 @@ function ExerciseCard({ index, entry, onChange, onRemove }: { index: number; ent
     <Card testID={`exercise-${index}`} style={{ gap: 8 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
         <Txt variant="title" style={{ flex: 1 }}>{localized(entry.exercise.name, locale)}</Txt>
-        <IconButton icon="close" label={t('delete')} onPress={onRemove} />
+        <IconButton testID={`exercise-${index}-remove`} icon="close" label={t('delete')} onPress={onRemove} />
       </View>
       {isTimed(entry.exercise) ? (
         <TimeField testID={`time-${index}`} label={t('finishTime')} initialSeconds={entry.seconds ?? undefined} onChange={(v) => onChange((e) => ({ ...e, seconds: v }))} />

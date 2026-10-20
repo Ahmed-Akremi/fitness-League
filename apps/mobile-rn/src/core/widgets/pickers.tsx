@@ -98,8 +98,11 @@ export function FieldButton({ label, value, icon, error, onPress, testID, bare }
   );
 }
 
-/** Date (and optionally time) field backed by the platform picker. */
-export function DateField({ label, value, onChange, minimumDate, maximumDate, mode = 'date', placeholder, error, testID }: { label: string; value: Date | null; onChange: (d: Date) => void; minimumDate?: Date; maximumDate?: Date; mode?: 'date' | 'datetime'; placeholder?: string; error?: string | null; testID?: string }) {
+/**
+ * Date (and optionally time) field backed by the platform picker. `display` (iOS): the calendar by default; `spinner`
+ * for dates far back (a birth date), which stays open while the wheels turn, until Done.
+ */
+export function DateField({ label, value, onChange, minimumDate, maximumDate, mode = 'date', placeholder, error, testID, display = 'inline' }: { label: string; value: Date | null; onChange: (d: Date) => void; minimumDate?: Date; maximumDate?: Date; mode?: 'date' | 'datetime'; placeholder?: string; error?: string | null; testID?: string; display?: 'inline' | 'spinner' }) {
   const t = useT();
   const locale = useLocale();
   const [step, setStep] = useState<'date' | 'time' | null>(null);
@@ -110,14 +113,19 @@ export function DateField({ label, value, onChange, minimumDate, maximumDate, mo
       <FieldButton testID={testID} label={label} value={shown} icon="calendar-month" error={error} onPress={() => setStep('date')} />
       {step && (
         <DateTimePicker
+          testID={testID ? `${testID}-picker` : undefined}
           value={draft ?? value ?? maximumDate ?? new Date()}
           mode={step}
-          display={Platform.OS === 'ios' ? 'inline' : 'default'}
+          display={Platform.OS === 'ios' ? display : 'default'}
           minimumDate={minimumDate}
           maximumDate={maximumDate}
           onChange={(event, d) => {
             if (event.type !== 'set' || !d) {
               setStep(null);
+              return;
+            }
+            if (Platform.OS === 'ios' && display === 'spinner' && mode === 'date') {
+              onChange(d);
               return;
             }
             if (step === 'date' && mode === 'datetime') {

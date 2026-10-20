@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { FlatList, Pressable, RefreshControl, View } from 'react-native';
 
@@ -47,7 +48,7 @@ export function LeagueScreen() {
             <LeaderboardList scope="gym" target={{ gymId: gym.id }} myId={me?.id} />
           </View>
         ) : (
-          <EmptyState icon="fitness-center" message={t('noGym')} />
+          <EmptyState icon="fitness-center" message={t('noGym')} actionLabel={t('findGym')} onAction={() => router.push('/gyms')} />
         );
       default:
         return <LeaderboardList scope={s} myId={me?.id} />;
@@ -123,7 +124,12 @@ export function LeaderboardList({ scope, target = {}, myId }: { scope: LeagueSco
 
   if (error != null && rows.length === 0) return <ErrorView error={error} onRetry={() => load({ reset: true })} />;
   if (rows.length === 0 && loading) return <Loading />;
-  if (rows.length === 0) return <EmptyState icon="emoji-events" message={scope === 'friends' ? t('emptyFriends') : t('emptyLeague')} />;
+  if (rows.length === 0)
+    return scope === 'friends' ? (
+      <EmptyState icon="group" message={t('emptyFriends')} actionLabel={t('findAthletes')} onAction={() => router.push('/search')} />
+    ) : (
+      <EmptyState icon="emoji-events" message={t('emptyLeague')} />
+    );
 
   return (
     <View style={{ flex: 1 }}>
