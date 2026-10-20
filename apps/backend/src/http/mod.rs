@@ -106,6 +106,7 @@ fn api() -> Api {
     let api = modules::workouts::routes(api);
     let api = modules::goals::routes(api);
     let api = modules::badges::routes(api);
+    let api = modules::league::routes(api);
     modules::scoring::routes(api)
 }
 

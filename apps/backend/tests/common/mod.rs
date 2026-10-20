@@ -279,6 +279,23 @@ pub async fn set_consent(app: &TestApp, user: Uuid, kind: &str, granted: bool) {
     .expect("the consent row");
 }
 
+/// An athlete the league counts: email verified, calibration ended 30 days ago.
+pub async fn calibrated(app: &TestApp, user: Uuid) {
+    sqlx::query("UPDATE users SET email_verified_at = UTC_TIMESTAMP(6) WHERE id = ?")
+        .bind(user)
+        .execute(&app.db)
+        .await
+        .expect("the user row");
+    sqlx::query(
+        "UPDATE profiles SET calibration_started_at = UTC_TIMESTAMP(6) - INTERVAL 44 DAY, \
+           calibration_ends_at = UTC_TIMESTAMP(6) - INTERVAL 30 DAY WHERE user_id = ?",
+    )
+    .bind(user)
+    .execute(&app.db)
+    .await
+    .expect("the profile row");
+}
+
 /// Every key of `expected` exists in `actual` with the same JSON type. `null` on either side matches
 /// anything; lists are compared by their first element.
 pub fn assert_same_shape(path: &str, expected: &Value, actual: &Value) {
