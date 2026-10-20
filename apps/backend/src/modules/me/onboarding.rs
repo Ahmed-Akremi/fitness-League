@@ -1,5 +1,5 @@
 //! Onboarding: the sports an athlete practises, the starting values they declare, and the start of
-//! the calibration period. Goals and the gym are steps of their own, in parts 2 and 3.
+//! the calibration period. Goals are a step of their own (`goals`), and the gym comes with part 3.
 
 use std::collections::HashSet;
 
@@ -30,15 +30,16 @@ async fn progress(db: &MySqlPool, user: Uuid) -> Result<Value, AppError> {
     let row = sqlx::query!(
         r#"SELECT onboarding_completed_at, calibration_ends_at,
                   EXISTS (SELECT 1 FROM user_sports WHERE user_id = p.user_id) AS "sports!",
-                  EXISTS (SELECT 1 FROM baselines WHERE user_id = p.user_id) AS "baselines!"
+                  EXISTS (SELECT 1 FROM baselines WHERE user_id = p.user_id) AS "baselines!",
+                  EXISTS (SELECT 1 FROM goals WHERE user_id = p.user_id) AS "goals!"
            FROM profiles p WHERE p.user_id = ?"#,
         user
     )
     .fetch_one(db)
     .await?;
     Ok(json!({
-        // Goals and the gym arrive with parts 2 and 3.
-        "steps": {"sports": row.sports != 0, "baselines": row.baselines != 0, "goals": false, "gym": false},
+        // The gym arrives with part 3.
+        "steps": {"sports": row.sports != 0, "baselines": row.baselines != 0, "goals": row.goals != 0, "gym": false},
         "completed": row.onboarding_completed_at.is_some(),
         "calibrationEndsAt": row.calibration_ends_at.map(iso),
     }))

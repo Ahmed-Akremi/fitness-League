@@ -11,13 +11,15 @@ use uuid::Uuid;
 use crate::{
     error::AppError,
     http::{Api, auth::AppUser},
+    modules::{badges, goals::milestones},
+    rules::Rules,
     state::AppState,
     types::iso,
     validate::{Check, ValidJson, Validate, rfc3339, round_to},
 };
 
 const BODY_MEASUREMENTS: &str = "/api/v1/me/body-measurements";
-const HEALTH_DATA: &str = "HEALTH_DATA";
+pub const HEALTH_DATA: &str = "HEALTH_DATA";
 
 pub fn routes(api: Api) -> Api {
     api.get(BODY_MEASUREMENTS, list)
@@ -160,6 +162,15 @@ async fn add(
     let fat = body.body_fat_pct.map(|fat| round_to(fat, 1));
     let source = body.source.unwrap_or(Source::Manual);
     let id = Uuid::now_v7();
+    let rules = Rules::active(&state.db).await?;
+    let mut tx = state.db.begin().await?;
+    // A weigh-in can pay goal milestones: it waits for the athlete's workouts being scored.
+    sqlx::query!(
+        "SELECT user_id FROM user_stats WHERE user_id = ? FOR UPDATE",
+        user.id
+    )
+    .fetch_one(&mut *tx)
+    .await?;
     sqlx::query!(
         "INSERT INTO body_measurements (id, user_id, measured_at, weight_kg_enc, body_fat_pct_enc, source) \
          VALUES (?, ?, ?, ?, ?, ?)",
@@ -170,8 +181,21 @@ async fn add(
         fat.map(|fat| state.health.encrypt_number(fat)).transpose()?,
         source.as_str()
     )
-    .execute(&state.db)
+    .execute(&mut *tx)
     .await?;
+    // The latest weigh-in, which is not this one when it was dated in the past.
+    let latest = sqlx::query_scalar!(
+        "SELECT weight_kg_enc FROM body_measurements WHERE user_id = ? \
+         ORDER BY measured_at DESC, id DESC LIMIT 1",
+        user.id
+    )
+    .fetch_one(&mut *tx)
+    .await?;
+    let latest_kg = state.health.decrypt_number(&latest)?;
+    milestones::on_weigh_in(&mut tx, &state, &rules, user.id, latest_kg).await?;
+    // A completed weight goal earns its badge now, not at the next workout.
+    badges::evaluate(&mut tx, user.id, None).await?;
+    tx.commit().await?;
     Ok((
         StatusCode::CREATED,
         Json(json!({

@@ -45,6 +45,18 @@ struct Catalog {
     metric_types: Vec<MetricType>,
     sports: Vec<Sport>,
     exercises: Vec<Exercise>,
+    badges: Vec<Badge>,
+}
+
+#[derive(Deserialize)]
+struct Badge {
+    code: String,
+    category: String,
+    icon: Option<String>,
+    rarity: String,
+    rule: Value,
+    name: I18n,
+    description: I18n,
 }
 
 #[derive(Deserialize)]
@@ -105,6 +117,7 @@ pub struct Summary {
     pub sports: usize,
     pub metric_types: usize,
     pub exercises: usize,
+    pub badges: usize,
 }
 
 pub async fn run(db: &MySqlPool, dir: &Path) -> Result<Summary, String> {
@@ -154,6 +167,18 @@ pub async fn run(db: &MySqlPool, dir: &Path) -> Result<Summary, String> {
                 "ruleset-v2.json: expectedProgression names the unknown code {code}"
             ));
         }
+    }
+
+    // A rule the engine cannot read would never award its badge.
+    if let Some(badge) = catalog
+        .badges
+        .iter()
+        .find(|b| crate::modules::badges::parse_rule(&b.rule.to_string()).is_none())
+    {
+        return Err(format!(
+            "catalog.json: badge {} has an invalid rule",
+            badge.code
+        ));
     }
 
     write(db, &tunisia, &catalog, &rules)
@@ -401,12 +426,40 @@ async fn write(
         .await?;
     }
 
+    // `enabled` stays out of the update: turning a badge off is an admin's choice.
+    for b in &catalog.badges {
+        sqlx::query!(
+            "INSERT INTO badges (id, code, category, name_fr, name_en, name_ar, description_fr, description_en,
+                                 description_ar, icon, rarity, rule)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE category = VALUES(category), name_fr = VALUES(name_fr), name_en = VALUES(name_en),
+                 name_ar = VALUES(name_ar), description_fr = VALUES(description_fr),
+                 description_en = VALUES(description_en), description_ar = VALUES(description_ar),
+                 icon = VALUES(icon), rarity = VALUES(rarity), rule = VALUES(rule)",
+            Uuid::now_v7(),
+            b.code,
+            b.category,
+            b.name.fr,
+            b.name.en,
+            b.name.ar,
+            b.description.fr,
+            b.description.en,
+            b.description.ar,
+            b.icon,
+            b.rarity,
+            b.rule.to_string()
+        )
+        .execute(db)
+        .await?;
+    }
+
     Ok(Summary {
         governorates: tunisia.governorates.len(),
         cities,
         sports: catalog.sports.len(),
         metric_types: catalog.metric_types.len(),
         exercises: catalog.exercises.len(),
+        badges: catalog.badges.len(),
     })
 }
 

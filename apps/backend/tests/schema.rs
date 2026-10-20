@@ -485,3 +485,102 @@ async fn the_seed_loads_the_expected_progression(
     backend::seed::run(&db, &seed_dir()).await.unwrap();
     assert_eq!(count().await.unwrap(), 30);
 }
+
+/// A goal row of `user` on the squat, or on no exercise for a `HABIT` goal.
+async fn insert_goal(
+    db: &MySqlPool,
+    user: Uuid,
+    kind: &str,
+    status: &str,
+    plain: Option<f64>,
+    encrypted: Option<&[u8]>,
+) -> Result<(), sqlx::Error> {
+    let (exercise, metric) = match kind {
+        "WEIGHT" => ("", "BODY_WEIGHT"),
+        "HABIT" => ("", "WORKOUTS_PER_WEEK"),
+        _ => ("BACK_SQUAT", "E1RM"),
+    };
+    sqlx::query(
+        "INSERT INTO goals (id, user_id, type, exercise_id, metric_type_id, direction, start_value, target_value, \
+           start_value_enc, target_value_enc, start_date, status) \
+         SELECT ?, ?, ?, (SELECT id FROM exercises WHERE code = ?), m.id, 'INCREASE', ?, ?, ?, ?, CURRENT_DATE, ? \
+         FROM metric_types m WHERE m.code = ?",
+    )
+    .bind(Uuid::now_v7())
+    .bind(user)
+    .bind(kind)
+    .bind(exercise)
+    .bind(plain)
+    .bind(plain)
+    .bind(encrypted)
+    .bind(encrypted)
+    .bind(status)
+    .bind(metric)
+    .execute(db)
+    .await
+    .map(|_| ())
+}
+
+#[sqlx::test]
+async fn a_weight_goal_holds_no_clear_value(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let db = backend::db::pool(opts, conn);
+    backend::seed::run(&db, &seed_dir()).await.unwrap();
+    let user = insert_user(&db, "goal@example.tn", "goal_user").await.unwrap();
+    let blob: &[u8] = b"k1:sealed";
+    assert!(insert_goal(&db, user, "WEIGHT", "ACTIVE", Some(80.0), None).await.is_err());
+    insert_goal(&db, user, "WEIGHT", "ACTIVE", None, Some(blob)).await.unwrap();
+    assert!(insert_goal(&db, user, "STRENGTH", "ACTIVE", None, Some(blob)).await.is_err());
+    // Neither form at all is refused too.
+    assert!(insert_goal(&db, user, "STRENGTH", "ACTIVE", None, None).await.is_err());
+}
+
+#[sqlx::test]
+async fn one_active_goal_per_metric(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let db = backend::db::pool(opts, conn);
+    backend::seed::run(&db, &seed_dir()).await.unwrap();
+    let user = insert_user(&db, "goals@example.tn", "goals_user").await.unwrap();
+    insert_goal(&db, user, "STRENGTH", "ACTIVE", Some(120.0), None).await.unwrap();
+    let second = insert_goal(&db, user, "STRENGTH", "ACTIVE", Some(125.0), None)
+        .await
+        .unwrap_err();
+    assert!(is_unique_violation(&second), "{second}");
+    sqlx::query("UPDATE goals SET status = 'ABANDONED' WHERE user_id = ?")
+        .bind(user)
+        .execute(&db)
+        .await
+        .unwrap();
+    insert_goal(&db, user, "STRENGTH", "ACTIVE", Some(125.0), None).await.unwrap();
+
+    insert_goal(&db, user, "HABIT", "ACTIVE", Some(3.0), None).await.unwrap();
+    let habit = insert_goal(&db, user, "HABIT", "ACTIVE", Some(4.0), None)
+        .await
+        .unwrap_err();
+    assert!(is_unique_violation(&habit), "{habit}");
+}
+
+#[sqlx::test]
+async fn the_seed_loads_the_badges(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let db = backend::db::pool(opts, conn);
+    let count = || sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM badges").fetch_one(&db);
+    backend::seed::run(&db, &seed_dir()).await.unwrap();
+    assert_eq!(count().await.unwrap(), 22);
+    let rule: String = sqlx::query_scalar("SELECT rule FROM badges WHERE code = 'FIRST_STEP'")
+        .fetch_one(&db)
+        .await
+        .unwrap();
+    assert_eq!(
+        serde_json::from_str::<Value>(&rule).unwrap(),
+        json!({"type": "COUNT", "event": "WORKOUT_ACCEPTED", "gte": 1})
+    );
+    sqlx::query("UPDATE badges SET enabled = FALSE WHERE code = 'CENTURY'")
+        .execute(&db)
+        .await
+        .unwrap();
+    backend::seed::run(&db, &seed_dir()).await.unwrap();
+    assert_eq!(count().await.unwrap(), 22);
+    let enabled: bool = sqlx::query_scalar("SELECT enabled FROM badges WHERE code = 'CENTURY'")
+        .fetch_one(&db)
+        .await
+        .unwrap();
+    assert!(!enabled, "the seed turned an admin's choice back");
+}
