@@ -62,9 +62,12 @@ pub async fn open_due(db: &MySqlPool, now: DateTime<Utc>) -> Result<Value, AppEr
     let mut opened = 0;
     for id in due {
         // The one-active-season index refuses it while the country has an active season.
-        match sqlx::query!("UPDATE seasons SET status = 'ACTIVE' WHERE id = ? AND status = 'SCHEDULED'", id)
-            .execute(db)
-            .await
+        match sqlx::query!(
+            "UPDATE seasons SET status = 'ACTIVE' WHERE id = ? AND status = 'SCHEDULED'",
+            id
+        )
+        .execute(db)
+        .await
         {
             Ok(done) => opened += done.rows_affected(),
             Err(e) if db::duplicate_key(&e) == Some("uq_seasons_one_active") => {}

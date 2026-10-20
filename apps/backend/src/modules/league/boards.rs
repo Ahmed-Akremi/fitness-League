@@ -89,11 +89,7 @@ struct Board {
 }
 
 impl Board {
-    async fn of(
-        state: &AppState,
-        user: Uuid,
-        governorate: Option<Uuid>,
-    ) -> Result<Self, AppError> {
+    async fn of(state: &AppState, user: Uuid, governorate: Option<Uuid>) -> Result<Self, AppError> {
         let country =
             sqlx::query_scalar!("SELECT country_code FROM profiles WHERE user_id = ?", user)
                 .fetch_one(&state.db)
@@ -235,7 +231,9 @@ async fn page_of(
         .transpose()?;
     let board = Board::of(state, user, governorate).await?;
     // One more than asked: it only tells whether another page exists.
-    let mut rows = board.rows(&state.db, None, after.as_ref(), limit + 1).await?;
+    let mut rows = board
+        .rows(&state.db, None, after.as_ref(), limit + 1)
+        .await?;
     let next = if rows.len() > limit {
         rows.truncate(limit);
         rows.last()
@@ -333,10 +331,12 @@ pub async fn my_ranks(
     State(state): State<AppState>,
     AppUser(user): AppUser,
 ) -> Result<Json<Value>, AppError> {
-    let governorate =
-        sqlx::query_scalar!(r#"SELECT governorate_id AS "id: Uuid" FROM profiles WHERE user_id = ?"#, user.id)
-            .fetch_one(&state.db)
-            .await?;
+    let governorate = sqlx::query_scalar!(
+        r#"SELECT governorate_id AS "id: Uuid" FROM profiles WHERE user_id = ?"#,
+        user.id
+    )
+    .fetch_one(&state.db)
+    .await?;
     let mut ranks = Vec::new();
     let mut season = None;
     for scope in [None, Some(governorate)] {
@@ -352,18 +352,13 @@ pub async fn my_ranks(
 
 /// Today's ranks of every active season's eligible athletes, nationally and per governorate: the
 /// reference of tomorrow's movement arrows. A second run the same day adds nothing.
-pub async fn snapshot(
-    db: &MySqlPool,
-    now: DateTime<Utc>,
-    offset: i32,
-) -> Result<Value, AppError> {
+pub async fn snapshot(db: &MySqlPool, now: DateTime<Utc>, offset: i32) -> Result<Value, AppError> {
     let day = policy::business_today(now, offset);
     let at = now.naive_utc();
-    let seasons = sqlx::query_scalar!(
-        r#"SELECT id AS "id: Uuid" FROM seasons WHERE status = 'ACTIVE'"#
-    )
-    .fetch_all(db)
-    .await?;
+    let seasons =
+        sqlx::query_scalar!(r#"SELECT id AS "id: Uuid" FROM seasons WHERE status = 'ACTIVE'"#)
+            .fetch_all(db)
+            .await?;
     let mut rows = 0;
     for season in seasons {
         rows += sqlx::query!(

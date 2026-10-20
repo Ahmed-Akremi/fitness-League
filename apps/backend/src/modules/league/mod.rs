@@ -14,6 +14,12 @@ pub fn routes(api: Api) -> Api {
         .get("/api/v1/me/ranks", boards::my_ranks)
         .get("/api/v1/leaderboards/national", boards::national)
         .get("/api/v1/leaderboards/national/me", boards::national_me)
-        .get("/api/v1/leaderboards/governorates/{id}", boards::governorate)
-        .get("/api/v1/leaderboards/governorates/{id}/me", boards::governorate_me)
+        .get(
+            "/api/v1/leaderboards/governorates/{id}",
+            boards::governorate,
+        )
+        .get(
+            "/api/v1/leaderboards/governorates/{id}/me",
+            boards::governorate_me,
+        )
 }
