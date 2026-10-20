@@ -478,6 +478,52 @@ async fn the_export_holds_records_and_xp(opts: MySqlPoolOptions, conn: MySqlConn
 }
 
 #[sqlx::test]
+async fn the_export_holds_league_points(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    use backend::{
+        modules::scoring::ledger::{self, LpEntry},
+        rules::Rules,
+    };
+    let app = seeded(opts, conn).await;
+    let session = register(&app, "lena").await;
+    let user = user_of(&session);
+    let rules = Rules::active(&app.db).await.unwrap();
+    let season: Uuid = sqlx::query_scalar("SELECT id FROM seasons WHERE status = 'ACTIVE'")
+        .fetch_one(&app.db)
+        .await
+        .unwrap();
+    let mut tx = app.db.begin().await.unwrap();
+    let entry = LpEntry {
+        user,
+        season,
+        amount: 42,
+        reason: "WEEKLY_SCORE",
+        source_type: "week",
+        source_id: "2026-10-19".to_owned(),
+        explanation: json!({"formula": "weekly_score"}),
+        effective_at: Utc::now(),
+    };
+    ledger::append_lp(&mut tx, &rules, entry).await.unwrap();
+    tx.commit().await.unwrap();
+
+    let reply = app
+        .call(Method::GET, "/api/v1/me/export", access(&session), None)
+        .await;
+    assert_eq!(reply.status, StatusCode::OK, "{}", reply.json);
+    let lp = &reply.json["leaguePointTransactions"][0];
+    assert_eq!(lp["seasonId"], season.to_string());
+    assert_eq!(lp["amount"], 42);
+    assert_eq!(lp["reason"], "WEEKLY_SCORE");
+    assert_eq!(lp["sourceType"], "week");
+    assert_eq!(lp["sourceId"], "2026-10-19");
+    assert!(lp["reversesId"].is_null());
+    assert_eq!(lp["ruleSetVersion"], 2);
+    assert_eq!(lp["explanation"]["formula"], "weekly_score");
+    for key in ["id", "effectiveAt", "createdAt"] {
+        assert!(lp[key].is_string(), "{key}: {lp}");
+    }
+}
+
+#[sqlx::test]
 async fn anonymising_removes_weigh_ins_and_workout_notes(
     opts: MySqlPoolOptions,
     conn: MySqlConnectOptions,

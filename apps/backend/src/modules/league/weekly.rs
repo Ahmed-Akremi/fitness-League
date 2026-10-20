@@ -4,7 +4,7 @@
 use std::collections::HashSet;
 
 use axum::{Json, extract::State};
-use chrono::{DateTime, Duration, NaiveDateTime, Utc};
+use chrono::{DateTime, Duration, NaiveDate, NaiveDateTime, NaiveTime, Utc};
 use serde_json::{Value, json};
 use sqlx::MySqlConnection;
 use uuid::Uuid;
@@ -13,9 +13,13 @@ use super::engine::{self, Components};
 use crate::{
     error::AppError,
     http::auth::AppUser,
-    modules::scoring::{
-        self,
-        engine::{Direction, harder_level, improvement_pct, is_better, progress_ratio},
+    modules::{
+        goals::milestones,
+        scoring::{
+            self,
+            engine::{Direction, harder_level, improvement_pct, is_better, progress_ratio},
+            ledger::{self, LpEntry},
+        },
     },
     rules::Rules,
     security::policy,
@@ -216,6 +220,310 @@ pub async fn compute(
         }),
         components,
     })
+}
+
+/// What a week's LP entry explains: the breakdown, the components, the total and the result.
+fn explanation(s: &WeeklyScore, correction: Option<&str>) -> Value {
+    let mut e = s.breakdown.clone();
+    e["components"] = json!(s.components);
+    e["total"] = json!(s.total);
+    e["result"] = json!(s.lp);
+    if let Some(correction) = correction {
+        e["correction"] = json!(correction);
+    }
+    e
+}
+
+/// The local Monday of a week as its `DATE`, and back.
+fn week_date(week_start: DateTime<Utc>, offset: i32) -> NaiveDate {
+    policy::business_today(week_start, offset)
+}
+
+fn week_of(date: NaiveDate, offset: i32) -> DateTime<Utc> {
+    date.and_time(NaiveTime::MIN).and_utc() - Duration::minutes(i64::from(offset))
+}
+
+/// The season of the athlete's country holding `at`.
+async fn season_at(
+    tx: &mut MySqlConnection,
+    user: Uuid,
+    at: DateTime<Utc>,
+) -> Result<Option<Uuid>, AppError> {
+    Ok(sqlx::query_scalar!(
+        r#"SELECT s.id AS "id: Uuid" FROM seasons s JOIN profiles p ON p.country_code = s.country_code
+           WHERE p.user_id = ? AND s.starts_at <= ? AND s.ends_at > ?
+           ORDER BY s.starts_at DESC LIMIT 1"#,
+        user,
+        at.naive_utc(),
+        at.naive_utc()
+    )
+    .fetch_optional(&mut *tx)
+    .await?)
+}
+
+/// The week's row, created or replaced.
+async fn save(
+    tx: &mut MySqlConnection,
+    rules: &Rules,
+    user: Uuid,
+    week: NaiveDate,
+    season: Option<Uuid>,
+    s: &WeeklyScore,
+    lp_entry: Option<Uuid>,
+) -> Result<(), AppError> {
+    let c = &s.components;
+    sqlx::query!(
+        "INSERT INTO weekly_scores (id, user_id, week_start, season_id, rule_set_version, progress_c, consistency_c, \
+           performance_c, challenge_c, total, breakdown, lp_transaction_id) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
+         ON DUPLICATE KEY UPDATE season_id = VALUES(season_id), rule_set_version = VALUES(rule_set_version), \
+           progress_c = VALUES(progress_c), consistency_c = VALUES(consistency_c), \
+           performance_c = VALUES(performance_c), challenge_c = VALUES(challenge_c), total = VALUES(total), \
+           breakdown = VALUES(breakdown), lp_transaction_id = VALUES(lp_transaction_id)",
+        Uuid::now_v7(),
+        user,
+        week,
+        season,
+        rules.version,
+        format!("{:.2}", c.progress),
+        format!("{:.2}", c.consistency),
+        format!("{:.2}", c.performance),
+        c.challenge.map(|v| format!("{v:.2}")),
+        format!("{:.2}", s.total),
+        s.breakdown.to_string(),
+        lp_entry
+    )
+    .execute(&mut *tx)
+    .await?;
+    Ok(())
+}
+
+/// Anti-sandbagging (docs §5.4): each final baseline against its best competition performance in
+/// the audit window after it became final, up to `until`. Corrects the implausible ones and
+/// returns the earliest `finalized_at` among them.
+async fn audit(
+    tx: &mut MySqlConnection,
+    rules: &Rules,
+    user: Uuid,
+    until: DateTime<Utc>,
+) -> Result<Option<NaiveDateTime>, AppError> {
+    let expected = scoring::expected(tx, rules.version).await?;
+    let declared = sqlx::query_scalar!(
+        r#"SELECT experience_level_declared AS "level?: ExperienceLevel" FROM profiles WHERE user_id = ?"#,
+        user
+    )
+    .fetch_one(&mut *tx)
+    .await?;
+    let baselines = sqlx::query!(
+        r#"SELECT b.id AS "id: Uuid", b.exercise_id AS "exercise: Uuid", b.metric_type_id AS "metric: Uuid",
+                  m.direction, CAST(b.effective_value AS DOUBLE) AS "effective!: f64",
+                  b.experience_level AS "level?: ExperienceLevel", b.finalized_at AS "finalized!"
+           FROM baselines b JOIN metric_types m ON m.id = b.metric_type_id
+           WHERE b.user_id = ? AND b.status = 'FINAL' AND b.finalized_at IS NOT NULL AND b.finalized_at < ?"#,
+        user,
+        until.naive_utc()
+    )
+    .fetch_all(&mut *tx)
+    .await?;
+    let mut earliest: Option<NaiveDateTime> = None;
+    for b in baselines {
+        let d = Direction::parse(&b.direction).unwrap_or(Direction::Higher);
+        let end = until
+            .naive_utc()
+            .min(b.finalized + Duration::days(rules.baseline_audit_days));
+        let observed = sqlx::query!(
+            r#"SELECT CAST(value AS DOUBLE) AS "value!: f64", observed_at FROM metric_observations
+               WHERE user_id = ? AND exercise_id = ? AND metric_type_id = ? AND qualifier = 0
+                 AND counts_for_competition AND observed_at > ? AND observed_at < ?
+               ORDER BY observed_at"#,
+            user,
+            b.exercise,
+            b.metric,
+            b.finalized,
+            end
+        )
+        .fetch_all(&mut *tx)
+        .await?;
+        let Some(best) = observed.iter().fold(None, |acc: Option<&_>, o| match acc {
+            Some(a) if !is_better(o.value, a.value, d) => Some(a),
+            _ => Some(o),
+        }) else {
+            continue;
+        };
+        let lookup = |level| expected.get(level, b.exercise, b.metric);
+        let Some(pct) = lookup(harder_level(&[declared, b.level], lookup)) else {
+            continue;
+        };
+        let elapsed = (best.observed_at - b.finalized).num_seconds() as f64 / 86_400.0;
+        let Some(raised) = engine::audited_baseline(
+            b.effective,
+            best.value,
+            elapsed,
+            pct,
+            d,
+            rules.progress_ceiling_ratio,
+            rules.progress_window_days as f64,
+        ) else {
+            continue;
+        };
+        sqlx::query!(
+            "UPDATE baselines SET status = 'CORRECTED', corrected_from = effective_value, effective_value = ?, \
+               rule_set_version = ? WHERE id = ? AND user_id = ?",
+            format!("{raised:.3}"),
+            rules.version,
+            b.id,
+            user
+        )
+        .execute(&mut *tx)
+        .await?;
+        earliest = Some(earliest.map_or(b.finalized, |e| e.min(b.finalized)));
+    }
+    Ok(earliest)
+}
+
+/// Scores again the closed weeks from `from` up to `before` after a baseline correction: each
+/// paid entry is reversed, and the new score paid under a new source (docs §5.10.3).
+async fn rescore(
+    tx: &mut MySqlConnection,
+    rules: &Rules,
+    user: Uuid,
+    from: NaiveDate,
+    before: NaiveDate,
+    offset: i32,
+) -> Result<(), AppError> {
+    let weeks = sqlx::query!(
+        r#"SELECT week_start, season_id AS "season?: Uuid", lp_transaction_id AS "paid?: Uuid"
+           FROM weekly_scores WHERE user_id = ? AND week_start >= ? AND week_start < ? ORDER BY week_start"#,
+        user,
+        from,
+        before
+    )
+    .fetch_all(&mut *tx)
+    .await?;
+    for w in weeks {
+        if let Some(paid) = w.paid {
+            ledger::reverse_lp(tx, rules, user, paid, "baseline corrected (anti-sandbagging)").await?;
+        }
+        let start = week_of(w.week_start, offset);
+        let score = compute(tx, rules, user, start, offset).await?;
+        let mut entry = None;
+        if let Some(season) = w.season.filter(|_| score.lp > 0) {
+            let date = w.week_start.to_string();
+            let n = sqlx::query_scalar!(
+                "SELECT COUNT(*) FROM league_point_transactions \
+                 WHERE user_id = ? AND source_type = 'week' AND source_id LIKE CONCAT(?, '%')",
+                user,
+                date
+            )
+            .fetch_one(&mut *tx)
+            .await?;
+            let e = LpEntry {
+                user,
+                season,
+                amount: score.lp,
+                reason: "WEEKLY_SCORE",
+                source_type: "week",
+                source_id: format!("{date}#c{n}"),
+                explanation: explanation(&score, Some("baseline corrected")),
+                effective_at: start + Duration::days(7),
+            };
+            entry = Some(ledger::append_lp(tx, rules, e).await?);
+        }
+        save(tx, rules, user, w.week_start, w.season, &score, entry).await?;
+    }
+    Ok(())
+}
+
+/// One athlete's share of a week's close; nothing when the week is already closed for them.
+async fn close_athlete(
+    tx: &mut MySqlConnection,
+    state: &AppState,
+    rules: &Rules,
+    user: Uuid,
+    week_start: DateTime<Utc>,
+) -> Result<i64, AppError> {
+    let offset = state.cfg.business_utc_offset_minutes;
+    // A workout of the athlete being scored waits, and so does another worker closing this week.
+    sqlx::query!(
+        "SELECT user_id FROM user_stats WHERE user_id = ? FOR UPDATE",
+        user
+    )
+    .fetch_one(&mut *tx)
+    .await?;
+    let date = week_date(week_start, offset);
+    let closed = sqlx::query_scalar!(
+        "SELECT EXISTS (SELECT 1 FROM weekly_scores WHERE user_id = ? AND week_start = ?)",
+        user,
+        date
+    )
+    .fetch_one(&mut *tx)
+    .await?;
+    if closed != 0 {
+        return Ok(0);
+    }
+    let week_end = week_start + Duration::days(7);
+    if let Some(since) = audit(tx, rules, user, week_end).await? {
+        let from = week_date(policy::week_start(since.and_utc(), offset), offset);
+        rescore(tx, rules, user, from, date, offset).await?;
+    }
+
+    let score = compute(tx, rules, user, week_start, offset).await?;
+    let season = season_at(tx, user, week_start).await?;
+    let mut entry = None;
+    if let Some(season) = season.filter(|_| score.lp > 0) {
+        let e = LpEntry {
+            user,
+            season,
+            amount: score.lp,
+            reason: "WEEKLY_SCORE",
+            source_type: "week",
+            source_id: date.to_string(),
+            explanation: explanation(&score, None),
+            effective_at: week_end,
+        };
+        entry = Some(ledger::append_lp(tx, rules, e).await?);
+    }
+    save(tx, rules, user, date, season, &score, entry).await?;
+
+    // The headline streak: weeks with the plan met; planned rest never breaks it.
+    let met = score.training_days >= score.planned_days;
+    sqlx::query!(
+        "UPDATE user_streaks SET longest_weeks = GREATEST(longest_weeks, IF(?, current_weeks + 1, 0)), \
+           current_weeks = IF(?, current_weeks + 1, 0) WHERE user_id = ?",
+        met,
+        met,
+        user
+    )
+    .execute(&mut *tx)
+    .await?;
+    milestones::on_week_closed(tx, state, rules, user, score.training_days, week_end).await?;
+    Ok(entry.map_or(0, |_| score.lp))
+}
+
+/// Closes the week starting at `week_start` (docs §8 `weekly-close`): its final scores and LP, the
+/// baseline audit, the weekly streaks and the habit goals, each athlete in their own transaction.
+pub async fn close_week(
+    state: &AppState,
+    rules: &Rules,
+    week_start: DateTime<Utc>,
+) -> Result<Value, AppError> {
+    let week_end = week_start + Duration::days(7);
+    let athletes = sqlx::query_scalar!(
+        r#"SELECT user_id AS "user: Uuid" FROM workouts
+           WHERE status = 'ACCEPTED' AND performed_at >= ? AND performed_at < ?
+           UNION SELECT user_id FROM goals WHERE type = 'HABIT' AND status = 'ACTIVE'"#,
+        week_start.naive_utc(),
+        week_end.naive_utc()
+    )
+    .fetch_all(&state.db)
+    .await?;
+    let mut lp = 0;
+    for user in &athletes {
+        let mut tx = state.db.begin().await?;
+        lp += close_athlete(&mut tx, state, rules, *user, week_start).await?;
+        tx.commit().await?;
+    }
+    Ok(json!({"users": athletes.len(), "lpPosted": lp}))
 }
 
 /// `GET /me/weekly-scores/current`: the running week, computed on read.
