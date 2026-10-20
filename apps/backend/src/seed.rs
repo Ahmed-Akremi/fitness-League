@@ -453,6 +453,11 @@ async fn write(
         .await?;
     }
 
+    // The seed is Tunisia's, so its seasons follow Tunisia's fixed offset (UTC+1, no daylight saving).
+    let mut tx = db.begin().await?;
+    crate::modules::league::seasons::plan(&mut tx, &country.code, chrono::Utc::now(), 60).await?;
+    tx.commit().await?;
+
     Ok(Summary {
         governorates: tunisia.governorates.len(),
         cities,
