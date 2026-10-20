@@ -517,3 +517,19 @@ Three callers:
   - the goals screen lists goals with their milestone bar;
   - « Nouvel objectif » shows three suggestions and saves one;
   - the badges screen shows the earned badges and the progress bars.
+
+## Built (2026-10-20): where the code departs from this plan
+
+- The squat's E1RM after 3 × 5 × 100 is **116.67**, not 116.667: plan 2b keeps e1RM to 2 decimals. Every other value
+  of the tests is the same at 116.67.
+- `workouts_reach_milestones_once` logs its workouts 4 h, 2 h and 30 min ago (the plan said 2 h and 1 h). The
+  60-minute sessions overlapped, and anti-cheat rejected the fourth one (`OVERLAPPING_WORKOUT`).
+- `badges::evaluate` returns `Result<(), AppError>`, not the codes awarded: nothing reads them until part 3's
+  notifications.
+- `body::add` reads the active rule set on every weigh-in, before its transaction (one indexed row, as `intake`
+  does). The latest weigh-in, which is not the one posted when that one is dated in the past, is the value
+  credited.
+- A milestone reached by a workout is effective at the workout's `performed_at`, as in the old API. One reached
+  by a weigh-in is effective at now.
+- `scoring::score` computes the `held` set once and hands it to `rewardable` and to `milestones::on_workout`.
+- `records::decimal`, `scoring::expected` and `body::HEALTH_DATA` are now visible to the crate, for the goals.

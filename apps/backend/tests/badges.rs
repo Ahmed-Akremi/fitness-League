@@ -9,7 +9,14 @@ use serde_json::{Value, json};
 use sqlx::mysql::{MySqlConnectOptions, MySqlPoolOptions};
 use uuid::Uuid;
 
-const CATEGORIES: [&str; 6] = ["PROGRESS", "CONSISTENCY", "COMPETITION", "SOCIAL", "GYM", "ELITE"];
+const CATEGORIES: [&str; 6] = [
+    "PROGRESS",
+    "CONSISTENCY",
+    "COMPETITION",
+    "SOCIAL",
+    "GYM",
+    "ELITE",
+];
 
 async fn badges(app: &TestApp, token: &str) -> Vec<Value> {
     let reply = get(app, token, "/api/v1/badges").await;
@@ -18,7 +25,9 @@ async fn badges(app: &TestApp, token: &str) -> Vec<Value> {
 }
 
 fn badge<'a>(all: &'a [Value], code: &str) -> &'a Value {
-    all.iter().find(|b| b["code"] == code).unwrap_or_else(|| panic!("no {code}"))
+    all.iter()
+        .find(|b| b["code"] == code)
+        .unwrap_or_else(|| panic!("no {code}"))
 }
 
 async fn logged(app: &TestApp, token: &str, body: &Value) -> Value {
@@ -56,7 +65,10 @@ async fn the_catalogue_shows_progress(opts: MySqlPoolOptions, conn: MySqlConnect
     assert_eq!((ranks[0], ranks[21]), (0, 5));
     let first = badge(&all, "FIRST_STEP");
     assert!(first["awardedAt"].is_null());
-    assert_eq!(first["progress"], json!({"current": 0, "target": 1, "met": false}));
+    assert_eq!(
+        first["progress"],
+        json!({"current": 0, "target": 1, "met": false})
+    );
     assert_eq!(first["name"]["fr"], "Premier pas");
     assert!(first["description"]["ar"].is_string());
     assert_eq!(first["icon"], "first-step");
@@ -76,7 +88,10 @@ async fn a_first_workout_earns_first_step(opts: MySqlPoolOptions, conn: MySqlCon
     let all = badges(&app, &token).await;
     let first = badge(&all, "FIRST_STEP");
     assert!(first["awardedAt"].is_string(), "{first}");
-    assert_eq!(first["progress"], json!({"current": 1, "target": 1, "met": true}));
+    assert_eq!(
+        first["progress"],
+        json!({"current": 1, "target": 1, "met": true})
+    );
     assert_eq!(
         badge(&all, "TEN_WORKOUTS")["progress"],
         json!({"current": 1, "target": 10, "met": false})
@@ -127,7 +142,14 @@ async fn a_weigh_in_can_award_a_badge(opts: MySqlPoolOptions, conn: MySqlConnect
         let app = &app;
         async move {
             let path = "/api/v1/me/body-measurements";
-            let reply = app.call(Method::POST, path, Some(&token), Some(json!({"weightKg": kg}))).await;
+            let reply = app
+                .call(
+                    Method::POST,
+                    path,
+                    Some(&token),
+                    Some(json!({"weightKg": kg})),
+                )
+                .await;
             assert_eq!(reply.status, StatusCode::CREATED, "{}", reply.json);
         }
     };
@@ -163,7 +185,13 @@ async fn simultaneous_workouts_award_once(opts: MySqlPoolOptions, conn: MySqlCon
         lifting(&c, Uuid::now_v7(), ago(7), 105.0, 5),
     );
     let (a, b) = tokio::join!(post(&app, &token, &first), post(&app, &token, &second));
-    assert_eq!((a.status, b.status), (StatusCode::CREATED, StatusCode::CREATED), "{} {}", a.json, b.json);
+    assert_eq!(
+        (a.status, b.status),
+        (StatusCode::CREATED, StatusCode::CREATED),
+        "{} {}",
+        a.json,
+        b.json
+    );
     assert_eq!(awards(&app, user, "FIRST_STEP").await, 1);
 }
 

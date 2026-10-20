@@ -525,21 +525,41 @@ async fn insert_goal(
 async fn a_weight_goal_holds_no_clear_value(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
     let db = backend::db::pool(opts, conn);
     backend::seed::run(&db, &seed_dir()).await.unwrap();
-    let user = insert_user(&db, "goal@example.tn", "goal_user").await.unwrap();
+    let user = insert_user(&db, "goal@example.tn", "goal_user")
+        .await
+        .unwrap();
     let blob: &[u8] = b"k1:sealed";
-    assert!(insert_goal(&db, user, "WEIGHT", "ACTIVE", Some(80.0), None).await.is_err());
-    insert_goal(&db, user, "WEIGHT", "ACTIVE", None, Some(blob)).await.unwrap();
-    assert!(insert_goal(&db, user, "STRENGTH", "ACTIVE", None, Some(blob)).await.is_err());
+    assert!(
+        insert_goal(&db, user, "WEIGHT", "ACTIVE", Some(80.0), None)
+            .await
+            .is_err()
+    );
+    insert_goal(&db, user, "WEIGHT", "ACTIVE", None, Some(blob))
+        .await
+        .unwrap();
+    assert!(
+        insert_goal(&db, user, "STRENGTH", "ACTIVE", None, Some(blob))
+            .await
+            .is_err()
+    );
     // Neither form at all is refused too.
-    assert!(insert_goal(&db, user, "STRENGTH", "ACTIVE", None, None).await.is_err());
+    assert!(
+        insert_goal(&db, user, "STRENGTH", "ACTIVE", None, None)
+            .await
+            .is_err()
+    );
 }
 
 #[sqlx::test]
 async fn one_active_goal_per_metric(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
     let db = backend::db::pool(opts, conn);
     backend::seed::run(&db, &seed_dir()).await.unwrap();
-    let user = insert_user(&db, "goals@example.tn", "goals_user").await.unwrap();
-    insert_goal(&db, user, "STRENGTH", "ACTIVE", Some(120.0), None).await.unwrap();
+    let user = insert_user(&db, "goals@example.tn", "goals_user")
+        .await
+        .unwrap();
+    insert_goal(&db, user, "STRENGTH", "ACTIVE", Some(120.0), None)
+        .await
+        .unwrap();
     let second = insert_goal(&db, user, "STRENGTH", "ACTIVE", Some(125.0), None)
         .await
         .unwrap_err();
@@ -549,9 +569,13 @@ async fn one_active_goal_per_metric(opts: MySqlPoolOptions, conn: MySqlConnectOp
         .execute(&db)
         .await
         .unwrap();
-    insert_goal(&db, user, "STRENGTH", "ACTIVE", Some(125.0), None).await.unwrap();
+    insert_goal(&db, user, "STRENGTH", "ACTIVE", Some(125.0), None)
+        .await
+        .unwrap();
 
-    insert_goal(&db, user, "HABIT", "ACTIVE", Some(3.0), None).await.unwrap();
+    insert_goal(&db, user, "HABIT", "ACTIVE", Some(3.0), None)
+        .await
+        .unwrap();
     let habit = insert_goal(&db, user, "HABIT", "ACTIVE", Some(4.0), None)
         .await
         .unwrap_err();

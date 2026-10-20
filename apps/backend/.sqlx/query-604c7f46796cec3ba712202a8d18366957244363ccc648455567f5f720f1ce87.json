@@ -1,0 +1,82 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT b.code, ub.awarded_at, ub.revoked_at, ub.source_ref\n           FROM user_badges ub JOIN badges b ON b.id = ub.badge_id\n           WHERE ub.user_id = ? ORDER BY ub.awarded_at, ub.id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "code",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | UNIQUE_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 160
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.badges",
+            "name": "code"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "awarded_at",
+        "type_info": {
+          "type": "Datetime",
+          "flags": "NOT_NULL | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 26
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.user_badges",
+            "name": "awarded_at"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "revoked_at",
+        "type_info": {
+          "type": "Datetime",
+          "flags": "BINARY",
+          "collation": 63,
+          "max_size": 26
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.user_badges",
+            "name": "revoked_at"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "source_ref",
+        "type_info": {
+          "type": "VarString",
+          "flags": "BINARY",
+          "collation": 224,
+          "max_size": 256
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.user_badges",
+            "name": "source_ref"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "604c7f46796cec3ba712202a8d18366957244363ccc648455567f5f720f1ce87"
+}

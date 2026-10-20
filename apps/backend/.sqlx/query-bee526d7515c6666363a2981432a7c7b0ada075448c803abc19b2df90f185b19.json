@@ -1,0 +1,26 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT CAST(value AS DOUBLE) AS \"value!: f64\" FROM personal_records\n           WHERE user_id = ? AND exercise_id = ? AND metric_type_id = ? AND qualifier = 0 AND is_current",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "value!: f64",
+        "type_info": {
+          "type": "Double",
+          "flags": "BINARY",
+          "collation": 63,
+          "max_size": 22
+        },
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "bee526d7515c6666363a2981432a7c7b0ada075448c803abc19b2df90f185b19"
+}

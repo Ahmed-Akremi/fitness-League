@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "DELETE FROM goals WHERE user_id = ? AND type = 'WEIGHT'",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "861342a66d3638820b500d725863929dc06c4a02e6adc24f5f1e7573b94991e0"
+}

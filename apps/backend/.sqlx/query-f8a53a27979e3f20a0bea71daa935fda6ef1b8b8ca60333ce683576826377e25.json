@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "INSERT INTO goal_milestones (id, goal_id, position, target_value, target_value_enc) VALUES (?, ?, ?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 5
+    },
+    "nullable": []
+  },
+  "hash": "f8a53a27979e3f20a0bea71daa935fda6ef1b8b8ca60333ce683576826377e25"
+}

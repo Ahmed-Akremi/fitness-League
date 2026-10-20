@@ -1,0 +1,26 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT CAST(effective_value AS DOUBLE) AS \"value!: f64\" FROM baselines\n           WHERE user_id = ? AND exercise_id = ? AND metric_type_id = ?",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "value!: f64",
+        "type_info": {
+          "type": "Double",
+          "flags": "BINARY",
+          "collation": 63,
+          "max_size": 22
+        },
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "2530bb89b7ba0b0fcab2f0ccd12f0c7fe049b906af6ede6c7cfd1857465aaf67"
+}

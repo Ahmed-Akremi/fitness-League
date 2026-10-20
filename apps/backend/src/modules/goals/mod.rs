@@ -354,7 +354,15 @@ async fn create(
             let start = body::latest_weight_kg(&state, user.id)
                 .await?
                 .ok_or_else(|| bad("NO_CURRENT_VALUE"))?;
-            weight_plan(&rules, &metric, start, raw_target, requested, body.target_date.as_deref(), today)?
+            weight_plan(
+                &rules,
+                &metric,
+                start,
+                raw_target,
+                requested,
+                body.target_date.as_deref(),
+                today,
+            )?
         }
         (_, Some(exercise)) => {
             let start = current_value(&mut tx, user.id, exercise, &metric).await?;
@@ -371,8 +379,10 @@ async fn create(
             if fast.is_some_and(|weeks| weeks > UNREALISTIC_WEEKS) {
                 let suggestions =
                     planning::suggest_targets(start, pct, metric.direction, |v| metric.round(v));
-                return Err(bad("UNREALISTIC_TARGET")
-                    .with("suggestions", serde_json::to_value(suggestions).map_err(AppError::internal)?));
+                return Err(bad("UNREALISTIC_TARGET").with(
+                    "suggestions",
+                    serde_json::to_value(suggestions).map_err(AppError::internal)?,
+                ));
             }
             let mut target_date = requested;
             let mut safety = None;
@@ -389,8 +399,14 @@ async fn create(
             Plan {
                 start,
                 target,
-                direction: if metric.direction == Direction::Higher { "INCREASE" } else { "DECREASE" },
-                milestones: planning::plan_milestones(start, target, start * pct / 100.0, |v| metric.round(v)),
+                direction: if metric.direction == Direction::Higher {
+                    "INCREASE"
+                } else {
+                    "DECREASE"
+                },
+                milestones: planning::plan_milestones(start, target, start * pct / 100.0, |v| {
+                    metric.round(v)
+                }),
                 target_date,
                 safety,
             }
@@ -487,7 +503,10 @@ fn weight_plan(
         return Err(bad("TARGET_NOT_BETTER"));
     }
     let change_pct = (target - start).abs() / start * 100.0;
-    if target < WEIGHT_RANGE_KG.0 || target > WEIGHT_RANGE_KG.1 || change_pct > MAX_WEIGHT_CHANGE_PCT {
+    if target < WEIGHT_RANGE_KG.0
+        || target > WEIGHT_RANGE_KG.1
+        || change_pct > MAX_WEIGHT_CHANGE_PCT
+    {
         return Err(bad("UNSAFE_TARGET"));
     }
     let losing = target < start;
@@ -503,7 +522,11 @@ fn weight_plan(
         ),
         None => (Some(safe), None),
     };
-    let step = if losing { -WEIGHT_STEP_KG } else { WEIGHT_STEP_KG };
+    let step = if losing {
+        -WEIGHT_STEP_KG
+    } else {
+        WEIGHT_STEP_KG
+    };
     Ok(Plan {
         start,
         target,
@@ -531,7 +554,8 @@ async fn suggestions(
     let mut conn = state.db.acquire().await?;
     let current = current_value(&mut conn, user.id, exercise, &metric).await?;
     let pct = expected_pct(&mut conn, &rules, user.id, exercise, &metric).await?;
-    let suggestions = planning::suggest_targets(current, pct, metric.direction, |v| metric.round(v));
+    let suggestions =
+        planning::suggest_targets(current, pct, metric.direction, |v| metric.round(v));
     Ok(Json(json!({
         "current": current,
         "metric": {"code": metric.code, "unit": metric.unit, "direction": metric.direction_code},
