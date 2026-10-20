@@ -2,6 +2,7 @@
 
 pub mod boards;
 pub mod engine;
+pub mod jobs;
 pub mod seasons;
 pub mod weekly;
 

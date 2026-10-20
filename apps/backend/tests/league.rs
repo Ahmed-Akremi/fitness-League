@@ -5,7 +5,7 @@ mod common;
 use axum::http::{Method, StatusCode};
 use backend::{
     modules::{
-        league::{seasons, weekly},
+        league::{jobs, seasons, weekly},
         scoring::ledger::{self, LpEntry},
     },
     rules::Rules,
@@ -647,4 +647,225 @@ async fn seasons_open_when_due(opts: MySqlPoolOptions, conn: MySqlConnectOptions
         .unwrap();
     seasons::open_due(&app.db, Utc::now()).await.unwrap();
     assert_eq!(status(next).await, "ACTIVE");
+}
+
+async fn job_row(app: &TestApp, job: &str, key: &str) -> (String, Option<String>) {
+    sqlx::query_as("SELECT status, result FROM job_runs WHERE job = ? AND run_key = ?")
+        .bind(job)
+        .bind(key)
+        .fetch_one(&app.db)
+        .await
+        .unwrap()
+}
+
+#[sqlx::test]
+async fn a_job_runs_once_per_key(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    let app = seeded(opts, conn).await;
+    let now = Utc::now();
+    let runs = AtomicUsize::new(0);
+    let work = || async {
+        runs.fetch_add(1, Ordering::SeqCst);
+        Ok(json!({"n": 1}))
+    };
+    assert!(jobs::once(&app.db, "test", "k1", now, work()).await.unwrap());
+    assert!(!jobs::once(&app.db, "test", "k1", now, work()).await.unwrap());
+    assert_eq!(
+        job_row(&app, "test", "k1").await.0,
+        "DONE".to_owned()
+    );
+    let result: Value =
+        serde_json::from_str(&job_row(&app, "test", "k1").await.1.unwrap()).unwrap();
+    assert_eq!(result, json!({"n": 1}));
+
+    for (key, status, minutes) in [("dead", "RUNNING", 120), ("busy", "RUNNING", 10), ("failed", "FAILED", 1)] {
+        sqlx::query(
+            "INSERT INTO job_runs (id, job, run_key, status, started_at) VALUES (?, 'test', ?, ?, ?)",
+        )
+        .bind(Uuid::now_v7())
+        .bind(key)
+        .bind(status)
+        .bind((now - Duration::minutes(minutes)).naive_utc())
+        .execute(&app.db)
+        .await
+        .unwrap();
+    }
+    assert!(jobs::once(&app.db, "test", "dead", now, work()).await.unwrap());
+    assert!(!jobs::once(&app.db, "test", "busy", now, work()).await.unwrap());
+    assert!(jobs::once(&app.db, "test", "failed", now, work()).await.unwrap());
+
+    let before = runs.load(Ordering::SeqCst);
+    let (a, b) = tokio::join!(
+        jobs::once(&app.db, "test", "both", now, work()),
+        jobs::once(&app.db, "test", "both", now, work())
+    );
+    assert!(a.unwrap() ^ b.unwrap());
+    assert_eq!(runs.load(Ordering::SeqCst), before + 1);
+}
+
+#[sqlx::test]
+async fn the_worker_closes_the_week_once(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let app = seeded(opts, conn).await;
+    stretch_season(&app).await;
+    let c = catalog(&app).await;
+    let (user, token) = league_athlete(&app, "worker").await;
+    let at = this_week();
+    logged(&app, &token, &strength(&c, Uuid::now_v7(), at)).await;
+    let week = policy::week_start(at, OFFSET);
+    let later = week + Duration::days(7) + Duration::hours(25);
+    jobs::run_due(&app.state, later).await.unwrap();
+    jobs::run_due(&app.state, later).await.unwrap();
+    let entries = lp_entries(&app, user).await;
+    let weekly = entries.iter().filter(|e| e.2 == "WEEKLY_SCORE").count();
+    assert_eq!(weekly, 1, "{entries:?}");
+    assert_eq!(
+        job_row(&app, "weekly-close", &monday(week)).await.0,
+        "DONE".to_owned()
+    );
+}
+
+#[sqlx::test]
+async fn calibration_finalizes_on_its_day(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let app = seeded(opts, conn).await;
+    let (user, _) = athlete(&app, "finalist").await;
+    sqlx::query(
+        "UPDATE profiles SET calibration_started_at = UTC_TIMESTAMP(6) - INTERVAL 15 DAY, \
+           calibration_ends_at = UTC_TIMESTAMP(6) - INTERVAL 1 DAY WHERE user_id = ?",
+    )
+    .bind(user)
+    .execute(&app.db)
+    .await
+    .unwrap();
+    sqlx::query(
+        "INSERT INTO baselines (id, user_id, exercise_id, metric_type_id, declared_value, calibrated_value, \
+           effective_value, status) \
+         SELECT ?, ?, e.id, m.id, 90, 100, 90, 'PROVISIONAL' \
+         FROM exercises e, metric_types m WHERE e.code = 'BACK_SQUAT' AND m.code = 'E1RM'",
+    )
+    .bind(Uuid::now_v7())
+    .bind(user)
+    .execute(&app.db)
+    .await
+    .unwrap();
+    jobs::run_due(&app.state, Utc::now()).await.unwrap();
+    let (status, effective, on_time): (String, f64, bool) = sqlx::query_as(
+        "SELECT b.status, CAST(b.effective_value AS DOUBLE), b.finalized_at = p.calibration_ends_at \
+         FROM baselines b JOIN profiles p ON p.user_id = b.user_id WHERE b.user_id = ?",
+    )
+    .bind(user)
+    .fetch_one(&app.db)
+    .await
+    .unwrap();
+    assert_eq!((status.as_str(), effective, on_time), ("FINAL", 100.0, true));
+}
+
+#[sqlx::test]
+async fn balances_are_reconciled(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let app = seeded(opts, conn).await;
+    let season = stretch_season(&app).await;
+    let c = catalog(&app).await;
+    let (user, token) = league_athlete(&app, "drift").await;
+    logged(&app, &token, &strength(&c, Uuid::now_v7(), this_week())).await;
+    let rules = Rules::active(&app.db).await.unwrap();
+    let mut tx = app.db.begin().await.unwrap();
+    let entry = LpEntry {
+        user,
+        season,
+        amount: 450,
+        reason: "WEEKLY_SCORE",
+        source_type: "week",
+        source_id: "2026-01-05".to_owned(),
+        explanation: json!({}),
+        effective_at: Utc::now(),
+    };
+    ledger::append_lp(&mut tx, &rules, entry).await.unwrap();
+    tx.commit().await.unwrap();
+    let before: (i64, i32) = sqlx::query_as("SELECT xp_total, level FROM user_stats WHERE user_id = ?")
+        .bind(user)
+        .fetch_one(&app.db)
+        .await
+        .unwrap();
+    sqlx::query(
+        "UPDATE user_stats SET xp_total = 99999, level = 40, season_lp = 5, division_code = 'ELITE' WHERE user_id = ?",
+    )
+    .bind(user)
+    .execute(&app.db)
+    .await
+    .unwrap();
+    jobs::run_due(&app.state, Utc::now()).await.unwrap();
+    let after: (i64, i32) = sqlx::query_as("SELECT xp_total, level FROM user_stats WHERE user_id = ?")
+        .bind(user)
+        .fetch_one(&app.db)
+        .await
+        .unwrap();
+    assert_eq!(after, before);
+    assert_eq!(
+        stats(&app, user).await,
+        (450, Some(season), Some("SILVER".to_owned()))
+    );
+}
+
+#[sqlx::test]
+async fn the_sweep_awards_division_and_streak_badges(
+    opts: MySqlPoolOptions,
+    conn: MySqlConnectOptions,
+) {
+    let app = seeded(opts, conn).await;
+    let season = stretch_season(&app).await;
+    let rules = Rules::active(&app.db).await.unwrap();
+    let (gold, gold_token) = league_athlete(&app, "golden").await;
+    let mut tx = app.db.begin().await.unwrap();
+    let entry = LpEntry {
+        user: gold,
+        season,
+        amount: 900,
+        reason: "WEEKLY_SCORE",
+        source_type: "week",
+        source_id: "2026-01-05".to_owned(),
+        explanation: json!({}),
+        effective_at: Utc::now(),
+    };
+    ledger::append_lp(&mut tx, &rules, entry).await.unwrap();
+    tx.commit().await.unwrap();
+
+    let (steady, _) = league_athlete(&app, "steady").await;
+    let monday = policy::business_today(policy::week_start(Utc::now(), OFFSET), OFFSET);
+    for weeks_ago in 1..=4 {
+        sqlx::query(
+            "INSERT INTO weekly_scores (id, user_id, week_start, rule_set_version, progress_c, consistency_c, \
+               performance_c, total, breakdown) VALUES (?, ?, ?, 2, 0, 100, 0, 29.41, '{}')",
+        )
+        .bind(Uuid::now_v7())
+        .bind(steady)
+        .bind(monday - Duration::days(7 * weeks_ago))
+        .execute(&app.db)
+        .await
+        .unwrap();
+    }
+
+    jobs::run_due(&app.state, Utc::now()).await.unwrap();
+    let awarded = |user: Uuid, code: &'static str| {
+        let db = app.db.clone();
+        async move {
+            sqlx::query_scalar::<_, i64>(
+                "SELECT COUNT(*) FROM user_badges ub JOIN badges b ON b.id = ub.badge_id \
+                 WHERE ub.user_id = ? AND b.code = ?",
+            )
+            .bind(user)
+            .bind(code)
+            .fetch_one(&db)
+            .await
+            .unwrap()
+        }
+    };
+    assert_eq!(awarded(gold, "GOLD_DIVISION").await, 1);
+    assert_eq!(awarded(steady, "STREAK_4").await, 1);
+    let catalogue = get(&app, &gold_token, "/api/v1/badges").await.json;
+    let badge = catalogue
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|b| b["code"] == "GOLD_DIVISION")
+        .unwrap();
+    assert_eq!(badge["progress"], json!({"current": 3, "target": 3, "met": true}));
 }
