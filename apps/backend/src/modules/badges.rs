@@ -12,6 +12,7 @@ use uuid::Uuid;
 use crate::{
     error::AppError,
     http::{Api, auth::AppUser},
+    modules::league,
     state::AppState,
     types::iso,
 };
@@ -182,7 +183,30 @@ async fn facts(
                 .fetch_optional(&mut *conn)
                 .await?
                 .map_or(1, i64::from),
-            // plan 2d: DIVISION and STREAK_WEEKS read the league's tables.
+            // The better of the live division and the best one a closed season kept; 0 for none.
+            Fact::Division => sqlx::query_scalar!(
+                r#"SELECT CAST(GREATEST(
+                          COALESCE(FIELD(us.division_code, 'BRONZE', 'SILVER', 'GOLD', 'PLATINUM', 'DIAMOND', 'ELITE'), 0),
+                          COALESCE((SELECT MAX(ss.division + 0) FROM season_standings ss WHERE ss.user_id = us.user_id), 0))
+                        AS SIGNED) AS "rank!: i64"
+                   FROM user_stats us WHERE us.user_id = ?"#,
+                user
+            )
+            .fetch_optional(&mut *conn)
+            .await?
+            .unwrap_or(0),
+            // Consecutive closed weeks with the plan fully met.
+            Fact::StreakWeeks => {
+                let weeks = sqlx::query!(
+                    r#"SELECT week_start, consistency_c >= 100 AS "met!: i64" FROM weekly_scores
+                       WHERE user_id = ? ORDER BY week_start DESC LIMIT 60"#,
+                    user
+                )
+                .fetch_all(&mut *conn)
+                .await?;
+                let weeks: Vec<_> = weeks.iter().map(|w| (w.week_start, w.met != 0)).collect();
+                league::engine::current_streak(&weeks)
+            }
             // parts 3 and 4: friends, gyms, battles, duels, gym wars and challenges.
             _ => 0,
         };
