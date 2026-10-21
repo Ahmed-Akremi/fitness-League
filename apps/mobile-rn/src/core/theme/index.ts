@@ -28,7 +28,7 @@ export interface Colors {
   heart: string;
   /** Streak icon. */
   flame: string;
-  /** Division colours: bold text, avatar rings, podium ranks. */
+  /** Division colours: bold text, avatar rings, podium ranks. Elite is violet: lime means « action » only (HIG Color). */
   tier: Record<Division, string>;
   /** Badge rarity icons (COMMON uses `primary`). */
   rarity: Record<'RARE' | 'EPIC' | 'LEGENDARY', string>;
@@ -59,7 +59,7 @@ export const palettes = {
     badge: '#E5484D',
     heart: '#FF4D6D',
     flame: '#FF8A3D',
-    tier: { BRONZE: '#E09F6B', SILVER: '#C0C4CC', GOLD: '#FFD166', PLATINUM: '#7FDBDA', DIAMOND: '#3DA9FC', ELITE: '#C6F432' },
+    tier: { BRONZE: '#E09F6B', SILVER: '#C0C4CC', GOLD: '#FFD166', PLATINUM: '#7FDBDA', DIAMOND: '#3DA9FC', ELITE: '#C084FC' },
     rarity: { RARE: '#40C4FF', EPIC: '#E040FB', LEGENDARY: '#FFC107' },
   }),
   /**
@@ -81,7 +81,7 @@ export const palettes = {
     badge: '#C62828',
     heart: '#C2185B',
     flame: '#B4531A',
-    tier: { BRONZE: '#9A5A2B', SILVER: '#626872', GOLD: '#8A6400', PLATINUM: '#1C7A79', DIAMOND: '#1D6FB5', ELITE: '#596E16' },
+    tier: { BRONZE: '#9A5A2B', SILVER: '#626872', GOLD: '#8A6400', PLATINUM: '#1C7A79', DIAMOND: '#1D6FB5', ELITE: '#7E3FBF' },
     rarity: { RARE: '#0B6FA4', EPIC: '#9C27B0', LEGENDARY: '#8A6400' },
   }),
 };

@@ -937,5 +937,7 @@
   "removeExerciseTitle": "Remove {exercise}?",
   "removeExerciseMessage": "The sets you entered will be lost.",
   "deleteQueuedTitle": "Delete this workout?",
-  "deleteQueuedMessage": "It was never sent, so it will be lost."
+  "deleteQueuedMessage": "It was never sent, so it will be lost.",
+  "lpToDivision": "{count, plural, =1{1 LP to {division}} other{{count} LP to {division}}}",
+  "recordsShort": "Records"
 }

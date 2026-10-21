@@ -85,6 +85,8 @@ function HomeBody({ me }: { me: Me }) {
         <Txt color={colors.outline} style={{ flex: 1, fontWeight: '800', letterSpacing: 1.1, fontSize: 16 }}>
           {greeting(t, new Date().getHours(), firstName).toUpperCase()}
         </Txt>
+        {/* Owner's choice: « Log workout » lives in this top bar, next to the bell. */}
+        <IconButton testID="home-log-workout" icon="add" label={t('logWorkout')} onPress={() => router.push('/workouts/new')} />
         <NotificationBell />
       </View>
       {me.emailVerified !== true && (
@@ -105,6 +107,10 @@ function HomeBody({ me }: { me: Me }) {
           <View style={{ flex: 1 }}>
             <Txt variant="label" color={colors.outline}>{t('seasonLp')}</Txt>
             <Txt style={displayText(56)}>{String(lp.lp ?? 0)}</Txt>
+            {/* Only when the server says (no endpoint added); none above Elite. */}
+            {lp.nextDivision && lp.lpToNextDivision != null ? (
+              <Txt variant="small" color={colors.outline}>{t('lpToDivision', { count: Number(lp.lpToNextDivision), division: divisionLabel(t, lp.nextDivision) })}</Txt>
+            ) : null}
           </View>
           <View style={{ alignItems: 'center', gap: 4 }}>
             <AvatarBadge name={String(profile.fullName ?? me.username)} division={division} size={56} />
@@ -112,7 +118,8 @@ function HomeBody({ me }: { me: Me }) {
           </View>
         </View>
         <View style={{ marginTop: space.md }}>
-          <XpBar value={xpNext === 0 ? 0 : xpInto / xpNext} label={t('level', { level: stats.level ?? 1 })} />
+          {/* The division is the card's signature colour. */}
+          <XpBar testID="home-xp" value={xpNext === 0 ? 0 : xpInto / xpNext} label={t('level', { level: stats.level ?? 1 })} color={divisionColor(division, colors)} />
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8, gap: 4 }}>
           <Txt variant="small" numberOfLines={1} style={{ flex: 1 }}>{`${t('level', { level: stats.level ?? 1 })} · ${t('xpProgress', { current: xpInto, total: xpNext })}`}</Txt>
@@ -155,7 +162,7 @@ function HomeBody({ me }: { me: Me }) {
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, marginHorizontal: -space.lg }} contentContainerStyle={{ gap: space.sm, paddingHorizontal: space.lg }}>
         {(
           [
-            ['emoji-events', t('records'), '/records'],
+            ['emoji-events', t('recordsShort'), '/records'],
             ['group', t('friends'), '/friends'],
             ['sports-mma', t('battles'), '/battles'],
             ['dynamic-feed', t('feed'), '/feed'],
@@ -168,7 +175,6 @@ function HomeBody({ me }: { me: Me }) {
           </Pressable>
         ))}
       </ScrollView>
-      <Button testID="home-log-workout" icon="add" label={t('logWorkout')} onPress={() => router.push('/workouts/new')} style={{ marginTop: 8 }} />
       <NewsSection />
     </>
   );

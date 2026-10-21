@@ -937,5 +937,7 @@
   "removeExerciseTitle": "Retirer {exercise} ?",
   "removeExerciseMessage": "Les séries que tu as saisies seront perdues.",
   "deleteQueuedTitle": "Supprimer cette séance ?",
-  "deleteQueuedMessage": "Elle n'a jamais été envoyée : elle sera perdue."
+  "deleteQueuedMessage": "Elle n'a jamais été envoyée : elle sera perdue.",
+  "lpToDivision": "{count, plural, =1{Encore 1 LP pour {division}} other{Encore {count} LP pour {division}}}",
+  "recordsShort": "Records"
 }

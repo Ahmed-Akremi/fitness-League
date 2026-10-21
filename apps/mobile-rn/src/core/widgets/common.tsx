@@ -40,8 +40,8 @@ export function useReducedMotion() {
   return reduced;
 }
 
-/** Animated XP bar. Animations are skipped when the OS asks for reduced motion (spec §19.6). */
-export function XpBar({ value, label }: { value: number; label?: string }) {
+/** Animated XP bar. Animations are skipped when the OS asks for reduced motion (spec §19.6). `color`: the fill (accent by default). */
+export function XpBar({ value, label, color, testID }: { value: number; label?: string; color?: string; testID?: string }) {
   const { colors } = useTheme();
   const reduced = useReducedMotion();
   const v = Math.min(1, Math.max(0, value));
@@ -51,8 +51,8 @@ export function XpBar({ value, label }: { value: number; label?: string }) {
     else Animated.timing(anim, { toValue: v, duration: 900, useNativeDriver: false }).start();
   }, [v, reduced, anim]);
   return (
-    <View accessible accessibilityRole="progressbar" accessibilityLabel={label} accessibilityValue={{ min: 0, max: 100, now: Math.round(v * 100) }} style={{ height: 10, borderRadius: 8, backgroundColor: colors.surfaceHigh, overflow: 'hidden' }}>
-      <Animated.View style={{ height: 10, borderRadius: 8, backgroundColor: colors.primary, width: anim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }) }} />
+    <View testID={testID} accessible accessibilityRole="progressbar" accessibilityLabel={label} accessibilityValue={{ min: 0, max: 100, now: Math.round(v * 100) }} style={{ height: 10, borderRadius: 8, backgroundColor: colors.surfaceHigh, overflow: 'hidden' }}>
+      <Animated.View testID={testID ? `${testID}-fill` : undefined} style={{ height: 10, borderRadius: 8, backgroundColor: color ?? colors.primary, width: anim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }) }} />
     </View>
   );
 }

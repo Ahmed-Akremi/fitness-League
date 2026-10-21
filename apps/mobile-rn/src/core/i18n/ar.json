@@ -937,5 +937,7 @@
   "removeExerciseTitle": "إزالة {exercise}؟",
   "removeExerciseMessage": "ستضيع المجموعات التي أدخلتها.",
   "deleteQueuedTitle": "حذف هذه الحصة؟",
-  "deleteQueuedMessage": "لم تُرسَل قط، لذا ستضيع."
+  "deleteQueuedMessage": "لم تُرسَل قط، لذا ستضيع.",
+  "lpToDivision": "{count, plural, =1{بقيت نقطة LP واحدة لبلوغ {division}} other{بقيت {count} LP لبلوغ {division}}}",
+  "recordsShort": "الأرقام"
 }

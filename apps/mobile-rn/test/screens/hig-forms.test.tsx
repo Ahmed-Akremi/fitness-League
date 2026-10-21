@@ -195,13 +195,14 @@ describe('writing', () => {
     expect([translate('en', 'navChallenges'), translate('fr', 'navChallenges'), translate('ar', 'navChallenges')]).toEqual(['Challenges', 'Challenges', 'التحديات']);
   });
 
-  it('the Home « Log workout » button is written like everywhere else, not in capitals', async () => {
+  it('the Home « Log workout » button reads like everywhere else, not in capitals', async () => {
     const backend = new FakeBackend()
       .on('GET', '/me', [200, { id: 'u1', username: 'a', emailVerified: true, profile: { fullName: 'Ahmed', onboardingCompleted: true }, stats: {}, streak: {} }])
       .on('GET', '/goals', [200, []])
       .on('GET', '/notifications', [200, { ...page([]), unread: 0 }]);
     const screen = await renderScreen(HomeScreen, backend);
-    expect(await screen.findByText('Log workout')).toBeTruthy();
+    // Lot 8 moved it into the top bar as « + »: its name is the same words.
+    expect((await screen.findByTestId('home-log-workout')).props.accessibilityLabel).toBe('Log workout');
     expect(screen.queryByText('LOG WORKOUT')).toBeNull();
   });
 });
