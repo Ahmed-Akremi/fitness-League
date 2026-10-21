@@ -1,0 +1,26 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT EXISTS (SELECT 1 FROM job_runs WHERE job = 'weekly-close' AND run_key = ? AND status = 'DONE')",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "EXISTS (SELECT 1 FROM job_runs WHERE job = 'weekly-close' AND run_key = ? AND status = 'DONE')",
+        "type_info": {
+          "type": "Long",
+          "flags": "NOT_NULL | BINARY",
+          "collation": 63,
+          "max_size": 1
+        },
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "0adf945f57c610a3ec208f9bf60189977ee3ed6bffed92aeeb544f465aee533d"
+}

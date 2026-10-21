@@ -566,4 +566,17 @@ division.
   active one (`ledger::apply_lp`). Otherwise a newcomer's first week, paid after the close into the season that
   just ended, held their balance in that season, and the next season's points never moved it
   (`a_closed_season_never_becomes_mine`).
-- The whole-branch review of the executing-plans skill is not done: it is left to a fresh session (handoff §0).
+- **The whole-branch review (2026-10-21, a fresh session,** against this plan, the old API and the ledger's rulings):
+  the five « Review focus » points hold. One important finding, fixed (`f1d4e2d`, `7476169`): the week holding a
+  season's end was paid after the season had closed (the close ran at `ends_at` + 24 h, that week's close up to six
+  days later), so its LP moved no balance and missed the standings. The old API and ARCHITECTURE §8 share the gap.
+  A season now closes once the week holding its last instant is closed (`weekly-close` `DONE`), or has passed;
+  `run_due` runs the weekly close first (`a_seasons_last_week_is_paid_before_it_closes`). Minors, left as they are
+  (each the old API's too):
+  - `weekly-close` closes only the latest closable week: a worker down for more than a week leaves the earlier
+    week unclosed;
+  - an athlete whose close fails stops the athletes after them, on every retry;
+  - `job_runs.finished_at` holds the tick's instant (jobs take the clock as a parameter);
+  - `season_lp` is clamped at 0 entry by entry, and the reconcile compares it with the clamped sum: they differ
+    only after a negative entry larger than the balance, which part 2 never writes;
+  - an anonymised account with an active `HABIT` goal still gets a 0 week each close.
