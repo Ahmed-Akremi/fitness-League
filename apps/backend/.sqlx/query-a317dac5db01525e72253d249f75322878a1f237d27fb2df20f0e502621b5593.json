@@ -1,0 +1,26 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT EXISTS (SELECT 1 FROM seasons WHERE id = ? AND status = 'ACTIVE')",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "EXISTS (SELECT 1 FROM seasons WHERE id = ? AND status = 'ACTIVE')",
+        "type_info": {
+          "type": "Long",
+          "flags": "NOT_NULL | BINARY",
+          "collation": 63,
+          "max_size": 1
+        },
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "a317dac5db01525e72253d249f75322878a1f237d27fb2df20f0e502621b5593"
+}
