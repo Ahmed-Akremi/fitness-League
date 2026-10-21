@@ -562,3 +562,8 @@ division.
 - `cargo audit` found two advisories published on 2026-10-19 and 20 (`rustls-webpki` 0.103.15,
   RUSTSEC-2026-0382; `webpki-roots` 1.0.9, RUSTSEC-2026-0381): both crates are updated to their patched
   releases.
+- **A departure from the old API, found at the season boundary:** an athlete without a season joins only an
+  active one (`ledger::apply_lp`). Otherwise a newcomer's first week, paid after the close into the season that
+  just ended, held their balance in that season, and the next season's points never moved it
+  (`a_closed_season_never_becomes_mine`).
+- The whole-branch review of the executing-plans skill is not done: it is left to a fresh session (handoff §0).
