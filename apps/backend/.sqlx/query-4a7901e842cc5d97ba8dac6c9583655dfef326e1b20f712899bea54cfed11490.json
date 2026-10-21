@@ -1,0 +1,89 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT IF(user_low_id = ?, user_high_id, user_low_id) AS \"user_id!: Uuid\", status,\n                  requested_by = ? AS \"mine!: i64\", created_at, accepted_at\n           FROM friendships WHERE user_low_id = ? OR user_high_id = ? ORDER BY created_at",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "user_id!: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "BINARY",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "status",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | ENUM",
+          "collation": 224,
+          "max_size": 32
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.friendships",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "mine!: i64",
+        "type_info": {
+          "type": "Long",
+          "flags": "BINARY",
+          "collation": 63,
+          "max_size": 1
+        },
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 3,
+        "name": "created_at",
+        "type_info": {
+          "type": "Datetime",
+          "flags": "NOT_NULL | BINARY",
+          "collation": 63,
+          "max_size": 26
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.friendships",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "accepted_at",
+        "type_info": {
+          "type": "Datetime",
+          "flags": "BINARY",
+          "collation": 63,
+          "max_size": 26
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.friendships",
+            "name": "accepted_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": [
+      true,
+      false,
+      true,
+      false,
+      true
+    ]
+  },
+  "hash": "4a7901e842cc5d97ba8dac6c9583655dfef326e1b20f712899bea54cfed11490"
+}

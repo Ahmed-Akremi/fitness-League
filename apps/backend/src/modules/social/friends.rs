@@ -122,7 +122,13 @@ pub async fn request(
     .rows_affected()
         == 1;
     let status = if created {
-        notify(&mut tx, them, Kind::FriendRequest, json!({"userId": user.id})).await?;
+        notify(
+            &mut tx,
+            them,
+            Kind::FriendRequest,
+            json!({"userId": user.id}),
+        )
+        .await?;
         "PENDING"
     } else {
         let existing = sqlx::query!(
@@ -149,7 +155,13 @@ pub async fn request(
         )
         .execute(&mut *tx)
         .await?;
-        notify(&mut tx, them, Kind::FriendAccepted, json!({"userId": user.id})).await?;
+        notify(
+            &mut tx,
+            them,
+            Kind::FriendAccepted,
+            json!({"userId": user.id}),
+        )
+        .await?;
         "ACCEPTED"
     };
     tx.commit().await?;
@@ -185,7 +197,13 @@ pub async fn accept(
     if !accepted {
         return Err(AppError::not_found("Friend request"));
     }
-    notify(&mut tx, them, Kind::FriendAccepted, json!({"userId": user.id})).await?;
+    notify(
+        &mut tx,
+        them,
+        Kind::FriendAccepted,
+        json!({"userId": user.id}),
+    )
+    .await?;
     tx.commit().await?;
     Ok(Json(json!({"status": "ACCEPTED"})))
 }

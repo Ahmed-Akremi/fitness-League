@@ -1,6 +1,6 @@
 {
   "db_name": "MySQL",
-  "query": "SELECT t.user_id AS \"user_id!: Uuid\", t.lp AS \"lp!\", t.level AS \"level!\", t.division, t.ranked AS \"rank!: i64\",\n                      t.username AS \"username!\", t.full_name AS \"full_name!\", t.governorate_id AS \"governorate_id!: Uuid\",\n                      t.governorate_code AS \"governorate_code!\", t.name_fr AS \"name_fr!\", t.name_en AS \"name_en!\",\n                      t.name_ar AS \"name_ar!\", ls.`rank` AS \"previous?: i32\"\n               FROM (SELECT us.user_id, us.season_lp AS lp, us.level, us.division_code AS division,\n                            CAST(RANK() OVER (ORDER BY us.season_lp DESC) AS SIGNED) AS ranked,\n                            u.username, p.full_name, g.id AS governorate_id, g.code AS governorate_code,\n                            g.name_fr, g.name_en, g.name_ar\n                     FROM user_stats us JOIN users u ON u.id = us.user_id JOIN profiles p ON p.user_id = us.user_id\n                       JOIN user_settings s ON s.user_id = us.user_id JOIN governorates g ON g.id = p.governorate_id\n                     WHERE us.current_season_id = ? AND u.status = 'ACTIVE' AND u.email_verified_at IS NOT NULL\n                       AND p.calibration_ends_at <= ? AND s.show_on_leaderboards\n                       AND (? IS NULL OR p.governorate_id = ?)) t\n                 LEFT JOIN leaderboard_snapshots ls ON ls.snapshot_date = ? AND ls.season_id = ?\n                   AND ls.scope_type = ? AND ls.scope_id = ? AND ls.user_id = t.user_id\n               WHERE (? IS NULL OR t.user_id = ?) AND (? IS NULL OR t.lp < ? OR (t.lp = ? AND t.user_id > ?))\n               ORDER BY t.lp DESC, t.user_id\n               LIMIT ?",
+  "query": "SELECT t.user_id AS \"user_id!: Uuid\", t.lp AS \"lp!\", t.level AS \"level!\", t.division, t.ranked AS \"rank!: i64\",\n                      t.username AS \"username!\", t.full_name AS \"full_name!\", t.governorate_id AS \"governorate_id!: Uuid\",\n                      t.governorate_code AS \"governorate_code!\", t.name_fr AS \"name_fr!\", t.name_en AS \"name_en!\",\n                      t.name_ar AS \"name_ar!\", ls.`rank` AS \"previous?: i32\"\n               FROM (SELECT us.user_id, us.season_lp AS lp, us.level, us.division_code AS division,\n                            CAST(RANK() OVER (ORDER BY us.season_lp DESC) AS SIGNED) AS ranked,\n                            u.username, p.full_name, g.id AS governorate_id, g.code AS governorate_code,\n                            g.name_fr, g.name_en, g.name_ar\n                     FROM user_stats us JOIN users u ON u.id = us.user_id JOIN profiles p ON p.user_id = us.user_id\n                       JOIN user_settings s ON s.user_id = us.user_id JOIN governorates g ON g.id = p.governorate_id\n                     WHERE us.current_season_id = ? AND u.status = 'ACTIVE' AND u.email_verified_at IS NOT NULL\n                       AND p.calibration_ends_at <= ? AND s.show_on_leaderboards\n                       AND (? IS NULL OR p.governorate_id = ?)\n                       AND (? IS NULL OR us.user_id = ? OR us.user_id IN (\n                             SELECT IF(f.user_low_id = ?, f.user_high_id, f.user_low_id) FROM friendships f\n                             WHERE f.status = 'ACCEPTED' AND (f.user_low_id = ? OR f.user_high_id = ?)))) t\n                 LEFT JOIN leaderboard_snapshots ls ON ls.snapshot_date = ? AND ls.season_id = ?\n                   AND ls.scope_type = ? AND ls.scope_id = ? AND ls.user_id = t.user_id\n               WHERE t.lp > ? OR (t.lp = ? AND t.user_id < ?)\n               ORDER BY t.lp, t.user_id DESC\n               LIMIT ?",
   "describe": {
     "columns": [
       {
@@ -208,7 +208,7 @@
       }
     ],
     "parameters": {
-      "Right": 15
+      "Right": 17
     },
     "nullable": [
       true,
@@ -226,5 +226,5 @@
       true
     ]
   },
-  "hash": "ce6c8976cea9df3dc8edcf378892eac94f46058164b156d315a563a422eeeca8"
+  "hash": "ef0152ab5b6ff456dedd249cdc9120bd5747af48f0273552012dd63b77625564"
 }

@@ -1,0 +1,26 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT user_id AS \"user: Uuid\" FROM xp_transactions WHERE created_at >= ?\n           UNION SELECT user_id FROM league_point_transactions WHERE created_at >= ?\n           UNION SELECT user_id FROM weekly_scores WHERE updated_at >= ?\n           UNION SELECT user_low_id FROM friendships WHERE status = 'ACCEPTED' AND updated_at >= ?\n           UNION SELECT user_high_id FROM friendships WHERE status = 'ACCEPTED' AND updated_at >= ?",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "user: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | BINARY",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 5
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "d3368a3a5b58ec0a8bcd2dd70d543a210d37a639500d02b8a1231ec8aa0bef21"
+}

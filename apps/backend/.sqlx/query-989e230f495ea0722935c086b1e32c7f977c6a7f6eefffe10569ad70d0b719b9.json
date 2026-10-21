@@ -1,0 +1,48 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT status, requested_by AS \"requested_by: Uuid\" FROM friendships\n               WHERE user_low_id = ? AND user_high_id = ?",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "status",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | ENUM",
+          "collation": 224,
+          "max_size": 32
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.friendships",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "requested_by: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | MULTIPLE_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.friendships",
+            "name": "requested_by"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "989e230f495ea0722935c086b1e32c7f977c6a7f6eefffe10569ad70d0b719b9"
+}

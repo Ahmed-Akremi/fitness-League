@@ -745,7 +745,10 @@ async fn the_social_tables_hold_their_rules(opts: MySqlPoolOptions, conn: MySqlC
         .bind(l)
         .execute(&db)
     };
-    assert!(friendship(high, low).await.is_err(), "an unordered pair was stored");
+    assert!(
+        friendship(high, low).await.is_err(),
+        "an unordered pair was stored"
+    );
     friendship(low, high).await.unwrap();
     let twice = friendship(low, high).await.unwrap_err();
     assert!(is_unique_violation(&twice), "{twice}");
@@ -754,7 +757,11 @@ async fn the_social_tables_hold_their_rules(opts: MySqlPoolOptions, conn: MySqlC
         "INSERT INTO follows (follower_id, followee_id) VALUES (?, ?)",
         "INSERT INTO blocks (blocker_id, blocked_id) VALUES (?, ?)",
     ] {
-        let own = sqlx::query(AssertSqlSafe(sql)).bind(a).bind(a).execute(&db).await;
+        let own = sqlx::query(AssertSqlSafe(sql))
+            .bind(a)
+            .bind(a)
+            .execute(&db)
+            .await;
         assert!(own.is_err(), "{sql} accepted oneself");
     }
     let unknown = sqlx::query(
@@ -764,16 +771,20 @@ async fn the_social_tables_hold_their_rules(opts: MySqlPoolOptions, conn: MySqlC
     .bind(a)
     .execute(&db)
     .await;
-    assert!(unknown.is_err(), "a notification of an unknown type was stored");
+    assert!(
+        unknown.is_err(),
+        "a notification of an unknown type was stored"
+    );
 
     sqlx::query("INSERT INTO user_settings (user_id) VALUES (?)")
         .bind(a)
         .execute(&db)
         .await
         .unwrap();
-    let half = sqlx::query("UPDATE user_settings SET quiet_hours_start = '22:00' WHERE user_id = ?")
-        .bind(a)
-        .execute(&db)
-        .await;
+    let half =
+        sqlx::query("UPDATE user_settings SET quiet_hours_start = '22:00' WHERE user_id = ?")
+            .bind(a)
+            .execute(&db)
+            .await;
     assert!(half.is_err(), "quiet hours without an end were stored");
 }

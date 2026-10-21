@@ -149,7 +149,10 @@ async fn a_friend_badge_and_its_notification(opts: MySqlPoolOptions, conn: MySql
         let notes = badge_notes(&app, user, "FIRST_FRIEND").await;
         assert_eq!(notes.len(), 1, "{notes:?}");
         let name = &notes[0]["name"];
-        assert!(["fr", "en", "ar"].iter().all(|l| name[l].is_string()), "{name}");
+        assert!(
+            ["fr", "en", "ar"].iter().all(|l| name[l].is_string()),
+            "{name}"
+        );
     }
     assert_eq!(
         badge(&badges(&app, &token).await, "FIRST_FRIEND")["progress"],

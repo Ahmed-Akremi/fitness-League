@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "UPDATE notifications n JOIN JSON_TABLE(?, '$[*]' COLUMNS (id CHAR(36) PATH '$')) j ON n.id = UNHEX(REPLACE(j.id, '-', '')) SET n.read_at = ? WHERE n.user_id = ? AND n.read_at IS NULL",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "ffae64b97d38d23ab1badd5a6a2477eaf5709305add8618919b68d934f99dbbe"
+}

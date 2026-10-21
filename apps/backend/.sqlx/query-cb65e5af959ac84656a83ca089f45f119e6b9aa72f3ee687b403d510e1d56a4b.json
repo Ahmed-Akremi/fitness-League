@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "DELETE FROM friendships WHERE user_low_id = ? AND user_high_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "cb65e5af959ac84656a83ca089f45f119e6b9aa72f3ee687b403d510e1d56a4b"
+}

@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "UPDATE friendships SET status = 'ACCEPTED', accepted_at = ? WHERE user_low_id = ? AND user_high_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "e1e4da46b9063ef502b829fea9e5cff87d8b93cbd4037b4790d364b7faf5fe56"
+}

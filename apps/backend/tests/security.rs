@@ -378,7 +378,11 @@ async fn profiles_and_searches_carry_no_private_data(
         )
         .await;
     assert_eq!(weighed.status, StatusCode::CREATED, "{}", weighed.json);
-    let (low, high) = if shown < viewer { (shown, viewer) } else { (viewer, shown) };
+    let (low, high) = if shown < viewer {
+        (shown, viewer)
+    } else {
+        (viewer, shown)
+    };
     sqlx::query(
         "INSERT INTO friendships (user_low_id, user_high_id, status, requested_by) VALUES (?, ?, 'ACCEPTED', ?)",
     )
@@ -401,8 +405,18 @@ async fn profiles_and_searches_carry_no_private_data(
         let reply = app.call(Method::GET, path, token, None).await;
         assert_eq!(reply.status, StatusCode::OK, "{path}: {}", reply.json);
         let text = reply.json.to_string();
-        assert!(text.contains("samira"), "{path} does not show the athlete: {text}");
-        for secret in ["samira@example.com", "1995-05-05", "83.7", "21.3", "dateOfBirth", "email"] {
+        assert!(
+            text.contains("samira"),
+            "{path} does not show the athlete: {text}"
+        );
+        for secret in [
+            "samira@example.com",
+            "1995-05-05",
+            "83.7",
+            "21.3",
+            "dateOfBirth",
+            "email",
+        ] {
             assert!(!text.contains(secret), "{path} shows {secret}: {text}");
         }
     }

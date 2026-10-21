@@ -1,0 +1,99 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT id AS \"id: Uuid\", type AS kind, payload, read_at, created_at FROM notifications\n           WHERE user_id = ? AND (? IS NULL OR id < ?) ORDER BY id DESC LIMIT ?",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | PRIMARY_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.notifications",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "kind",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | ENUM | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 136
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.notifications",
+            "name": "type"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "payload",
+        "type_info": {
+          "type": "Blob",
+          "flags": "NOT_NULL | BLOB | BINARY | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 4294967295
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.notifications",
+            "name": "payload"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "read_at",
+        "type_info": {
+          "type": "Datetime",
+          "flags": "BINARY",
+          "collation": 63,
+          "max_size": 26
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.notifications",
+            "name": "read_at"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "created_at",
+        "type_info": {
+          "type": "Datetime",
+          "flags": "NOT_NULL | BINARY",
+          "collation": 63,
+          "max_size": 26
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.notifications",
+            "name": "created_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "58f7cfa1aa270b4879fc4ece4b543e2ddb8af54503d724c7632459626632fecd"
+}

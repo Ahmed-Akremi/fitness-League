@@ -1,0 +1,48 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT blocked_id AS \"user_id: Uuid\", created_at FROM blocks\n           WHERE blocker_id = ? ORDER BY created_at",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "user_id: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | PRIMARY_KEY | MULTIPLE_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.blocks",
+            "name": "blocked_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "created_at",
+        "type_info": {
+          "type": "Datetime",
+          "flags": "NOT_NULL | BINARY",
+          "collation": 63,
+          "max_size": 26
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.blocks",
+            "name": "created_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "364a2bc9434d99369b8cc64b51ba2eb653d975ed99ab9a1ba52ad5e925fdcb1d"
+}

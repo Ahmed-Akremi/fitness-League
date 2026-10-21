@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "UPDATE user_settings SET push_social = COALESCE(?, push_social), push_battles = COALESCE(?, push_battles), push_competition = COALESCE(?, push_competition), push_challenges = COALESCE(?, push_challenges), push_badges = COALESCE(?, push_badges), push_gym = COALESCE(?, push_gym), quiet_hours_start = IF(?, ?, quiet_hours_start), quiet_hours_end = IF(?, ?, quiet_hours_end) WHERE user_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 11
+    },
+    "nullable": []
+  },
+  "hash": "e0a96168c021c18d20496c73f7832889c383cd27684b4602d02e5fbb645d6d37"
+}

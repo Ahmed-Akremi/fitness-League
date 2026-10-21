@@ -651,7 +651,11 @@ async fn anonymisation_deletes_weight_goals(opts: MySqlPoolOptions, conn: MySqlC
 /// `me` and `friend` friends (asked by `me`) following each other, `me` and `blocked` blocking each
 /// other, and one notification for `me`.
 async fn social_links(app: &TestApp, me: Uuid, friend: Uuid, blocked: Uuid) {
-    let (low, high) = if me < friend { (me, friend) } else { (friend, me) };
+    let (low, high) = if me < friend {
+        (me, friend)
+    } else {
+        (friend, me)
+    };
     sqlx::query(
         "INSERT INTO friendships (user_low_id, user_high_id, status, requested_by, accepted_at) \
          VALUES (?, ?, 'ACCEPTED', ?, UTC_TIMESTAMP(6))",
@@ -663,17 +667,43 @@ async fn social_links(app: &TestApp, me: Uuid, friend: Uuid, blocked: Uuid) {
     .await
     .unwrap();
     for (sql, a, b) in [
-        ("INSERT INTO follows (follower_id, followee_id) VALUES (?, ?)", me, friend),
-        ("INSERT INTO follows (follower_id, followee_id) VALUES (?, ?)", friend, me),
-        ("INSERT INTO blocks (blocker_id, blocked_id) VALUES (?, ?)", me, blocked),
-        ("INSERT INTO blocks (blocker_id, blocked_id) VALUES (?, ?)", blocked, me),
+        (
+            "INSERT INTO follows (follower_id, followee_id) VALUES (?, ?)",
+            me,
+            friend,
+        ),
+        (
+            "INSERT INTO follows (follower_id, followee_id) VALUES (?, ?)",
+            friend,
+            me,
+        ),
+        (
+            "INSERT INTO blocks (blocker_id, blocked_id) VALUES (?, ?)",
+            me,
+            blocked,
+        ),
+        (
+            "INSERT INTO blocks (blocker_id, blocked_id) VALUES (?, ?)",
+            blocked,
+            me,
+        ),
     ] {
-        sqlx::query(sql).bind(a).bind(b).execute(&app.db).await.unwrap();
+        sqlx::query(sql)
+            .bind(a)
+            .bind(b)
+            .execute(&app.db)
+            .await
+            .unwrap();
     }
     let mut conn = app.db.acquire().await.unwrap();
-    notifications::notify(&mut conn, me, Kind::FriendRequest, json!({"userId": friend}))
-        .await
-        .unwrap();
+    notifications::notify(
+        &mut conn,
+        me,
+        Kind::FriendRequest,
+        json!({"userId": friend}),
+    )
+    .await
+    .unwrap();
 }
 
 #[sqlx::test]
@@ -710,7 +740,10 @@ async fn the_export_holds_friends_and_notifications(
     assert_eq!(note["type"], "FRIEND_REQUEST");
     assert_eq!(note["payload"], json!({"userId": friend}));
     assert_eq!(note["read"], false);
-    assert_eq!(export["notificationPreferences"]["categories"]["GYM"], false);
+    assert_eq!(
+        export["notificationPreferences"]["categories"]["GYM"],
+        false
+    );
 }
 
 #[sqlx::test]

@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "INSERT IGNORE INTO follows (follower_id, followee_id) VALUES (?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "f26545bc0d417bae9f6895831311b7203059fb251bd36349b07b7f940d6362eb"
+}

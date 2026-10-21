@@ -14,10 +14,7 @@ pub fn routes(api: Api) -> Api {
     api.get("/api/v1/friends", friends::list)
         .get("/api/v1/friends/requests", friends::requests)
         .post("/api/v1/friends/requests", friends::request)
-        .post(
-            "/api/v1/friends/requests/{user_id}/accept",
-            friends::accept,
-        )
+        .post("/api/v1/friends/requests/{user_id}/accept", friends::accept)
         .post(
             "/api/v1/friends/requests/{user_id}/decline",
             friends::decline,

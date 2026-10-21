@@ -174,7 +174,10 @@ async fn mark_read(
         }
         Some(ids) => {
             // Written back in one form, so the database can turn each into its 16 bytes.
-            let ids: Vec<Uuid> = ids.iter().filter_map(|id| Uuid::parse_str(id).ok()).collect();
+            let ids: Vec<Uuid> = ids
+                .iter()
+                .filter_map(|id| Uuid::parse_str(id).ok())
+                .collect();
             let ids = serde_json::to_string(&ids).map_err(AppError::internal)?;
             sqlx::query!(
                 "UPDATE notifications n \

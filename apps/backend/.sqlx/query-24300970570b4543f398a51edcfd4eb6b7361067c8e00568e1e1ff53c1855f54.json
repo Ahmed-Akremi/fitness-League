@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "UPDATE notifications SET read_at = ? WHERE user_id = ? AND read_at IS NULL",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "24300970570b4543f398a51edcfd4eb6b7361067c8e00568e1e1ff53c1855f54"
+}
