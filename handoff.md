@@ -17,7 +17,7 @@ First steps, in order:
 1. **Find where `main` is.** `git fetch && git log --oneline -5 origin/main`. The owner commits, pushes and
    merges during sessions (five times this session, see §4).
    - `origin/main` is at `3d42eed` (PR #27): all of plan 2d, the season-boundary fix and the docs.
-   - Local `feat/rust-backend-2d` holds one more commit, this handoff's last update. **Don't push:** the user
+   - Local `feat/rust-backend-2d` also holds this handoff's last updates (docs only). **Don't push:** the user
      pushes themselves.
    - Start part 3 on a new branch from `origin/main`. Local `main` is far behind: never branch from it.
 2. **Plan 2d's whole-branch review is not done.** The executing-plans skill asks for one fresh review at the end,
@@ -111,7 +111,7 @@ endpoints in plans 2a to 2d, and its « Rulings » section lists the choices the
   - #22, #26 and #27: plan 2d, up to `6f9f1be` (the fix and the docs).
 - **Branch `feat/rust-backend-2d`** (this session) starts at `18e861e` (plan 2c reviewed), with two merges of
   `main` in it (`a637767`, `fdc0340`). Its commits are listed in §4. `origin/feat/rust-backend-2d` is at
-  `6f9f1be`; only this handoff's last update is local.
+  `6f9f1be`; only this handoff's last updates are local.
 - **Other local branches:**
   - `main` is far behind `origin/main`, so don't use it;
   - `feat/rust-backend-2c` (plan 2c) is merged through #19 and #21;
@@ -383,8 +383,8 @@ endpoints in plans 2a to 2d, and its « Rulings » section lists the choices the
   from the old API); `rustls-webpki` 0.103.16 and `webpki-roots` 1.0.10 (RUSTSEC-2026-0382 and -0381, published
   on 2026-10-19 and 20).
 - The docs commit: README, the plan's « Built » section, this handoff.
-- The owner merged `main` into the branch twice (`a637767`, `fdc0340`) and the branch into `main` twice (#22,
-  #26).
+- The owner merged `main` into the branch twice (`a637767`, `fdc0340`), and the branch was merged into `main`
+  three times (#22, #26, #27).
 - **Checks (2026-10-21, native Windows):**
   - the whole suite before `5546c01`, in four chunks with `-j 2` (the background run was stopped by Claude Code
     for low memory): **342 green, 1 ignored** (the Windows skip): 125 unit tests and 217 integration tests in
@@ -520,7 +520,7 @@ endpoints in plans 2a to 2d, and its « Rulings » section lists the choices the
 
 ## 6. Next steps
 
-1. **This handoff's last update** is the only local commit on `feat/rust-backend-2d`: the user pushes it.
+1. **This handoff's last updates** are the only local commits on `feat/rust-backend-2d`: the user pushes them.
 2. **Plan 2d's whole-branch review** (§0 step 2), with the plan's « Review focus » list and the ledger's rulings.
 3. **Part 3, gyms and social:** its spec, then plan 3a (§0 step 5 lists the inputs and what part 2 leaves to it).
 4. **Plan 2c's whole-branch review: done**, against the old API's `goals` and `badges` modules and the plan.
