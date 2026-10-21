@@ -1,5 +1,5 @@
 import { QueryClient } from '@tanstack/react-query';
-import { Slot } from 'expo-router';
+import { Slot, Stack } from 'expo-router';
 import { renderRouter } from 'expo-router/testing-library';
 import type { ReactElement } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -27,7 +27,7 @@ export const testQueryClient = () => new QueryClient({ defaultOptions: { queries
 export async function renderScreen(
   screen: () => ReactElement,
   backend: FakeBackend,
-  opts: { locale?: Locale; store?: OutboxStore; status?: AuthStatus; routes?: Record<string, () => ReactElement> } = {},
+  opts: { locale?: Locale; store?: OutboxStore; status?: AuthStatus; routes?: Record<string, () => ReactElement>; stack?: boolean } = {},
 ) {
   usePrefs.setState({ locale: opts.locale ?? 'en', themeMode: 'dark' });
   setAuthStatus(opts.status ?? 'signedIn');
@@ -35,7 +35,8 @@ export async function renderScreen(
   const Layout = () => (
     <SafeAreaProvider initialMetrics={metrics}>
       <ServicesProvider services={services} queryClient={testQueryClient()}>
-        <Slot />
+        {/* stack: a real navigation bar, for screens that put buttons in it (iOS). */}
+        {opts.stack ? <Stack /> : <Slot />}
         <ToastHost />
       </ServicesProvider>
     </SafeAreaProvider>

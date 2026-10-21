@@ -9,7 +9,7 @@ import { useLocale, useT } from '../../core/prefs';
 import { useApi } from '../../core/services';
 import { displayText, useTheme } from '../../core/theme';
 import { localized } from '../../core/utils/format';
-import { AvatarBadge, EmptyState, Loading, SectionHeader, SkeletonList, StatCard } from '../../core/widgets/common';
+import { AvatarBadge, divisionLabel, EmptyState, Loading, SectionHeader, SkeletonList, StatCard } from '../../core/widgets/common';
 import { ErrorView, errorMessage } from '../../core/widgets/error';
 import { Button, Card, Chip, Dialog, IconButton, ListGroup, ListRow, Menu, Segmented, TextField, Txt, toast, useHeader } from '../../core/widgets/kit';
 import { useMe } from '../me/api';
@@ -264,7 +264,7 @@ export function PublicProfileScreen({ username }: { username: string }) {
         <View style={{ alignItems: 'center', gap: 8 }}>
           <AvatarBadge name={name} division={division} size={96} />
           <Txt style={displayText(30)}>{name}</Txt>
-          {division && <Chip icon="shield" label={division} />}
+          {division && <Chip icon="shield" label={divisionLabel(t, division)} />}
           {p.bio ? <Txt style={{ textAlign: 'center' }}>{p.bio}</Txt> : null}
         </View>
         <View style={{ flexDirection: 'row', gap: 10 }}>

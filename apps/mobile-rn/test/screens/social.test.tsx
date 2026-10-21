@@ -30,7 +30,7 @@ describe('public profile', () => {
       .on('POST', '/friends/requests', [201, {}]);
     const screen = await renderScreen(() => <PublicProfileScreen username="sami" />, backend);
     expect(await screen.findByText('420')).toBeTruthy();
-    expect(screen.getByText('GOLD')).toBeTruthy();
+    expect(screen.getByText('Gold')).toBeTruthy();
     await fireEvent.press(screen.getByTestId('profile-add-friend'));
     await waitFor(() => expect(backend.calls('POST', '/friends/requests')[0]?.body).toEqual({ userId: 'u9' }));
   });
@@ -72,8 +72,8 @@ describe('feed', () => {
     expect(await screen.findByText('🔥 1')).toBeTruthy();
     expect(backend.calls('PUT', '/activities/a1/reactions')[0].body).toEqual({ type: 'FIRE' });
 
-    await fireEvent.press(screen.getByLabelText('Report'));
-    await fireEvent.press(await screen.findByText('Report'));
+    // iOS: the item of the system pull-down menu.
+    await fireEvent(screen.getByTestId('feed-report-a1'), 'buttonPress');
     await fireEvent.press(await screen.findByTestId('reason-CHEATING'));
     await fireEvent.press(screen.getByTestId('report-send'));
     await waitFor(() => expect(backend.calls('POST', '/reports')[0]?.body).toEqual({ targetType: 'USER', targetId: 'u9', reason: 'CHEATING' }));

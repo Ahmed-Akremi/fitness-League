@@ -78,7 +78,7 @@ function BadgeTile({ badge }: { badge: Json }) {
   const [showDescription, setShowDescription] = useState(false);
   const earned = badge.awardedAt != null;
   const p: Json | null = badge.progress ?? null;
-  const color = badge.rarity === 'LEGENDARY' ? '#FFC107' : badge.rarity === 'EPIC' ? '#E040FB' : badge.rarity === 'RARE' ? '#40C4FF' : colors.primary;
+  const color = badge.rarity === 'LEGENDARY' || badge.rarity === 'EPIC' || badge.rarity === 'RARE' ? colors.rarity[badge.rarity as 'LEGENDARY' | 'EPIC' | 'RARE'] : colors.primary;
   const name = localized(badge.name, locale);
   return (
     <Pressable

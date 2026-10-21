@@ -149,7 +149,7 @@ export function FeedCard({ item, onReact, onComments, onReport }: { item: Json; 
           <Txt variant="title" style={{ fontSize: 15 }}>{name}</Txt>
           <Txt variant="small" color={colors.outline}>{formatDate(item.createdAt, locale, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</Txt>
         </Pressable>
-        {item.isMine !== true && <Menu label={t('report')} items={[{ label: t('report'), onPress: onReport }]} />}
+        {item.isMine !== true && <Menu label={t('report')} items={[{ label: t('report'), testID: `feed-report-${item.id}`, onPress: onReport }]} />}
       </View>
       <Txt style={{ fontSize: 16 }}>{activityText(t, locale, item)}</Txt>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>

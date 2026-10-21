@@ -1,13 +1,14 @@
+import { router } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { FlatList, Pressable, RefreshControl, View } from 'react-native';
+import { FlatList, Platform, Pressable, RefreshControl, View } from 'react-native';
 
 import { useLocale, useT } from '../../core/prefs';
 import { useApi } from '../../core/services';
 import { displayText, useTheme } from '../../core/theme';
 import { formatNumber, localized } from '../../core/utils/format';
-import { AvatarBadge, EmptyState, GymLogo, Loading, MovementBadge } from '../../core/widgets/common';
+import { AvatarBadge, divisionColor, divisionLabel, EmptyState, GymLogo, Loading, MovementBadge, StatusPill } from '../../core/widgets/common';
 import { ErrorView } from '../../core/widgets/error';
-import { Card, Icon, Segmented, Txt } from '../../core/widgets/kit';
+import { Card, Icon, IconButton, Segmented, Txt, useHeader } from '../../core/widgets/kit';
 import { LeaguesTab } from '../leagues/screens';
 import { useMe } from '../me/api';
 import { leagueApi, type LeagueRow, type LeagueScope, type ScopeTarget } from './api';
@@ -29,12 +30,32 @@ export function LeagueScreen() {
     setVisited((v) => new Set(v).add(s));
   };
 
+  // iOS: the navigation bar holds the scope's action (HIG: no floating buttons) — jump to my rank in the ranking on
+  // screen, or « + » on the private leagues. Each list hands over its own jump.
+  const ios = Platform.OS === 'ios';
+  const jumps = useRef<Partial<Record<Tab, () => void>>>({});
+  const jumpReady = useCallback((s: Tab) => (jump: (() => void) | null) => void (jumps.current[s] = jump ?? undefined), []);
+  const ranked = scope !== 'leagues' && (scope !== 'region' || governorateId != null) && (scope !== 'gym' || gym != null);
+  useHeader(
+    ios
+      ? {
+          headerRight: () =>
+            scope === 'leagues' ? (
+              <IconButton testID="league-new" icon="add" label={t('newLeague')} onPress={() => router.push('/leagues/new')} />
+            ) : ranked && me?.id ? (
+              <IconButton testID={`jump-${scope}`} icon="my-location" label={t('jumpToMe')} onPress={() => jumps.current[scope]?.()} />
+            ) : null,
+        }
+      : {},
+    [ios, scope, ranked, me?.id, t],
+  );
+
   const content = (s: Tab) => {
     switch (s) {
       case 'leagues':
         return <LeaguesTab />;
       case 'region':
-        return governorateId ? <LeaderboardList scope="region" target={{ governorateId }} myId={me?.id} /> : null;
+        return governorateId ? <LeaderboardList scope="region" target={{ governorateId }} myId={me?.id} onJumpReady={ios ? jumpReady('region') : undefined} /> : null;
       case 'gym':
         return gym ? (
           <View style={{ flex: 1 }}>
@@ -44,13 +65,13 @@ export function LeagueScreen() {
                 <Txt variant="title" style={{ flex: 1, fontWeight: '800' }}>{gym.name}</Txt>
               </Card>
             </View>
-            <LeaderboardList scope="gym" target={{ gymId: gym.id }} myId={me?.id} />
+            <LeaderboardList scope="gym" target={{ gymId: gym.id }} myId={me?.id} onJumpReady={ios ? jumpReady('gym') : undefined} />
           </View>
         ) : (
-          <EmptyState icon="fitness-center" message={t('noGym')} />
+          <EmptyState icon="fitness-center" message={t('noGym')} actionLabel={t('findGym')} onAction={() => router.push('/gyms')} />
         );
       default:
-        return <LeaderboardList scope={s} myId={me?.id} />;
+        return <LeaderboardList scope={s} myId={me?.id} onJumpReady={ios ? jumpReady(s) : undefined} />;
     }
   };
 
@@ -81,7 +102,8 @@ export function LeagueScreen() {
   );
 }
 
-export function LeaderboardList({ scope, target = {}, myId }: { scope: LeagueScope; target?: ScopeTarget; myId?: string }) {
+/** `onJumpReady`: the screen puts « jump to my rank » in its navigation bar (iOS); without it, a floating button. */
+export function LeaderboardList({ scope, target = {}, myId, onJumpReady }: { scope: LeagueScope; target?: ScopeTarget; myId?: string; onJumpReady?: (jump: (() => void) | null) => void }) {
   const t = useT();
   const locale = useLocale();
   const { colors } = useTheme();
@@ -121,9 +143,18 @@ export function LeaderboardList({ scope, target = {}, myId }: { scope: LeagueSco
     void load({ reset: true });
   }, [load]);
 
+  useEffect(() => {
+    onJumpReady?.(myId ? () => void load({ aroundMe: true }) : null);
+  }, [onJumpReady, myId, load]);
+
   if (error != null && rows.length === 0) return <ErrorView error={error} onRetry={() => load({ reset: true })} />;
   if (rows.length === 0 && loading) return <Loading />;
-  if (rows.length === 0) return <EmptyState icon="emoji-events" message={scope === 'friends' ? t('emptyFriends') : t('emptyLeague')} />;
+  if (rows.length === 0)
+    return scope === 'friends' ? (
+      <EmptyState icon="group" message={t('emptyFriends')} actionLabel={t('findAthletes')} onAction={() => router.push('/search')} />
+    ) : (
+      <EmptyState icon="emoji-events" message={t('emptyLeague')} />
+    );
 
   return (
     <View style={{ flex: 1 }}>
@@ -137,13 +168,14 @@ export function LeaderboardList({ scope, target = {}, myId }: { scope: LeagueSco
         refreshControl={<RefreshControl refreshing={false} onRefresh={() => load({ reset: true })} tintColor={colors.primary} />}
         renderItem={({ item: r }) => {
           const mine = r.athlete.id === myId;
-          const medal = r.rank === 1 ? '#FFD166' : r.rank === 2 ? '#C0C4CC' : r.rank === 3 ? '#E09F6B' : colors.text;
+          const medal = r.rank === 1 ? colors.tier.GOLD : r.rank === 2 ? colors.tier.SILVER : r.rank === 3 ? colors.tier.BRONZE : colors.text;
+          const division = divisionLabel(t, r.division);
           const subtitle = [r.gym?.name, localized(r.governorate?.name, locale), t('level', { level: r.level })].filter(Boolean).join(' · ');
           return (
             <View
               testID={`rank-${r.athlete.id}`}
               accessible
-              accessibilityLabel={`#${r.rank}, ${r.athlete.fullName}, ${r.lp} LP`}
+              accessibilityLabel={`#${r.rank}, ${r.athlete.fullName}, ${division}, ${r.lp} LP${mine ? `, ${t('you')}` : ''}`}
               style={{
                 flexDirection: 'row',
                 alignItems: 'center',
@@ -158,8 +190,15 @@ export function LeaderboardList({ scope, target = {}, myId }: { scope: LeagueSco
               <Txt style={[displayText(22), { width: 44, color: medal }]}>#{r.rank}</Txt>
               <AvatarBadge name={r.athlete.fullName} division={r.division} size={40} />
               <View style={{ flex: 1 }}>
-                <Txt numberOfLines={1} style={{ fontSize: 16, fontWeight: '600' }}>{r.athlete.fullName}</Txt>
-                <Txt variant="small" color={colors.outline} numberOfLines={1}>{subtitle}</Txt>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Txt numberOfLines={1} style={{ flexShrink: 1, fontSize: 16, fontWeight: '600' }}>{r.athlete.fullName}</Txt>
+                  {mine && <StatusPill label={t('you')} color={colors.primary} />}
+                </View>
+                {/* The division in words next to its colour: the ring alone says nothing in grayscale. */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Txt variant="small" color={divisionColor(r.division, colors)} style={{ fontWeight: '800' }}>{division}</Txt>
+                  <Txt variant="small" color={colors.outline} numberOfLines={1} style={{ flexShrink: 1 }}>{subtitle}</Txt>
+                </View>
               </View>
               <View style={{ alignItems: 'flex-end' }}>
                 <Txt style={displayText(20)}>{`${formatNumber(r.lp, locale)} LP`}</Txt>
@@ -169,7 +208,7 @@ export function LeaderboardList({ scope, target = {}, myId }: { scope: LeagueSco
           );
         }}
       />
-      {myId && (
+      {myId && !onJumpReady && (
         <Pressable
           testID={`jump-${scope}`}
           accessibilityRole="button"

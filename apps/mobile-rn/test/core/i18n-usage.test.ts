@@ -12,9 +12,9 @@ function sources(dir: string): string[] {
   });
 }
 
-/** Placeholder names of an ICU message: `{name}` and the argument of `{count, plural, …}`. */
+/** Placeholder names of an ICU message: `{name}` and the argument of `{count, plural, …}` — not a one-word plural case (`=0{Notifications}`). */
 function placeholders(message: string): Set<string> {
-  return new Set([...message.matchAll(/\{(\w+)(?:\}|,\s*plural)/g)].map((m) => m[1]));
+  return new Set([...message.matchAll(/(?<!=\d+|\b(?:zero|one|two|few|many|other))\{(\w+)(?:\}|,\s*plural)/g)].map((m) => m[1]));
 }
 
 /** Top-level keys of the object literal passed to t(): `{ a: x, b }` → a, b. */

@@ -47,7 +47,7 @@ export function LoginScreen() {
     <Screen edges={['top', 'bottom']}>
       <View style={{ width: '100%', maxWidth: 420, alignSelf: 'center', gap: 12, paddingTop: 32 }}>
         <View style={{ width: 64, height: 64, borderRadius: 18, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' }}>
-          <Icon name="bolt" size={40} color="#0E0F12" />
+          <Icon name="bolt" size={40} color={colors.onPrimary} />
         </View>
         <Txt style={[displayText(36), { color: colors.primary, marginTop: 8 }]}>{config.appName.toUpperCase()}</Txt>
         <Txt color={colors.outline} style={{ fontSize: 16, marginBottom: 28 }}>{t('appTagline')}</Txt>
@@ -123,6 +123,8 @@ export function RegisterScreen() {
   const [health, setHealth] = useState(false);
   const [busy, setBusy] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  // Fields left with a value: checked from then on (HIG: validate as people go), empty ones wait for submit.
+  const [touched, setTouched] = useState<ReadonlySet<string>>(new Set());
   const [error, setError] = useState<unknown>(null);
   const govs = useGovernorates();
   const cities = useCities(governorateId);
@@ -137,7 +139,9 @@ export function RegisterScreen() {
     governorate: governorateId == null ? t('required') : null,
     city: cityId == null ? t('required') : null,
   };
-  const show = (e: string | null) => (submitted ? e : null);
+  const typed: Record<string, string> = { username, fullName, email, password };
+  const show = (field: keyof typeof errors) => (submitted || (touched.has(field) && typed[field]?.trim()) ? errors[field] : null);
+  const leave = (field: string) => () => setTouched((s) => new Set(s).add(field));
 
   async function submit() {
     setSubmitted(true);
@@ -156,10 +160,11 @@ export function RegisterScreen() {
   const now = new Date();
   return (
     <Screen>
-      <TextField testID="reg-username" label={t('username')} placeholder={t('usernameRule')} value={username} onChangeText={setUsername} autoCapitalize="none" error={show(errors.username) ?? serverField('username')} />
-      <TextField testID="reg-fullname" label={t('fullName')} value={fullName} onChangeText={setFullName} error={show(errors.fullName)} />
-      <TextField testID="reg-email" label={t('email')} value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" error={show(errors.email) ?? serverField('email')} />
-      <TextField testID="reg-password" label={t('password')} placeholder={t('passwordTooShort')} value={password} onChangeText={setPassword} secureTextEntry error={show(errors.password)} />
+      <TextField testID="reg-username" label={t('username')} placeholder={t('usernameRule')} value={username} onChangeText={setUsername} onBlur={leave('username')} autoCapitalize="none" autoComplete="username" textContentType="username" error={show('username') ?? serverField('username')} />
+      <TextField testID="reg-fullname" label={t('fullName')} value={fullName} onChangeText={setFullName} onBlur={leave('fullName')} autoComplete="name" textContentType="name" error={show('fullName')} />
+      <TextField testID="reg-email" label={t('email')} value={email} onChangeText={setEmail} onBlur={leave('email')} keyboardType="email-address" autoCapitalize="none" autoComplete="email" textContentType="emailAddress" error={show('email') ?? serverField('email')} />
+      {/* new-password: iCloud Keychain and Google offer a strong password. */}
+      <TextField testID="reg-password" label={t('password')} placeholder={t('passwordTooShort')} value={password} onChangeText={setPassword} onBlur={leave('password')} secureTextEntry autoComplete="new-password" textContentType="newPassword" error={show('password')} />
       <DateField
         testID="reg-dob"
         label={t('dateOfBirth')}
@@ -168,7 +173,8 @@ export function RegisterScreen() {
         onChange={setDob}
         minimumDate={new Date(now.getFullYear() - 100, 0, 1)}
         maximumDate={now}
-        error={show(errors.dob)}
+        display="spinner"
+        error={show('dob')}
       />
       {govs.isError ? (
         <ErrorView error={govs.error} onRetry={() => govs.refetch()} />
@@ -182,7 +188,7 @@ export function RegisterScreen() {
             setGovernorateId(v);
             setCityId(null);
           }}
-          error={show(errors.governorate)}
+          error={show('governorate')}
         />
       ) : (
         <Loading />
@@ -191,7 +197,7 @@ export function RegisterScreen() {
         (cities.isError ? (
           <ErrorView error={cities.error} />
         ) : cities.data ? (
-          <Select testID="reg-city" label={t('city')} value={cityId} options={cities.data.map((c) => ({ value: c.id, label: localized(c.name, locale) }))} onChange={setCityId} error={show(errors.city)} />
+          <Select testID="reg-city" label={t('city')} value={cityId} options={cities.data.map((c) => ({ value: c.id, label: localized(c.name, locale) }))} onChange={setCityId} error={show('city')} />
         ) : (
           <Loading />
         ))}

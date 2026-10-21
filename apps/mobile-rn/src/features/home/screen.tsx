@@ -1,14 +1,14 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { Json } from '../../core/api/client';
-import { useLocale, useT } from '../../core/prefs';
+import { useLocale, useT, type T } from '../../core/prefs';
 import { displayText, radius, space, useTheme } from '../../core/theme';
 import { formatDate, formatMetric, localized } from '../../core/utils/format';
-import { AvatarBadge, CountdownText, divisionColor, GymLogo, Loading, SectionHeader, StatCard, XpBar } from '../../core/widgets/common';
+import { AvatarBadge, CountdownText, divisionColor, divisionLabel, GymLogo, Loading, SectionHeader, StatCard, XpBar } from '../../core/widgets/common';
 import { ErrorView } from '../../core/widgets/error';
 import { Button, Card, Expander, Icon, IconButton, ListGroup, ListRow, Screen, Txt, useHeader, type IconName } from '../../core/widgets/kit';
 import { authApi } from '../auth/api';
@@ -21,6 +21,13 @@ import { CompetitionCarousel } from './competition-carousel';
 import { NotificationBell } from '../notifications/screens';
 import { useRecords } from '../progress/api';
 import { useApi } from '../../core/services';
+
+/** Greeting for the hour: morning before noon, afternoon until 6 pm, evening after. */
+export const greetingKey = (hour: number) => (hour < 12 ? 'greetingMorning' : hour < 18 ? 'greetingAfternoon' : 'greetingEvening');
+const greeting = (t: T, hour: number, name: string) => {
+  const key = greetingKey(hour);
+  return key === 'greetingMorning' ? t('greetingMorning', { name }) : key === 'greetingAfternoon' ? t('greetingAfternoon', { name }) : t('greetingEvening', { name });
+};
 
 /** "I have a goal. I have progress. I have a rank. I have a reason to train today." (spec §1, §19.3) */
 export function HomeScreen() {
@@ -69,13 +76,17 @@ function HomeBody({ me }: { me: Me }) {
   const division: string | undefined = lp.division ?? stats.division;
   const gym = profile.gym;
   const active = (goals.data ?? []).filter((g) => g.status === 'ACTIVE');
+  // Larger Text: three tiles side by side would clip their numbers, so they stack.
+  const stacked = useWindowDimensions().fontScale >= 1.5;
 
   return (
     <>
       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
         <Txt color={colors.outline} style={{ flex: 1, fontWeight: '800', letterSpacing: 1.1, fontSize: 16 }}>
-          {(new Date().getHours() < 17 ? t('greetingMorning', { name: firstName }) : t('greetingEvening', { name: firstName })).toUpperCase()}
+          {greeting(t, new Date().getHours(), firstName).toUpperCase()}
         </Txt>
+        {/* Owner's choice: « Log workout » lives in this top bar, next to the bell. */}
+        <IconButton testID="home-log-workout" icon="add" label={t('logWorkout')} onPress={() => router.push('/workouts/new')} />
         <NotificationBell />
       </View>
       {me.emailVerified !== true && (
@@ -90,24 +101,29 @@ function HomeBody({ me }: { me: Me }) {
         testID="home-hero"
         accessibilityRole="button"
         onPress={() => router.navigate('/league')}
-        style={{ padding: 20, borderRadius: 24, backgroundColor: colors.surface, borderWidth: 1, borderColor: divisionColor(division) + '59' }}
+        style={{ padding: 20, borderRadius: 24, backgroundColor: colors.surface, borderWidth: 1, borderColor: divisionColor(division, colors) + '59' }}
       >
         <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>
           <View style={{ flex: 1 }}>
             <Txt variant="label" color={colors.outline}>{t('seasonLp')}</Txt>
             <Txt style={displayText(56)}>{String(lp.lp ?? 0)}</Txt>
+            {/* Only when the server says (no endpoint added); none above Elite. */}
+            {lp.nextDivision && lp.lpToNextDivision != null ? (
+              <Txt variant="small" color={colors.outline}>{t('lpToDivision', { count: Number(lp.lpToNextDivision), division: divisionLabel(t, lp.nextDivision) })}</Txt>
+            ) : null}
           </View>
           <View style={{ alignItems: 'center', gap: 4 }}>
             <AvatarBadge name={String(profile.fullName ?? me.username)} division={division} size={56} />
-            <Txt color={divisionColor(division)} style={{ fontWeight: '800' }}>{division ?? '—'}</Txt>
+            <Txt color={divisionColor(division, colors)} style={{ fontWeight: '800' }}>{divisionLabel(t, division)}</Txt>
           </View>
         </View>
         <View style={{ marginTop: space.md }}>
-          <XpBar value={xpNext === 0 ? 0 : xpInto / xpNext} label={t('level', { level: stats.level ?? 1 })} />
+          {/* The division is the card's signature colour. */}
+          <XpBar testID="home-xp" value={xpNext === 0 ? 0 : xpInto / xpNext} label={t('level', { level: stats.level ?? 1 })} color={divisionColor(division, colors)} />
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8, gap: 4 }}>
           <Txt variant="small" numberOfLines={1} style={{ flex: 1 }}>{`${t('level', { level: stats.level ?? 1 })} · ${t('xpProgress', { current: xpInto, total: xpNext })}`}</Txt>
-          <Icon name="local-fire-department" color="#FF8A3D" size={18} />
+          <Icon name="local-fire-department" color={colors.flame} size={18} />
           <Txt style={{ fontWeight: '700' }}>{t('weekStreak', { count: streak.currentWeeks ?? 0 })}</Txt>
         </View>
       </Pressable>
@@ -119,7 +135,7 @@ function HomeBody({ me }: { me: Me }) {
         </Card>
       )}
       {dashboard.isError && <ErrorView error={dashboard.error} onRetry={() => dashboard.refetch()} />}
-      <View style={{ flexDirection: 'row', gap: space.sm }}>
+      <View testID="home-tiles" style={{ flexDirection: stacked ? 'column' : 'row', gap: space.sm }}>
         <Tile label={t('rankNationalShort')} value={ranks.national == null ? '—' : `#${ranks.national}`} onPress={() => router.navigate('/league')} />
         <Tile label={localized(profile.governorate?.name, locale)} value={ranks.governorate == null ? '—' : `#${ranks.governorate}`} onPress={() => router.navigate('/league')} />
         <Tile label={t('thisWeek')} value={week.total == null ? '—' : String(Math.round(week.total))} caption={week.total == null ? undefined : `${week.trainingDays}/${week.plannedDays}`} />
@@ -146,7 +162,7 @@ function HomeBody({ me }: { me: Me }) {
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, marginHorizontal: -space.lg }} contentContainerStyle={{ gap: space.sm, paddingHorizontal: space.lg }}>
         {(
           [
-            ['emoji-events', t('records'), '/records'],
+            ['emoji-events', t('recordsShort'), '/records'],
             ['group', t('friends'), '/friends'],
             ['sports-mma', t('battles'), '/battles'],
             ['dynamic-feed', t('feed'), '/feed'],
@@ -159,7 +175,6 @@ function HomeBody({ me }: { me: Me }) {
           </Pressable>
         ))}
       </ScrollView>
-      <Button testID="home-log-workout" icon="add" label={t('logWorkout').toUpperCase()} onPress={() => router.push('/workouts/new')} style={{ marginTop: 8 }} />
       <NewsSection />
     </>
   );
@@ -185,8 +200,8 @@ export function GoalCard({ goal: g, onPress }: { goal: Json; onPress?: () => voi
 function Tile({ label, value, caption, onPress }: { label: string; value: string; caption?: string; onPress?: () => void }) {
   const { colors } = useTheme();
   return (
-    <Pressable onPress={onPress} disabled={!onPress} style={{ flex: 1, backgroundColor: colors.surface, borderRadius: radius.card, padding: space.md, borderWidth: 1, borderColor: colors.border }}>
-      <Txt variant="label" numberOfLines={1} color={colors.outline} style={{ fontSize: 11, letterSpacing: 1 }}>{label}</Txt>
+    <Pressable accessibilityRole={onPress ? 'button' : undefined} accessibilityLabel={`${label}, ${value}`} onPress={onPress} disabled={!onPress} style={{ flex: 1, backgroundColor: colors.surface, borderRadius: radius.card, padding: space.md, borderWidth: 1, borderColor: colors.border }}>
+      <Txt variant="label" numberOfLines={2} color={colors.outline} style={{ fontSize: 11, letterSpacing: 1 }}>{label}</Txt>
       <Txt style={[displayText(28), { marginTop: 4 }]}>{value}</Txt>
       {caption ? <Txt variant="small">{caption}</Txt> : null}
     </Pressable>
@@ -241,7 +256,7 @@ export function ProfileScreen() {
       <View style={{ alignItems: 'center', gap: 6 }}>
         <AvatarBadge name={String(profile.fullName ?? me.data.username)} division={stats.division} size={96} />
         <Txt style={displayText(30)}>{profile.fullName ?? me.data.username}</Txt>
-        <Txt color={colors.outline}>{`@${me.data.username} · ${t('level', { level: stats.level ?? 1 })}${stats.division ? ` · ${stats.division}` : ''}`}</Txt>
+        <Txt color={colors.outline}>{`@${me.data.username} · ${t('level', { level: stats.level ?? 1 })}${stats.division ? ` · ${divisionLabel(t, stats.division)}` : ''}`}</Txt>
       </View>
       <ListGroup>
         {profile.gym ? (
