@@ -10,8 +10,8 @@ This one keeps what is still true and still to do.
 Opening prompt to paste:
 
 > Read `handoff.md`, then run plan 2d's whole-branch review as a fresh reviewer (§0 step 2). Then start part 3 of
-> the Rust backend (gyms and social): write its spec from the docs and the old API, then plan 3a. Work in this
-> Windows checkout only.
+> the Rust backend (gyms and social): write its spec from the docs and the old API, split into plans, then write
+> and build plan 3a. Work in this Windows checkout only.
 
 First steps, in order:
 1. **Find where `main` is.** `git fetch && git log --oneline -5 origin/main`. The owner commits, pushes and
@@ -34,14 +34,22 @@ First steps, in order:
 4. **Set up the environment.** Use §2's environment line in Git Bash for every cargo command, then check the
    build: `cargo test -j 4 --lib` (125 green).
 5. **For part 3, read:**
+   - its scope, in the part 1 spec's parts table (`docs/superpowers/specs/2026-10-06-rust-backend-foundation-design.md`,
+     row 3): gyms, gym WODs, gym wars, duels, battles, challenges, leagues, feed, follows, notifications
+     (including the `ANNOUNCEMENT` type and `/me/notification-preferences`), push, the live socket, and home news
+     (`GET /announcements`, `PUT` and `DELETE /announcements/:id/like`). That is large: the spec will likely split
+     it into several plans, as part 2 was;
    - the part 1 spec (the frame of every part) and the part 2 spec, for the house conventions;
-   - `docs/ARCHITECTURE.md`: gyms, friendships, the activity feed, notifications;
-   - the old API modules that are the contract (`gyms`, `friends`/`social`, `feed`, `notifications`, and the
-     gym and friends leaderboards in `leaderboards`);
-   - `apps/mobile-rn/src/features/` for what the app calls;
+   - `docs/ARCHITECTURE.md` on the same subjects;
+   - the old API modules that are the contract: `gyms`, `gym-wods`, `gym-wars`, `duels`, `battles`,
+     `challenges`, `leagues`, `social` (friendships, follows), `feed`, `notifications`, `push`, `realtime`,
+     `announcements`, and the gym and friends parts of `leaderboards`;
+   - `apps/mobile-rn/src/features/` (the folders of the same names, and `home`) for what the app calls;
    - what part 2 leaves to part 3: the gym and friends leaderboards with their `/me`; `/me/ranks`' `gym` and
      `friends`; other people's workouts by visibility; activity events and notifications (badges, level-ups,
-     completed goals); the badge facts `FRIEND` and `GYM_JOINED`; snapshots of the gym scope.
+     completed goals); the challenge component of the weekly score (rule set `challenge_component`, off in v2);
+     the badge facts of friends, gyms, battles, duels, gym wars and challenges; gym-scope snapshots and
+     standings.
 6. **Don't ask the owner product questions.** Their words: « you will find everything in the .md files ».
    Take the technical calls yourself and list them in the spec's and plans' « Rulings » sections.
 
@@ -224,7 +232,8 @@ endpoints in plans 2a to 2d, and its « Rulings » section lists the choices the
     sub-agents, output in `~/security-audit-skill/<repo>/run-<N>`, never in the repository. It runs target
     code only inside an OS sandbox without network; otherwise a lead stays `needs_validation`;
   - **its validators refuse to run on native Windows** (see section 5), so a full audit must run from WSL.
-- **Other apps, unchanged this session.** Last runs:
+- **Other apps, unchanged this session** (the owner's merges of `main` brought design references under
+  `docs/prompts/`, a mock-up HTML and `apps/admin/tsconfig.tsbuildinfo`, no app code). Last runs:
   - RN: 53 suites / 366 tests (`npx jest --maxWorkers=2`) + `npx tsc --noEmit`;
   - admin panel: 13 tests + typecheck;
   - API: integration 35 suites / 140 tests, unit 310;
@@ -341,7 +350,8 @@ endpoints in plans 2a to 2d, and its « Rulings » section lists the choices the
     counts a 403 as a refusal only when the code is `FORBIDDEN`, so `CONSENT_REQUIRED` is not one.
   - `workouts.rs` checks the list against the shape recorded from the old API
     (`apps/mobile-rn/assets/demo/api.json`). That file records `GET /goals` as an empty list and no badges, so
-    `goals.rs` and `badges.rs` pin the shapes themselves.
+    `goals.rs` and `badges.rs` pin the shapes themselves. `league.rs` and `leaderboards.rs` check
+    `/me/weekly-scores/current`, `/me/lp`, `/me/ranks` and the board pages against their recorded answers.
 - Plans:
   - `docs/superpowers/plans/2026-10-06-rust-backend-1a-foundation.md`;
   - `docs/superpowers/plans/2026-10-07-rust-backend-1b-accounts.md`;
