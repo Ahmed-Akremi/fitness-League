@@ -352,3 +352,7 @@ Friends(Uuid) }`; a friends board compares with no snapshot. Consumes `notificat
   answer must show the athlete, so it is not vacuous).
 - The owner committed tasks 1 to 5 mid-session under their own messages; the content is this plan's.
 - The MariaDB container crashed once (exit 139) during the badge suite and was restarted (handoff §5).
+- Checks: the whole suite (365 green, 1 ignored: 127 unit tests, 238 integration tests in 25 files), fmt, Clippy
+  online and offline, `cargo audit` and `cargo deny check`. The whole-branch review is not done: no agent was
+  spawned (the user did not ask for one); the author's own pass found nothing to fix, and a fresh session runs
+  the real one (handoff §0 step 2).

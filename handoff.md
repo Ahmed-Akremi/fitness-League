@@ -34,7 +34,7 @@ First steps, in order:
    stopped ». MariaDB crashed once more this session (exit 139). If a test panics in sqlx's `testing/mod.rs` with
    « Error dropping database … Directory not empty », see §5, « A stuck test database ».
 4. **Set up the environment.** Use §2's environment line in Git Bash for every cargo command, then check the
-   build: `cargo test -j 4 --lib` (128 green).
+   build: `cargo test -j 4 --lib` (127 green).
 5. **For plan 3b (gyms), read:**
    - the part 3 spec, `docs/superpowers/specs/2026-10-21-rust-backend-gyms-social-design.md`: « Scope »
      (plan 3b's 16 routes), « Gyms (3b) », « Database », « Plans » and the rulings (ruling 3 moves the gym logo
@@ -428,7 +428,9 @@ The previous session's list (plan 2d's commits and its 14 rulings) is in `git sh
   request's (or a follow's) block check and its write left the friendship next to the block. Every writer of a
   link between two athletes now locks both `users` rows, lower id first, before it checks and writes
   (`social::lock_pair`). `a_block_racing_a_request_leaves_no_link` failed in three runs out of three before.
-- **Checks (2026-10-21, native Windows):** SUITE_RESULT
+- **Checks (2026-10-21, native Windows):**
+  - the whole suite at `d343659`, in four chunks with `-j 2 --no-fail-fast`: **365 green, 1 ignored** (the
+    Windows skip): 127 unit tests and 238 integration tests in 25 files;
   - `cargo fmt --check`; Clippy `-D warnings`, online and with `SQLX_OFFLINE=true`; `cargo audit` (264 crates)
     and `cargo deny check` clean.
 
