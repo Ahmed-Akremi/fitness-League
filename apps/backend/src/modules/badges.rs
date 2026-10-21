@@ -12,7 +12,10 @@ use uuid::Uuid;
 use crate::{
     error::AppError,
     http::{Api, auth::AppUser},
-    modules::league,
+    modules::{
+        league,
+        notifications::{self, Kind},
+    },
     state::AppState,
     types::iso,
 };
@@ -207,7 +210,16 @@ async fn facts(
                 let weeks: Vec<_> = weeks.iter().map(|w| (w.week_start, w.met != 0)).collect();
                 league::engine::current_streak(&weeks)
             }
-            // parts 3 and 4: friends, gyms, battles, duels, gym wars and challenges.
+            Fact::Count(Event::Friend) => {
+                sqlx::query_scalar!(
+                    "SELECT COUNT(*) FROM friendships WHERE status = 'ACCEPTED' AND (user_low_id = ? OR user_high_id = ?)",
+                    user,
+                    user
+                )
+                .fetch_one(&mut *conn)
+                .await?
+            }
+            // Plans 3b to 3f: gyms, battles, duels, gym wars and challenges.
             _ => 0,
         };
         out.insert(*fact, value);
@@ -215,8 +227,9 @@ async fn facts(
     Ok(out)
 }
 
-/// Awards every enabled badge the athlete now meets, in the caller's transaction. A badge once
-/// held, even revoked, is never given again; awards are not revoked here (moderation does it).
+/// Awards every enabled badge the athlete now meets, and notifies each, in the caller's transaction.
+/// A badge once held, even revoked, is never given again; awards are not revoked here (moderation
+/// does it).
 pub async fn evaluate(
     tx: &mut MySqlConnection,
     user: Uuid,
@@ -230,15 +243,15 @@ pub async fn evaluate(
     .fetch_one(&mut *tx)
     .await?;
     let rows = sqlx::query!(
-        r#"SELECT b.id AS "id: Uuid", b.rule FROM badges b
+        r#"SELECT b.id AS "id: Uuid", b.code, b.name_fr, b.name_en, b.name_ar, b.rule FROM badges b
            WHERE b.enabled AND NOT EXISTS (SELECT 1 FROM user_badges ub WHERE ub.user_id = ? AND ub.badge_id = b.id)"#,
         user
     )
     .fetch_all(&mut *tx)
     .await?;
-    let pending: Vec<(Uuid, Rule)> = rows
+    let pending: Vec<_> = rows
         .into_iter()
-        .filter_map(|row| parse_rule(&row.rule).map(|rule| (row.id, rule)))
+        .filter_map(|row| parse_rule(&row.rule).map(|rule| (row, rule)))
         .collect();
     if pending.is_empty() {
         return Ok(());
@@ -252,11 +265,14 @@ pub async fn evaluate(
                  VALUES (?, ?, ?, UTC_TIMESTAMP(6), ?)",
                 Uuid::now_v7(),
                 user,
-                badge,
+                badge.id,
                 source_ref
             )
             .execute(&mut *tx)
             .await?;
+            let name = json!({"fr": badge.name_fr, "en": badge.name_en, "ar": badge.name_ar});
+            let payload = json!({"badge": badge.code, "name": name});
+            notifications::notify(&mut *tx, user, Kind::BadgeAwarded, payload).await?;
         }
     }
     Ok(())

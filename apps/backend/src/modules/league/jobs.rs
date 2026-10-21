@@ -173,14 +173,18 @@ async fn finalize_calibrations(db: &MySqlPool, now: DateTime<Utc>) -> Result<Val
     Ok(json!({"finalized": finalized}))
 }
 
-/// The badges the closes can unlock (division, weekly streak), and those a late log missed: every
-/// athlete with points or a closed week in the last 26 hours.
+/// The badges the closes can unlock (division, weekly streak), those a late log missed, and the
+/// friend badges: every athlete with points, a closed week or a new friend in the last 26 hours.
 async fn badge_sweep(db: &MySqlPool, now: DateTime<Utc>) -> Result<Value, AppError> {
     let since = (now - Duration::hours(26)).naive_utc();
     let athletes = sqlx::query_scalar!(
         r#"SELECT user_id AS "user: Uuid" FROM xp_transactions WHERE created_at >= ?
            UNION SELECT user_id FROM league_point_transactions WHERE created_at >= ?
-           UNION SELECT user_id FROM weekly_scores WHERE updated_at >= ?"#,
+           UNION SELECT user_id FROM weekly_scores WHERE updated_at >= ?
+           UNION SELECT user_low_id FROM friendships WHERE status = 'ACCEPTED' AND updated_at >= ?
+           UNION SELECT user_high_id FROM friendships WHERE status = 'ACCEPTED' AND updated_at >= ?"#,
+        since,
+        since,
         since,
         since,
         since
