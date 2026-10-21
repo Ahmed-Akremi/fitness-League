@@ -1,10 +1,11 @@
 //! The social graph (docs §3.8): friends, follows, blocks, the athlete search and public profiles. A
 //! port of the old API's `SocialService` and `SocialAccess`.
 
+pub mod athletes;
 pub mod friends;
 
 use serde::Serialize;
-use sqlx::MySqlPool;
+use sqlx::MySqlConnection;
 use uuid::Uuid;
 
 use crate::{error::AppError, http::Api};
@@ -25,6 +26,8 @@ pub fn routes(api: Api) -> Api {
         .post("/api/v1/follows/{user_id}", friends::follow)
         .delete("/api/v1/follows/{user_id}", friends::unfollow)
         .post("/api/v1/blocks/{user_id}", friends::block)
+        .get("/api/v1/search/athletes", athletes::search)
+        .get("/api/v1/users/{username}", athletes::profile)
 }
 
 /// An athlete's card in a friend list or a search: never an email, a birth date or body data.
@@ -50,9 +53,24 @@ pub fn athlete_param(raw: &str) -> Result<Uuid, AppError> {
     Uuid::parse_str(raw).map_err(|_| AppError::not_found("Athlete"))
 }
 
+/// Locks both athletes' rows, lower id first. Every writer of a link between two athletes (request,
+/// acceptance, follow, block) takes this lock before it checks and writes, so a block can never land
+/// between another writer's check and its write.
+pub async fn lock_pair(conn: &mut MySqlConnection, a: Uuid, b: Uuid) -> Result<(), AppError> {
+    let (low, high) = pair(a, b);
+    sqlx::query!(
+        "SELECT id FROM users WHERE id IN (?, ?) ORDER BY id FOR UPDATE",
+        low,
+        high
+    )
+    .fetch_all(conn)
+    .await?;
+    Ok(())
+}
+
 /// An athlete `me` may reach: someone else, active, and neither has blocked the other. A blocked
-/// account answers like no account.
-pub async fn target(db: &MySqlPool, me: Uuid, user: Uuid) -> Result<(), AppError> {
+/// account answers like no account. Read under `lock_pair`.
+pub async fn target(conn: &mut MySqlConnection, me: Uuid, user: Uuid) -> Result<(), AppError> {
     if user == me {
         return Err(AppError::field("userId", "SELF"));
     }
@@ -64,7 +82,7 @@ pub async fn target(db: &MySqlPool, me: Uuid, user: Uuid) -> Result<(), AppError
         me,
         me
     )
-    .fetch_one(db)
+    .fetch_one(conn)
     .await?
         != 0;
     if reachable {
