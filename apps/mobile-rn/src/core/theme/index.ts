@@ -1,5 +1,5 @@
-import { createContext, createElement, useContext, type ReactNode } from 'react';
-import { useColorScheme } from 'react-native';
+import { createContext, createElement, useContext, useSyncExternalStore, type ReactNode } from 'react';
+import { AccessibilityInfo, Platform, useColorScheme } from 'react-native';
 
 import { config } from '../config';
 import { usePrefs } from '../prefs';
@@ -125,12 +125,48 @@ export function ThemeScope({ dense, scheme, children }: { dense?: boolean; schem
   return createElement(ScopeContext.Provider, { value: { dense: dense ?? outer.dense, scheme: scheme ?? outer.scheme } }, children);
 }
 
-export function useTheme(): { dark: boolean; colors: Colors; dense: boolean } {
+/**
+ * Increase Contrast (iOS: "darker system colors") or High contrast text (Android), read once for the whole app and
+ * followed while it runs. Browsers report neither: the computer layout never changes.
+ */
+let highContrast = false;
+let watching = false;
+const contrastListeners = new Set<() => void>();
+
+function watchContrast() {
+  if (watching) return;
+  watching = true;
+  const set = (on: boolean) => {
+    if (on === highContrast) return;
+    highContrast = on;
+    contrastListeners.forEach((l) => l());
+  };
+  if (Platform.OS === 'ios') {
+    AccessibilityInfo.isDarkerSystemColorsEnabled?.().then(set).catch(() => {});
+    AccessibilityInfo.addEventListener?.('darkerSystemColorsChanged', set);
+  } else if (Platform.OS === 'android') {
+    AccessibilityInfo.isHighTextContrastEnabled?.().then(set).catch(() => {});
+    AccessibilityInfo.addEventListener?.('highTextContrastChanged', set);
+  }
+}
+
+const subscribeContrast = (l: () => void) => {
+  watchContrast();
+  contrastListeners.add(l);
+  return () => {
+    contrastListeners.delete(l);
+  };
+};
+
+export function useTheme(): { dark: boolean; colors: Colors; dense: boolean; highContrast: boolean } {
   const mode = usePrefs((s) => s.themeMode);
   const system = useColorScheme();
   const scope = useContext(ScopeContext);
+  const contrast = useSyncExternalStore(subscribeContrast, () => highContrast, () => false);
   const dark = scope.scheme ? scope.scheme === 'dark' : mode === 'system' ? system !== 'light' : mode === 'dark';
-  return { dark, colors: dark ? palettes.dark(config.accent) : scope.dense ? denseLight(config.accent) : palettes.light(config.accent), dense: scope.dense };
+  const colors = dark ? palettes.dark(config.accent) : scope.dense ? denseLight(config.accent) : palettes.light(config.accent);
+  // HIG Color: an increased-contrast variant — hairlines that do not vanish.
+  return { dark, colors: contrast ? { ...colors, border: dark ? '#FFFFFF33' : '#00000029' } : colors, dense: scope.dense, highContrast: contrast };
 }
 
 /** Big athletic numbers (LP, scores, times). */

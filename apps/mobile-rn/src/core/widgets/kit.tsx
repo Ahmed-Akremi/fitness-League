@@ -83,12 +83,12 @@ export function IconButton({ icon, onPress, label, color, testID }: { icon: Icon
 }
 
 export function TextField({ label, error, icon, style, ...props }: { label?: string; error?: string | null; icon?: IconName; style?: StyleProp<ViewStyle> } & TextInputProps) {
-  const { colors, dense } = useTheme();
+  const { colors, dense, highContrast } = useTheme();
   const [focused, setFocused] = useState(false);
   return (
     <View style={style}>
       {label ? <Txt variant="small" color={colors.outline} style={dense ? { marginBottom: 4, fontSize: 12 } : { marginBottom: 6 }}>{label}</Txt> : null}
-      <View style={[styles.field, dense && { borderRadius: webDense.radius.field }, { backgroundColor: colors.surface, borderColor: error ? colors.error : colors.surfaceHigh }, dense && focused && { borderColor: colors.primary }]}>
+      <View style={[styles.field, dense && { borderRadius: webDense.radius.field }, { backgroundColor: colors.surface, borderColor: error ? colors.error : highContrast ? colors.outline : colors.surfaceHigh }, dense && focused && { borderColor: colors.primary }]}>
         {icon && <Icon name={icon} size={dense ? 16 : 20} color={colors.outline} />}
         <TextInput
           accessibilityLabel={label}

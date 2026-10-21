@@ -73,7 +73,7 @@ export function Select({ label, value, options, onChange, error, testID, placeho
 
 /** Tappable read-only field (date, select). `bare`: no label above it (screen readers still read it). */
 export function FieldButton({ label, value, icon, error, onPress, testID, bare }: { label: string; value: string; icon: IconName; error?: string | null; onPress: () => void; testID?: string; bare?: boolean }) {
-  const { colors, dense } = useTheme();
+  const { colors, dense, highContrast } = useTheme();
   const ring = useFocusRing();
   return (
     <View>
@@ -84,7 +84,7 @@ export function FieldButton({ label, value, icon, error, onPress, testID, bare }
         accessibilityLabel={label}
         onPress={onPress}
         style={(state) => [
-          { flexDirection: 'row', alignItems: 'center', borderRadius: radius.field, borderWidth: 1, borderColor: error ? colors.error : colors.surfaceHigh, backgroundColor: colors.surface, paddingHorizontal: 12, minHeight: 48 },
+          { flexDirection: 'row', alignItems: 'center', borderRadius: radius.field, borderWidth: 1, borderColor: error ? colors.error : highContrast ? colors.outline : colors.surfaceHigh, backgroundColor: colors.surface, paddingHorizontal: 12, minHeight: 48 },
           dense && { borderRadius: webDense.radius.field, minHeight: webDense.control, paddingHorizontal: 10 },
           bare && { minWidth: 150, justifyContent: 'space-between', gap: 4 },
           ring(isFocused(state)),

@@ -249,14 +249,14 @@ export function GymLogo({ name, url, size = 56, round }: { name: string; url?: s
 /** Duration input in m:ss or h:mm:ss. Reports seconds, or null while the text is invalid. */
 export function TimeField({ onChange, label, initialSeconds, value: controlled, onChangeText, testID }: { onChange: (seconds: number | null) => void; label?: string; initialSeconds?: number; value?: string; onChangeText?: (text: string) => void; testID?: string }) {
   const t = useT();
-  const { colors } = useTheme();
+  const { colors, highContrast } = useTheme();
   const [own, setOwn] = useState(initialSeconds == null ? '' : formatDuration(initialSeconds));
   const text = controlled ?? own;
   const invalid = text.trim() !== '' && parseDuration(text) == null;
   return (
     <View style={{ flex: 1 }}>
       {label ? <Txt variant="small" color={colors.outline} style={{ marginBottom: 6 }}>{label}</Txt> : null}
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: radius.field, borderWidth: 1, borderColor: invalid ? colors.error : colors.surfaceHigh, backgroundColor: colors.surface, paddingHorizontal: 12 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: radius.field, borderWidth: 1, borderColor: invalid ? colors.error : highContrast ? colors.outline : colors.surfaceHigh, backgroundColor: colors.surface, paddingHorizontal: 12 }}>
         <Icon name="timer" size={20} color={colors.outline} />
         <TextInput
           testID={testID}
