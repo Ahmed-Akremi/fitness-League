@@ -14,6 +14,7 @@ import { EmptyState, Loading, SectionHeader, SkeletonList, StatCard, StatusPill,
 import { ErrorText, ErrorView, errorMessage } from '../../core/widgets/error';
 import { Button, Card, Chip, Icon, ListGroup, ListRow, Screen, Segmented, TextField, Txt, toast, type IconName } from '../../core/widgets/kit';
 import { compKeys, competitionsApi, formatMoney, useCompetition, useCompetitions, useCompLeaderboard, useHeats, useMySubmissions, youtubeId, type CompFilter } from './api';
+import { FloorJudgeCard } from './judge/screens';
 import { CompetitionAnnouncements } from './organizer/announcements';
 import { publicationState } from './organizer/logic';
 
@@ -183,6 +184,8 @@ export function CompetitionScreen({ id }: { id: string }) {
                 <Tile icon="emoji-events" label={t('compPrizes')} onPress={c.prizes.length ? () => goTo('prizes') : undefined} />
                 <Tile icon="fitness-center" label={t('compWods')} onPress={() => setTab('wods')} />
               </View>
+
+              <FloorJudgeCard c={c} />
 
               {c.myRegistration && (
                 <View testID="comp-role" style={{ borderRadius: radius.card, overflow: 'hidden', borderWidth: 1, borderColor: colors.primary }}>

@@ -11,7 +11,9 @@ import { ErrorText, ErrorView } from '../../../core/widgets/error';
 import { Button, Card, Chip, Dialog, IconButton, ListGroup, ListRow, Screen, TextField, Txt, toast } from '../../../core/widgets/kit';
 import { DateField, Select, type Option } from '../../../core/widgets/pickers';
 import { useHeats } from '../api';
-import { organizerApi, useLiveRefresh, useRefreshCompetition, useRegistrations } from './api';
+import { floorApi } from '../judge/api';
+import { laneJudgeLine } from '../judge/screens';
+import { organizerApi, useLiveRefresh, useRefreshCompetition, useRegistrations, useStaff } from './api';
 import { exportCsv } from './export';
 import { Guide } from './guide';
 import type { ManageTab } from './logic';
@@ -32,6 +34,10 @@ export function PlanningTab({ c, onGo }: { c: Json; onGo?: (tab: ManageTab) => v
   // Read again every 30 s while this page is on screen (analysis §3 item 11).
   const heats = useHeats(c.id, useLiveRefresh());
   const regs = useRegistrations(c.id);
+  // On-site events: the floor judges the organizer puts on the lanes (spec 2026-10-21).
+  const onsite = c.format !== 'ONLINE';
+  const staff = useStaff(c.id);
+  const judges: Json[] = onsite ? (staff.data ?? []).filter((s) => s.role === 'FLOOR_JUDGE') : [];
   const [filter, setFilter] = useState<HeatFilter>({ day: null, categoryId: null, workoutId: null, q: '' });
   const [edit, setEdit] = useState<HeatDraft | null>(null);
   const [auto, setAuto] = useState<AutoDraft | null>(null);
@@ -108,7 +114,21 @@ export function PlanningTab({ c, onGo }: { c: Json; onGo?: (tab: ManageTab) => v
   }
   const open = lanesOf ? all.find((h) => h.id === lanesOf) : undefined;
   if (open) {
-    return <LanesView heat={open} registrations={regs.data ?? []} busy={busy} error={error} onAssign={(rid, lane) => run(() => org.assignLane(c.id, open.id, rid, lane), undefined, t('orgToastLaneSet', { lane }))} onFree={(lane) => run(() => org.freeLane(c.id, open.id, lane), undefined, t('orgToastLaneFreed', { lane }))} onClose={() => setLanesOf(null)} />;
+    const floor = floorApi(api);
+    return (
+      <LanesView
+        heat={open}
+        registrations={regs.data ?? []}
+        judges={onsite ? judges : null}
+        busy={busy}
+        error={error}
+        onAssign={(rid, lane) => run(() => org.assignLane(c.id, open.id, rid, lane), undefined, t('orgToastLaneSet', { lane }))}
+        onFree={(lane) => run(() => org.freeLane(c.id, open.id, lane), undefined, t('orgToastLaneFreed', { lane }))}
+        onJudge={(lane, staffId) => run(() => floor.setLaneJudge(c.id, open.id, lane, staffId), undefined, t('orgToastJudgeSet', { lane }))}
+        onAutoJudges={() => run(() => floor.autoJudges(c.id, open.id), (r) => toast(t('orgJudgesAutoDone', { count: r.assigned })))}
+        onClose={() => setLanesOf(null)}
+      />
+    );
   }
 
   const days = heatDays(all);
@@ -259,12 +279,59 @@ function AutoForm({ draft, busy, error, catOptions, wodOptions, onRun, onCancel 
   );
 }
 
-/** The lanes of one heat: who is in each, free one, fill one with an athlete the server will accept. */
-function LanesView({ heat, registrations, busy, error, onAssign, onFree, onClose }: { heat: Json; registrations: Json[]; busy: boolean; error: unknown; onAssign: (registrationId: string, lane: number) => void; onFree: (lane: number) => void; onClose: () => void }) {
+/**
+ * The lanes of one heat: who is in each, free one, fill one with an athlete the server will accept. On-site events
+ * (`judges` not null) also give each occupied lane its floor judge: one judge per athlete, one lane per judge.
+ */
+function LanesView({ heat, registrations, judges, busy, error, onAssign, onFree, onJudge, onAutoJudges, onClose }: { heat: Json; registrations: Json[]; judges: Json[] | null; busy: boolean; error: unknown; onAssign: (registrationId: string, lane: number) => void; onFree: (lane: number) => void; onJudge: (lane: number, staffId: string | null) => void; onAutoJudges: () => void; onClose: () => void }) {
   const t = useT();
   const { colors } = useTheme();
   const [picking, setPicking] = useState<number | null>(null);
+  const [judgeOf, setJudgeOf] = useState<number | null>(null);
   const byLane = new Map<number, Json>((heat.lanes ?? []).map((l: Json) => [l.lane, l]));
+  if (judgeOf != null && judges) {
+    const laneOfJudge = new Map<string, number>((heat.lanes ?? []).filter((l: Json) => l.judge).map((l: Json) => [l.judge.staffId as string, l.lane as number]));
+    const athleteId = byLane.get(judgeOf)?.athlete?.id;
+    return (
+      <Screen>
+        <SectionHeader title={t('orgLanePickJudge', { lane: judgeOf })} />
+        {judges.length === 0 ? <Txt color={colors.outline}>{t('orgLaneJudgeNone')}</Txt> : null}
+        <ListGroup>
+          <ListRow
+            testID="judge-pick-none"
+            icon="person-off"
+            title={t('orgLaneJudgeClear')}
+            onPress={() => {
+              setJudgeOf(null);
+              onJudge(judgeOf, null);
+            }}
+          />
+          {judges.map((j) => {
+            const elsewhere = laneOfJudge.get(j.id);
+            const blocked = (elsewhere != null && elsewhere !== judgeOf) || j.userId === athleteId;
+            return (
+              <ListRow
+                key={j.id}
+                testID={`judge-pick-${j.id}`}
+                icon="sports"
+                title={personName(j)}
+                subtitle={elsewhere != null && elsewhere !== judgeOf ? t('orgLaneJudgeBusy', { lane: elsewhere }) : j.acceptedAt ? t('orgFloorAccepted') : t('orgFloorPending')}
+                onPress={
+                  blocked
+                    ? undefined
+                    : () => {
+                        setJudgeOf(null);
+                        onJudge(judgeOf, j.id);
+                      }
+                }
+              />
+            );
+          })}
+        </ListGroup>
+        <Button kind="text" label={t('cancel')} onPress={() => setJudgeOf(null)} />
+      </Screen>
+    );
+  }
   if (picking != null) {
     return (
       <FlatList
@@ -295,13 +362,25 @@ function LanesView({ heat, registrations, busy, error, onAssign, onFree, onClose
         {Array.from({ length: heat.laneCount }, (_, i) => i + 1).map((n) => {
           const l = byLane.get(n);
           return l ? (
-            <ListRow key={n} testID={`lane-${n}`} title={t('orgLane', { lane: n })} subtitle={personName(l)} trailing={<IconButton icon="close" label={t('orgLaneFree')} onPress={() => onFree(n)} />} />
+            <ListRow
+              key={n}
+              testID={`lane-${n}`}
+              title={t('orgLane', { lane: n })}
+              subtitle={judges ? `${personName(l)} · ${laneJudgeLine(t, l)}` : personName(l)}
+              trailing={
+                <View style={{ flexDirection: 'row' }}>
+                  {judges ? <IconButton testID={`lane-judge-${n}`} icon="sports" label={t('orgLaneJudgeSet')} onPress={() => setJudgeOf(n)} /> : null}
+                  <IconButton icon="close" label={t('orgLaneFree')} onPress={() => onFree(n)} />
+                </View>
+              }
+            />
           ) : (
             <ListRow key={n} testID={`lane-${n}`} title={t('orgLane', { lane: n })} subtitle={t('orgLaneEmpty')} chevron onPress={() => setPicking(n)} />
           );
         })}
       </ListGroup>
       {freeLanes(heat).length === 0 ? <Txt color={colors.outline}>{t('orgLaneFull')}</Txt> : null}
+      {judges && byLane.size > 0 ? <Button testID="lanes-judges-auto" kind="tonal" icon="sports" label={t('orgJudgesAuto')} busy={busy} disabled={judges.length === 0} onPress={onAutoJudges} /> : null}
       <ErrorText error={error} />
       <Button testID="lanes-back" kind="outlined" label={t('orgBack')} busy={busy} onPress={onClose} />
     </Screen>

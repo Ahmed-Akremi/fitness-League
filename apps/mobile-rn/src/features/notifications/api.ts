@@ -81,6 +81,8 @@ export function notificationText(t: T, locale: string, n: Json): string {
       return t('notifCompetitionAppeal');
     case 'COMPETITION_LEADERBOARD_FINAL':
       return t('notifCompetitionFinal');
+    case 'COMPETITION_JUDGE_INVITED':
+      return t('notifCompetitionJudgeInvited', { title: p.title ?? '' });
     case 'ANNOUNCEMENT':
       return p.excerpt ? t('notifAnnouncement', { excerpt: String(p.excerpt) }) : t('notifAnnouncementPhoto');
     default:

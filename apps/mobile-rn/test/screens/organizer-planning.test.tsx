@@ -2,7 +2,7 @@ import { fireEvent, waitFor } from 'expo-router/testing-library';
 
 import { ManageScreen } from '../../src/features/competitions/organizer/manage';
 import { renderScreen } from '../harness';
-import { orgBackend, regs } from '../organizer-fixtures';
+import { event, orgBackend, regs } from '../organizer-fixtures';
 
 const lane = (n: number, r: (typeof regs)[number]) => ({ lane: n, registrationId: r.id, athlete: { id: r.userId, fullName: r.user.profile.fullName, username: r.user.username }, mine: false });
 const heats = [
@@ -88,7 +88,8 @@ describe('organizer space: planning', () => {
       .on('DELETE', '/competitions/c9/heats/h1/lanes/1', [200, {}]);
     const screen = await renderScreen(open, backend);
     await fireEvent.press(await screen.findByTestId('heat-h1'));
-    expect(screen.getByText('Hédi Kéfi')).toBeTruthy();
+    // On-site event: the athlete's line also says who judges them.
+    expect(screen.getByText('Hédi Kéfi · No judge')).toBeTruthy();
     await fireEvent.press(screen.getByTestId('lane-2'));
     // Amira is in RX Women, Sami and Yasmine are not confirmed, Omar cancelled, Hédi already in the heat.
     expect(await screen.findByTestId('lane-cand-r6')).toBeTruthy();
@@ -98,5 +99,38 @@ describe('organizer space: planning', () => {
     expect(backend.calls('POST', '/competitions/c9/heats/h1/lanes')[0].body).toEqual({ registrationId: 'r6', lane: 2 });
     await fireEvent.press(screen.getByLabelText('Free the lane'));
     await waitFor(() => expect(backend.calls('DELETE', '/competitions/c9/heats/h1/lanes/1')).toHaveLength(1));
+  });
+
+  it('puts a floor judge on a lane; a judge already on another lane of the heat cannot be picked; splits the judges', async () => {
+    const judge = (id: string, userId: string, fullName: string, acceptedAt: string | null) => ({ id, userId, role: 'FLOOR_JUDGE', acceptedAt, user: { username: fullName.toLowerCase(), profile: { fullName } }, assignments: [] });
+    const amira = { ...lane(2, regs[1]), judge: { staffId: 'f2', id: 'u-f2', fullName: 'Nour Gharbi' } };
+    const withJudges = [{ ...heats[0], lanes: [lane(1, regs[2]), amira] }, heats[1]];
+    const backend = orgBackend()
+      .on('GET', '/competitions/c9/heats', [200, withJudges])
+      .on('GET', '/competitions/c9/staff', [200, [judge('f1', 'u-f1', 'Ali Trabelsi', '2026-10-21T10:00:00Z'), judge('f2', 'u-f2', 'Nour Gharbi', '2026-10-21T10:00:00Z')]])
+      .on('PUT', '/competitions/c9/heats/h1/lanes/1/judge', [200, {}])
+      .on('POST', '/competitions/c9/heats/h1/judges/auto', [200, { assigned: 1, withoutJudge: 0 }]);
+    const screen = await renderScreen(open, backend);
+    await fireEvent.press(await screen.findByTestId('heat-h1'));
+    expect(screen.getByText('Amira Trabelsi · Judge: Nour Gharbi')).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('lane-judge-1'));
+    expect(await screen.findByText('Judge of lane 1')).toBeTruthy();
+    expect(screen.getByText('Already on lane 2')).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('judge-pick-f2'));
+    expect(backend.calls('PUT', '/competitions/c9/heats/h1/lanes/1/judge')).toHaveLength(0);
+    await fireEvent.press(screen.getByTestId('judge-pick-f1'));
+    await waitFor(() => expect(backend.calls('PUT', '/competitions/c9/heats/h1/lanes/1/judge')).toHaveLength(1));
+    expect(backend.calls('PUT', '/competitions/c9/heats/h1/lanes/1/judge')[0].body).toEqual({ staffId: 'f1' });
+    await fireEvent.press(await screen.findByTestId('lanes-judges-auto'));
+    await waitFor(() => expect(backend.calls('POST', '/competitions/c9/heats/h1/judges/auto')).toHaveLength(1));
+    expect(await screen.findByText('1 judge placed.')).toBeTruthy();
+  });
+
+  it('an online event has no floor judges on its lanes', async () => {
+    const screen = await renderScreen(open, orgBackend({ ...event, format: 'ONLINE' }).on('GET', '/competitions/c9/heats', [200, heats]));
+    await fireEvent.press(await screen.findByTestId('heat-h1'));
+    expect(screen.getByText('Hédi Kéfi')).toBeTruthy();
+    expect(screen.queryByTestId('lane-judge-1')).toBeNull();
+    expect(screen.queryByTestId('lanes-judges-auto')).toBeNull();
   });
 });
