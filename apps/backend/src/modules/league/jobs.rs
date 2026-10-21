@@ -99,19 +99,6 @@ pub async fn run_due(state: &AppState, now: DateTime<Utc>) -> Result<(), AppErro
         "season-open",
         once(db, "season-open", &today, now, seasons::open_due(db, now)).await,
     );
-    let ended = sqlx::query_scalar!(
-        r#"SELECT id AS "id: Uuid" FROM seasons WHERE status = 'ACTIVE' AND ends_at <= ?"#,
-        (now - Duration::hours(rules.week_grace_hours)).naive_utc()
-    )
-    .fetch_all(db)
-    .await?;
-    for season in ended {
-        let work = seasons::close(state, &rules, season, now);
-        logged(
-            "season-close",
-            once(db, "season-close", &season.to_string(), now, work).await,
-        );
-    }
     let week = engine::last_closable_week(now, rules.week_grace_hours, offset);
     let key = policy::business_today(week, offset).to_string();
     let work = weekly::close_week(state, &rules, week);
@@ -119,6 +106,32 @@ pub async fn run_due(state: &AppState, now: DateTime<Utc>) -> Result<(), AppErro
         "weekly-close",
         once(db, "weekly-close", &key, now, work).await,
     );
+    let week_closed = sqlx::query_scalar!(
+        "SELECT EXISTS (SELECT 1 FROM job_runs WHERE job = 'weekly-close' AND run_key = ? AND status = 'DONE')",
+        key
+    )
+    .fetch_one(db)
+    .await?
+        != 0;
+    let ended = sqlx::query!(
+        r#"SELECT id AS "id: Uuid", ends_at FROM seasons WHERE status = 'ACTIVE' AND ends_at <= ?"#,
+        now.naive_utc()
+    )
+    .fetch_all(db)
+    .await?;
+    for season in ended {
+        // The week holding the season's last instant is paid into it first, so it counts in the
+        // standings (the old API closed at ends_at + 24 h and lost that week).
+        let last = policy::week_start(season.ends_at.and_utc() - Duration::microseconds(1), offset);
+        if last > week || (last == week && !week_closed) {
+            continue;
+        }
+        let work = seasons::close(state, &rules, season.id, now);
+        logged(
+            "season-close",
+            once(db, "season-close", &season.id.to_string(), now, work).await,
+        );
+    }
     let work = finalize_calibrations(db, now);
     logged(
         "calibration-finalize",
