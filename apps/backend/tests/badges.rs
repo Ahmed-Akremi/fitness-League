@@ -107,6 +107,54 @@ async fn a_first_workout_earns_first_step(opts: MySqlPoolOptions, conn: MySqlCon
     .await
     .unwrap();
     assert_eq!(source.as_deref(), workout["id"].as_str());
+    assert_eq!(badge_notes(&app, user, "FIRST_STEP").await.len(), 1);
+}
+
+/// The `BADGE_AWARDED` payloads `user` received for `code`.
+async fn badge_notes(app: &TestApp, user: Uuid, code: &str) -> Vec<Value> {
+    let payloads: Vec<String> = sqlx::query_scalar(
+        "SELECT payload FROM notifications WHERE user_id = ? AND type = 'BADGE_AWARDED'",
+    )
+    .bind(user)
+    .fetch_all(&app.db)
+    .await
+    .unwrap();
+    payloads
+        .iter()
+        .map(|p| serde_json::from_str::<Value>(p).unwrap())
+        .filter(|p| p["badge"] == code)
+        .collect()
+}
+
+#[sqlx::test]
+async fn a_friend_badge_and_its_notification(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let app = seeded(opts, conn).await;
+    let (a, token) = athlete(&app, "amine").await;
+    let (b, _) = athlete(&app, "bilel").await;
+    let (low, high) = if a < b { (a, b) } else { (b, a) };
+    sqlx::query(
+        "INSERT INTO friendships (user_low_id, user_high_id, status, requested_by, accepted_at)          VALUES (?, ?, 'ACCEPTED', ?, UTC_TIMESTAMP(6))",
+    )
+    .bind(low)
+    .bind(high)
+    .bind(a)
+    .execute(&app.db)
+    .await
+    .unwrap();
+    backend::modules::league::jobs::run_due(&app.state, Utc::now())
+        .await
+        .unwrap();
+    for user in [a, b] {
+        assert_eq!(awards(&app, user, "FIRST_FRIEND").await, 1);
+        let notes = badge_notes(&app, user, "FIRST_FRIEND").await;
+        assert_eq!(notes.len(), 1, "{notes:?}");
+        let name = &notes[0]["name"];
+        assert!(["fr", "en", "ar"].iter().all(|l| name[l].is_string()), "{name}");
+    }
+    assert_eq!(
+        badge(&badges(&app, &token).await, "FIRST_FRIEND")["progress"],
+        json!({"current": 1, "target": 1, "met": true})
+    );
 }
 
 #[sqlx::test]

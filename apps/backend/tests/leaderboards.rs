@@ -309,12 +309,62 @@ async fn my_ranks(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
     assert_eq!(mine["seasonId"], active_season(&app).await.to_string());
     assert_eq!(mine["national"], 2);
     assert_eq!(mine["governorate"], 1);
-    assert!(mine["gym"].is_null() && mine["friends"].is_null());
+    assert!(mine["gym"].is_null());
+    // Alone among no friends, first of them.
+    assert_eq!(mine["friends"], 1);
     assert_same_shape("ranks", &recorded("GET /me/ranks"), &mine);
 
     let (_, calibrating) = athlete(&app, "newcomer").await;
     let theirs = ok(&app, &calibrating, "/api/v1/me/ranks").await;
     assert!(theirs["national"].is_null() && theirs["governorate"].is_null());
+    assert!(theirs["friends"].is_null());
+}
+
+/// `a` and `b` friends (or `a` asking `b`, while `PENDING`).
+async fn befriend(app: &TestApp, a: Uuid, b: Uuid, status: &str) {
+    let (low, high) = if a < b { (a, b) } else { (b, a) };
+    sqlx::query(
+        "INSERT INTO friendships (user_low_id, user_high_id, status, requested_by) VALUES (?, ?, ?, ?)",
+    )
+    .bind(low)
+    .bind(high)
+    .bind(status)
+    .bind(a)
+    .execute(&app.db)
+    .await
+    .unwrap();
+}
+
+#[sqlx::test]
+async fn the_friends_board(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let app = seeded(opts, conn).await;
+    let (me, token) = ranked(&app, "me", 500).await;
+    let (top, _) = ranked(&app, "top", 900).await;
+    let (low, _) = ranked(&app, "low", 100).await;
+    ranked(&app, "stranger", 2000).await;
+    let (pending, _) = ranked(&app, "pending", 700).await;
+    let (newcomer, _) = athlete(&app, "newcomer").await;
+    for friend in [top, low, newcomer] {
+        befriend(&app, me, friend, "ACCEPTED").await;
+    }
+    befriend(&app, pending, me, "PENDING").await;
+    boards::snapshot(&app.db, Utc::now() - Duration::days(1), 60)
+        .await
+        .unwrap();
+
+    let board = ok(&app, &token, "/api/v1/leaderboards/friends").await;
+    assert_same_shape("friends", &recorded("GET /leaderboards/friends"), &board);
+    assert_eq!(athletes(&board), [top, me, low].map(|u| u.to_string()));
+    assert_eq!(ranks(&board), [1, 2, 3]);
+    assert!(
+        board["data"].as_array().unwrap().iter().all(|r| r["movement"].is_null()),
+        "{board}"
+    );
+    let around = ok(&app, &token, "/api/v1/leaderboards/friends/me").await;
+    assert_same_shape("friends/me", &recorded("GET /leaderboards/friends/me"), &around);
+    assert_eq!(around["me"]["rank"], 2);
+    assert_eq!(athletes(&around), [top, me, low].map(|u| u.to_string()));
+    assert_eq!(ok(&app, &token, "/api/v1/me/ranks").await["friends"], 2);
 }
 
 #[sqlx::test]
