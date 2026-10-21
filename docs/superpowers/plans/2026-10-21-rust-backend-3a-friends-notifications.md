@@ -353,6 +353,10 @@ Friends(Uuid) }`; a friends board compares with no snapshot. Consumes `notificat
 - The owner committed tasks 1 to 5 mid-session under their own messages; the content is this plan's.
 - The MariaDB container crashed once (exit 139) during the badge suite and was restarted (handoff §5).
 - Checks: the whole suite (365 green, 1 ignored: 127 unit tests, 238 integration tests in 25 files), fmt, Clippy
-  online and offline, `cargo audit` and `cargo deny check`. The whole-branch review is not done: no agent was
-  spawned (the user did not ask for one); the author's own pass found nothing to fix, and a fresh session runs
-  the real one (handoff §0 step 2).
+  online and offline, `cargo audit` and `cargo deny check`.
+- **Whole-branch review (2026-10-21, a fresh session, no agent):** `git diff 6e1eaec..HEAD -- apps/backend` read
+  against this plan, the old `SocialService`, `NotificationsService` and `badges.service.ts`, and the ledger's
+  rulings. The five « Review focus » points hold, each pinned by a test. One cosmetic fix: `AppUser`'s doc
+  comment had slid above `impl AuthUser`. Minors left as they are, the old API's too: accepting a request from an
+  account suspended since it was sent succeeds; `GET /friends` lists a suspended friend; `decline` and
+  `unfriend` take no pair lock, which is harmless because a delete cannot leave a link next to a block.

@@ -23,7 +23,6 @@ pub struct AuthUser {
     pub email_verified: bool,
 }
 
-/// A signed-in account of the app: every role except the judge roles, which only exist in the panel.
 impl AuthUser {
     /// The old API's `@RequiresVerifiedEmail()`: what reaches another athlete needs a verified address.
     pub fn require_verified(&self) -> Result<(), AppError> {
@@ -39,6 +38,7 @@ impl AuthUser {
     }
 }
 
+/// A signed-in account of the app: every role except the judge roles, which only exist in the panel.
 pub struct AppUser(pub AuthUser);
 
 /// Someone signed in to the admin panel: staff, and judges.
