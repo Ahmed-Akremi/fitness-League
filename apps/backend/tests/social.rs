@@ -244,6 +244,27 @@ async fn a_block_cuts_every_link(opts: MySqlPoolOptions, conn: MySqlConnectOptio
     assert_eq!(nobody.status, StatusCode::NOT_FOUND);
 }
 
+/// A block sent at the same moment as a friend request or a follow the other way never leaves the
+/// two side by side (the security review of task 3).
+#[sqlx::test]
+async fn a_block_racing_a_request_leaves_no_link(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let app = seeded(opts, conn).await;
+    for round in 0..12 {
+        let (a, ta) = friend(&app, &format!("blocker{round}")).await;
+        let (b, tb) = friend(&app, &format!("asker{round}")).await;
+        let block = format!("/api/v1/blocks/{b}");
+        let follow = format!("/api/v1/follows/{a}");
+        let (blocked, _, _) = tokio::join!(
+            call(&app, Method::POST, &block, &ta, None),
+            ask(&app, &tb, a),
+            call(&app, Method::POST, &follow, &tb, None),
+        );
+        assert_eq!(blocked.status, StatusCode::NO_CONTENT);
+        assert_eq!(friendship(&app, a, b).await, None, "round {round}: a friendship outlived the block");
+        assert_eq!(follows(&app, b, a).await, 0, "round {round}: a follow outlived the block");
+    }
+}
+
 async fn suspend(app: &TestApp, user: Uuid) {
     sqlx::query("UPDATE users SET status = 'SUSPENDED', suspended_until = UTC_TIMESTAMP(6) + INTERVAL 1 DAY WHERE id = ?")
         .bind(user)
