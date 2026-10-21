@@ -14,10 +14,12 @@ import {
   CompetitionDto,
   CouponCheckDto,
   CouponDto,
+  FloorScoreDto,
   HeatDto,
   JudgeAthletesQueryDto,
   JudgeQueueQueryDto,
   LaneDto,
+  LaneJudgeDto,
   LeaderboardQueryDto,
   ListCompetitionsQueryDto,
   PenaltyDto,
@@ -35,6 +37,7 @@ import {
 } from './competitions.dto';
 import { COVER_MAX_BYTES, CompetitionCoverService } from './competition-cover.service';
 import { CompetitionsService } from './competitions.service';
+import { FloorJudgingService } from './floor-judging.service';
 import { HeatsService } from './heats.service';
 import { JudgingService } from './judging.service';
 
@@ -50,6 +53,7 @@ export class CompetitionsController {
     private readonly judging: JudgingService,
     private readonly heats: HeatsService,
     private readonly covers: CompetitionCoverService,
+    private readonly floor: FloorJudgingService,
   ) {}
 
   /** Banner shown at the top of the competition page; replaced for each new event or final. */
@@ -69,6 +73,12 @@ export class CompetitionsController {
   @Get()
   list(@CurrentUser() user: AuthUser, @Query() q: ListCompetitionsQueryDto) {
     return this.competitions.list(user, q);
+  }
+
+  /** Floor judging (spec 2026-10-21): my invitations and the on-site events I judge. Before `:id`. */
+  @Get('floor-judging')
+  myFloorJudging(@CurrentUser() user: AuthUser) {
+    return this.floor.mine(user);
   }
 
   @Post()
@@ -222,6 +232,53 @@ export class CompetitionsController {
   @HttpCode(HttpStatus.NO_CONTENT)
   freeLane(@CurrentUser() user: AuthUser, @id() competitionId: string, @id('heatId') heatId: string, @Param('lane', ParseIntPipe) lane: number): Promise<void> {
     return this.heats.unassign(user, competitionId, heatId, lane);
+  }
+
+  // ───────────── Floor judging (spec 2026-10-21) ─────────────
+
+  @Post(':id/floor-judging/accept')
+  @HttpCode(HttpStatus.OK)
+  acceptFloorJudging(@CurrentUser() user: AuthUser, @id() competitionId: string) {
+    return this.floor.accept(user, competitionId);
+  }
+
+  @Post(':id/floor-judging/decline')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  declineFloorJudging(@CurrentUser() user: AuthUser, @id() competitionId: string): Promise<void> {
+    return this.floor.decline(user, competitionId);
+  }
+
+  @Get(':id/floor-judging/lanes')
+  myJudgedLanes(@CurrentUser() user: AuthUser, @id() competitionId: string) {
+    return this.floor.myLanes(user, competitionId);
+  }
+
+  @Put(':id/heats/:heatId/lanes/:lane/judge')
+  setLaneJudge(@CurrentUser() user: AuthUser, @id() competitionId: string, @id('heatId') heatId: string, @Param('lane', ParseIntPipe) lane: number, @Body() dto: LaneJudgeDto) {
+    return this.floor.setLaneJudge(user, competitionId, heatId, lane, dto.staffId ?? null);
+  }
+
+  @Post(':id/heats/:heatId/judges/auto')
+  @HttpCode(HttpStatus.OK)
+  autoJudges(@CurrentUser() user: AuthUser, @id() competitionId: string, @id('heatId') heatId: string) {
+    return this.floor.autoJudges(user, competitionId, heatId);
+  }
+
+  @Post(':id/heats/:heatId/start')
+  @HttpCode(HttpStatus.OK)
+  startHeat(@CurrentUser() user: AuthUser, @id() competitionId: string, @id('heatId') heatId: string) {
+    return this.floor.start(user, competitionId, heatId);
+  }
+
+  @Delete(':id/heats/:heatId/start')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  resetHeatStart(@CurrentUser() user: AuthUser, @id() competitionId: string, @id('heatId') heatId: string): Promise<void> {
+    return this.floor.resetStart(user, competitionId, heatId);
+  }
+
+  @Put(':id/heats/:heatId/lanes/:lane/score')
+  floorScore(@CurrentUser() user: AuthUser, @id() competitionId: string, @id('heatId') heatId: string, @Param('lane', ParseIntPipe) lane: number, @Body() dto: FloorScoreDto) {
+    return this.floor.score(user, competitionId, heatId, lane, dto);
   }
 
   @Get(':id/my-submissions')

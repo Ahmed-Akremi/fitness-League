@@ -22,6 +22,8 @@ export async function startEmbeddedDb(port: number, database = 'fitness_league')
     password: 'fl',
     port,
     persistent: false,
+    // On Windows initdb picks the code page (WIN1252), which cannot hold the migrations' UTF-8 text.
+    initdbFlags: process.platform === 'win32' ? ['--encoding=UTF8', '--locale=C'] : [],
     onLog: () => undefined,
   });
   await pg.initialise();

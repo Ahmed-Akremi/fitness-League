@@ -9,7 +9,7 @@ import { displayText, useTheme } from '../../core/theme';
 import { localized } from '../../core/utils/format';
 import { Loading } from '../../core/widgets/common';
 import { ErrorText, ErrorView } from '../../core/widgets/error';
-import { Button, Checkbox, Icon, Screen, TextField, Txt } from '../../core/widgets/kit';
+import { Button, Checkbox, Icon, LinkButton, Screen, TextField, Txt } from '../../core/widgets/kit';
 import { DateField, Select } from '../../core/widgets/pickers';
 import { useCities, useGovernorates } from '../reference/api';
 import { useAuth } from './api';
@@ -201,11 +201,15 @@ export function RegisterScreen() {
         ) : (
           <Loading />
         ))}
+      {/* Each consent links to the text it accepts (the legal pages are open to signed-out users). */}
       <Checkbox testID="reg-terms" label={t('acceptTerms')} value={terms} onChange={setTerms} />
+      <LinkButton testID="reg-read-terms" label={t('legalReadTerms')} onPress={() => router.push('/legal/terms')} />
       {submitted && !terms ? <Txt variant="small" color={colors.error}>{t('required')}</Txt> : null}
       <Checkbox testID="reg-privacy" label={t('acceptPrivacy')} value={privacy} onChange={setPrivacy} />
+      <LinkButton testID="reg-read-privacy" label={t('legalReadPrivacy')} onPress={() => router.push('/legal/privacy')} />
       {submitted && !privacy ? <Txt variant="small" color={colors.error}>{t('required')}</Txt> : null}
       <Checkbox label={t('acceptHealth')} value={health} onChange={setHealth} />
+      <LinkButton testID="reg-read-health" label={t('legalReadHealth')} onPress={() => router.push('/legal/health')} />
       <ErrorText error={error} />
       <Button testID="reg-submit" label={t('register')} onPress={submit} busy={busy} style={{ marginTop: 8 }} />
       <Button kind="text" label={t('haveAccount')} onPress={() => (router.canGoBack() ? router.back() : router.replace('/login'))} />

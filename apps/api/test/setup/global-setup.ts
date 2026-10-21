@@ -30,8 +30,9 @@ export default async function globalSetup(): Promise<void> {
   process.env.JWT_PRIVATE_KEY_B64 = Buffer.from(privateKey.export({ type: 'pkcs8', format: 'pem' }).toString()).toString('base64');
   process.env.JWT_PUBLIC_KEY_B64 = Buffer.from(publicKey.export({ type: 'spki', format: 'pem' }).toString()).toString('base64');
 
-  const prismaBin = join(__dirname, '../../node_modules/.bin/prisma');
-  execFileSync(prismaBin, ['migrate', 'deploy'], {
+  // The CLI's entry file run by this Node: the `.bin/prisma` shim is a shell script that Windows cannot spawn.
+  const prismaCli = require.resolve('prisma/build/index.js', { paths: [join(__dirname, '../..')] });
+  execFileSync(process.execPath, [prismaCli, 'migrate', 'deploy'], {
     cwd: join(__dirname, '../..'),
     env: process.env,
     stdio: 'pipe',

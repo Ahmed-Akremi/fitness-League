@@ -125,7 +125,7 @@ export interface ScoredMovement {
   pointsPerRep: number;
 }
 
-const MAX_REPS = 100_000;
+export const MAX_REPS = 100_000;
 
 /** WOD movements as stored; older rows may hold plain names, worth 0 points. */
 export function scoredMovements(json: unknown): ScoredMovement[] {

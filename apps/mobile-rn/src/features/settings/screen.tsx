@@ -1,5 +1,7 @@
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import Constants from 'expo-constants';
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { Platform, View } from 'react-native';
 
@@ -11,14 +13,19 @@ import { useApi } from '../../core/services';
 import { space, useTheme } from '../../core/theme';
 import { SectionHeader } from '../../core/widgets/common';
 import { ErrorText, errorMessage } from '../../core/widgets/error';
-import { Dialog, IconButton, ListGroup, ListRow, Screen, Segmented, SwitchRow, toast } from '../../core/widgets/kit';
+import { Button, Dialog, IconButton, ListGroup, ListRow, Screen, Segmented, SwitchRow, Txt, toast } from '../../core/widgets/kit';
 import { FieldButton, Select } from '../../core/widgets/pickers';
-import { useAuth } from '../auth/api';
+import { authApi, useAuth } from '../auth/api';
+import { LEGAL_DOCS, legalDoc } from '../legal/content';
 import { meApi, meKey, useMe } from '../me/api';
 
-/** Settings: preferences (language, theme, training days), notifications, privacy, data export, account deletion, sign out. */
+/**
+ * Settings: preferences (language, theme, training days), notifications, privacy, account (email, password, data
+ * export, deletion, sign out), legal documents, app version.
+ */
 export function SettingsScreen() {
   const t = useT();
+  const { colors } = useTheme();
   const api = useApi();
   const auth = useAuth();
   const [deleting, setDeleting] = useState(false);
@@ -52,11 +59,16 @@ export function SettingsScreen() {
       <SectionHeader title={t('privacy')} />
       <PrivacySection />
       <SectionHeader title={t('account')} />
+      <AccountSection />
       <ListGroup>
         <ListRow icon="download" title={t('exportData')} onPress={exportData} />
         <ListRow icon="delete-forever" danger title={t('deleteAccount')} onPress={() => setDeleting(true)} />
         <ListRow testID="logout" icon="logout" title={t('logout')} onPress={() => auth.logout()} />
       </ListGroup>
+      <SectionHeader title={t('legalTitle')} />
+      <LegalSection />
+      <SectionHeader title={t('aboutApp')} />
+      <Txt testID="app-version" color={colors.outline}>{t('appVersionLabel', { version: Constants.expoConfig?.version ?? '—' })}</Txt>
       <Dialog
         visible={deleting}
         title={t('deleteAccount')}
@@ -69,6 +81,58 @@ export function SettingsScreen() {
         onConfirm={deleteAccount}
       />
     </Screen>
+  );
+}
+
+/** The account's email and whether it is verified; « change the password » mails a reset link to it. */
+export function AccountSection() {
+  const t = useT();
+  const api = useApi();
+  const me = useMe().data;
+  const { colors } = useTheme();
+  const [error, setError] = useState<unknown>(null);
+  if (!me) return null;
+  const verified = me.emailVerified === true;
+  const email: string | undefined = me.email;
+
+  async function call(fn: () => Promise<unknown>, done: string) {
+    setError(null);
+    try {
+      await fn();
+      toast(done);
+    } catch (e) {
+      setError(e);
+    }
+  }
+
+  return (
+    <View style={{ gap: space.sm }}>
+      <ListGroup>
+        <ListRow
+          testID="account-email"
+          icon={verified ? 'mark-email-read' : 'mark-email-unread'}
+          title={email ?? '—'}
+          subtitle={verified ? t('emailVerifiedLabel') : t('emailUnverifiedLabel')}
+          trailing={verified ? null : <Button testID="account-resend" kind="text" label={t('resendEmail')} onPress={() => call(() => authApi(api).resendVerification(), t('verifyEmailResent'))} />}
+        />
+        <ListRow testID="account-password" icon="lock-reset" title={t('changePassword')} subtitle={t('changePasswordHint')} onPress={email ? () => call(() => authApi(api).forgotPassword(email), t('changePasswordSent', { email })) : undefined} />
+      </ListGroup>
+      <ErrorText testID="account-error" error={error} />
+      {verified ? null : <Txt variant="small" color={colors.outline}>{t('emailNotVerified')}</Txt>}
+    </View>
+  );
+}
+
+/** Terms, privacy policy and health data, readable at any time. */
+export function LegalSection() {
+  const t = useT();
+  const locale = useLocale();
+  return (
+    <ListGroup>
+      {LEGAL_DOCS.map((id) => (
+        <ListRow key={id} testID={`settings-legal-${id}`} icon="description" title={legalDoc(id, locale)!.title} chevron onPress={() => router.push(`/legal/${id}`)} />
+      ))}
+    </ListGroup>
   );
 }
 

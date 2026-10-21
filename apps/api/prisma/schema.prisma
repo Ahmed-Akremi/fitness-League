@@ -1993,6 +1993,8 @@ enum CompetitionStaffRole {
   ORGANIZER
   JUDGE
   HEAD_JUDGE
+  /// On-site judge: an app user invited by the organizer, one lane (athlete) per heat.
+  FLOOR_JUDGE
 }
 
 enum CategoryGender {
@@ -2159,11 +2161,14 @@ model CompetitionStaff {
   competitionId String               @map("competition_id") @db.Uuid
   userId        String               @map("user_id") @db.Uuid
   role          CompetitionStaffRole
+  /// FLOOR_JUDGE invitations: null until the user accepts.
+  acceptedAt    DateTime?            @map("accepted_at") @db.Timestamptz
   createdAt     DateTime             @default(now()) @map("created_at") @db.Timestamptz
 
   competition Competition                  @relation(fields: [competitionId], references: [id], onDelete: Cascade)
   user        User                         @relation("CompetitionStaffUser", fields: [userId], references: [id])
   assignments CompetitionJudgeAssignment[]
+  judgedLanes CompetitionHeatLane[]
 
   @@unique([competitionId, userId, role])
   @@index([userId])
@@ -2462,6 +2467,8 @@ model CompetitionHeat {
   startsAt      DateTime? @map("starts_at") @db.Timestamptz
   durationMin   Int?      @map("duration_min")
   laneCount     Int       @default(8) @map("lane_count")
+  /// Common start of the floor judges' clocks; null until someone starts the heat.
+  startedAt     DateTime? @map("started_at") @db.Timestamptz
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz
 
@@ -2479,13 +2486,17 @@ model CompetitionHeatLane {
   id             String @id @db.Uuid
   heatId         String @map("heat_id") @db.Uuid
   lane           Int
-  registrationId String @map("registration_id") @db.Uuid
+  registrationId String  @map("registration_id") @db.Uuid
+  /// The floor judge of this athlete in this heat.
+  judgeStaffId   String? @map("judge_staff_id") @db.Uuid
 
   heat         CompetitionHeat         @relation(fields: [heatId], references: [id], onDelete: Cascade)
   registration CompetitionRegistration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  judge        CompetitionStaff?       @relation(fields: [judgeStaffId], references: [id], onDelete: SetNull)
 
   @@unique([heatId, lane])
   @@unique([heatId, registrationId])
+  @@unique([heatId, judgeStaffId])
   @@index([registrationId])
   @@map("competition_heat_lanes")
 }
