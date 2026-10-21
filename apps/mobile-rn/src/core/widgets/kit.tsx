@@ -1,17 +1,91 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { useNavigation } from 'expo-router';
-import { Children, Fragment, isValidElement, useEffect, useLayoutEffect, useState, type ComponentProps, type ReactNode } from 'react';
+import { SymbolView, type SFSymbol } from 'expo-symbols';
+import { Children, createContext, Fragment, isValidElement, useContext, useEffect, useLayoutEffect, useState, type ComponentProps, type ReactNode } from 'react';
 import { AccessibilityInfo, ActivityIndicator, Modal, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View, type StyleProp, type TextInputProps, type ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { create } from 'zustand';
 
 import { isFocused, spaceKey, useFocusRing } from '../focus';
 import { fonts, radius, space, useTheme, webDense } from '../theme';
+import { NativeMenu } from './native';
 
 export type IconName = ComponentProps<typeof MaterialIcons>['name'];
 
+/**
+ * SF Symbols drawn on iOS for the Material names the app uses (HIG Branding: familiar components). Names without an
+ * entry stay Material; Android and the web always do.
+ */
+export const SF_SYMBOLS: Partial<Record<IconName, SFSymbol>> = {
+  home: 'house',
+  'fitness-center': 'dumbbell',
+  'emoji-events': 'trophy',
+  'outlined-flag': 'flag',
+  flag: 'flag.fill',
+  person: 'person.fill',
+  'person-outline': 'person',
+  'notifications-none': 'bell',
+  notifications: 'bell.fill',
+  settings: 'gearshape',
+  'chevron-right': 'chevron.forward',
+  'arrow-back': 'chevron.backward',
+  close: 'xmark',
+  add: 'plus',
+  'more-vert': 'ellipsis.circle',
+  'more-horiz': 'ellipsis',
+  'delete-outline': 'trash',
+  'delete-forever': 'trash.fill',
+  check: 'checkmark',
+  'check-box': 'checkmark.square.fill',
+  'check-box-outline-blank': 'square',
+  timer: 'timer',
+  event: 'calendar',
+  'calendar-month': 'calendar',
+  schedule: 'clock',
+  place: 'mappin.and.ellipse',
+  'local-fire-department': 'flame.fill',
+  'my-location': 'location.fill',
+  group: 'person.2',
+  'group-add': 'person.2.badge.plus',
+  insights: 'chart.line.uptrend.xyaxis',
+  'military-tech': 'medal',
+  'cloud-upload': 'icloud.and.arrow.up',
+  'cloud-off': 'icloud.slash',
+  'error-outline': 'exclamationmark.circle',
+  'hourglass-top': 'hourglass',
+  download: 'square.and.arrow.down',
+  share: 'square.and.arrow.up',
+  logout: 'rectangle.portrait.and.arrow.right',
+  bedtime: 'moon.fill',
+  'arrow-drop-down': 'chevron.up.chevron.down',
+  'done-all': 'checkmark.circle',
+  'sports-mma': 'figure.boxing',
+  'directions-run': 'figure.run',
+  'directions-bike': 'figure.outdoor.cycle',
+  pool: 'figure.pool.swim',
+  'directions-walk': 'figure.walk',
+  bolt: 'bolt.fill',
+  tune: 'slider.horizontal.3',
+  'monitor-weight': 'scalemass',
+  search: 'magnifyingglass',
+  edit: 'pencil',
+  storefront: 'storefront',
+  star: 'star.fill',
+  'expand-more': 'chevron.down',
+  'expand-less': 'chevron.up',
+  favorite: 'heart.fill',
+  'favorite-border': 'heart',
+  'mark-email-unread': 'envelope.badge',
+  shield: 'shield',
+  verified: 'checkmark.seal',
+  lock: 'lock',
+  info: 'info.circle',
+};
+
 export function Icon({ name, size = 22, color }: { name: IconName; size?: number; color?: string }) {
   const { colors } = useTheme();
+  const sf = Platform.OS === 'ios' ? SF_SYMBOLS[name] : undefined;
+  if (sf) return <SymbolView name={sf} size={size} tintColor={color ?? colors.text} />;
   return <MaterialIcons name={name} size={size} color={color ?? colors.text} />;
 }
 
@@ -65,7 +139,7 @@ export function Button({ label, onPress, kind = 'filled', icon, busy, disabled, 
         <ActivityIndicator color={fg} />
       ) : (
         <>
-          {icon && <MaterialIcons name={icon} size={dense ? 16 : 18} color={fg} />}
+          {icon && <Icon name={icon} size={dense ? 16 : 18} color={fg} />}
           <Text style={{ color: fg, fontWeight: '700', fontSize: dense ? 13 : 15, letterSpacing: dense ? 0.2 : 0.4 }}>{label}</Text>
         </>
       )}
@@ -139,7 +213,7 @@ export function Chip({ label, selected, onPress, icon, testID, accessibilityLabe
       hitSlop={{ top: 6, bottom: 6 }}
       style={(state) => [styles.chip, dense && { borderRadius: webDense.radius.field, paddingVertical: 6 }, { backgroundColor: selected ? colors.primary : colors.surfaceHigh }, ring(isFocused(state))]}
     >
-      {icon && <MaterialIcons name={icon} size={16} color={fg} />}
+      {icon && <Icon name={icon} size={16} color={fg} />}
       <Text style={{ color: fg, fontWeight: '600', fontSize: 13 }}>{label}</Text>
     </Pressable>
   );
@@ -179,15 +253,22 @@ export function Checkbox({ label, value, onChange, testID }: { label: string; va
   const ring = useFocusRing();
   return (
     <Pressable testID={testID} accessibilityRole="checkbox" aria-checked={value} {...spaceKey(() => onChange(!value))} onPress={() => onChange(!value)} style={(state) => [{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8 }, ring(isFocused(state))]}>
-      <MaterialIcons name={value ? 'check-box' : 'check-box-outline-blank'} size={24} color={value ? colors.primary : colors.outline} />
+      <Icon name={value ? 'check-box' : 'check-box-outline-blank'} size={24} color={value ? colors.primary : colors.outline} />
       <Txt style={{ flex: 1 }}>{label}</Txt>
     </Pressable>
   );
 }
 
+/**
+ * Where a screen's header options go when its own navigator draws none: a tab folder on Android and the web (a Slot
+ * inside the JavaScript tabs) hands its screens the tab's navigation. iOS tab folders are stacks with their own bar.
+ */
+export const HeaderTarget = createContext<{ setOptions: (options: object) => void } | null>(null);
+
 /** Sets the current screen's header (title, right-side actions) — Flutter AppBar. */
 export function useHeader(options: { title?: string; headerRight?: () => ReactNode }, deps: unknown[] = []) {
-  const navigation = useNavigation();
+  const own = useNavigation();
+  const navigation = useContext(HeaderTarget) ?? own;
   useLayoutEffect(() => {
     navigation.setOptions(options);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -274,14 +355,21 @@ export function Expander({ icon, title, children }: { icon?: IconName; title: st
   );
 }
 
-/** Extended floating action button, bottom-end. */
-export function Fab({ label, icon = 'add', onPress, testID }: { label?: string; icon?: IconName; onPress: () => void; testID?: string }) {
+/**
+ * Extended floating action button, bottom-end (Android). On iOS a « + » in the navigation bar instead, with the same
+ * testID and the label as its name (HIG: no floating buttons). `accessibilityLabel` names an icon-only one.
+ */
+export function Fab({ label, icon = 'add', onPress, testID, accessibilityLabel }: { label?: string; icon?: IconName; onPress: () => void; testID?: string; accessibilityLabel?: string }) {
   const { colors } = useTheme();
+  const ios = Platform.OS === 'ios';
+  const name = accessibilityLabel ?? label ?? '';
+  useHeader(ios ? { headerRight: () => <IconButton testID={testID} icon="add" label={name} onPress={onPress} /> } : {}, [ios, name, onPress]);
+  if (ios) return null;
   return (
     <Pressable
       testID={testID}
       accessibilityRole="button"
-      accessibilityLabel={label}
+      accessibilityLabel={accessibilityLabel ?? label}
       onPress={onPress}
       style={{ position: 'absolute', end: 16, bottom: 16, flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.primary, borderRadius: 18, paddingHorizontal: label ? 20 : 16, paddingVertical: 16, elevation: 4 }}
     >
@@ -291,11 +379,17 @@ export function Fab({ label, icon = 'add', onPress, testID }: { label?: string; 
   );
 }
 
-/** Overflow menu (Flutter PopupMenuButton): an icon that opens a list of actions. */
+/**
+ * Overflow menu (Flutter PopupMenuButton): an icon that opens a list of actions. iOS: the system pull-down menu
+ * (@expo/ui); Android and the web: a bottom sheet.
+ */
 export function Menu({ items, label, icon = 'more-vert', testID }: { items: { label: string; onPress: () => void; testID?: string }[]; label: string; icon?: IconName; testID?: string }) {
   const { colors } = useTheme();
   const [open, setOpen] = useState(false);
   const ring = useFocusRing();
+  if (Platform.OS === 'ios') {
+    return <NativeMenu testID={testID} label={label} systemImage={SF_SYMBOLS[icon] ?? 'ellipsis.circle'} color={colors.text} items={items} />;
+  }
   return (
     <>
       <Pressable testID={testID} accessibilityRole="button" accessibilityLabel={label} onPress={() => setOpen(true)} hitSlop={8} style={(state) => [{ padding: 8 }, ring(isFocused(state))]}>

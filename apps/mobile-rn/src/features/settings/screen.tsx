@@ -83,6 +83,7 @@ export function PreferencesSection() {
   return (
     <View style={{ gap: 12 }}>
       <Select
+        menu
         testID="settings-language"
         label={t('language')}
         value={locale}
@@ -107,6 +108,7 @@ export function PreferencesSection() {
         ]}
       />
       <Select
+        menu
         testID="settings-days"
         label={t('trainingDaysPerWeek')}
         value={String(planned)}
@@ -153,6 +155,7 @@ export function PrivacySection() {
   return (
     <View style={{ gap: space.md }}>
       <Select
+        menu
         label={t('workoutVisibility')}
         value={value('defaultVisibility') ?? 'FRIENDS'}
         options={[

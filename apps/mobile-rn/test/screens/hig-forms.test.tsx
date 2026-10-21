@@ -95,8 +95,8 @@ describe('settings', () => {
   it('a failed training-days save stays on screen under its section', async () => {
     const backend = new FakeBackend().on('GET', '/me', [200, { id: 'u1', profile: { plannedTrainingDaysPerWeek: 3 } }]).on('PATCH', '/me/profile', [500, {}]);
     const screen = await renderScreen(PreferencesSection, backend);
-    await fireEvent.press(await screen.findByTestId('settings-days'));
-    await fireEvent.press(screen.getByTestId('settings-days-4'));
+    // iOS: the system pop-up menu.
+    await fireEvent(await screen.findByTestId('settings-days'), 'selectionChange', { nativeEvent: { selection: '4' } });
     expect(await screen.findByTestId('preferences-error')).toBeTruthy();
   });
 });

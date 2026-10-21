@@ -1,7 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Platform, Pressable, RefreshControl, ScrollView, View } from 'react-native';
 
 import { useLocale, useT } from '../../core/prefs';
 import { useServices } from '../../core/services';
@@ -9,7 +9,7 @@ import { space, useTheme } from '../../core/theme';
 import { formatDate, formatDuration, formatMetric, formatNumber } from '../../core/utils/format';
 import { EmptyState, Loading, sportIcon, StatCard, StatusPill } from '../../core/widgets/common';
 import { ErrorView } from '../../core/widgets/error';
-import { Card, Dialog, Icon, IconButton, Txt } from '../../core/widgets/kit';
+import { Card, Dialog, Icon, IconButton, Txt, useHeader } from '../../core/widgets/kit';
 import { useSports } from '../reference/api';
 import { ProofsSection } from './proofs';
 import { explainPoints, usePendingWorkouts, useWorkoutDetail, useWorkouts, workoutKeys, type Workout } from './api';
@@ -25,6 +25,9 @@ export function TrainScreen() {
   const pending = usePendingWorkouts();
   const [refreshing, setRefreshing] = useState(false);
   const [discarding, setDiscarding] = useState<string | null>(null);
+  // iOS: « + » in the navigation bar instead of a floating button (HIG); Android keeps it.
+  const ios = Platform.OS === 'ios';
+  useHeader(ios ? { headerRight: () => <IconButton testID="train-log" icon="add" label={t('logWorkout')} onPress={() => router.push('/workouts/new')} /> } : {}, [ios, t]);
 
   async function refresh() {
     setRefreshing(true);
@@ -65,6 +68,7 @@ export function TrainScreen() {
         {queuedCards}
         {body}
       </ScrollView>
+      {!ios && (
       <Pressable
         testID="train-log"
         accessibilityRole="button"
@@ -74,6 +78,7 @@ export function TrainScreen() {
         <Icon name="add" color={colors.onPrimary} />
         <Txt style={{ color: colors.onPrimary, fontWeight: '700' }}>{t('logWorkout')}</Txt>
       </Pressable>
+      )}
       {/* A workout that was never sent exists nowhere else: ask before it is gone. */}
       <Dialog
         visible={discarding != null}

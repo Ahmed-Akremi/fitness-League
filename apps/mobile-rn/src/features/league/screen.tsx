@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { FlatList, Pressable, RefreshControl, View } from 'react-native';
+import { FlatList, Platform, Pressable, RefreshControl, View } from 'react-native';
 
 import { useLocale, useT } from '../../core/prefs';
 import { useApi } from '../../core/services';
@@ -8,7 +8,7 @@ import { displayText, useTheme } from '../../core/theme';
 import { formatNumber, localized } from '../../core/utils/format';
 import { AvatarBadge, divisionColor, divisionLabel, EmptyState, GymLogo, Loading, MovementBadge, StatusPill } from '../../core/widgets/common';
 import { ErrorView } from '../../core/widgets/error';
-import { Card, Icon, Segmented, Txt } from '../../core/widgets/kit';
+import { Card, Icon, IconButton, Segmented, Txt, useHeader } from '../../core/widgets/kit';
 import { LeaguesTab } from '../leagues/screens';
 import { useMe } from '../me/api';
 import { leagueApi, type LeagueRow, type LeagueScope, type ScopeTarget } from './api';
@@ -30,12 +30,32 @@ export function LeagueScreen() {
     setVisited((v) => new Set(v).add(s));
   };
 
+  // iOS: the navigation bar holds the scope's action (HIG: no floating buttons) — jump to my rank in the ranking on
+  // screen, or « + » on the private leagues. Each list hands over its own jump.
+  const ios = Platform.OS === 'ios';
+  const jumps = useRef<Partial<Record<Tab, () => void>>>({});
+  const jumpReady = useCallback((s: Tab) => (jump: (() => void) | null) => void (jumps.current[s] = jump ?? undefined), []);
+  const ranked = scope !== 'leagues' && (scope !== 'region' || governorateId != null) && (scope !== 'gym' || gym != null);
+  useHeader(
+    ios
+      ? {
+          headerRight: () =>
+            scope === 'leagues' ? (
+              <IconButton testID="league-new" icon="add" label={t('newLeague')} onPress={() => router.push('/leagues/new')} />
+            ) : ranked && me?.id ? (
+              <IconButton testID={`jump-${scope}`} icon="my-location" label={t('jumpToMe')} onPress={() => jumps.current[scope]?.()} />
+            ) : null,
+        }
+      : {},
+    [ios, scope, ranked, me?.id, t],
+  );
+
   const content = (s: Tab) => {
     switch (s) {
       case 'leagues':
         return <LeaguesTab />;
       case 'region':
-        return governorateId ? <LeaderboardList scope="region" target={{ governorateId }} myId={me?.id} /> : null;
+        return governorateId ? <LeaderboardList scope="region" target={{ governorateId }} myId={me?.id} onJumpReady={ios ? jumpReady('region') : undefined} /> : null;
       case 'gym':
         return gym ? (
           <View style={{ flex: 1 }}>
@@ -45,13 +65,13 @@ export function LeagueScreen() {
                 <Txt variant="title" style={{ flex: 1, fontWeight: '800' }}>{gym.name}</Txt>
               </Card>
             </View>
-            <LeaderboardList scope="gym" target={{ gymId: gym.id }} myId={me?.id} />
+            <LeaderboardList scope="gym" target={{ gymId: gym.id }} myId={me?.id} onJumpReady={ios ? jumpReady('gym') : undefined} />
           </View>
         ) : (
           <EmptyState icon="fitness-center" message={t('noGym')} actionLabel={t('findGym')} onAction={() => router.push('/gyms')} />
         );
       default:
-        return <LeaderboardList scope={s} myId={me?.id} />;
+        return <LeaderboardList scope={s} myId={me?.id} onJumpReady={ios ? jumpReady(s) : undefined} />;
     }
   };
 
@@ -82,7 +102,8 @@ export function LeagueScreen() {
   );
 }
 
-export function LeaderboardList({ scope, target = {}, myId }: { scope: LeagueScope; target?: ScopeTarget; myId?: string }) {
+/** `onJumpReady`: the screen puts « jump to my rank » in its navigation bar (iOS); without it, a floating button. */
+export function LeaderboardList({ scope, target = {}, myId, onJumpReady }: { scope: LeagueScope; target?: ScopeTarget; myId?: string; onJumpReady?: (jump: (() => void) | null) => void }) {
   const t = useT();
   const locale = useLocale();
   const { colors } = useTheme();
@@ -121,6 +142,10 @@ export function LeaderboardList({ scope, target = {}, myId }: { scope: LeagueSco
   useEffect(() => {
     void load({ reset: true });
   }, [load]);
+
+  useEffect(() => {
+    onJumpReady?.(myId ? () => void load({ aroundMe: true }) : null);
+  }, [onJumpReady, myId, load]);
 
   if (error != null && rows.length === 0) return <ErrorView error={error} onRetry={() => load({ reset: true })} />;
   if (rows.length === 0 && loading) return <Loading />;
@@ -183,7 +208,7 @@ export function LeaderboardList({ scope, target = {}, myId }: { scope: LeagueSco
           );
         }}
       />
-      {myId && (
+      {myId && !onJumpReady && (
         <Pressable
           testID={`jump-${scope}`}
           accessibilityRole="button"

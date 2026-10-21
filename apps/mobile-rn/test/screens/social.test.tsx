@@ -72,8 +72,8 @@ describe('feed', () => {
     expect(await screen.findByText('🔥 1')).toBeTruthy();
     expect(backend.calls('PUT', '/activities/a1/reactions')[0].body).toEqual({ type: 'FIRE' });
 
-    await fireEvent.press(screen.getByLabelText('Report'));
-    await fireEvent.press(await screen.findByText('Report'));
+    // iOS: the item of the system pull-down menu.
+    await fireEvent(screen.getByTestId('feed-report-a1'), 'buttonPress');
     await fireEvent.press(await screen.findByTestId('reason-CHEATING'));
     await fireEvent.press(screen.getByTestId('report-send'));
     await waitFor(() => expect(backend.calls('POST', '/reports')[0]?.body).toEqual({ targetType: 'USER', targetId: 'u9', reason: 'CHEATING' }));

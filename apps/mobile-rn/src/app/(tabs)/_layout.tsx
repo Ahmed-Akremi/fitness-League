@@ -5,13 +5,14 @@ import type { ColorValue } from 'react-native';
 
 import { useT } from '../../core/prefs';
 import { fonts, useTheme } from '../../core/theme';
+import { TABS } from '../../features/shell/tabs';
 
 type Name = ComponentProps<typeof MaterialIcons>['name'];
 const icon = (outline: Name, filled: Name) => ({ focused, color }: { focused: boolean; color: ColorValue }) => (
   <MaterialIcons name={focused ? filled : outline} size={24} color={color} />
 );
 
-/** Bottom bar (spec §19.1): Home · Train · League · Challenges(Goals) · Profile. */
+/** Bottom bar (spec §19.1) on Android and the web: JavaScript tabs. iOS uses native tabs (_layout.ios.tsx). */
 export default function TabsLayout() {
   const t = useT();
   const { colors } = useTheme();
@@ -28,11 +29,9 @@ export default function TabsLayout() {
         sceneStyle: { backgroundColor: colors.background },
       }}
     >
-      <Tabs.Screen name="index" options={{ title: t('navHome'), headerShown: false, tabBarIcon: icon('home', 'home') }} />
-      <Tabs.Screen name="train" options={{ title: t('navTrain'), tabBarIcon: icon('fitness-center', 'fitness-center') }} />
-      <Tabs.Screen name="league" options={{ title: t('navLeague'), tabBarIcon: icon('emoji-events', 'emoji-events') }} />
-      <Tabs.Screen name="goals" options={{ title: t('navChallenges'), tabBarIcon: icon('outlined-flag', 'flag') }} />
-      <Tabs.Screen name="profile" options={{ title: t('navProfile'), tabBarIcon: icon('person-outline', 'person') }} />
+      {TABS.map((tab) => (
+        <Tabs.Screen key={tab.name} name={tab.name} options={{ title: t(tab.label), ...(tab.name === 'index' ? { headerShown: false } : null), tabBarIcon: icon(tab.icon, tab.selectedIcon) }} />
+      ))}
     </Tabs>
   );
 }

@@ -8,18 +8,31 @@ import { isFocused, useFocusRing } from '../focus';
 import { radius, useTheme, webDense } from '../theme';
 import { formatDate } from '../utils/format';
 import { Button, Icon, Txt, type IconName } from './kit';
+import { NativePicker } from './native';
 
 export interface Option {
   value: string;
   label: string;
 }
 
-/** Field that opens a list (Flutter DropdownButtonFormField): full screen on a phone, a small centered box on a computer. `bare`: no label above (toolbars). */
-export function Select({ label, value, options, onChange, error, testID, placeholder, bare }: { label: string; value: string | null | undefined; options: Option[]; onChange: (v: string) => void; error?: string | null; testID?: string; placeholder?: string; bare?: boolean }) {
+/**
+ * Field that opens a list (Flutter DropdownButtonFormField): full screen on a phone, a small centered box on a computer.
+ * `bare`: no label above (toolbars). `menu`: a short fixed list (days, visibility, language) — on iOS the system
+ * pop-up menu instead (HIG Pickers: a short list is a pop-up button, not a picker).
+ */
+export function Select({ label, value, options, onChange, error, testID, placeholder, bare, menu }: { label: string; value: string | null | undefined; options: Option[]; onChange: (v: string) => void; error?: string | null; testID?: string; placeholder?: string; bare?: boolean; menu?: boolean }) {
   const t = useT();
-  const { colors, dense } = useTheme();
+  const { colors, dense, highContrast } = useTheme();
   const [open, setOpen] = useState(false);
   const selected = options.find((o) => o.value === value);
+  if (menu && Platform.OS === 'ios') {
+    return (
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: radius.field, borderWidth: 1, borderColor: error ? colors.error : highContrast ? colors.outline : colors.surfaceHigh, backgroundColor: colors.surface, paddingStart: 12, paddingEnd: 4, minHeight: 48 }}>
+        <Txt style={{ flex: 1 }}>{label}</Txt>
+        <NativePicker testID={testID} label={label} value={value} options={options} onChange={onChange} color={colors.primary} />
+      </View>
+    );
+  }
   const head = (
     <View style={{ flexDirection: 'row', alignItems: 'center', padding: 16 }}>
       <Txt variant="title" style={{ flex: 1 }}>{label}</Txt>
