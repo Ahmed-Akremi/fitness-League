@@ -345,3 +345,65 @@ async fn nothing_secret_is_written_to_redis(opts: MySqlPoolOptions, conn: MySqlC
         assert!(!written.contains(secret), "{secret} is in Redis: {written}");
     }
 }
+
+/// What other athletes see of someone (profile, search, friend list, friends board) never holds
+/// their email, birth date or a body measurement.
+#[sqlx::test]
+async fn profiles_and_searches_carry_no_private_data(
+    opts: MySqlPoolOptions,
+    conn: MySqlConnectOptions,
+) {
+    let app = seeded(opts, conn).await;
+    let shown = create_user(&app, "samira", Role::User).await;
+    let viewer = create_user(&app, "viewer", Role::User).await;
+    for user in [shown, viewer] {
+        common::calibrated(&app, user).await;
+        sqlx::query(
+            "UPDATE user_stats SET current_season_id = (SELECT id FROM seasons WHERE status = 'ACTIVE'), \
+               season_lp = 300 WHERE user_id = ?",
+        )
+        .bind(user)
+        .execute(&app.db)
+        .await
+        .unwrap();
+    }
+    common::set_consent(&app, shown, "HEALTH_DATA", true).await;
+    let theirs = open_session(&app, shown, Role::User, Audience::App).await;
+    let weighed = app
+        .call(
+            Method::POST,
+            "/api/v1/me/body-measurements",
+            theirs["accessToken"].as_str(),
+            Some(json!({"weightKg": 83.7, "bodyFatPct": 21.3})),
+        )
+        .await;
+    assert_eq!(weighed.status, StatusCode::CREATED, "{}", weighed.json);
+    let (low, high) = if shown < viewer { (shown, viewer) } else { (viewer, shown) };
+    sqlx::query(
+        "INSERT INTO friendships (user_low_id, user_high_id, status, requested_by) VALUES (?, ?, 'ACCEPTED', ?)",
+    )
+    .bind(low)
+    .bind(high)
+    .bind(shown)
+    .execute(&app.db)
+    .await
+    .unwrap();
+
+    let session = open_session(&app, viewer, Role::User, Audience::App).await;
+    let token = session["accessToken"].as_str();
+    for path in [
+        "/api/v1/users/samira",
+        "/api/v1/search/athletes?q=samira",
+        "/api/v1/friends",
+        "/api/v1/leaderboards/friends",
+        "/api/v1/leaderboards/friends/me",
+    ] {
+        let reply = app.call(Method::GET, path, token, None).await;
+        assert_eq!(reply.status, StatusCode::OK, "{path}: {}", reply.json);
+        let text = reply.json.to_string();
+        assert!(text.contains("samira"), "{path} does not show the athlete: {text}");
+        for secret in ["samira@example.com", "1995-05-05", "83.7", "21.3", "dateOfBirth", "email"] {
+            assert!(!text.contains(secret), "{path} shows {secret}: {text}");
+        }
+    }
+}

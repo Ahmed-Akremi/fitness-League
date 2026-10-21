@@ -62,7 +62,8 @@ fn hhmm(raw: &str) -> Option<NaiveTime> {
     NaiveTime::from_hms_opt(hours.parse().ok()?, minutes.parse().ok()?, 0)
 }
 
-async fn load(db: &MySqlPool, user: Uuid) -> Result<Value, AppError> {
+/// The athlete's preferences, as the app reads them (also in the export).
+pub async fn load(db: &MySqlPool, user: Uuid) -> Result<Value, AppError> {
     let s = sqlx::query!(
         r#"SELECT push_social AS "social: bool", push_battles AS "battles: bool",
                   push_competition AS "competition: bool", push_challenges AS "challenges: bool",
