@@ -22,4 +22,6 @@ pub fn routes(api: Api) -> Api {
             "/api/v1/leaderboards/governorates/{id}/me",
             boards::governorate_me,
         )
+        .get("/api/v1/leaderboards/friends", boards::friends)
+        .get("/api/v1/leaderboards/friends/me", boards::friends_me)
 }

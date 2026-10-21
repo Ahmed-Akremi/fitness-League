@@ -1,6 +1,6 @@
-//! Leaderboards (docs §15): the active season's eligible athletes ranked by LP, nationally and per
-//! governorate, with the movement since the last daily snapshot. A port of the old API's
-//! `LeaderboardsService`; ranked in SQL (spec ruling 3).
+//! Leaderboards (docs §15): the active season's eligible athletes ranked by LP, nationally, per
+//! governorate and among my friends, with the movement since the last daily snapshot. A port of the
+//! old API's `LeaderboardsService`; ranked in SQL (spec ruling 3).
 
 use axum::{
     Json,
@@ -52,7 +52,8 @@ struct Row {
 }
 
 impl Row {
-    fn view(&self) -> Value {
+    /// `compare`: the board has snapshots, so a row gets its movement (the friends board has none).
+    fn view(&self, compare: bool) -> Value {
         json!({
             "rank": self.rank,
             "athlete": {"id": self.user_id, "username": self.username, "fullName": self.full_name},
@@ -66,7 +67,11 @@ impl Row {
             "lp": self.lp,
             "level": self.level,
             "division": self.division,
-            "movement": self.previous.map_or(json!("NEW"), |p| json!(i64::from(p) - self.rank)),
+            "movement": if compare {
+                self.previous.map_or(json!("NEW"), |p| json!(i64::from(p) - self.rank))
+            } else {
+                Value::Null
+            },
         })
     }
 
@@ -78,10 +83,20 @@ impl Row {
     }
 }
 
+/// Whose athletes a board ranks.
+#[derive(Clone, Copy)]
+enum Scope {
+    National,
+    Governorate(Uuid),
+    /// This athlete and their accepted friends.
+    Friends(Uuid),
+}
+
 /// A board: the season, the scope, the clock its eligibility reads, and the snapshot it compares with.
 struct Board {
     season: Uuid,
     governorate: Option<Uuid>,
+    friends_of: Option<Uuid>,
     scope_type: &'static str,
     scope_id: Uuid,
     now: NaiveDateTime,
@@ -89,7 +104,7 @@ struct Board {
 }
 
 impl Board {
-    async fn of(state: &AppState, user: Uuid, governorate: Option<Uuid>) -> Result<Self, AppError> {
+    async fn of(state: &AppState, user: Uuid, scope: Scope) -> Result<Self, AppError> {
         let country =
             sqlx::query_scalar!("SELECT country_code FROM profiles WHERE user_id = ?", user)
                 .fetch_one(&state.db)
@@ -97,9 +112,11 @@ impl Board {
         let season = seasons::active(&state.db, &country)
             .await?
             .ok_or_else(|| AppError::not_found("Season"))?;
-        let (scope_type, scope_id) = match governorate {
-            Some(id) => ("GOVERNORATE", id),
-            None => ("NATIONAL", Uuid::nil()),
+        // No snapshot is ever taken of a friends board (as in the old API), so it finds none.
+        let (governorate, friends_of, scope_type, scope_id) = match scope {
+            Scope::National => (None, None, "NATIONAL", Uuid::nil()),
+            Scope::Governorate(id) => (Some(id), None, "GOVERNORATE", id),
+            Scope::Friends(of) => (None, Some(of), "FRIENDS", of),
         };
         let now = Utc::now();
         let today = policy::business_today(now, state.cfg.business_utc_offset_minutes);
@@ -116,11 +133,16 @@ impl Board {
         Ok(Self {
             season: season.id,
             governorate,
+            friends_of,
             scope_type,
             scope_id,
             now: now.naive_utc(),
             previous,
         })
+    }
+
+    fn compare(&self) -> bool {
+        self.friends_of.is_none()
     }
 
     /// The ranked rows, best first: one athlete's (`only`), or those after `after`, at most `limit`.
@@ -146,7 +168,10 @@ impl Board {
                        JOIN user_settings s ON s.user_id = us.user_id JOIN governorates g ON g.id = p.governorate_id
                      WHERE us.current_season_id = ? AND u.status = 'ACTIVE' AND u.email_verified_at IS NOT NULL
                        AND p.calibration_ends_at <= ? AND s.show_on_leaderboards
-                       AND (? IS NULL OR p.governorate_id = ?)) t
+                       AND (? IS NULL OR p.governorate_id = ?)
+                       AND (? IS NULL OR us.user_id = ? OR us.user_id IN (
+                             SELECT IF(f.user_low_id = ?, f.user_high_id, f.user_low_id) FROM friendships f
+                             WHERE f.status = 'ACCEPTED' AND (f.user_low_id = ? OR f.user_high_id = ?)))) t
                  LEFT JOIN leaderboard_snapshots ls ON ls.snapshot_date = ? AND ls.season_id = ?
                    AND ls.scope_type = ? AND ls.scope_id = ? AND ls.user_id = t.user_id
                WHERE (? IS NULL OR t.user_id = ?) AND (? IS NULL OR t.lp < ? OR (t.lp = ? AND t.user_id > ?))
@@ -156,6 +181,11 @@ impl Board {
             self.now,
             self.governorate,
             self.governorate,
+            self.friends_of,
+            self.friends_of,
+            self.friends_of,
+            self.friends_of,
+            self.friends_of,
             self.previous,
             self.season,
             self.scope_type,
@@ -188,7 +218,10 @@ impl Board {
                        JOIN user_settings s ON s.user_id = us.user_id JOIN governorates g ON g.id = p.governorate_id
                      WHERE us.current_season_id = ? AND u.status = 'ACTIVE' AND u.email_verified_at IS NOT NULL
                        AND p.calibration_ends_at <= ? AND s.show_on_leaderboards
-                       AND (? IS NULL OR p.governorate_id = ?)) t
+                       AND (? IS NULL OR p.governorate_id = ?)
+                       AND (? IS NULL OR us.user_id = ? OR us.user_id IN (
+                             SELECT IF(f.user_low_id = ?, f.user_high_id, f.user_low_id) FROM friendships f
+                             WHERE f.status = 'ACCEPTED' AND (f.user_low_id = ? OR f.user_high_id = ?)))) t
                  LEFT JOIN leaderboard_snapshots ls ON ls.snapshot_date = ? AND ls.season_id = ?
                    AND ls.scope_type = ? AND ls.scope_id = ? AND ls.user_id = t.user_id
                WHERE t.lp > ? OR (t.lp = ? AND t.user_id < ?)
@@ -198,6 +231,11 @@ impl Board {
             self.now,
             self.governorate,
             self.governorate,
+            self.friends_of,
+            self.friends_of,
+            self.friends_of,
+            self.friends_of,
+            self.friends_of,
             self.previous,
             self.season,
             self.scope_type,
@@ -219,7 +257,7 @@ fn governorate_param(raw: &str) -> Result<Uuid, AppError> {
 async fn page_of(
     state: &AppState,
     user: Uuid,
-    governorate: Option<Uuid>,
+    scope: Scope,
     query: PageQuery,
 ) -> Result<Json<Value>, AppError> {
     let limit = page::limit(query.limit.as_deref())? as usize;
@@ -229,7 +267,7 @@ async fn page_of(
         .as_deref()
         .map(|raw| page::decode(secret, raw))
         .transpose()?;
-    let board = Board::of(state, user, governorate).await?;
+    let board = Board::of(state, user, scope).await?;
     // One more than asked: it only tells whether another page exists.
     let mut rows = board
         .rows(&state.db, None, after.as_ref(), limit + 1)
@@ -242,7 +280,10 @@ async fn page_of(
     } else {
         None
     };
-    let mut answer = page::page(rows.iter().map(Row::view).collect(), next);
+    let mut answer = page::page(
+        rows.iter().map(|row| row.view(board.compare())).collect(),
+        next,
+    );
     answer["seasonId"] = json!(board.season);
     Ok(Json(answer))
 }
@@ -251,12 +292,13 @@ async fn page_of(
 async fn around_me(
     state: &AppState,
     user: Uuid,
-    governorate: Option<Uuid>,
+    scope: Scope,
     query: PageQuery,
 ) -> Result<Json<Value>, AppError> {
     let limit = page::limit(query.limit.as_deref())? as usize;
     let secret = &state.cfg.app_hmac_secret;
-    let board = Board::of(state, user, governorate).await?;
+    let board = Board::of(state, user, scope).await?;
+    let compare = board.compare();
     let Some(me) = board.rows(&state.db, Some(user), None, 1).await?.pop() else {
         return Ok(Json(json!({
             "seasonId": board.season, "me": null, "data": [],
@@ -265,8 +307,8 @@ async fn around_me(
     };
     let mut head = board.above(&state.db, &me, limit / 2).await?;
     head.reverse();
-    let mut data: Vec<Value> = head.iter().map(Row::view).collect();
-    let me_view = me.view();
+    let mut data: Vec<Value> = head.iter().map(|row| row.view(compare)).collect();
+    let me_view = me.view(compare);
     data.push(me_view.clone());
     let remaining = limit.saturating_sub(data.len());
     let mine = page::encode(secret, &me.position())?;
@@ -282,7 +324,7 @@ async fn around_me(
         } else {
             None
         };
-        data.extend(tail.iter().map(Row::view));
+        data.extend(tail.iter().map(|row| row.view(compare)));
         json!({"nextCursor": next, "hasMore": next.is_some()})
     } else {
         json!({"nextCursor": mine, "hasMore": true})
@@ -297,7 +339,7 @@ pub async fn national(
     AppUser(user): AppUser,
     ValidQuery(query): ValidQuery<PageQuery>,
 ) -> Result<Json<Value>, AppError> {
-    page_of(&state, user.id, None, query).await
+    page_of(&state, user.id, Scope::National, query).await
 }
 
 pub async fn national_me(
@@ -305,7 +347,7 @@ pub async fn national_me(
     AppUser(user): AppUser,
     ValidQuery(query): ValidQuery<PageQuery>,
 ) -> Result<Json<Value>, AppError> {
-    around_me(&state, user.id, None, query).await
+    around_me(&state, user.id, Scope::National, query).await
 }
 
 pub async fn governorate(
@@ -314,7 +356,8 @@ pub async fn governorate(
     Path(id): Path<String>,
     ValidQuery(query): ValidQuery<PageQuery>,
 ) -> Result<Json<Value>, AppError> {
-    page_of(&state, user.id, Some(governorate_param(&id)?), query).await
+    let scope = Scope::Governorate(governorate_param(&id)?);
+    page_of(&state, user.id, scope, query).await
 }
 
 pub async fn governorate_me(
@@ -323,10 +366,27 @@ pub async fn governorate_me(
     Path(id): Path<String>,
     ValidQuery(query): ValidQuery<PageQuery>,
 ) -> Result<Json<Value>, AppError> {
-    around_me(&state, user.id, Some(governorate_param(&id)?), query).await
+    let scope = Scope::Governorate(governorate_param(&id)?);
+    around_me(&state, user.id, scope, query).await
 }
 
-/// `GET /me/ranks`: my national and governorate ranks; gyms and friends come with part 3.
+pub async fn friends(
+    State(state): State<AppState>,
+    AppUser(user): AppUser,
+    ValidQuery(query): ValidQuery<PageQuery>,
+) -> Result<Json<Value>, AppError> {
+    page_of(&state, user.id, Scope::Friends(user.id), query).await
+}
+
+pub async fn friends_me(
+    State(state): State<AppState>,
+    AppUser(user): AppUser,
+    ValidQuery(query): ValidQuery<PageQuery>,
+) -> Result<Json<Value>, AppError> {
+    around_me(&state, user.id, Scope::Friends(user.id), query).await
+}
+
+/// `GET /me/ranks`: my national, governorate and friends ranks; the gym's comes with plan 3b.
 pub async fn my_ranks(
     State(state): State<AppState>,
     AppUser(user): AppUser,
@@ -339,14 +399,19 @@ pub async fn my_ranks(
     .await?;
     let mut ranks = Vec::new();
     let mut season = None;
-    for scope in [None, Some(governorate)] {
+    let scopes = [
+        Scope::National,
+        Scope::Governorate(governorate),
+        Scope::Friends(user.id),
+    ];
+    for scope in scopes {
         let board = Board::of(&state, user.id, scope).await?;
         let mine = board.rows(&state.db, Some(user.id), None, 1).await?;
         ranks.push(mine.first().map(|r| r.rank));
         season = Some(board.season);
     }
     Ok(Json(json!({
-        "seasonId": season, "national": ranks[0], "governorate": ranks[1], "gym": null, "friends": null,
+        "seasonId": season, "national": ranks[0], "governorate": ranks[1], "gym": null, "friends": ranks[2],
     })))
 }
 
