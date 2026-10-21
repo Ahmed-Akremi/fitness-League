@@ -1011,5 +1011,13 @@
   "orgJudgesAuto": "توزيع الحكام",
   "orgJudgesAutoDone": "{count, plural, =0{لم يوضع أي حكم.} =1{وُضع حكم واحد.} other{وُضع {count} حكام.}}",
   "orgToastJudgeSet": "تم حفظ حكم الممر {lane}",
-  "notifCompetitionJudgeInvited": "أنت مدعو للتحكيم: {title}"
+  "notifCompetitionJudgeInvited": "أنت مدعو للتحكيم: {title}",
+  "myHeatsTitle": "هيتاتي",
+  "myHeatsNone": "لست في أي هيت بعد. ينشر المنظم البرنامج قبل الحدث.",
+  "myHeatUpcoming": "قادم",
+  "myHeatLive": "جارٍ",
+  "myHeatScored": "النتيجة معتمدة",
+  "myHeatNoScore": "لم تُعتمد النتيجة بعد",
+  "myHeatNoTime": "الموعد لاحقًا",
+  "myHeatOpen": "عرض هيتاتي"
 }

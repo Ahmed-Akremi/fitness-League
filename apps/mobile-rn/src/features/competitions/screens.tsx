@@ -339,8 +339,12 @@ function HeatSchedule({ id }: { id: string }) {
   return (
     <>
       {mine.map(({ heat, lane }) => (
-        <Card key={heat.id} testID="my-heat" style={{ backgroundColor: colors.primary + '22', gap: 4 }}>
-          <Txt variant="label">{t('compMyHeat')}</Txt>
+        <Card key={heat.id} testID="my-heat" onPress={() => router.push(`/competitions/${id}/my-heats`)} style={{ backgroundColor: colors.primary + '22', gap: 4 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Txt variant="label" style={{ flex: 1 }}>{t('compMyHeat')}</Txt>
+            <Txt variant="small" color={colors.primary}>{t('myHeatOpen')}</Txt>
+            <Icon name="chevron-right" color={colors.primary} />
+          </View>
           <Txt style={displayText(24)}>{`${heat.name} · ${t('compLane', { lane })}`}</Txt>
           <Txt>{[heat.workout?.name, when(heat)].filter(Boolean).join(' · ')}</Txt>
         </Card>

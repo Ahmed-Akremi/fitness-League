@@ -1011,5 +1011,13 @@
   "orgJudgesAuto": "Split the judges",
   "orgJudgesAutoDone": "{count, plural, =0{No judge placed.} =1{1 judge placed.} other{{count} judges placed.}}",
   "orgToastJudgeSet": "Judge of lane {lane} saved",
-  "notifCompetitionJudgeInvited": "You are invited to judge: {title}"
+  "notifCompetitionJudgeInvited": "You are invited to judge: {title}",
+  "myHeatsTitle": "My heats",
+  "myHeatsNone": "You are not in a heat yet. The organizer publishes the schedule before the event.",
+  "myHeatUpcoming": "Upcoming",
+  "myHeatLive": "In progress",
+  "myHeatScored": "Score validated",
+  "myHeatNoScore": "Score not validated yet",
+  "myHeatNoTime": "Time to come",
+  "myHeatOpen": "See my heats"
 }

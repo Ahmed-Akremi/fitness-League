@@ -1011,5 +1011,13 @@
   "orgJudgesAuto": "Répartir les juges",
   "orgJudgesAutoDone": "{count, plural, =0{Aucun juge placé.} =1{1 juge placé.} other{{count} juges placés.}}",
   "orgToastJudgeSet": "Juge du couloir {lane} enregistré",
-  "notifCompetitionJudgeInvited": "Tu es invité comme juge : {title}"
+  "notifCompetitionJudgeInvited": "Tu es invité comme juge : {title}",
+  "myHeatsTitle": "Mes heats",
+  "myHeatsNone": "Tu n'es encore dans aucun heat. L'organisateur publie le planning avant l'événement.",
+  "myHeatUpcoming": "À venir",
+  "myHeatLive": "En cours",
+  "myHeatScored": "Score validé",
+  "myHeatNoScore": "Score pas encore validé",
+  "myHeatNoTime": "Horaire à venir",
+  "myHeatOpen": "Voir mes heats"
 }
