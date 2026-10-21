@@ -821,8 +821,6 @@ async fn a_seasons_last_week_is_paid_before_it_closes(
         .execute(&app.db)
         .await
         .unwrap();
-    let paid = score_of(&app, user, week).await.lp;
-    assert!(paid > 0);
     let status = || {
         sqlx::query_scalar::<_, String>("SELECT status FROM seasons WHERE id = ?")
             .bind(season)
@@ -838,6 +836,18 @@ async fn a_seasons_last_week_is_paid_before_it_closes(
         .await
         .unwrap();
     assert_eq!(status().await.unwrap(), "CLOSED");
+    // The week's entry, in the season that closed, counts in its standings.
+    let paid: i32 = sqlx::query_scalar(
+        "SELECT amount FROM league_point_transactions \
+         WHERE user_id = ? AND season_id = ? AND reason = 'WEEKLY_SCORE' AND source_id = ?",
+    )
+    .bind(user)
+    .bind(season)
+    .bind(monday(week))
+    .fetch_one(&app.db)
+    .await
+    .unwrap();
+    assert!(paid > 0);
     let standing: Option<i32> = sqlx::query_scalar(
         "SELECT final_lp FROM season_standings WHERE season_id = ? AND user_id = ?",
     )
@@ -846,7 +856,7 @@ async fn a_seasons_last_week_is_paid_before_it_closes(
     .fetch_optional(&app.db)
     .await
     .unwrap();
-    assert_eq!(standing.map(i64::from), Some(paid));
+    assert_eq!(standing, Some(paid));
 }
 
 #[sqlx::test]
