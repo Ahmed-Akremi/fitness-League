@@ -1,6 +1,7 @@
 //! The social graph (docs §3.8): friends, follows, blocks, the athlete search and public profiles. A
 //! port of the old API's `SocialService` and `SocialAccess`.
 
+pub mod athletes;
 pub mod friends;
 
 use serde::Serialize;
@@ -25,6 +26,8 @@ pub fn routes(api: Api) -> Api {
         .post("/api/v1/follows/{user_id}", friends::follow)
         .delete("/api/v1/follows/{user_id}", friends::unfollow)
         .post("/api/v1/blocks/{user_id}", friends::block)
+        .get("/api/v1/search/athletes", athletes::search)
+        .get("/api/v1/users/{username}", athletes::profile)
 }
 
 /// An athlete's card in a friend list or a search: never an email, a birth date or body data.

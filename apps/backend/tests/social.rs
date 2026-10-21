@@ -243,3 +243,106 @@ async fn a_block_cuts_every_link(opts: MySqlPoolOptions, conn: MySqlConnectOptio
     let nobody = call(&app, Method::POST, &format!("/api/v1/blocks/{}", Uuid::now_v7()), &ta, None).await;
     assert_eq!(nobody.status, StatusCode::NOT_FOUND);
 }
+
+async fn suspend(app: &TestApp, user: Uuid) {
+    sqlx::query("UPDATE users SET status = 'SUSPENDED', suspended_until = UTC_TIMESTAMP(6) + INTERVAL 1 DAY WHERE id = ?")
+        .bind(user)
+        .execute(&app.db)
+        .await
+        .unwrap();
+}
+
+async fn search(app: &TestApp, token: &str, query: &str) -> Reply {
+    call(app, Method::GET, &format!("/api/v1/search/athletes?{query}"), token, None).await
+}
+
+fn found(reply: &Reply) -> Vec<String> {
+    usernames(&reply.json["data"])
+}
+
+#[sqlx::test]
+async fn the_search(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let app = seeded(opts, conn).await;
+    let (me, token) = friend(&app, "zaid").await;
+    let (sami, _) = friend(&app, "sami").await;
+    let (samira, _) = friend(&app, "samira").await;
+    let (karim, tk) = friend(&app, "karim").await;
+
+    let both = search(&app, &token, "q=sam").await;
+    assert_eq!(both.status, StatusCode::OK, "{}", both.json);
+    assert_same_shape("search", &recorded("GET /search/athletes?q=sa"), &both.json);
+    assert_eq!(found(&both), ["sami", "samira"]);
+    let first = search(&app, &token, "q=sam&limit=1").await;
+    assert_eq!((found(&first), first.json["page"]["hasMore"].clone()), (vec!["sami".to_owned()], json!(true)));
+    let cursor = first.json["page"]["nextCursor"].as_str().unwrap();
+    let second = search(&app, &token, &format!("q=sam&limit=1&cursor={cursor}")).await;
+    assert_eq!((found(&second), second.json["page"]["hasMore"].clone()), (vec!["samira".to_owned()], json!(false)));
+    assert!(found(&search(&app, &token, "q=zai").await).is_empty(), "the search found me");
+
+    sqlx::query("UPDATE profiles SET full_name = 'Émna Ben Ali' WHERE user_id = ?")
+        .bind(karim)
+        .execute(&app.db)
+        .await
+        .unwrap();
+    assert_eq!(found(&search(&app, &token, "q=emna").await), ["karim"]);
+    assert!(found(&search(&app, &token, "q=%25_").await).is_empty(), "a wildcard matched");
+    let short = search(&app, &token, "q=a").await;
+    assert_eq!(error(&short), (StatusCode::UNPROCESSABLE_ENTITY, json!("q"), json!("MINLENGTH")));
+    let none = search(&app, &token, "limit=5").await;
+    assert_eq!(error(&none), (StatusCode::UNPROCESSABLE_ENTITY, json!("q"), json!("REQUIRED")));
+
+    call(&app, Method::POST, &format!("/api/v1/blocks/{samira}"), &token, None).await;
+    call(&app, Method::POST, &format!("/api/v1/blocks/{me}"), &tk, None).await;
+    assert_eq!(found(&search(&app, &token, "q=sam").await), ["sami"]);
+    assert!(found(&search(&app, &token, "q=emna").await).is_empty(), "a blocker was listed");
+    suspend(&app, sami).await;
+    assert!(found(&search(&app, &token, "q=sam").await).is_empty(), "a suspended athlete was listed");
+}
+
+#[sqlx::test]
+async fn a_public_profile(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let app = seeded(opts, conn).await;
+    let (me, token) = friend(&app, "amine").await;
+    let (sami, ts) = friend(&app, "sami").await;
+    let (karim, tk) = friend(&app, "karim").await;
+    let profile = |token: &str, name: &str| {
+        let path = format!("/api/v1/users/{name}");
+        let token = token.to_owned();
+        let app = &app;
+        async move { call(app, Method::GET, &path, &token, None).await }
+    };
+
+    let seen = profile(&token, "sami").await;
+    assert_eq!(seen.status, StatusCode::OK, "{}", seen.json);
+    assert_same_shape("GET /users/sami", &recorded("GET /users/sami"), &seen.json);
+    let text = seen.json.to_string();
+    assert!(!text.contains("sami@example.com") && !text.contains("1995"), "{text}");
+    assert_eq!(seen.json["id"], json!(sami));
+    assert_eq!(seen.json["ageBracket"], Value::Null);
+    assert_eq!(seen.json["friendship"], Value::Null);
+    sqlx::query("UPDATE user_settings SET show_age_bracket = TRUE WHERE user_id = ?")
+        .bind(sami)
+        .execute(&app.db)
+        .await
+        .unwrap();
+    assert_eq!(profile(&token, "sami").await.json["ageBracket"], "25-34");
+
+    call(&app, Method::POST, &format!("/api/v1/follows/{sami}"), &token, None).await;
+    ask(&app, &token, sami).await;
+    let asked = profile(&token, "sami").await;
+    assert_eq!((asked.json["followers"].clone(), asked.json["following"].clone()), (json!(1), json!(0)));
+    assert_eq!(asked.json["friendship"], "REQUEST_SENT");
+    assert_eq!(profile(&ts, "amine").await.json["friendship"], "REQUEST_RECEIVED");
+    answer(&app, &ts, me, "accept").await;
+    assert_eq!(profile(&token, "sami").await.json["friendship"], "FRIENDS");
+    let own = profile(&token, "amine").await;
+    assert_eq!((own.status, own.json["friendship"].clone()), (StatusCode::OK, Value::Null));
+
+    assert_eq!(profile(&token, "nobody").await.status, StatusCode::NOT_FOUND);
+    call(&app, Method::POST, &format!("/api/v1/blocks/{me}"), &tk, None).await;
+    assert_eq!(profile(&token, "karim").await.status, StatusCode::NOT_FOUND);
+    assert_eq!(profile(&tk, "amine").await.status, StatusCode::NOT_FOUND);
+    assert_eq!(profile(&tk, "karim").await.status, StatusCode::OK, "a blocker lost their own profile");
+    suspend(&app, karim).await;
+    assert_eq!(profile(&ts, "karim").await.status, StatusCode::NOT_FOUND);
+}
