@@ -98,15 +98,18 @@ export function PreferencesSection() {
           meApi(api).updateSettings({ locale: v }).catch(() => {});
         }}
       />
-      <Segmented<ThemeMode> flush
-        value={themeMode}
-        onChange={(m) => usePrefs.getState().setThemeMode(m)}
-        options={[
-          { key: 'dark', label: t('themeDark') },
-          { key: 'light', label: t('themeLight') },
-          { key: 'system', label: t('themeSystem') },
-        ]}
-      />
+      {/* Phones follow the system appearance; the web keeps its switch. */}
+      {Platform.OS === 'web' && (
+        <Segmented<ThemeMode> flush
+          value={themeMode}
+          onChange={(m) => usePrefs.getState().setThemeMode(m)}
+          options={[
+            { key: 'dark', label: t('themeDark') },
+            { key: 'light', label: t('themeLight') },
+            { key: 'system', label: t('themeSystem') },
+          ]}
+        />
+      )}
       <Select
         menu
         testID="settings-days"
