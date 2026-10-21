@@ -10,7 +10,7 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 use uuid::Uuid;
 
-use super::{Summary, athlete_param, pair, target};
+use super::{Summary, athlete_param, lock_pair, pair, target};
 use crate::{
     error::AppError,
     http::{auth::AppUser, rate_limit},
@@ -106,10 +106,11 @@ pub async fn request(
     )
     .await?;
     let them = Uuid::parse_str(&body.user_id).map_err(|_| AppError::field("userId", "ISUUID"))?;
-    target(&state.db, user.id, them).await?;
-    let (low, high) = pair(user.id, them);
     let mut tx = state.db.begin().await?;
-    // The pair's row is the lock: a request crossing mine waits here, then finds it and accepts.
+    // A request crossing mine waits here, then finds my row and accepts it.
+    lock_pair(&mut tx, user.id, them).await?;
+    target(&mut tx, user.id, them).await?;
+    let (low, high) = pair(user.id, them);
     let created = sqlx::query!(
         "INSERT IGNORE INTO friendships (user_low_id, user_high_id, requested_by) VALUES (?, ?, ?)",
         low,
@@ -168,6 +169,7 @@ pub async fn accept(
     let them = request_param(&raw)?;
     let (low, high) = pair(user.id, them);
     let mut tx = state.db.begin().await?;
+    lock_pair(&mut tx, user.id, them).await?;
     let accepted = sqlx::query!(
         "UPDATE friendships SET status = 'ACCEPTED', accepted_at = ? \
          WHERE user_low_id = ? AND user_high_id = ? AND status = 'PENDING' AND requested_by = ?",
@@ -236,14 +238,17 @@ pub async fn follow(
     Path(raw): Path<String>,
 ) -> Result<StatusCode, AppError> {
     let them = athlete_param(&raw)?;
-    target(&state.db, user.id, them).await?;
+    let mut tx = state.db.begin().await?;
+    lock_pair(&mut tx, user.id, them).await?;
+    target(&mut tx, user.id, them).await?;
     sqlx::query!(
         "INSERT IGNORE INTO follows (follower_id, followee_id) VALUES (?, ?)",
         user.id,
         them
     )
-    .execute(&state.db)
+    .execute(&mut *tx)
     .await?;
+    tx.commit().await?;
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -273,15 +278,16 @@ pub async fn block(
     if them == user.id {
         return Err(AppError::field("userId", "SELF"));
     }
+    let mut tx = state.db.begin().await?;
+    lock_pair(&mut tx, user.id, them).await?;
     let exists = sqlx::query_scalar!("SELECT EXISTS (SELECT 1 FROM users WHERE id = ?)", them)
-        .fetch_one(&state.db)
+        .fetch_one(&mut *tx)
         .await?
         != 0;
     if !exists {
         return Err(AppError::not_found("Athlete"));
     }
     let (low, high) = pair(user.id, them);
-    let mut tx = state.db.begin().await?;
     sqlx::query!(
         "INSERT IGNORE INTO blocks (blocker_id, blocked_id) VALUES (?, ?)",
         user.id,
