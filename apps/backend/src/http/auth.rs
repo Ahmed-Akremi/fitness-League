@@ -3,7 +3,7 @@
 
 use axum::{
     extract::FromRequestParts,
-    http::{header, request::Parts},
+    http::{StatusCode, header, request::Parts},
 };
 use chrono::Utc;
 use uuid::Uuid;
@@ -24,6 +24,21 @@ pub struct AuthUser {
 }
 
 /// A signed-in account of the app: every role except the judge roles, which only exist in the panel.
+impl AuthUser {
+    /// The old API's `@RequiresVerifiedEmail()`: what reaches another athlete needs a verified address.
+    pub fn require_verified(&self) -> Result<(), AppError> {
+        if self.email_verified {
+            Ok(())
+        } else {
+            Err(AppError::new(
+                StatusCode::FORBIDDEN,
+                "EMAIL_NOT_VERIFIED",
+                "Email address not verified",
+            ))
+        }
+    }
+}
+
 pub struct AppUser(pub AuthUser);
 
 /// Someone signed in to the admin panel: staff, and judges.
