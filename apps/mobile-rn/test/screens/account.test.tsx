@@ -123,7 +123,8 @@ describe('challenges', () => {
 describe('body and proofs', () => {
   it('adds a weigh-in', async () => {
     const backend = new FakeBackend().on('GET', '/me/body-measurements', [200, []]).on('POST', '/me/body-measurements', [201, {}]);
-    const screen = await renderScreen(BodyScreen, backend);
+    // iOS: the « + » sits in the navigation bar.
+    const screen = await renderScreen(BodyScreen, backend, { stack: true });
     await fireEvent.press(await screen.findByTestId('body-add'));
     await fireEvent.changeText(await screen.findByTestId('weight-input'), '81,5');
     await fireEvent.press(screen.getByTestId('dialog-confirm'));

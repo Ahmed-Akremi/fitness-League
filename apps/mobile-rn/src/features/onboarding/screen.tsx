@@ -78,7 +78,7 @@ export function OnboardingScreen() {
     ) : (
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
         {sports.data.map((s) => (
-          <Chip key={s.id} testID={`sport-${s.code}`} icon={primary === s.id ? 'star' : undefined} label={localized(s.name, locale)} selected={sportIds.includes(s.id)} onPress={() => toggle(s.id)} />
+          <Chip key={s.id} testID={`sport-${s.code}`} icon={primary === s.id ? 'star' : undefined} label={localized(s.name, locale)} accessibilityLabel={primary === s.id ? `${localized(s.name, locale)}, ${t('mainSport')}` : localized(s.name, locale)} selected={sportIds.includes(s.id)} onPress={() => toggle(s.id)} />
         ))}
       </View>
     );
@@ -100,7 +100,7 @@ export function OnboardingScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <View style={{ flex: 1, padding: 24, gap: 8 }}>
-        <XpBar value={(step + 1) / 3} />
+        <XpBar value={(step + 1) / 3} label={t('stepOf', { current: step + 1, total: 3 })} />
         <Txt variant="headline" style={{ marginTop: 20 }}>{titles[step]}</Txt>
         <Txt color={colors.outline} style={{ marginBottom: 20 }}>{subtitles[step]}</Txt>
         <ScrollView style={{ flex: 1 }} keyboardShouldPersistTaps="handled">{body}</ScrollView>

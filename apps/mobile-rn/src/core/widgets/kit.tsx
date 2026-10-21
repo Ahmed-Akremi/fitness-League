@@ -1,32 +1,110 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { useNavigation } from 'expo-router';
-import { Children, Fragment, isValidElement, useEffect, useLayoutEffect, useState, type ComponentProps, type ReactNode } from 'react';
-import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View, type StyleProp, type TextInputProps, type ViewStyle } from 'react-native';
+import { SymbolView, type SFSymbol } from 'expo-symbols';
+import { Children, createContext, Fragment, isValidElement, useContext, useEffect, useLayoutEffect, useState, type ComponentProps, type ReactNode } from 'react';
+import { AccessibilityInfo, ActivityIndicator, Modal, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View, type StyleProp, type TextInputProps, type ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { create } from 'zustand';
 
 import { isFocused, spaceKey, useFocusRing } from '../focus';
 import { fonts, radius, space, useTheme, webDense } from '../theme';
+import { NativeMenu } from './native';
 
 export type IconName = ComponentProps<typeof MaterialIcons>['name'];
 
+/**
+ * SF Symbols drawn on iOS for the Material names the app uses (HIG Branding: familiar components). Names without an
+ * entry stay Material; Android and the web always do.
+ */
+export const SF_SYMBOLS: Partial<Record<IconName, SFSymbol>> = {
+  home: 'house',
+  'fitness-center': 'dumbbell',
+  'emoji-events': 'trophy',
+  'outlined-flag': 'flag',
+  flag: 'flag.fill',
+  person: 'person.fill',
+  'person-outline': 'person',
+  'notifications-none': 'bell',
+  notifications: 'bell.fill',
+  settings: 'gearshape',
+  'chevron-right': 'chevron.forward',
+  'arrow-back': 'chevron.backward',
+  close: 'xmark',
+  add: 'plus',
+  'more-vert': 'ellipsis.circle',
+  'more-horiz': 'ellipsis',
+  'delete-outline': 'trash',
+  'delete-forever': 'trash.fill',
+  check: 'checkmark',
+  'check-box': 'checkmark.square.fill',
+  'check-box-outline-blank': 'square',
+  timer: 'timer',
+  event: 'calendar',
+  'calendar-month': 'calendar',
+  schedule: 'clock',
+  place: 'mappin.and.ellipse',
+  'local-fire-department': 'flame.fill',
+  'my-location': 'location.fill',
+  group: 'person.2',
+  'group-add': 'person.2.badge.plus',
+  insights: 'chart.line.uptrend.xyaxis',
+  'military-tech': 'medal',
+  'cloud-upload': 'icloud.and.arrow.up',
+  'cloud-off': 'icloud.slash',
+  'error-outline': 'exclamationmark.circle',
+  'hourglass-top': 'hourglass',
+  download: 'square.and.arrow.down',
+  share: 'square.and.arrow.up',
+  logout: 'rectangle.portrait.and.arrow.right',
+  bedtime: 'moon.fill',
+  'arrow-drop-down': 'chevron.up.chevron.down',
+  'done-all': 'checkmark.circle',
+  'sports-mma': 'figure.boxing',
+  'directions-run': 'figure.run',
+  'directions-bike': 'figure.outdoor.cycle',
+  pool: 'figure.pool.swim',
+  'directions-walk': 'figure.walk',
+  bolt: 'bolt.fill',
+  tune: 'slider.horizontal.3',
+  'monitor-weight': 'scalemass',
+  search: 'magnifyingglass',
+  edit: 'pencil',
+  storefront: 'storefront',
+  star: 'star.fill',
+  'expand-more': 'chevron.down',
+  'expand-less': 'chevron.up',
+  favorite: 'heart.fill',
+  'favorite-border': 'heart',
+  'mark-email-unread': 'envelope.badge',
+  shield: 'shield',
+  verified: 'checkmark.seal',
+  lock: 'lock',
+  info: 'info.circle',
+};
+
 export function Icon({ name, size = 22, color }: { name: IconName; size?: number; color?: string }) {
   const { colors } = useTheme();
+  const sf = Platform.OS === 'ios' ? SF_SYMBOLS[name] : undefined;
+  if (sf) return <SymbolView name={sf} size={size} tintColor={color ?? colors.text} />;
   return <MaterialIcons name={name} size={size} color={color ?? colors.text} />;
 }
 
 export function Txt({ children, style, variant = 'body', color, ...rest }: { children: ReactNode; variant?: 'body' | 'title' | 'label' | 'small' | 'display' | 'headline'; color?: string; style?: StyleProp<any> } & Omit<ComponentProps<typeof Text>, 'style'>) {
-  const { colors } = useTheme();
+  const { colors, dense } = useTheme();
+  // 17 pt body on a phone: Apple's default size (HIG Accessibility › Vision). The computer layout keeps its 15 pt.
   const v = {
-    body: { fontSize: 15, fontFamily: fonts.body },
-    title: { fontSize: 17, fontFamily: fonts.body, fontWeight: '700' as const },
+    body: { fontSize: dense ? 15 : 17, fontFamily: fonts.body },
+    title: { fontSize: dense ? 17 : 19, fontFamily: fonts.body, fontWeight: '700' as const },
     label: { fontSize: 12, fontFamily: fonts.body, fontWeight: '700' as const, letterSpacing: 1.2, textTransform: 'uppercase' as const },
-    small: { fontSize: 13, fontFamily: fonts.body },
+    small: { fontSize: dense ? 13 : 15, fontFamily: fonts.body },
     display: { fontSize: 36, fontFamily: fonts.display, letterSpacing: -0.5 },
     headline: { fontSize: 28, fontFamily: fonts.display },
   }[variant];
+  // The big display numbers (20–72 pt) are already large: they grow with Larger Text up to 1.4× so they still fit.
+  const family = StyleSheet.flatten([v, style])?.fontFamily;
+  const cap = family === fonts.display || family === fonts.displaySemi ? 1.4 : undefined;
   return (
-    <Text style={[{ color: color ?? colors.text, textAlign: 'auto' }, v, style]} {...rest}>
+    <Text style={[{ color: color ?? colors.text, textAlign: 'auto' }, v, style]} maxFontSizeMultiplier={cap} {...rest}>
       {children}
     </Text>
   );
@@ -61,7 +139,7 @@ export function Button({ label, onPress, kind = 'filled', icon, busy, disabled, 
         <ActivityIndicator color={fg} />
       ) : (
         <>
-          {icon && <MaterialIcons name={icon} size={dense ? 16 : 18} color={fg} />}
+          {icon && <Icon name={icon} size={dense ? 16 : 18} color={fg} />}
           <Text style={{ color: fg, fontWeight: '700', fontSize: dense ? 13 : 15, letterSpacing: dense ? 0.2 : 0.4 }}>{label}</Text>
         </>
       )}
@@ -79,12 +157,12 @@ export function IconButton({ icon, onPress, label, color, testID }: { icon: Icon
 }
 
 export function TextField({ label, error, icon, style, ...props }: { label?: string; error?: string | null; icon?: IconName; style?: StyleProp<ViewStyle> } & TextInputProps) {
-  const { colors, dense } = useTheme();
+  const { colors, dense, highContrast } = useTheme();
   const [focused, setFocused] = useState(false);
   return (
     <View style={style}>
       {label ? <Txt variant="small" color={colors.outline} style={dense ? { marginBottom: 4, fontSize: 12 } : { marginBottom: 6 }}>{label}</Txt> : null}
-      <View style={[styles.field, dense && { borderRadius: webDense.radius.field }, { backgroundColor: colors.surface, borderColor: error ? colors.error : colors.surfaceHigh }, dense && focused && { borderColor: colors.primary }]}>
+      <View style={[styles.field, dense && { borderRadius: webDense.radius.field }, { backgroundColor: colors.surface, borderColor: error ? colors.error : highContrast ? colors.outline : colors.surfaceHigh }, dense && focused && { borderColor: colors.primary }]}>
         {icon && <Icon name={icon} size={dense ? 16 : 20} color={colors.outline} />}
         <TextInput
           accessibilityLabel={label}
@@ -119,7 +197,7 @@ export function Card({ children, onPress, style, testID }: { children: ReactNode
   );
 }
 
-export function Chip({ label, selected, onPress, icon, testID }: { label: string; selected?: boolean; onPress?: () => void; icon?: IconName; testID?: string }) {
+export function Chip({ label, selected, onPress, icon, testID, accessibilityLabel }: { label: string; selected?: boolean; onPress?: () => void; icon?: IconName; testID?: string; accessibilityLabel?: string }) {
   const { colors, dense } = useTheme();
   const ring = useFocusRing();
   const fg = selected ? colors.onPrimary : colors.text;
@@ -127,12 +205,15 @@ export function Chip({ label, selected, onPress, icon, testID }: { label: string
     <Pressable
       testID={testID}
       accessibilityRole={onPress ? 'button' : 'text'}
+      accessibilityLabel={accessibilityLabel}
       accessibilityState={{ selected }}
       disabled={!onPress}
       onPress={onPress}
+      // 32 pt tall: the slop brings the target to 44 pt without changing the look.
+      hitSlop={{ top: 6, bottom: 6 }}
       style={(state) => [styles.chip, dense && { borderRadius: webDense.radius.field, paddingVertical: 6 }, { backgroundColor: selected ? colors.primary : colors.surfaceHigh }, ring(isFocused(state))]}
     >
-      {icon && <MaterialIcons name={icon} size={16} color={fg} />}
+      {icon && <Icon name={icon} size={16} color={fg} />}
       <Text style={{ color: fg, fontWeight: '600', fontSize: 13 }}>{label}</Text>
     </Pressable>
   );
@@ -172,15 +253,22 @@ export function Checkbox({ label, value, onChange, testID }: { label: string; va
   const ring = useFocusRing();
   return (
     <Pressable testID={testID} accessibilityRole="checkbox" aria-checked={value} {...spaceKey(() => onChange(!value))} onPress={() => onChange(!value)} style={(state) => [{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8 }, ring(isFocused(state))]}>
-      <MaterialIcons name={value ? 'check-box' : 'check-box-outline-blank'} size={24} color={value ? colors.primary : colors.outline} />
+      <Icon name={value ? 'check-box' : 'check-box-outline-blank'} size={24} color={value ? colors.primary : colors.outline} />
       <Txt style={{ flex: 1 }}>{label}</Txt>
     </Pressable>
   );
 }
 
+/**
+ * Where a screen's header options go when its own navigator draws none: a tab folder on Android and the web (a Slot
+ * inside the JavaScript tabs) hands its screens the tab's navigation. iOS tab folders are stacks with their own bar.
+ */
+export const HeaderTarget = createContext<{ setOptions: (options: object) => void } | null>(null);
+
 /** Sets the current screen's header (title, right-side actions) — Flutter AppBar. */
 export function useHeader(options: { title?: string; headerRight?: () => ReactNode }, deps: unknown[] = []) {
-  const navigation = useNavigation();
+  const own = useNavigation();
+  const navigation = useContext(HeaderTarget) ?? own;
   useLayoutEffect(() => {
     navigation.setOptions(options);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -250,7 +338,7 @@ export function CountBadge({ count }: { count: number }) {
   const { colors } = useTheme();
   if (count <= 0) return null;
   return (
-    <View style={{ position: 'absolute', top: 2, end: 2, minWidth: 18, height: 18, borderRadius: 9, backgroundColor: colors.error, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 }}>
+    <View style={{ position: 'absolute', top: 2, end: 2, minWidth: 18, height: 18, borderRadius: 9, backgroundColor: colors.badge, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 }}>
       <Text style={{ color: '#FFFFFF', fontSize: 11, fontWeight: '800' }}>{count > 99 ? '99+' : String(count)}</Text>
     </View>
   );
@@ -267,14 +355,21 @@ export function Expander({ icon, title, children }: { icon?: IconName; title: st
   );
 }
 
-/** Extended floating action button, bottom-end. */
-export function Fab({ label, icon = 'add', onPress, testID }: { label?: string; icon?: IconName; onPress: () => void; testID?: string }) {
+/**
+ * Extended floating action button, bottom-end (Android). On iOS a « + » in the navigation bar instead, with the same
+ * testID and the label as its name (HIG: no floating buttons). `accessibilityLabel` names an icon-only one.
+ */
+export function Fab({ label, icon = 'add', onPress, testID, accessibilityLabel }: { label?: string; icon?: IconName; onPress: () => void; testID?: string; accessibilityLabel?: string }) {
   const { colors } = useTheme();
+  const ios = Platform.OS === 'ios';
+  const name = accessibilityLabel ?? label ?? '';
+  useHeader(ios ? { headerRight: () => <IconButton testID={testID} icon="add" label={name} onPress={onPress} /> } : {}, [ios, name, onPress]);
+  if (ios) return null;
   return (
     <Pressable
       testID={testID}
       accessibilityRole="button"
-      accessibilityLabel={label}
+      accessibilityLabel={accessibilityLabel ?? label}
       onPress={onPress}
       style={{ position: 'absolute', end: 16, bottom: 16, flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.primary, borderRadius: 18, paddingHorizontal: label ? 20 : 16, paddingVertical: 16, elevation: 4 }}
     >
@@ -284,11 +379,17 @@ export function Fab({ label, icon = 'add', onPress, testID }: { label?: string; 
   );
 }
 
-/** Overflow menu (Flutter PopupMenuButton): an icon that opens a list of actions. */
+/**
+ * Overflow menu (Flutter PopupMenuButton): an icon that opens a list of actions. iOS: the system pull-down menu
+ * (@expo/ui); Android and the web: a bottom sheet.
+ */
 export function Menu({ items, label, icon = 'more-vert', testID }: { items: { label: string; onPress: () => void; testID?: string }[]; label: string; icon?: IconName; testID?: string }) {
   const { colors } = useTheme();
   const [open, setOpen] = useState(false);
   const ring = useFocusRing();
+  if (Platform.OS === 'ios') {
+    return <NativeMenu testID={testID} label={label} systemImage={SF_SYMBOLS[icon] ?? 'ellipsis.circle'} color={colors.text} items={items} />;
+  }
   return (
     <>
       <Pressable testID={testID} accessibilityRole="button" accessibilityLabel={label} onPress={() => setOpen(true)} hitSlop={8} style={(state) => [{ padding: 8 }, ring(isFocused(state))]}>
@@ -318,8 +419,8 @@ export function Menu({ items, label, icon = 'more-vert', testID }: { items: { la
   );
 }
 
-/** Modal dialog (Flutter AlertDialog). `input` adds a text field whose value is passed to onConfirm. */
-export function Dialog({ visible, title, message, confirmLabel, cancelLabel, onConfirm, onCancel, input, destructive, confirmDisabled }: {
+/** Modal dialog (Flutter AlertDialog). `input` adds a text field whose value is passed to onConfirm; `children` go under the message (a picker). */
+export function Dialog({ visible, title, message, confirmLabel, cancelLabel, onConfirm, onCancel, input, destructive, confirmDisabled, children }: {
   visible: boolean;
   title: string;
   message?: string;
@@ -330,6 +431,7 @@ export function Dialog({ visible, title, message, confirmLabel, cancelLabel, onC
   input?: { label: string; secure?: boolean; keyboardType?: TextInputProps['keyboardType']; testID?: string; initial?: string; valid?: (text: string) => boolean };
   destructive?: boolean;
   confirmDisabled?: boolean;
+  children?: ReactNode;
 }) {
   const { colors, dense } = useTheme();
   const [text, setText] = useState(input?.initial ?? '');
@@ -344,6 +446,7 @@ export function Dialog({ visible, title, message, confirmLabel, cancelLabel, onC
           <Txt variant="title" style={{ fontSize: 20 }}>{title}</Txt>
           {message ? <Txt>{message}</Txt> : null}
           {input && <TextField testID={input.testID} label={input.label} value={text} onChangeText={setText} secureTextEntry={input.secure} keyboardType={input.keyboardType} autoFocus />}
+          {children}
           <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 8 }}>
             <Button kind="text" label={cancelLabel} onPress={onCancel} />
             <Button testID="dialog-confirm" label={confirmLabel} disabled={!ok} onPress={() => onConfirm(text)} style={destructive ? { backgroundColor: colors.error } : undefined} />
@@ -358,21 +461,37 @@ export function Dialog({ visible, title, message, confirmLabel, cancelLabel, onC
 
 const useToastStore = create<{ message: string | null; id: number }>(() => ({ message: null, id: 0 }));
 
-export const toast = (message: string) => useToastStore.setState((s) => ({ message, id: s.id + 1 }));
+/** Shows a short message; screen readers read it out at once (the web relies on the live region below). */
+export const toast = (message: string) => {
+  useToastStore.setState((s) => ({ message, id: s.id + 1 }));
+  AccessibilityInfo.announceForAccessibility?.(message);
+};
+
+function useScreenReader() {
+  const [on, setOn] = useState(false);
+  useEffect(() => {
+    AccessibilityInfo.isScreenReaderEnabled?.().then(setOn).catch(() => {});
+    const sub = AccessibilityInfo.addEventListener?.('screenReaderChanged', setOn);
+    return () => sub?.remove();
+  }, []);
+  return on;
+}
 
 export function ToastHost() {
   const { message, id } = useToastStore();
   const { colors } = useTheme();
+  // HIG: minimise time-boxed elements — with VoiceOver or TalkBack on, the message stays long enough to be reached.
+  const reader = useScreenReader();
   useEffect(() => {
     if (!message) return;
-    const t = setTimeout(() => useToastStore.setState({ message: null }), 3500);
+    const t = setTimeout(() => useToastStore.setState({ message: null }), reader ? 10_000 : 3500);
     return () => clearTimeout(t);
-  }, [message, id]);
+  }, [message, id, reader]);
   if (!message) return null;
   return (
     <SafeAreaView edges={['bottom']} pointerEvents="none" style={StyleSheet.absoluteFill}>
       <View style={{ flex: 1, justifyContent: 'flex-end', padding: 16, paddingBottom: 72 }}>
-        <View accessibilityLiveRegion="polite" style={{ backgroundColor: colors.surfaceHigh, borderRadius: 12, padding: 14 }}>
+        <View accessibilityLiveRegion={Platform.OS === 'web' ? 'polite' : undefined} style={{ backgroundColor: colors.surfaceHigh, borderRadius: 12, padding: 14 }}>
           <Txt>{message}</Txt>
         </View>
       </View>

@@ -2,7 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import * as Clipboard from 'expo-clipboard';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { Platform, RefreshControl, ScrollView, View } from 'react-native';
 
 import type { Json } from '../../core/api/client';
 import { useT, type T } from '../../core/prefs';
@@ -67,7 +67,8 @@ export function LeaguesTab() {
           </>
         )}
       </ScrollView>
-      <Fab testID="league-new" label={t('newLeague')} onPress={() => router.push('/leagues/new')} />
+      {/* iOS: the League screen's navigation bar has the « + ». */}
+      {Platform.OS !== 'ios' && <Fab testID="league-new" label={t('newLeague')} onPress={() => router.push('/leagues/new')} />}
     </View>
   );
 }

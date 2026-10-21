@@ -1,7 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Platform, Pressable, RefreshControl, ScrollView, View } from 'react-native';
 
 import { useLocale, useT } from '../../core/prefs';
 import { useServices } from '../../core/services';
@@ -9,7 +9,7 @@ import { space, useTheme } from '../../core/theme';
 import { formatDate, formatDuration, formatMetric, formatNumber } from '../../core/utils/format';
 import { EmptyState, Loading, sportIcon, StatCard, StatusPill } from '../../core/widgets/common';
 import { ErrorView } from '../../core/widgets/error';
-import { Card, Icon, IconButton, Txt } from '../../core/widgets/kit';
+import { Card, Dialog, Icon, IconButton, Txt, useHeader } from '../../core/widgets/kit';
 import { useSports } from '../reference/api';
 import { ProofsSection } from './proofs';
 import { explainPoints, usePendingWorkouts, useWorkoutDetail, useWorkouts, workoutKeys, type Workout } from './api';
@@ -24,6 +24,10 @@ export function TrainScreen() {
   const sportCodes = new Map((useSports().data ?? []).map((s) => [s.id, s.code]));
   const pending = usePendingWorkouts();
   const [refreshing, setRefreshing] = useState(false);
+  const [discarding, setDiscarding] = useState<string | null>(null);
+  // iOS: « + » in the navigation bar instead of a floating button (HIG); Android keeps it.
+  const ios = Platform.OS === 'ios';
+  useHeader(ios ? { headerRight: () => <IconButton testID="train-log" icon="add" label={t('logWorkout')} onPress={() => router.push('/workouts/new')} /> } : {}, [ios, t]);
 
   async function refresh() {
     setRefreshing(true);
@@ -42,14 +46,7 @@ export function TrainScreen() {
         <Txt variant="small" color={colors.outline}>{q.status === 'pending' ? t('pendingSync') : q.status === 'rejected' ? t('statusRejected') : t('errorGeneric')}</Txt>
       </View>
       {q.status !== 'pending' && (
-        <IconButton
-          icon="delete-outline"
-          label={t('delete')}
-          onPress={async () => {
-            await sync.discard(q.clientId);
-            await qc.invalidateQueries({ queryKey: workoutKeys.outbox });
-          }}
-        />
+        <IconButton testID={`queued-${q.clientId}-delete`} icon="delete-outline" label={t('delete')} onPress={() => setDiscarding(q.clientId)} />
       )}
     </Card>
   ));
@@ -71,6 +68,7 @@ export function TrainScreen() {
         {queuedCards}
         {body}
       </ScrollView>
+      {!ios && (
       <Pressable
         testID="train-log"
         accessibilityRole="button"
@@ -80,6 +78,23 @@ export function TrainScreen() {
         <Icon name="add" color={colors.onPrimary} />
         <Txt style={{ color: colors.onPrimary, fontWeight: '700' }}>{t('logWorkout')}</Txt>
       </Pressable>
+      )}
+      {/* A workout that was never sent exists nowhere else: ask before it is gone. */}
+      <Dialog
+        visible={discarding != null}
+        title={t('deleteQueuedTitle')}
+        message={t('deleteQueuedMessage')}
+        confirmLabel={t('delete')}
+        cancelLabel={t('cancel')}
+        destructive
+        onCancel={() => setDiscarding(null)}
+        onConfirm={async () => {
+          const id = discarding!;
+          setDiscarding(null);
+          await sync.discard(id);
+          await qc.invalidateQueries({ queryKey: workoutKeys.outbox });
+        }}
+      />
     </View>
   );
 }
@@ -89,7 +104,7 @@ function WorkoutTile({ workout, sportCode }: { workout: Workout; sportCode?: str
   const locale = useLocale();
   const { colors } = useTheme();
   const [label, color] =
-    workout.status === 'ACCEPTED' ? [t('statusAccepted'), colors.primary] : workout.status === 'HELD_FOR_REVIEW' ? [t('statusHeld'), '#FFB020'] : [t('statusRejected'), colors.error];
+    workout.status === 'ACCEPTED' ? [t('statusAccepted'), colors.primary] : workout.status === 'HELD_FOR_REVIEW' ? [t('statusHeld'), colors.warning] : [t('statusRejected'), colors.error];
   const volume = workout.totalVolumeKg;
   const distance = workout.totalDistanceM;
   const subtitle = [volume && volume > 0 ? `${formatNumber(volume, locale)} kg` : null, distance && distance > 0 ? formatMetric(distance, 'm', locale) : null].filter(Boolean).join(' · ');

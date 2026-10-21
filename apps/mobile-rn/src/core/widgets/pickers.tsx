@@ -3,26 +3,40 @@ import { useState } from 'react';
 import { FlatList, Modal, Platform, Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { useLocale } from '../prefs';
+import { useLocale, useT } from '../prefs';
 import { isFocused, useFocusRing } from '../focus';
 import { radius, useTheme, webDense } from '../theme';
 import { formatDate } from '../utils/format';
 import { Button, Icon, Txt, type IconName } from './kit';
+import { NativePicker } from './native';
 
 export interface Option {
   value: string;
   label: string;
 }
 
-/** Field that opens a list (Flutter DropdownButtonFormField): full screen on a phone, a small centered box on a computer. `bare`: no label above (toolbars). */
-export function Select({ label, value, options, onChange, error, testID, placeholder, bare }: { label: string; value: string | null | undefined; options: Option[]; onChange: (v: string) => void; error?: string | null; testID?: string; placeholder?: string; bare?: boolean }) {
-  const { colors, dense } = useTheme();
+/**
+ * Field that opens a list (Flutter DropdownButtonFormField): full screen on a phone, a small centered box on a computer.
+ * `bare`: no label above (toolbars). `menu`: a short fixed list (days, visibility, language) — on iOS the system
+ * pop-up menu instead (HIG Pickers: a short list is a pop-up button, not a picker).
+ */
+export function Select({ label, value, options, onChange, error, testID, placeholder, bare, menu }: { label: string; value: string | null | undefined; options: Option[]; onChange: (v: string) => void; error?: string | null; testID?: string; placeholder?: string; bare?: boolean; menu?: boolean }) {
+  const t = useT();
+  const { colors, dense, highContrast } = useTheme();
   const [open, setOpen] = useState(false);
   const selected = options.find((o) => o.value === value);
+  if (menu && Platform.OS === 'ios') {
+    return (
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: radius.field, borderWidth: 1, borderColor: error ? colors.error : highContrast ? colors.outline : colors.surfaceHigh, backgroundColor: colors.surface, paddingStart: 12, paddingEnd: 4, minHeight: 48 }}>
+        <Txt style={{ flex: 1 }}>{label}</Txt>
+        <NativePicker testID={testID} label={label} value={value} options={options} onChange={onChange} color={colors.primary} />
+      </View>
+    );
+  }
   const head = (
     <View style={{ flexDirection: 'row', alignItems: 'center', padding: 16 }}>
       <Txt variant="title" style={{ flex: 1 }}>{label}</Txt>
-      <Pressable accessibilityRole="button" accessibilityLabel="close" onPress={() => setOpen(false)} hitSlop={8}>
+      <Pressable accessibilityRole="button" accessibilityLabel={t('cancel')} onPress={() => setOpen(false)} hitSlop={11}>
         <Icon name="close" />
       </Pressable>
     </View>
@@ -72,7 +86,7 @@ export function Select({ label, value, options, onChange, error, testID, placeho
 
 /** Tappable read-only field (date, select). `bare`: no label above it (screen readers still read it). */
 export function FieldButton({ label, value, icon, error, onPress, testID, bare }: { label: string; value: string; icon: IconName; error?: string | null; onPress: () => void; testID?: string; bare?: boolean }) {
-  const { colors, dense } = useTheme();
+  const { colors, dense, highContrast } = useTheme();
   const ring = useFocusRing();
   return (
     <View>
@@ -83,7 +97,7 @@ export function FieldButton({ label, value, icon, error, onPress, testID, bare }
         accessibilityLabel={label}
         onPress={onPress}
         style={(state) => [
-          { flexDirection: 'row', alignItems: 'center', borderRadius: radius.field, borderWidth: 1, borderColor: error ? colors.error : colors.surfaceHigh, backgroundColor: colors.surface, paddingHorizontal: 12, minHeight: 48 },
+          { flexDirection: 'row', alignItems: 'center', borderRadius: radius.field, borderWidth: 1, borderColor: error ? colors.error : highContrast ? colors.outline : colors.surfaceHigh, backgroundColor: colors.surface, paddingHorizontal: 12, minHeight: 48 },
           dense && { borderRadius: webDense.radius.field, minHeight: webDense.control, paddingHorizontal: 10 },
           bare && { minWidth: 150, justifyContent: 'space-between', gap: 4 },
           ring(isFocused(state)),
@@ -97,8 +111,12 @@ export function FieldButton({ label, value, icon, error, onPress, testID, bare }
   );
 }
 
-/** Date (and optionally time) field backed by the platform picker. */
-export function DateField({ label, value, onChange, minimumDate, maximumDate, mode = 'date', placeholder, error, testID }: { label: string; value: Date | null; onChange: (d: Date) => void; minimumDate?: Date; maximumDate?: Date; mode?: 'date' | 'datetime'; placeholder?: string; error?: string | null; testID?: string }) {
+/**
+ * Date (and optionally time) field backed by the platform picker. `display` (iOS): the calendar by default; `spinner`
+ * for dates far back (a birth date), which stays open while the wheels turn, until Done.
+ */
+export function DateField({ label, value, onChange, minimumDate, maximumDate, mode = 'date', placeholder, error, testID, display = 'inline' }: { label: string; value: Date | null; onChange: (d: Date) => void; minimumDate?: Date; maximumDate?: Date; mode?: 'date' | 'datetime'; placeholder?: string; error?: string | null; testID?: string; display?: 'inline' | 'spinner' }) {
+  const t = useT();
   const locale = useLocale();
   const [step, setStep] = useState<'date' | 'time' | null>(null);
   const [draft, setDraft] = useState<Date | null>(null);
@@ -108,14 +126,19 @@ export function DateField({ label, value, onChange, minimumDate, maximumDate, mo
       <FieldButton testID={testID} label={label} value={shown} icon="calendar-month" error={error} onPress={() => setStep('date')} />
       {step && (
         <DateTimePicker
+          testID={testID ? `${testID}-picker` : undefined}
           value={draft ?? value ?? maximumDate ?? new Date()}
           mode={step}
-          display={Platform.OS === 'ios' ? 'inline' : 'default'}
+          display={Platform.OS === 'ios' ? display : 'default'}
           minimumDate={minimumDate}
           maximumDate={maximumDate}
           onChange={(event, d) => {
             if (event.type !== 'set' || !d) {
               setStep(null);
+              return;
+            }
+            if (Platform.OS === 'ios' && display === 'spinner' && mode === 'date') {
+              onChange(d);
               return;
             }
             if (step === 'date' && mode === 'datetime') {
@@ -130,7 +153,7 @@ export function DateField({ label, value, onChange, minimumDate, maximumDate, mo
           }}
         />
       )}
-      {step && Platform.OS === 'ios' && <Button kind="text" label="OK" onPress={() => setStep(null)} />}
+      {step && Platform.OS === 'ios' && <Button kind="text" label={t('done')} onPress={() => setStep(null)} />}
     </View>
   );
 }

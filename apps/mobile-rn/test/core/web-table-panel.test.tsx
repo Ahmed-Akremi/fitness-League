@@ -1,6 +1,6 @@
 import { act, fireEvent, within } from 'expo-router/testing-library';
 import { useState } from 'react';
-import { StyleSheet } from 'react-native';
+import { Platform, StyleSheet } from 'react-native';
 
 import { useTheme } from '../../src/core/theme';
 import { Txt } from '../../src/core/widgets/kit';
@@ -62,6 +62,8 @@ describe('table', () => {
   });
 
   it('the row menu lists the row actions and is named after the row', async () => {
+    // A computer-only table: its menu is the web one, not the iOS system menu of the jest platform.
+    jest.replaceProperty(Platform, 'OS', 'web');
     const pay = jest.fn();
     const screen = await renderScreen(
       () => <DataTable testID="t" rows={rows} keyOf={(r) => r.id} nameOf={(r) => r.name} columns={columns} menuLabel={(n) => `Actions for ${n}`} rowActions={(r) => [{ label: 'Mark paid', testID: `pay-${r.id}`, onPress: pay }]} />,
@@ -71,6 +73,7 @@ describe('table', () => {
     await fireEvent.press(screen.getByTestId('t-menu-a'));
     await fireEvent.press(screen.getByTestId('pay-a'));
     expect(pay).toHaveBeenCalledTimes(1);
+    jest.restoreAllMocks();
   });
 
   it('a row holding a menu or checkboxes is not itself a button (no button inside a button on the web), and still opens on a click', async () => {

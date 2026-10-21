@@ -144,7 +144,7 @@ export function BodyScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: useTheme().colors.background }}>
       {body}
-      <Fab testID="body-add" icon="add" onPress={() => setAdding(true)} />
+      <Fab testID="body-add" icon="add" accessibilityLabel={t('addMeasurement')} onPress={() => setAdding(true)} />
       <Dialog
         visible={adding}
         title={t('addMeasurement')}
