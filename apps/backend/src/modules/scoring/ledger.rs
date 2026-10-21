@@ -111,6 +111,19 @@ async fn apply_lp(
     if stats.current.is_some_and(|current| current != season) {
         return Ok(());
     }
+    // An athlete without a season joins only an active one: a late entry of a closed season would
+    // otherwise hold their balance there for the whole next season.
+    if stats.current.is_none() {
+        let active = sqlx::query_scalar!(
+            "SELECT EXISTS (SELECT 1 FROM seasons WHERE id = ? AND status = 'ACTIVE')",
+            season
+        )
+        .fetch_one(&mut *tx)
+        .await?;
+        if active == 0 {
+            return Ok(());
+        }
+    }
     let lp = (i64::from(stats.season_lp) + delta).max(0);
     let division = league::engine::division_for(lp, &rules.division_thresholds);
     sqlx::query!(

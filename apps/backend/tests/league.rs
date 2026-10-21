@@ -644,6 +644,38 @@ async fn a_season_without_a_successor_creates_one(
 }
 
 #[sqlx::test]
+async fn a_closed_season_never_becomes_mine(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let app = seeded(opts, conn).await;
+    let (ended, next) = season_ended(&app).await;
+    close_season(&app, ended).await;
+    // A newcomer's first paid week straddles the season's end: it is paid in the closed season.
+    let (user, _) = league_athlete(&app, "straddler").await;
+    let rules = Rules::active(&app.db).await.unwrap();
+    for (season, amount, source) in [(ended, 60, "2026-09-28"), (next, 40, "2026-10-05")] {
+        let mut tx = app.db.begin().await.unwrap();
+        let entry = LpEntry {
+            user,
+            season,
+            amount,
+            reason: "WEEKLY_SCORE",
+            source_type: "week",
+            source_id: source.to_owned(),
+            explanation: json!({}),
+            effective_at: Utc::now(),
+        };
+        ledger::append_lp(&mut tx, &rules, entry).await.unwrap();
+        tx.commit().await.unwrap();
+        if season == ended {
+            assert_eq!(stats(&app, user).await, (0, None, None));
+        }
+    }
+    assert_eq!(
+        stats(&app, user).await,
+        (40, Some(next), Some("BRONZE".to_owned()))
+    );
+}
+
+#[sqlx::test]
 async fn seasons_open_when_due(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
     let app = seeded(opts, conn).await;
     let (ended, next) = season_ended(&app).await;
