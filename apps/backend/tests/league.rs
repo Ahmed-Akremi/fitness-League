@@ -798,6 +798,58 @@ async fn the_worker_closes_the_week_once(opts: MySqlPoolOptions, conn: MySqlConn
 }
 
 #[sqlx::test]
+async fn a_seasons_last_week_is_paid_before_it_closes(
+    opts: MySqlPoolOptions,
+    conn: MySqlConnectOptions,
+) {
+    let app = seeded(opts, conn).await;
+    let season = stretch_season(&app).await;
+    let c = catalog(&app).await;
+    let (user, token) = league_athlete(&app, "straddle").await;
+    let at = this_week();
+    logged(&app, &token, &strength(&c, Uuid::now_v7(), at)).await;
+    let week = policy::week_start(at, OFFSET);
+    // The season ends on the week's Thursday, and the next one starts then.
+    sqlx::query("UPDATE seasons SET ends_at = ? WHERE id = ?")
+        .bind((week + Duration::days(3)).naive_utc())
+        .bind(season)
+        .execute(&app.db)
+        .await
+        .unwrap();
+    sqlx::query("UPDATE seasons s JOIN seasons e ON e.id = ? SET s.starts_at = e.ends_at WHERE s.status = 'SCHEDULED'")
+        .bind(season)
+        .execute(&app.db)
+        .await
+        .unwrap();
+    let paid = score_of(&app, user, week).await.lp;
+    assert!(paid > 0);
+    let status = || {
+        sqlx::query_scalar::<_, String>("SELECT status FROM seasons WHERE id = ?")
+            .bind(season)
+            .fetch_one(&app.db)
+    };
+
+    // The season's own grace is over, the week's is not.
+    jobs::run_due(&app.state, week + Duration::days(5))
+        .await
+        .unwrap();
+    assert_eq!(status().await.unwrap(), "ACTIVE");
+    jobs::run_due(&app.state, week + Duration::days(8) + Duration::hours(1))
+        .await
+        .unwrap();
+    assert_eq!(status().await.unwrap(), "CLOSED");
+    let standing: Option<i32> = sqlx::query_scalar(
+        "SELECT final_lp FROM season_standings WHERE season_id = ? AND user_id = ?",
+    )
+    .bind(season)
+    .bind(user)
+    .fetch_optional(&app.db)
+    .await
+    .unwrap();
+    assert_eq!(standing.map(i64::from), Some(paid));
+}
+
+#[sqlx::test]
 async fn calibration_finalizes_on_its_day(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
     let app = seeded(opts, conn).await;
     let (user, _) = athlete(&app, "finalist").await;
