@@ -334,6 +334,21 @@ Friends(Uuid) }`; a friends board compares with no snapshot. Consumes `notificat
 - Export and anonymisation cover the new tables; the security suite passes with the new routes behind a session.
 - fmt, Clippy (online and offline), the whole suite, audit and deny are green, and `.sqlx/` is committed.
 
-## Built
+## Built (2026-10-21): where the code departs from this plan
 
-To be written once the plan is built.
+- `social::summaries(db, ids)` became a shared `Summary` struct that each query (friends, requests, search) fills
+  with `query_as!`: no list of ids to bind.
+- **A race found by the commit security review, fixed:** `target()` read the blocks before the write's
+  transaction, so a block landing between the check and the insert left a friendship or a follow next to it.
+  `social::lock_pair(conn, a, b)` now locks both `users` rows, lower id first, in every writer of a link (request,
+  acceptance, follow, block), and `target` reads under it. `a_block_racing_a_request_leaves_no_link` (twelve
+  rounds of a block, a request and a follow sent together) failed in three runs out of three before, and passes
+  since.
+- `notifications::preferences::load` is public: the export reads it.
+- The recorded `GET /notifications` holds a battle's payload, so its shape check leaves the payload's keys out;
+  the payloads are asserted directly. `recorded(key)` moved to `tests/common`.
+- `GET /me/ranks` gives an eligible athlete with no friends `friends: 1` (first among themselves), as the old API.
+- `profiles_and_searches_carry_no_private_data` passed at once: it pins a property the code already had (each
+  answer must show the athlete, so it is not vacuous).
+- The owner committed tasks 1 to 5 mid-session under their own messages; the content is this plan's.
+- The MariaDB container crashed once (exit 139) during the badge suite and was restarted (handoff §5).
