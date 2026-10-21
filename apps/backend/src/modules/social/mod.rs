@@ -5,7 +5,7 @@ pub mod athletes;
 pub mod friends;
 
 use serde::Serialize;
-use sqlx::MySqlPool;
+use sqlx::MySqlConnection;
 use uuid::Uuid;
 
 use crate::{error::AppError, http::Api};
@@ -53,9 +53,24 @@ pub fn athlete_param(raw: &str) -> Result<Uuid, AppError> {
     Uuid::parse_str(raw).map_err(|_| AppError::not_found("Athlete"))
 }
 
+/// Locks both athletes' rows, lower id first. Every writer of a link between two athletes (request,
+/// acceptance, follow, block) takes this lock before it checks and writes, so a block can never land
+/// between another writer's check and its write.
+pub async fn lock_pair(conn: &mut MySqlConnection, a: Uuid, b: Uuid) -> Result<(), AppError> {
+    let (low, high) = pair(a, b);
+    sqlx::query!(
+        "SELECT id FROM users WHERE id IN (?, ?) ORDER BY id FOR UPDATE",
+        low,
+        high
+    )
+    .fetch_all(conn)
+    .await?;
+    Ok(())
+}
+
 /// An athlete `me` may reach: someone else, active, and neither has blocked the other. A blocked
-/// account answers like no account.
-pub async fn target(db: &MySqlPool, me: Uuid, user: Uuid) -> Result<(), AppError> {
+/// account answers like no account. Read under `lock_pair`.
+pub async fn target(conn: &mut MySqlConnection, me: Uuid, user: Uuid) -> Result<(), AppError> {
     if user == me {
         return Err(AppError::field("userId", "SELF"));
     }
@@ -67,7 +82,7 @@ pub async fn target(db: &MySqlPool, me: Uuid, user: Uuid) -> Result<(), AppError
         me,
         me
     )
-    .fetch_one(db)
+    .fetch_one(conn)
     .await?
         != 0;
     if reachable {
