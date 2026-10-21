@@ -9,20 +9,32 @@ Earlier handoffs are in git: `git show 61b7787:handoff.md` (the full history sin
 
 Opening prompt to paste:
 
-> Read `handoff.md`, then run plan 3a's whole-branch review as a fresh reviewer (§0 step 2). Then write and build
-> plan 3b (gyms) from the part 3 spec. Work in this Windows checkout only.
+> Read `handoff.md` (the backend's; `handoff-frontend.md` is the app's and not for this session), then run plan
+> 3a's whole-branch review as a fresh reviewer (§0 step 2). Then write and build plan 3b (gyms) from the part 3
+> spec. Work in this Windows checkout only.
 
 First steps, in order:
-1. **Find where `main` is.** `git fetch && git log --oneline -5 origin/main`. The owner commits, pushes and
-   merges during sessions; this session they committed plan 3a's tasks from the working tree as they were
-   written (see §4).
-   - `origin/main` was at `3d42eed` (PR #27, plan 2d) when this session started.
-   - Local **`feat/rust-backend-3`** holds all of this session, none of it pushed: it starts at `origin/main`,
-     merges `feat/rust-backend-2d` (plan 2d's review fix and docs), then the part 3 spec, plan 3a and its code.
-     Its upstream was removed, so a plain `git push` cannot reach `main`. **Don't push:** the user pushes
-     themselves.
-   - If the owner merged it, start plan 3b on a new branch from `origin/main`; otherwise go on with
-     `feat/rust-backend-3`. Local `main` is far behind: never branch from it.
+1. **Find where `main` is.** `git fetch && git log --oneline -5 origin/main origin/feat/rust-backend-3`. The
+   owner commits, pushes and merges during sessions; this session they committed plan 3a's tasks from the
+   working tree as they were written, and merged twice (see §4).
+   - At the end of this session, `origin/main` was at `c1e1e9e`:
+     - PR #32 merged `feat/rust-backend-3` up to `29c3bfb`: the spec, plan 3a's tables, notifications, friends,
+       search, profiles, the race fix and the friends board;
+     - PR #33 merged `feat/hig-phone`, the app's Apple HIG work. It is frontend only (`apps/mobile-rn`,
+       `pnpm-lock.yaml`) and has **its own handoff, `handoff-frontend.md`**. It changes no API call and no
+       recorded answer, so the backend contract is unchanged.
+   - **`feat/rust-backend-3`** is pushed up to `86f9d2d`. The rest of plan 3a is there but **not yet in
+     `main`**: `23c1e3f` (friend badges, the badge notification), `b4389e9` (export, anonymisation, the
+     security check), `d343659` (formatting, `.sqlx`), `86f9d2d` (docs). `c1bb8d7` (docs) and this handoff's
+     last update are **local only**. **Don't push:** the user pushes themselves. The branch has no upstream, so
+     a plain `git push` cannot reach `main`.
+   - **Where to work:**
+     - if `main` already holds all of plan 3a, run the review on `feat/rust-backend-3` as it is, then start
+       plan 3b on a new branch from `origin/main`;
+     - otherwise go on with `feat/rust-backend-3`: first `git merge origin/main` (it brings PR #33's frontend
+       work; no conflict is expected, since the branch touches no frontend file), then review and build 3b
+       there.
+   - Local `main` is far behind: never branch from it.
 2. **Plan 3a's whole-branch review is not done.** No reviewer was spawned (the user did not ask for one). Run it
    the way plan 2d's was run this session: a fresh session reads the branch against the plan and the old API,
    without spawning agents.
@@ -103,17 +115,20 @@ duels, challenges and leagues), with seven rulings for the owner.
 
 ## 2. Current state
 
-- **`origin/main`** is at `3d42eed`. Merged so far:
+- **`origin/main`** is at `c1e1e9e`. Merged so far:
   - #13 and #14: part 1;
   - #15: the part 2 spec, plan 2a and its code;
   - #16: formatting, the Windows build, and the README, spec and plan updates;
   - #17: plan 2a's handoff;
   - #18, #19 and #21: plan 2b, then plan 2c and its review;
   - #20: the organizer space (UI);
-  - #22, #26 and #27: plan 2d, up to `6f9f1be` (the fix and the docs).
-- **Branch `feat/rust-backend-3`** (this session) starts at `origin/main` (`3d42eed`) and merges
-  `feat/rust-backend-2d` (`1514f26`). Its commits are listed in §4. Nothing of it is pushed, and it has no
-  upstream.
+  - #22, #26 and #27: plan 2d, up to `6f9f1be` (the fix and the docs);
+  - #32: `feat/rust-backend-3` up to `29c3bfb` (plan 2d's review fix, the part 3 spec, plan 3a up to the
+    friends board);
+  - #33: `feat/hig-phone`, the app's Apple HIG work (frontend only; see `handoff-frontend.md`).
+- **Branch `feat/rust-backend-3`** (this session) starts at `3d42eed` and merges `feat/rust-backend-2d`
+  (`1514f26`). Its commits are listed in §4. `origin/feat/rust-backend-3` is at `86f9d2d`; `c1bb8d7` and this
+  handoff's last update are local. It has no upstream.
 - **Other local branches:**
   - `feat/rust-backend-2d` (plan 2d) is merged through #27, except its last four commits (plan 2d's review fix,
     its `.sqlx` data and the docs), which reach `main` through `feat/rust-backend-3`;
@@ -422,8 +437,11 @@ The previous session's list (plan 2d's commits and its 14 rulings) is in `git sh
   `6a8751e` (migration `0010_social`), `0c164f6` (notifications and preferences), `90ab0f7` (friends, follows,
   blocks), `c458527` (search and profiles), `43d83df`, `610740c`, `a0da20b` (the race fix below), `27fc866`,
   `29c3bfb` (the friends board). Then mine: `23c1e3f` (friend badges, the badge notification), `b4389e9`
-  (export, anonymisation, the security check), `d343659` (formatting, `.sqlx`), and the docs commit (README,
-  the spec's status, the plan's « Built » section, this handoff).
+  (export, anonymisation, the security check), `d343659` (formatting, `.sqlx`), and the docs: `86f9d2d` (the
+  owner, from the working tree) and `c1bb8d7` (README, the spec's status, the plan's « Built » section, this
+  handoff), then this handoff's last update (where `main` and the branch stand).
+- The owner merged PR #32 (this branch up to `29c3bfb`) and PR #33 (`feat/hig-phone`, frontend only) into
+  `main` during the session, and pushed this branch up to `86f9d2d`.
 - **A race, found by the automatic commit security review and fixed:** a block landing between a friend
   request's (or a follow's) block check and its write left the friendship next to the block. Every writer of a
   link between two athletes now locks both `users` rows, lower id first, before it checks and writes
@@ -560,7 +578,9 @@ The previous session's list (plan 2d's commits and its 14 rulings) is in `git sh
 
 ## 6. Next steps
 
-1. **`feat/rust-backend-3` is all local:** the user pushes it (it carries plan 2d's review fix too).
+1. **The rest of plan 3a reaches `main`:** `feat/rust-backend-3` is pushed up to `86f9d2d`; `c1bb8d7` and this
+   handoff's last update are local. The user pushes them, then the owner merges (PR #32 took the branch up to
+   `29c3bfb`).
 2. **Plan 3a's whole-branch review** (§0 step 2), with the plan's « Review focus » list and the ledger's rulings.
 3. **Plan 3b, gyms,** then 3c (feed and news, the socket), 3d (gym WODs and gym wars), 3e (battles and duels) and
    3f (challenges and leagues), each written once the previous one is built (§0 step 5 lists 3b's inputs).
