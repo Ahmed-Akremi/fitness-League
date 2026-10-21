@@ -729,3 +729,51 @@ async fn the_seed_opens_this_quarter(opts: MySqlPoolOptions, conn: MySqlConnectO
         .unwrap();
     assert_eq!(all, 2);
 }
+
+#[sqlx::test]
+async fn the_social_tables_hold_their_rules(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let db = backend::db::pool(opts, conn);
+    let a = insert_user(&db, "a@example.tn", "user_a").await.unwrap();
+    let b = insert_user(&db, "b@example.tn", "user_b").await.unwrap();
+    let (low, high) = if a < b { (a, b) } else { (b, a) };
+    let friendship = |l: Uuid, h: Uuid| {
+        sqlx::query(
+            "INSERT INTO friendships (user_low_id, user_high_id, status, requested_by) VALUES (?, ?, 'PENDING', ?)",
+        )
+        .bind(l)
+        .bind(h)
+        .bind(l)
+        .execute(&db)
+    };
+    assert!(friendship(high, low).await.is_err(), "an unordered pair was stored");
+    friendship(low, high).await.unwrap();
+    let twice = friendship(low, high).await.unwrap_err();
+    assert!(is_unique_violation(&twice), "{twice}");
+
+    for sql in [
+        "INSERT INTO follows (follower_id, followee_id) VALUES (?, ?)",
+        "INSERT INTO blocks (blocker_id, blocked_id) VALUES (?, ?)",
+    ] {
+        let own = sqlx::query(AssertSqlSafe(sql)).bind(a).bind(a).execute(&db).await;
+        assert!(own.is_err(), "{sql} accepted oneself");
+    }
+    let unknown = sqlx::query(
+        "INSERT INTO notifications (id, user_id, type, payload) VALUES (?, ?, 'NOT_A_TYPE', '{}')",
+    )
+    .bind(Uuid::now_v7())
+    .bind(a)
+    .execute(&db)
+    .await;
+    assert!(unknown.is_err(), "a notification of an unknown type was stored");
+
+    sqlx::query("INSERT INTO user_settings (user_id) VALUES (?)")
+        .bind(a)
+        .execute(&db)
+        .await
+        .unwrap();
+    let half = sqlx::query("UPDATE user_settings SET quiet_hours_start = '22:00' WHERE user_id = ?")
+        .bind(a)
+        .execute(&db)
+        .await;
+    assert!(half.is_err(), "quiet hours without an end were stored");
+}
