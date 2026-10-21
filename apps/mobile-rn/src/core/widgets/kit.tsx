@@ -90,13 +90,13 @@ export function Icon({ name, size = 22, color }: { name: IconName; size?: number
 }
 
 export function Txt({ children, style, variant = 'body', color, ...rest }: { children: ReactNode; variant?: 'body' | 'title' | 'label' | 'small' | 'display' | 'headline'; color?: string; style?: StyleProp<any> } & Omit<ComponentProps<typeof Text>, 'style'>) {
-  const { colors } = useTheme();
-  // 17 pt body: Apple's default size (HIG Accessibility › Vision).
+  const { colors, dense } = useTheme();
+  // 17 pt body on a phone: Apple's default size (HIG Accessibility › Vision). The computer layout keeps its 15 pt.
   const v = {
-    body: { fontSize: 17, fontFamily: fonts.body },
-    title: { fontSize: 19, fontFamily: fonts.body, fontWeight: '700' as const },
+    body: { fontSize: dense ? 15 : 17, fontFamily: fonts.body },
+    title: { fontSize: dense ? 17 : 19, fontFamily: fonts.body, fontWeight: '700' as const },
     label: { fontSize: 12, fontFamily: fonts.body, fontWeight: '700' as const, letterSpacing: 1.2, textTransform: 'uppercase' as const },
-    small: { fontSize: 15, fontFamily: fonts.body },
+    small: { fontSize: dense ? 13 : 15, fontFamily: fonts.body },
     display: { fontSize: 36, fontFamily: fonts.display, letterSpacing: -0.5 },
     headline: { fontSize: 28, fontFamily: fonts.display },
   }[variant];

@@ -1,7 +1,7 @@
 import { fireEvent } from 'expo-router/testing-library';
 import { Dimensions, StyleSheet } from 'react-native';
 
-import { displayText, fonts } from '../../src/core/theme';
+import { displayText, fonts, ThemeScope } from '../../src/core/theme';
 import { Chip, Txt } from '../../src/core/widgets/kit';
 import { Select } from '../../src/core/widgets/pickers';
 import { HomeScreen } from '../../src/features/home/screen';
@@ -24,6 +24,20 @@ describe('Dynamic Type (HIG Typography)', () => {
       new FakeBackend(),
     );
     expect([flat(screen.getByTestId('body')).fontSize, flat(screen.getByTestId('small')).fontSize, flat(screen.getByTestId('title')).fontSize]).toEqual([17, 15, 19]);
+  });
+
+  it('the organizer layout on a computer keeps its sizes (15, 13, 17)', async () => {
+    const screen = await renderScreen(
+      () => (
+        <ThemeScope dense>
+          <Txt testID="body">body</Txt>
+          <Txt testID="small" variant="small">small</Txt>
+          <Txt testID="title" variant="title">title</Txt>
+        </ThemeScope>
+      ),
+      new FakeBackend(),
+    );
+    expect([flat(screen.getByTestId('body')).fontSize, flat(screen.getByTestId('small')).fontSize, flat(screen.getByTestId('title')).fontSize]).toEqual([15, 13, 17]);
   });
 
   it('big display numbers grow up to 1.4×; other text scales without a cap', async () => {
