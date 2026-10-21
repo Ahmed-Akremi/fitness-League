@@ -5,6 +5,8 @@ pub mod goals;
 pub mod health;
 pub mod league;
 pub mod me;
+pub mod notifications;
 pub mod reference;
 pub mod scoring;
+pub mod social;
 pub mod workouts;

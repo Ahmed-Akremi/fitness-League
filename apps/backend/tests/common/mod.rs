@@ -296,6 +296,14 @@ pub async fn calibrated(app: &TestApp, user: Uuid) {
     .expect("the profile row");
 }
 
+/// The app's recorded answer to `key` (`"GET /friends"`) in `apps/mobile-rn/assets/demo/api.json`.
+pub fn recorded(key: &str) -> Value {
+    let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../mobile-rn/assets/demo/api.json");
+    let all: Value = serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
+    assert!(!all[key].is_null(), "nothing recorded for {key}");
+    all[key].clone()
+}
+
 /// Every key of `expected` exists in `actual` with the same JSON type. `null` on either side matches
 /// anything; lists are compared by their first element.
 pub fn assert_same_shape(path: &str, expected: &Value, actual: &Value) {
