@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "DELETE FROM gym_members WHERE user_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "23bc1e329ad62a44d76235f4833ba124ef67b7ac0c94fbb6291cbac8ecc6a37d"
+}

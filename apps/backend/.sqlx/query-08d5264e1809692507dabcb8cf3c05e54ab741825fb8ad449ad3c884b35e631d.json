@@ -1,0 +1,31 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT status FROM gyms WHERE id = ?",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "status",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | ENUM",
+          "collation": 224,
+          "max_size": 36
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.gyms",
+            "name": "status"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "08d5264e1809692507dabcb8cf3c05e54ab741825fb8ad449ad3c884b35e631d"
+}

@@ -1,0 +1,31 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT enabled AS \"enabled: bool\" FROM sports WHERE id = ?",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "enabled: bool",
+        "type_info": {
+          "type": "Tiny",
+          "flags": "NOT_NULL",
+          "collation": 63,
+          "max_size": 1
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.sports",
+            "name": "enabled"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "981f70b4f08547f97d319a724fad0f210b99ad3234628d113b265ec311d41b50"
+}

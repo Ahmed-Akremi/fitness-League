@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "UPDATE gyms SET owner_user_id = NULL WHERE owner_user_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "f7ea1ddc8d125ceddf3ca3427bac7bddaec02ca0519794b486c4cbc294ac78c1"
+}

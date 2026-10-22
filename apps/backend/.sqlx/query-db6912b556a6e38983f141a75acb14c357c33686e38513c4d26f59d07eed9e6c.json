@@ -1,0 +1,48 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT gym_id AS \"gym_id: Uuid\", status FROM gym_members WHERE live_user = ?",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "gym_id: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | MULTIPLE_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.gym_members",
+            "name": "gym_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "status",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | ENUM",
+          "collation": 224,
+          "max_size": 32
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.gym_members",
+            "name": "status"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "db6912b556a6e38983f141a75acb14c357c33686e38513c4d26f59d07eed9e6c"
+}

@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "DELETE FROM gyms WHERE owner_user_id = ? AND status = 'PENDING'",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "dd726d1a5e9d7d8bb4c18f311d5e1c8ef8a57632015b22af77f03a46d895d03b"
+}

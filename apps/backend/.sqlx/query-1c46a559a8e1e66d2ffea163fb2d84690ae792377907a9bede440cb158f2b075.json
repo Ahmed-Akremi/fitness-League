@@ -1,0 +1,60 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT m.user_id AS \"user_id: Uuid\", p.full_name,\n                  (SELECT MAX(w.performed_at) FROM workouts w\n                   WHERE w.user_id = m.user_id AND w.status = 'ACCEPTED') AS last_workout\n           FROM gym_members m JOIN profiles p ON p.user_id = m.user_id\n           WHERE m.gym_id = ? AND m.status = 'APPROVED'\n           ORDER BY m.id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "user_id: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | MULTIPLE_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.gym_members",
+            "name": "user_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "full_name",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 320
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.profiles",
+            "name": "full_name"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "last_workout",
+        "type_info": {
+          "type": "Datetime",
+          "flags": "BINARY",
+          "collation": 63,
+          "max_size": 26
+        },
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "1c46a559a8e1e66d2ffea163fb2d84690ae792377907a9bede440cb158f2b075"
+}

@@ -1,6 +1,6 @@
 {
   "db_name": "MySQL",
-  "query": "SELECT u.username, u.email, u.email_verified_at, u.role AS \"role: Role\", u.date_of_birth,\n                  p.full_name, p.bio, p.gender, p.country_code, p.experience_level_declared,\n                  p.planned_training_days_per_week, p.calibration_ends_at, p.onboarding_completed_at,\n                  g.id AS \"governorate_id: Uuid\", g.code AS governorate_code,\n                  g.name_fr AS governorate_fr, g.name_en AS governorate_en, g.name_ar AS governorate_ar,\n                  c.id AS \"city_id: Uuid\", c.name_fr AS city_fr, c.name_en AS city_en, c.name_ar AS city_ar,\n                  s.locale, s.theme, s.reduced_motion AS \"reduced_motion: bool\", s.default_visibility,\n                  s.show_age_bracket AS \"show_age_bracket: bool\",\n                  s.show_on_leaderboards AS \"show_on_leaderboards: bool\", s.streak_freeze_days_per_week,\n                  t.xp_total, t.level, t.xp_into_level, t.xp_for_next_level, t.season_lp, t.division_code,\n                  t.leaderboard_eligible AS \"leaderboard_eligible: bool\",\n                  k.current_weeks, k.longest_weeks, k.current_days\n           FROM users u\n           JOIN profiles p ON p.user_id = u.id\n           JOIN governorates g ON g.id = p.governorate_id\n           JOIN cities c ON c.id = p.city_id\n           JOIN user_settings s ON s.user_id = u.id\n           JOIN user_stats t ON t.user_id = u.id\n           JOIN user_streaks k ON k.user_id = u.id\n           WHERE u.id = ?",
+  "query": "SELECT u.username, u.email, u.email_verified_at, u.role AS \"role: Role\", u.date_of_birth,\n                  p.full_name, p.bio, p.gender, p.country_code, p.experience_level_declared,\n                  p.planned_training_days_per_week, p.calibration_ends_at, p.onboarding_completed_at,\n                  g.id AS \"governorate_id: Uuid\", g.code AS governorate_code,\n                  g.name_fr AS governorate_fr, g.name_en AS governorate_en, g.name_ar AS governorate_ar,\n                  c.id AS \"city_id: Uuid\", c.name_fr AS city_fr, c.name_en AS city_en, c.name_ar AS city_ar,\n                  s.locale, s.theme, s.reduced_motion AS \"reduced_motion: bool\", s.default_visibility,\n                  s.show_age_bracket AS \"show_age_bracket: bool\",\n                  s.show_on_leaderboards AS \"show_on_leaderboards: bool\", s.streak_freeze_days_per_week,\n                  t.xp_total, t.level, t.xp_into_level, t.xp_for_next_level, t.season_lp, t.division_code,\n                  t.leaderboard_eligible AS \"leaderboard_eligible: bool\",\n                  k.current_weeks, k.longest_weeks, k.current_days,\n                  gy.id AS \"gym_id?: Uuid\", gy.name AS \"gym_name?\", gy.slug AS \"gym_slug?\"\n           FROM users u\n           JOIN profiles p ON p.user_id = u.id\n           LEFT JOIN gyms gy ON gy.id = p.primary_gym_id\n           JOIN governorates g ON g.id = p.governorate_id\n           JOIN cities c ON c.id = p.city_id\n           JOIN user_settings s ON s.user_id = u.id\n           JOIN user_stats t ON t.user_id = u.id\n           JOIN user_streaks k ON k.user_id = u.id\n           WHERE u.id = ?",
   "describe": {
     "columns": [
       {
@@ -626,6 +626,54 @@
             "name": "current_days"
           }
         }
+      },
+      {
+        "ordinal": 39,
+        "name": "gym_id?: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "PRIMARY_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.gyms",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 40,
+        "name": "gym_name?",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 320
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.gyms",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 41,
+        "name": "gym_slug?",
+        "type_info": {
+          "type": "VarString",
+          "flags": "UNIQUE_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 240
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.gyms",
+            "name": "slug"
+          }
+        }
       }
     ],
     "parameters": {
@@ -670,8 +718,11 @@
       false,
       false,
       false,
-      false
+      false,
+      true,
+      true,
+      true
     ]
   },
-  "hash": "80110aa36ec5de308df0f23bc7c9f7b47cd093e4d4cc73991f33961b037dfec4"
+  "hash": "6460b3f00f36f785a177c7771a1bfa304feff1fc8dd1f7a15b42eb3bfeb2a89a"
 }

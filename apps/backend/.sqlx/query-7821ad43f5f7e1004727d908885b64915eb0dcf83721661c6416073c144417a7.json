@@ -1,6 +1,6 @@
 {
   "db_name": "MySQL",
-  "query": "SELECT u.id AS \"id: Uuid\", u.username, u.status, u.date_of_birth, p.full_name, p.bio,\n                  g.code, g.name_fr, g.name_en, g.name_ar, s.show_age_bracket AS \"show_age_bracket: bool\",\n                  us.level, us.division_code, us.season_lp,\n                  (SELECT COUNT(*) FROM follows f WHERE f.followee_id = u.id) AS \"followers!: i64\",\n                  (SELECT COUNT(*) FROM follows f WHERE f.follower_id = u.id) AS \"following!: i64\",\n                  EXISTS (SELECT 1 FROM blocks b WHERE (b.blocker_id = ? AND b.blocked_id = u.id)\n                                                  OR (b.blocker_id = u.id AND b.blocked_id = ?)) AS \"blocked!: i64\"\n           FROM users u JOIN profiles p ON p.user_id = u.id JOIN governorates g ON g.id = p.governorate_id\n             JOIN user_settings s ON s.user_id = u.id JOIN user_stats us ON us.user_id = u.id\n           WHERE u.username = ?",
+  "query": "SELECT u.id AS \"id: Uuid\", u.username, u.status, u.date_of_birth, p.full_name, p.bio,\n                  g.code, g.name_fr, g.name_en, g.name_ar, s.show_age_bracket AS \"show_age_bracket: bool\",\n                  us.level, us.division_code, us.season_lp,\n                  gy.id AS \"gym_id?: Uuid\", gy.name AS \"gym_name?\",\n                  (SELECT COUNT(*) FROM follows f WHERE f.followee_id = u.id) AS \"followers!: i64\",\n                  (SELECT COUNT(*) FROM follows f WHERE f.follower_id = u.id) AS \"following!: i64\",\n                  EXISTS (SELECT 1 FROM blocks b WHERE (b.blocker_id = ? AND b.blocked_id = u.id)\n                                                  OR (b.blocker_id = u.id AND b.blocked_id = ?)) AS \"blocked!: i64\"\n           FROM users u JOIN profiles p ON p.user_id = u.id JOIN governorates g ON g.id = p.governorate_id\n             JOIN user_settings s ON s.user_id = u.id JOIN user_stats us ON us.user_id = u.id\n             LEFT JOIN gyms gy ON gy.id = p.primary_gym_id\n           WHERE u.username = ?",
   "describe": {
     "columns": [
       {
@@ -229,6 +229,38 @@
       },
       {
         "ordinal": 14,
+        "name": "gym_id?: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "PRIMARY_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.gyms",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 15,
+        "name": "gym_name?",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 320
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.gyms",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 16,
         "name": "followers!: i64",
         "type_info": {
           "type": "LongLong",
@@ -239,7 +271,7 @@
         "origin": "Expression"
       },
       {
-        "ordinal": 15,
+        "ordinal": 17,
         "name": "following!: i64",
         "type_info": {
           "type": "LongLong",
@@ -250,7 +282,7 @@
         "origin": "Expression"
       },
       {
-        "ordinal": 16,
+        "ordinal": 18,
         "name": "blocked!: i64",
         "type_info": {
           "type": "Long",
@@ -281,8 +313,10 @@
       false,
       true,
       true,
+      true,
+      true,
       false
     ]
   },
-  "hash": "dca48481af91fe5a850ec9839dbda86c79b70528232316a1eebd4e889d7ded22"
+  "hash": "7821ad43f5f7e1004727d908885b64915eb0dcf83721661c6416073c144417a7"
 }

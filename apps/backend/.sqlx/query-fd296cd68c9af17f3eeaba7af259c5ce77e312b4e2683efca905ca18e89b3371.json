@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "UPDATE profiles SET full_name = 'Deleted athlete', bio = NULL, gender = NULL, primary_gym_id = NULL WHERE user_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "fd296cd68c9af17f3eeaba7af259c5ce77e312b4e2683efca905ca18e89b3371"
+}
