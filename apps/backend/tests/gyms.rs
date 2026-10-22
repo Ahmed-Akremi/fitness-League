@@ -777,3 +777,136 @@ async fn who_manages(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
     let approved = decide(&app, admin_token, gym, asker, "approve").await;
     assert_eq!(approved.status, StatusCode::OK, "{}", approved.json);
 }
+
+/// A workout written straight into the database, `days_ago` days back.
+async fn worked_out(app: &TestApp, user: Uuid, days_ago: i64, status: &str) {
+    sqlx::query(
+        "INSERT INTO workouts (id, user_id, client_id, payload_hash, fingerprint, sport_id, workout_type, \
+           performed_at, duration_s, visibility, status, received_at, total_volume_kg, total_distance_m) \
+         SELECT ?, ?, ?, REPEAT('a', 32), REPEAT('b', 32), id, 'STRENGTH', \
+           UTC_TIMESTAMP(6) - INTERVAL ? DAY, 3600, 'PRIVATE', ?, UTC_TIMESTAMP(6), 0, 0 \
+         FROM sports ORDER BY code LIMIT 1",
+    )
+    .bind(Uuid::now_v7())
+    .bind(user)
+    .bind(Uuid::now_v7())
+    .bind(days_ago)
+    .bind(status)
+    .execute(&app.db)
+    .await
+    .unwrap();
+}
+
+async fn weekly(app: &TestApp, user: Uuid, week: chrono::NaiveDate, total: f64, progress: f64) {
+    sqlx::query(
+        "INSERT INTO weekly_scores (id, user_id, week_start, rule_set_version, progress_c, consistency_c, \
+           performance_c, total, breakdown) VALUES (?, ?, ?, 2, ?, 0, 0, ?, '{}')",
+    )
+    .bind(Uuid::now_v7())
+    .bind(user)
+    .bind(week)
+    .bind(progress)
+    .bind(total)
+    .execute(&app.db)
+    .await
+    .unwrap();
+}
+
+#[sqlx::test]
+async fn the_dashboard(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let app = seeded(opts, conn).await;
+    let (owner, owner_token) = athlete(&app, "owner").await;
+    let gym = a_gym(&app, owner, "Sahel Iron").await;
+    let mut members = Vec::new();
+    for name in ["b", "c", "d"] {
+        let (user, token) = athlete(&app, name).await;
+        member_of(&app, user, gym).await;
+        members.push((user, token));
+    }
+    let (b, c, d) = (members[0].0, members[1].0, members[2].0);
+    let (_, asker) = athlete(&app, "asker").await;
+    assert_eq!(join(&app, &asker, gym).await.status, StatusCode::CREATED);
+    let (stranger, _) = athlete(&app, "stranger").await;
+    worked_out(&app, b, 3, "ACCEPTED").await;
+    worked_out(&app, c, 20, "ACCEPTED").await;
+    worked_out(&app, d, 1, "REJECTED").await;
+    worked_out(&app, stranger, 1, "ACCEPTED").await;
+    let offset = app.state.cfg.business_utc_offset_minutes;
+    let monday = backend::security::policy::business_today(
+        backend::security::policy::week_start(chrono::Utc::now(), offset),
+        offset,
+    );
+    let last_week = monday - chrono::Duration::days(7);
+    weekly(&app, b, last_week, 60.0, 30.0).await;
+    weekly(&app, c, last_week, 70.0, 50.0).await;
+    weekly(&app, stranger, last_week, 10.0, 90.0).await;
+    weekly(&app, b, last_week - chrono::Duration::days(7), 40.0, 10.0).await;
+
+    let path = format!("{GYMS}/{gym}/dashboard");
+    let dashboard = ok(&app, &owner_token, &path).await;
+    assert_eq!(
+        dashboard["gym"],
+        json!({"id": gym, "name": "Sahel Iron", "rating": 1500})
+    );
+    assert_eq!(
+        dashboard["members"],
+        json!({"approved": 4, "pending": 1, "activeLast7Days": 1, "activeLast28Days": 2})
+    );
+    let trend = dashboard["trend"].as_array().unwrap();
+    assert_eq!(trend.len(), 8);
+    assert_eq!(trend[7]["weekStart"], last_week.to_string());
+    assert_eq!(trend[7]["activeMembers"], 2);
+    assert_eq!(trend[7]["meanScore"].as_f64(), Some(65.0));
+    assert_eq!(trend[6]["activeMembers"], 1);
+    assert_eq!(trend[6]["meanScore"].as_f64(), Some(40.0));
+    assert_eq!(
+        trend[0],
+        json!({"weekStart": (monday - chrono::Duration::days(56)).to_string(), "activeMembers": 0, "meanScore": null})
+    );
+    let top = dashboard["topProgress"].as_array().unwrap();
+    assert_eq!(top.len(), 2);
+    assert_eq!(top[0]["userId"], c.to_string());
+    assert_eq!(top[0]["name"], "Athlete c");
+    assert_eq!(top[0]["progress"].as_f64(), Some(50.0));
+    assert_eq!(top[0]["total"].as_f64(), Some(70.0));
+    assert_eq!(top[1]["userId"], b.to_string());
+    let mut nudged: Vec<String> = dashboard["toNudge"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|n| n["userId"].as_str().unwrap().to_owned())
+        .collect();
+    nudged.sort();
+    let mut expected = vec![owner.to_string(), c.to_string(), d.to_string()];
+    expected.sort();
+    assert_eq!(nudged, expected);
+    let nudge_of = |user: Uuid| {
+        dashboard["toNudge"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|n| n["userId"] == user.to_string())
+            .unwrap()
+            .clone()
+    };
+    assert_eq!(nudge_of(d)["lastWorkoutAt"], Value::Null);
+    assert_eq!(nudge_of(d)["name"], "Athlete d");
+    assert!(nudge_of(c)["lastWorkoutAt"].is_string());
+    assert_eq!(dashboard["wods"], json!([]));
+    assert_eq!(
+        dashboard["wars"],
+        json!({"wins": 0, "losses": 0, "draws": 0, "enrolled": true})
+    );
+    let text = dashboard.to_string();
+    assert!(!text.contains("@example.com") && !text.contains("1995-05-05"));
+
+    let member = get(&app, &members[0].1, &path).await;
+    assert_eq!(member.status, StatusCode::FORBIDDEN);
+    let unknown = get(
+        &app,
+        &owner_token,
+        &format!("{GYMS}/{}/dashboard", Uuid::now_v7()),
+    )
+    .await;
+    assert_eq!(unknown.status, StatusCode::NOT_FOUND);
+}

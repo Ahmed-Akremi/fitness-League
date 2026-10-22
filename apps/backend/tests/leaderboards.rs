@@ -412,6 +412,105 @@ async fn movement_follows_the_last_snapshot(opts: MySqlPoolOptions, conn: MySqlC
     );
 }
 
+/// `(athlete id, movement)` of every row of a page.
+fn movements(page: &Value) -> Vec<(String, Value)> {
+    page["data"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|r| {
+            (
+                r["athlete"]["id"].as_str().unwrap().to_owned(),
+                r["movement"].clone(),
+            )
+        })
+        .collect()
+}
+
+#[sqlx::test]
+async fn the_gym_board(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let app = seeded(opts, conn).await;
+    // The owner is a member, but calibrating: not on any board.
+    let (owner, _) = athlete(&app, "owner").await;
+    let gym = common::a_gym(&app, owner, "Bodynade").await;
+    let (strong, _) = ranked(&app, "strong", 900).await;
+    let (middle, middle_token) = ranked(&app, "middle", 500).await;
+    let (light, _) = ranked(&app, "light", 100).await;
+    for user in [strong, middle, light] {
+        common::member_of(&app, user, gym).await;
+    }
+    let (stranger, stranger_token) = ranked(&app, "stranger", 2000).await;
+    let board = format!("/api/v1/leaderboards/gyms/{gym}");
+    let gym_view = serde_json::json!({"id": gym, "name": "Bodynade"});
+
+    let page = ok(&app, &middle_token, &board).await;
+    assert_eq!(ranks(&page), [1, 2, 3]);
+    assert_eq!(
+        athletes(&page),
+        [strong.to_string(), middle.to_string(), light.to_string()]
+    );
+    assert!(page["data"].as_array().unwrap().iter().all(|r| r["gym"] == gym_view));
+    assert_same_shape(
+        "gym board",
+        &recorded("GET /leaderboards/gyms/01a0e9e3-45e7-78b3-adf7-00d0f6fb6ab2"),
+        &page,
+    );
+    let mine = ok(&app, &middle_token, &format!("{board}/me")).await;
+    assert_eq!(mine["me"]["rank"], 2);
+    assert_same_shape(
+        "gym board, me",
+        &recorded("GET /leaderboards/gyms/01a0e9e3-45e7-78b3-adf7-00d0f6fb6ab2/me"),
+        &mine,
+    );
+    let ranks_of_middle = ok(&app, &middle_token, "/api/v1/me/ranks").await;
+    assert_eq!(ranks_of_middle["gym"], 2);
+    assert_same_shape("ranks", &recorded("GET /me/ranks"), &ranks_of_middle);
+    let national = ok(&app, &stranger_token, NATIONAL).await;
+    let rows = national["data"].as_array().unwrap();
+    assert_eq!(rows[0]["athlete"]["id"], stranger.to_string());
+    assert!(rows[0]["gym"].is_null());
+    assert_eq!(rows[1]["gym"], gym_view);
+    assert!(ok(&app, &stranger_token, "/api/v1/me/ranks").await["gym"].is_null());
+
+    boards::snapshot(&app.db, Utc::now() - Duration::days(1), 60)
+        .await
+        .unwrap();
+    set_lp(&app, light, 600).await;
+    let page = ok(&app, &middle_token, &board).await;
+    assert_eq!(
+        movements(&page),
+        [
+            (strong.to_string(), Value::from(0)),
+            (light.to_string(), Value::from(1)),
+            (middle.to_string(), Value::from(-1))
+        ]
+    );
+
+    let left = app
+        .call(
+            axum::http::Method::DELETE,
+            "/api/v1/gyms/me/membership",
+            Some(&middle_token),
+            None,
+        )
+        .await;
+    assert_eq!(left.status, StatusCode::NO_CONTENT);
+    let page = ok(&app, &middle_token, &board).await;
+    assert_eq!(athletes(&page), [strong.to_string(), light.to_string()]);
+    assert!(ok(&app, &middle_token, "/api/v1/me/ranks").await["gym"].is_null());
+    assert!(ok(&app, &middle_token, &format!("{board}/me")).await["me"].is_null());
+
+    let malformed = get(&app, &middle_token, "/api/v1/leaderboards/gyms/nope").await;
+    assert_eq!(malformed.status, StatusCode::NOT_FOUND);
+    let empty = ok(
+        &app,
+        &middle_token,
+        &format!("/api/v1/leaderboards/gyms/{}", Uuid::now_v7()),
+    )
+    .await;
+    assert!(empty["data"].as_array().unwrap().is_empty());
+}
+
 #[sqlx::test]
 async fn a_forged_cursor_is_refused(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
     let app = seeded(opts, conn).await;

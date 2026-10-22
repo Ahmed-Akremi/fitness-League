@@ -1,5 +1,5 @@
 //! Leaderboards (docs §15): the active season's eligible athletes ranked by LP, nationally, per
-//! governorate and among my friends, with the movement since the last daily snapshot. A port of the
+//! governorate, per gym and among my friends, with the movement since the last daily snapshot. A port of the
 //! old API's `LeaderboardsService`; ranked in SQL (spec ruling 3).
 
 use axum::{
@@ -16,6 +16,7 @@ use super::seasons;
 use crate::{
     error::AppError,
     http::{auth::AppUser, page},
+    modules::gyms,
     security::policy,
     state::AppState,
     validate::ValidQuery,
@@ -47,6 +48,9 @@ struct Row {
     name_fr: String,
     name_en: String,
     name_ar: String,
+    /// The athlete's primary gym.
+    gym_id: Option<Uuid>,
+    gym_name: Option<String>,
     /// The rank in the last snapshot before today, if the athlete was in it.
     previous: Option<i32>,
 }
@@ -57,8 +61,7 @@ impl Row {
         json!({
             "rank": self.rank,
             "athlete": {"id": self.user_id, "username": self.username, "fullName": self.full_name},
-            // Gyms come with part 3.
-            "gym": null,
+            "gym": self.gym_id.map(|id| json!({"id": id, "name": self.gym_name})),
             "governorate": {
                 "id": self.governorate_id,
                 "code": self.governorate_code,
@@ -90,6 +93,8 @@ enum Scope {
     Governorate(Uuid),
     /// This athlete and their accepted friends.
     Friends(Uuid),
+    /// The athletes whose primary gym it is.
+    Gym(Uuid),
 }
 
 /// A board: the season, the scope, the clock its eligibility reads, and the snapshot it compares with.
@@ -97,6 +102,7 @@ struct Board {
     season: Uuid,
     governorate: Option<Uuid>,
     friends_of: Option<Uuid>,
+    gym: Option<Uuid>,
     scope_type: &'static str,
     scope_id: Uuid,
     now: NaiveDateTime,
@@ -113,10 +119,11 @@ impl Board {
             .await?
             .ok_or_else(|| AppError::not_found("Season"))?;
         // No snapshot is ever taken of a friends board (as in the old API), so it finds none.
-        let (governorate, friends_of, scope_type, scope_id) = match scope {
-            Scope::National => (None, None, "NATIONAL", Uuid::nil()),
-            Scope::Governorate(id) => (Some(id), None, "GOVERNORATE", id),
-            Scope::Friends(of) => (None, Some(of), "FRIENDS", of),
+        let (governorate, friends_of, gym, scope_type, scope_id) = match scope {
+            Scope::National => (None, None, None, "NATIONAL", Uuid::nil()),
+            Scope::Governorate(id) => (Some(id), None, None, "GOVERNORATE", id),
+            Scope::Friends(of) => (None, Some(of), None, "FRIENDS", of),
+            Scope::Gym(id) => (None, None, Some(id), "GYM", id),
         };
         let now = Utc::now();
         let today = policy::business_today(now, state.cfg.business_utc_offset_minutes);
@@ -134,6 +141,7 @@ impl Board {
             season: season.id,
             governorate,
             friends_of,
+            gym,
             scope_type,
             scope_id,
             now: now.naive_utc(),
@@ -159,16 +167,19 @@ impl Board {
             r#"SELECT t.user_id AS "user_id!: Uuid", t.lp AS "lp!", t.level AS "level!", t.division, t.ranked AS "rank!: i64",
                       t.username AS "username!", t.full_name AS "full_name!", t.governorate_id AS "governorate_id!: Uuid",
                       t.governorate_code AS "governorate_code!", t.name_fr AS "name_fr!", t.name_en AS "name_en!",
-                      t.name_ar AS "name_ar!", ls.`rank` AS "previous?: i32"
+                      t.name_ar AS "name_ar!", t.gym_id AS "gym_id?: Uuid", t.gym_name AS "gym_name?",
+                      ls.`rank` AS "previous?: i32"
                FROM (SELECT us.user_id, us.season_lp AS lp, us.level, us.division_code AS division,
                             CAST(RANK() OVER (ORDER BY us.season_lp DESC) AS SIGNED) AS ranked,
                             u.username, p.full_name, g.id AS governorate_id, g.code AS governorate_code,
-                            g.name_fr, g.name_en, g.name_ar
+                            g.name_fr, g.name_en, g.name_ar, gy.id AS gym_id, gy.name AS gym_name
                      FROM user_stats us JOIN users u ON u.id = us.user_id JOIN profiles p ON p.user_id = us.user_id
                        JOIN user_settings s ON s.user_id = us.user_id JOIN governorates g ON g.id = p.governorate_id
+                       LEFT JOIN gyms gy ON gy.id = p.primary_gym_id
                      WHERE us.current_season_id = ? AND u.status = 'ACTIVE' AND u.email_verified_at IS NOT NULL
                        AND p.calibration_ends_at <= ? AND s.show_on_leaderboards
                        AND (? IS NULL OR p.governorate_id = ?)
+                       AND (? IS NULL OR p.primary_gym_id = ?)
                        AND (? IS NULL OR us.user_id = ? OR us.user_id IN (
                              SELECT IF(f.user_low_id = ?, f.user_high_id, f.user_low_id) FROM friendships f
                              WHERE f.status = 'ACCEPTED' AND (f.user_low_id = ? OR f.user_high_id = ?)))) t
@@ -181,6 +192,8 @@ impl Board {
             self.now,
             self.governorate,
             self.governorate,
+            self.gym,
+            self.gym,
             self.friends_of,
             self.friends_of,
             self.friends_of,
@@ -209,16 +222,19 @@ impl Board {
             r#"SELECT t.user_id AS "user_id!: Uuid", t.lp AS "lp!", t.level AS "level!", t.division, t.ranked AS "rank!: i64",
                       t.username AS "username!", t.full_name AS "full_name!", t.governorate_id AS "governorate_id!: Uuid",
                       t.governorate_code AS "governorate_code!", t.name_fr AS "name_fr!", t.name_en AS "name_en!",
-                      t.name_ar AS "name_ar!", ls.`rank` AS "previous?: i32"
+                      t.name_ar AS "name_ar!", t.gym_id AS "gym_id?: Uuid", t.gym_name AS "gym_name?",
+                      ls.`rank` AS "previous?: i32"
                FROM (SELECT us.user_id, us.season_lp AS lp, us.level, us.division_code AS division,
                             CAST(RANK() OVER (ORDER BY us.season_lp DESC) AS SIGNED) AS ranked,
                             u.username, p.full_name, g.id AS governorate_id, g.code AS governorate_code,
-                            g.name_fr, g.name_en, g.name_ar
+                            g.name_fr, g.name_en, g.name_ar, gy.id AS gym_id, gy.name AS gym_name
                      FROM user_stats us JOIN users u ON u.id = us.user_id JOIN profiles p ON p.user_id = us.user_id
                        JOIN user_settings s ON s.user_id = us.user_id JOIN governorates g ON g.id = p.governorate_id
+                       LEFT JOIN gyms gy ON gy.id = p.primary_gym_id
                      WHERE us.current_season_id = ? AND u.status = 'ACTIVE' AND u.email_verified_at IS NOT NULL
                        AND p.calibration_ends_at <= ? AND s.show_on_leaderboards
                        AND (? IS NULL OR p.governorate_id = ?)
+                       AND (? IS NULL OR p.primary_gym_id = ?)
                        AND (? IS NULL OR us.user_id = ? OR us.user_id IN (
                              SELECT IF(f.user_low_id = ?, f.user_high_id, f.user_low_id) FROM friendships f
                              WHERE f.status = 'ACCEPTED' AND (f.user_low_id = ? OR f.user_high_id = ?)))) t
@@ -231,6 +247,8 @@ impl Board {
             self.now,
             self.governorate,
             self.governorate,
+            self.gym,
+            self.gym,
             self.friends_of,
             self.friends_of,
             self.friends_of,
@@ -386,36 +404,61 @@ pub async fn friends_me(
     around_me(&state, user.id, Scope::Friends(user.id), query).await
 }
 
-/// `GET /me/ranks`: my national, governorate and friends ranks; the gym's comes with plan 3b.
+/// The gyms' boards answer for any gym id, an unknown one being empty (plan 3b ruling 12).
+pub async fn gym(
+    State(state): State<AppState>,
+    AppUser(user): AppUser,
+    Path(id): Path<String>,
+    ValidQuery(query): ValidQuery<PageQuery>,
+) -> Result<Json<Value>, AppError> {
+    let scope = Scope::Gym(gyms::gym_param(&id)?);
+    page_of(&state, user.id, scope, query).await
+}
+
+pub async fn gym_me(
+    State(state): State<AppState>,
+    AppUser(user): AppUser,
+    Path(id): Path<String>,
+    ValidQuery(query): ValidQuery<PageQuery>,
+) -> Result<Json<Value>, AppError> {
+    let scope = Scope::Gym(gyms::gym_param(&id)?);
+    around_me(&state, user.id, scope, query).await
+}
+
+/// `GET /me/ranks`: my national, governorate, gym and friends ranks; `null` where I do not rank.
 pub async fn my_ranks(
     State(state): State<AppState>,
     AppUser(user): AppUser,
 ) -> Result<Json<Value>, AppError> {
-    let governorate = sqlx::query_scalar!(
-        r#"SELECT governorate_id AS "id: Uuid" FROM profiles WHERE user_id = ?"#,
+    let mine = sqlx::query!(
+        r#"SELECT governorate_id AS "governorate: Uuid", primary_gym_id AS "gym: Uuid"
+           FROM profiles WHERE user_id = ?"#,
         user.id
     )
     .fetch_one(&state.db)
     .await?;
-    let mut ranks = Vec::new();
-    let mut season = None;
-    let scopes = [
+    let mut scopes = vec![
         Scope::National,
-        Scope::Governorate(governorate),
+        Scope::Governorate(mine.governorate),
         Scope::Friends(user.id),
     ];
+    scopes.extend(mine.gym.map(Scope::Gym));
+    let mut ranks = Vec::new();
+    let mut season = None;
     for scope in scopes {
         let board = Board::of(&state, user.id, scope).await?;
-        let mine = board.rows(&state.db, Some(user.id), None, 1).await?;
-        ranks.push(mine.first().map(|r| r.rank));
+        let rows = board.rows(&state.db, Some(user.id), None, 1).await?;
+        ranks.push(rows.first().map(|r| r.rank));
         season = Some(board.season);
     }
     Ok(Json(json!({
-        "seasonId": season, "national": ranks[0], "governorate": ranks[1], "gym": null, "friends": ranks[2],
+        "seasonId": season, "national": ranks[0], "governorate": ranks[1],
+        "gym": ranks.get(3).copied().flatten(), "friends": ranks[2],
     })))
 }
 
-/// Today's ranks of every active season's eligible athletes, nationally and per governorate: the
+/// Today's ranks of every active season's eligible athletes, nationally, per governorate and per
+/// primary gym: the
 /// reference of tomorrow's movement arrows. A second run the same day adds nothing.
 pub async fn snapshot(db: &MySqlPool, now: DateTime<Utc>, offset: i32) -> Result<Value, AppError> {
     let day = policy::business_today(now, offset);
@@ -450,6 +493,22 @@ pub async fn snapshot(db: &MySqlPool, now: DateTime<Utc>, offset: i32) -> Result
                JOIN user_settings s ON s.user_id = us.user_id \
              WHERE us.current_season_id = ? AND u.status = 'ACTIVE' AND u.email_verified_at IS NOT NULL \
                AND p.calibration_ends_at <= ? AND s.show_on_leaderboards",
+            day,
+            season,
+            season,
+            at
+        )
+        .execute(db)
+        .await?
+        .rows_affected();
+        rows += sqlx::query!(
+            "INSERT IGNORE INTO leaderboard_snapshots (snapshot_date, season_id, scope_type, scope_id, user_id, `rank`, lp) \
+             SELECT ?, ?, 'GYM', p.primary_gym_id, us.user_id, \
+                    RANK() OVER (PARTITION BY p.primary_gym_id ORDER BY us.season_lp DESC), us.season_lp \
+             FROM user_stats us JOIN users u ON u.id = us.user_id JOIN profiles p ON p.user_id = us.user_id \
+               JOIN user_settings s ON s.user_id = us.user_id \
+             WHERE us.current_season_id = ? AND u.status = 'ACTIVE' AND u.email_verified_at IS NOT NULL \
+               AND p.calibration_ends_at <= ? AND s.show_on_leaderboards AND p.primary_gym_id IS NOT NULL",
             day,
             season,
             season,
