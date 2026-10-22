@@ -9,7 +9,9 @@ import { ErrorText } from '../../../core/widgets/error';
 import { Button, Card, Chip, IconButton, ListGroup, ListRow, Screen, TextField, Txt, toast } from '../../../core/widgets/kit';
 import { formatMoney } from '../api';
 import { organizerApi, useRefreshCompetition } from './api';
-import { catBody, catDraft, catValid, type CatDraft } from './logic';
+import { DivisionFields } from './division-fields';
+import { catBody, catDraft, catValid, toMillimes, type CatDraft } from './logic';
+import { divisionBody, divisionDraft, divisionProblems, teamSize, type DivisionDraft } from './logic-division';
 import { OrgPageHeader } from './page';
 import { useWideWeb } from './web';
 
@@ -20,7 +22,8 @@ export function CategoriesTab({ c }: { c: Json }) {
   const { colors } = useTheme();
   const refresh = useRefreshCompetition();
   const cats: Json[] = [...(c.categories ?? [])].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
-  const [edit, setEdit] = useState<CatDraft | null>(null);
+  // Phase 3: the server's category and the division extras kept on the device, edited together.
+  const [edit, setEdit] = useState<{ draft: CatDraft; extra: DivisionDraft } | null>(null);
   const sending = useRef(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
@@ -46,8 +49,12 @@ export function CategoriesTab({ c }: { c: Json }) {
     }
   }
 
-  const save = (d: CatDraft) =>
-    run(() => (d.id ? organizerApi(api).updateCategory(c.id, d.id, catBody(d)) : organizerApi(api).addCategory(c.id, { ...catBody(d), sortOrder: cats.length })), () => setEdit(null), t('orgSaved'));
+  const save = (d: CatDraft, x: DivisionDraft) =>
+    run(
+      () => (d.id ? organizerApi(api).updateCategory(c.id, d.id, { ...catBody(d), ...divisionBody(x) }) : organizerApi(api).addCategory(c.id, { ...catBody(d), ...divisionBody(x), sortOrder: cats.length })),
+      () => setEdit(null),
+      t('orgSaved'),
+    );
   const toggle = (d: CatDraft) => run(() => organizerApi(api).updateCategory(c.id, d.id!, { active: !d.active }), () => setEdit(null), d.active ? t('orgToastDeactivated') : t('orgToastActivated'));
 
   /** Swaps two neighbours, then gives every category its position as sortOrder (only the changed ones are sent). */
@@ -68,13 +75,17 @@ export function CategoriesTab({ c }: { c: Json }) {
       x.level || null,
       x.maxParticipants ? String(x.maxParticipants) : null,
       x.registrationPriceOverride != null ? formatMoney(x.registrationPriceOverride, c.currency, locale) : null,
+      x.type === 'TEAM' ? t('orgDivTeamOf', { count: teamSize(x) }) : null,
+      x.parentId ? t('orgDivSubOf', { name: cats.find((k) => k.id === x.parentId)?.name ?? '' }) : null,
+      x.locked ? t('orgDivLockedShort') : null,
+      x.earlyPrice != null ? t('orgDivEarlyShort', { price: formatMoney(x.earlyPrice, c.currency, locale) }) : null,
       x.active ? null : t('orgInactive'),
     ]
       .filter(Boolean)
       .join(' · ');
 
-  if (edit) return <CategoryForm draft={edit} busy={busy} error={error} onSave={save} onToggle={toggle} onCancel={() => setEdit(null)} />;
-  const add = <Button testID="cat-new" icon="add" label={t('orgNewCategory')} onPress={() => setEdit(catDraft(null))} />;
+  if (edit) return <CategoryForm draft={edit.draft} extra={edit.extra} c={c} cats={cats} busy={busy} error={error} onSave={save} onToggle={toggle} onCancel={() => setEdit(null)} />;
+  const add = <Button testID="cat-new" icon="add" label={t('orgNewCategory')} onPress={() => setEdit({ draft: catDraft(null), extra: divisionDraft(null) })} />;
   return (
     <>
       <OrgPageHeader tab="categories" actions={add} />
@@ -92,7 +103,7 @@ export function CategoriesTab({ c }: { c: Json }) {
                 testID={`cat-${x.id}`}
                 title={x.name}
                 subtitle={subtitle(x)}
-                onPress={() => setEdit(catDraft(x))}
+                onPress={() => setEdit({ draft: catDraft(x), extra: divisionDraft(x) })}
                 trailing={
                   <View style={{ flexDirection: 'row' }}>
                     {i > 0 ? <IconButton icon="arrow-upward" label={t('orgMoveUp')} onPress={() => move(i, -1)} /> : null}
@@ -110,17 +121,39 @@ export function CategoriesTab({ c }: { c: Json }) {
   );
 }
 
-function CategoryForm({ draft, busy, error, onSave, onToggle, onCancel }: { draft: CatDraft; busy: boolean; error: unknown; onSave: (d: CatDraft) => void; onToggle: (d: CatDraft) => void; onCancel: () => void }) {
+function CategoryForm({
+  draft,
+  extra,
+  c,
+  cats,
+  busy,
+  error,
+  onSave,
+  onToggle,
+  onCancel,
+}: {
+  draft: CatDraft;
+  extra: DivisionDraft;
+  c: Json;
+  cats: Json[];
+  busy: boolean;
+  error: unknown;
+  onSave: (d: CatDraft, x: DivisionDraft) => void;
+  onToggle: (d: CatDraft) => void;
+  onCancel: () => void;
+}) {
   const t = useT();
   const { colors } = useTheme();
   const [d, setD] = useState(draft);
+  const [x, setX] = useState(extra);
+  const problems = divisionProblems(x, { categoryId: d.id, categories: cats, basePrice: d.price.trim() ? toMillimes(d.price) : c.registrationPrice ?? null, registrationEnd: c.registrationEnd });
   const set = (k: 'name' | 'minAge' | 'maxAge' | 'level' | 'max' | 'price') => (v: string) => setD({ ...d, [k]: v });
   const genders: [CatDraft['gender'], string][] = [
     ['MALE', t('orgGenderMale')],
     ['FEMALE', t('orgGenderFemale')],
     ['MIXED', t('orgGenderMixed')],
   ];
-  const ok = catValid(d);
+  const ok = catValid(d) && problems.length === 0;
   return (
     <Screen>
       <Card style={{ gap: space.md }}>
@@ -141,9 +174,10 @@ function CategoryForm({ draft, busy, error, onSave, onToggle, onCancel }: { draf
         <TextField testID="cat-level" label={t('orgLevel')} value={d.level} onChangeText={set('level')} maxLength={40} />
         <TextField testID="cat-places" label={t('orgCategoryMax')} value={d.max} onChangeText={set('max')} keyboardType="number-pad" />
         <TextField testID="cat-price" label={t('orgCategoryPrice')} value={d.price} onChangeText={set('price')} keyboardType="decimal-pad" />
-        {!ok && d.name.trim().length > 0 ? <Txt variant="small" color={colors.error}>{t('orgCategoryInvalid')}</Txt> : null}
+        {!catValid(d) && d.name.trim().length > 0 ? <Txt variant="small" color={colors.error}>{t('orgCategoryInvalid')}</Txt> : null}
+        <DivisionFields value={x} onChange={setX} categories={cats} categoryId={d.id} problems={problems} registrationEnd={c.registrationEnd} />
         <ErrorText error={error} />
-        <Button testID="cat-save" label={t('save')} busy={busy} disabled={!ok} onPress={() => onSave(d)} />
+        <Button testID="cat-save" label={t('save')} busy={busy} disabled={!ok} onPress={() => onSave(d, x)} />
         {d.id ? <Button testID="cat-toggle" kind="outlined" label={d.active ? t('orgDeactivate') : t('orgActivate')} busy={busy} onPress={() => onToggle(d)} /> : null}
         <Button kind="text" label={t('cancel')} onPress={onCancel} />
       </Card>

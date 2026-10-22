@@ -11,6 +11,11 @@ This file is the backend's to-do list for Rust part 4.
 
 The screens do not change.
 
+**Security limit of the local layer (until the server takes these over):**
+- The device store (`org-local:v1`) is shared by every account signed in on that phone or browser, and it stays after sign-out.
+- It holds contact emails, the invited-email list and the registration and unlock codes.
+- That is what lets one browser demo organizer → athlete → judge → displays. But any build given to real users must use `EXPO_PUBLIC_ORG_LOCAL=false`, or the server must store these fields first. Codes must then be stored hashed and checked with a rate limit.
+
 Conventions (same as the existing competitions API):
 - Paths are under `/api/v1`. Organizer routes look rows up with `{ id, competitionId }`.
 - Errors use the existing body `{ code, title, status, errors: [{ field, code }] }`.
@@ -53,6 +58,30 @@ adds them back to the response.
 | `notifyOnRegistration` | boolean | `false` | Email the organizers at each registration |
 | `appeals` | `{ enabled: boolean, price: millimes, maxPerAthlete: integer ≥ 1 \| null, deadline: ISO \| null }` | disabled, free | |
 | `neutralCountries` | ISO 3166 alpha-2, upper case | `[]` | Athletes of these countries show a neutral flag |
+
+Phase 3 adds three competition fields:
+
+| Field | Shape | Notes |
+|---|---|---|
+| `pricing` | `{ payout: PLATFORM \| DIRECT, fee: PASS \| SPLIT \| ABSORB, tax: { enabled, percent, number, mode: INCLUDED \| ADDED }, deposit: { enabled, type: FIXED \| PERCENT, value, deadline: ISO \| null, refundable } }` | `deposit.value` is millimes for `FIXED`, a percentage for `PERCENT`. The platform fee itself (4 % + 1.5 TND in the app, `PLATFORM_FEE`) is a placeholder: the server must own the real rate and compute the amounts (`priceBreakdown()` is the reference) |
+| `registrationForm` | `[{ id, label ≤ 80, type: TEXT \| NUMBER \| SELECT \| SIZE \| DATE \| PHONE, required, options: string[] }]` | `SELECT` needs ≥ 2 options; `SIZE` answers are XS–XXL. Answers are checked with `answerProblems()` |
+| `agreements` | `{ liability: { required, text }, custom: { required, title, text }, minors: { enabled, age 1–21, photoConsent }, medicalReport: { required, description }, additionalDocument: { required, title, description }, faceRecognition: { required } }` | A required agreement needs its text |
+
+## Category (division) fields
+
+The app sends these in `POST /competitions/:id/categories` and `PUT /competitions/:id/categories/:categoryId`, and
+expects them on each item of `categories` in `GET /competitions/:id`. Today the layer keeps them per category id.
+
+| Field | Type | Default | Notes |
+|---|---|---|---|
+| `type` | `INDIVIDUAL` \| `TEAM` | `INDIVIDUAL` | |
+| `teamMale`, `teamFemale` | integer 0–20 \| `null` | `null` | Teams only; together at least 2 |
+| `parentId` | category id \| `null` | `null` | Sub-division, one level only (a parent has no parent; a division with sub-divisions is not one) |
+| `locked`, `unlockCode` | boolean, 6 digits \| `null` | `false`, `null` | Registering in a locked division needs the code (`POST /divisions/:id/validate-otp` in the research); store a hash |
+| `earlyPrice`, `earlyUntil` | millimes \| `null`, ISO \| `null` | `null` | Below the division's price; ends before registration closes. `effectivePrice()` is the reference |
+| `teamNameChangeUntil`, `memberChangeUntil` | ISO \| `null` | `null` | Teams only |
+| `memberChangePrice` | millimes \| `null` | `null` | Teams only |
+| `oneMemberStays` | boolean | `false` | Teams only |
 
 Copying a previous event (phase 2) needs no new route: the app reads the source with `GET /competitions/:id`,
 creates the draft, then posts the categories and the WODs (dates moved by the gap between the two event starts)

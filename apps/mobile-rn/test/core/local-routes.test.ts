@@ -20,6 +20,7 @@ function fakeServer(answers: Record<string, [number, unknown]>) {
 
 const layer: LocalLayer = {
   competitionFields: ['eventStyle'],
+  categoryFields: ['type', 'earlyPrice'],
   routes: [
     {
       method: 'GET',
@@ -113,5 +114,28 @@ describe('local routes (new organizer features answered on the device)', () => {
       c.fields.eventStyle = 'HYBRID_RACE';
     });
     await expect(api.get('/competitions/c1/dashboard')).resolves.toEqual({ participants: 3 });
+  });
+
+  it('keeps the new category fields on the device when a category is created', async () => {
+    const { api, store, calls } = setup({ 'POST /competitions/c1/categories': [201, { id: 'k9', name: 'RX Teams' }] });
+    const created = await api.post('/competitions/c1/categories', { name: 'RX Teams', type: 'TEAM' });
+    expect(calls[0].body).toEqual({ name: 'RX Teams' });
+    expect(created).toEqual({ id: 'k9', name: 'RX Teams', type: 'TEAM' });
+    expect(store.competition('c1').categories.k9).toEqual({ type: 'TEAM' });
+  });
+
+  it('saves a category update of local fields only without calling the server', async () => {
+    const { api, store, calls } = setup();
+    await expect(api.put('/competitions/c1/categories/k1', { earlyPrice: 30000 })).resolves.toEqual({ id: 'k1', earlyPrice: 30000 });
+    expect(calls).toHaveLength(0);
+    expect(store.competition('c1').categories.k1).toEqual({ earlyPrice: 30000 });
+  });
+
+  it('adds the local category fields to the categories of a competition read from the server', async () => {
+    const { api, store } = setup({ 'GET /competitions/c1': [200, { id: 'c1', categories: [{ id: 'k1', name: 'RX' }, { id: 'k2', name: 'Scaled' }] }] });
+    await store.update('c1', (c) => {
+      c.categories.k1 = { type: 'TEAM' };
+    });
+    await expect(api.get('/competitions/c1')).resolves.toEqual({ id: 'c1', categories: [{ id: 'k1', name: 'RX', type: 'TEAM' }, { id: 'k2', name: 'Scaled' }] });
   });
 });

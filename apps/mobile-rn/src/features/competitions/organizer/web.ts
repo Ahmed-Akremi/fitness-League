@@ -22,7 +22,7 @@ export type MenuSection = { key: MenuSectionKey; tabs: ManageTab[] };
 /** Left menu, grouped by stage like the Circle21 portal; a section with one page is a single entry. */
 export const ORG_MENU: MenuSection[] = [
   { key: 'dashboard', tabs: ['dashboard', 'finances'] },
-  { key: 'general', tabs: ['general', 'settings', 'categories', 'coupons', 'team'] },
+  { key: 'general', tabs: ['general', 'settings', 'categories', 'pricing', 'forms', 'coupons', 'team'] },
   { key: 'participants', tabs: ['participants'] },
   { key: 'planning', tabs: ['wods', 'planning', 'timetable'] },
   { key: 'leaderboard', tabs: ['leaderboard'] },
@@ -57,6 +57,8 @@ export const MENU_ICON: Record<ManageTab, IconName> = {
   general: 'info-outline',
   settings: 'settings',
   categories: 'category',
+  pricing: 'sell',
+  forms: 'assignment',
   coupons: 'local-offer',
   team: 'groups',
   participants: 'group',

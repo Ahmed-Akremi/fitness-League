@@ -28,7 +28,13 @@ export const ORG_LOCAL_LAYER: LocalLayer = {
     'rulebookUrl',
     // Phase 2: Settings page
     'settings',
+    // Phase 3: pricing, registration form, agreements
+    'pricing',
+    'registrationForm',
+    'agreements',
   ],
+  // Phase 3: divisions (`features/competitions/organizer/logic-division.ts`)
+  categoryFields: ['type', 'teamMale', 'teamFemale', 'parentId', 'locked', 'unlockCode', 'earlyPrice', 'earlyUntil', 'teamNameChangeUntil', 'memberChangeUntil', 'memberChangePrice', 'oneMemberStays'],
   routes: [],
 };
 

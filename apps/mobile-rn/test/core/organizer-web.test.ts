@@ -12,7 +12,7 @@ describe('web layout rules', () => {
 
   it('the menu holds every tab of the organizer space exactly once', () => {
     const tabs = ORG_MENU.flatMap((s) => s.tabs);
-    expect([...tabs].sort()).toEqual(['announcements', 'categories', 'coupons', 'dashboard', 'finances', 'general', 'leaderboard', 'participants', 'planning', 'settings', 'team', 'timetable', 'wods']);
+    expect([...tabs].sort()).toEqual(['announcements', 'categories', 'coupons', 'dashboard', 'finances', 'forms', 'general', 'leaderboard', 'participants', 'planning', 'pricing', 'settings', 'team', 'timetable', 'wods']);
   });
 
   it('forms stay narrow, figures and tables use the room', () => {
