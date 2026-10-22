@@ -24,4 +24,6 @@ pub fn routes(api: Api) -> Api {
         )
         .get("/api/v1/leaderboards/friends", boards::friends)
         .get("/api/v1/leaderboards/friends/me", boards::friends_me)
+        .get("/api/v1/leaderboards/gyms/{id}", boards::gym)
+        .get("/api/v1/leaderboards/gyms/{id}/me", boards::gym_me)
 }

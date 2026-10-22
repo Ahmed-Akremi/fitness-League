@@ -174,7 +174,8 @@ async fn finalize_calibrations(db: &MySqlPool, now: DateTime<Utc>) -> Result<Val
 }
 
 /// The badges the closes can unlock (division, weekly streak), those a late log missed, and the
-/// friend badges: every athlete with points, a closed week or a new friend in the last 26 hours.
+/// friend and gym badges: every athlete with points, a closed week, a new friend or an approved
+/// membership in the last 26 hours.
 async fn badge_sweep(db: &MySqlPool, now: DateTime<Utc>) -> Result<Value, AppError> {
     let since = (now - Duration::hours(26)).naive_utc();
     let athletes = sqlx::query_scalar!(
@@ -182,7 +183,9 @@ async fn badge_sweep(db: &MySqlPool, now: DateTime<Utc>) -> Result<Value, AppErr
            UNION SELECT user_id FROM league_point_transactions WHERE created_at >= ?
            UNION SELECT user_id FROM weekly_scores WHERE updated_at >= ?
            UNION SELECT user_low_id FROM friendships WHERE status = 'ACCEPTED' AND updated_at >= ?
-           UNION SELECT user_high_id FROM friendships WHERE status = 'ACCEPTED' AND updated_at >= ?"#,
+           UNION SELECT user_high_id FROM friendships WHERE status = 'ACCEPTED' AND updated_at >= ?
+           UNION SELECT user_id FROM gym_members WHERE status = 'APPROVED' AND updated_at >= ?"#,
+        since,
         since,
         since,
         since,
