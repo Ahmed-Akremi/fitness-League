@@ -161,6 +161,27 @@ async fn a_friend_badge_and_its_notification(opts: MySqlPoolOptions, conn: MySql
 }
 
 #[sqlx::test]
+async fn a_gym_badge_and_its_notification(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let app = seeded(opts, conn).await;
+    let (owner, _) = athlete(&app, "owner").await;
+    let gym = common::a_gym(&app, owner, "Sahel Iron").await;
+    let (member, token) = athlete(&app, "member").await;
+    assert!(badge(&badges(&app, &token).await, "GYM_MEMBER")["awardedAt"].is_null());
+    common::member_of(&app, member, gym).await;
+    backend::modules::league::jobs::run_due(&app.state, Utc::now())
+        .await
+        .unwrap();
+    for user in [owner, member] {
+        assert_eq!(awards(&app, user, "GYM_MEMBER").await, 1);
+        assert_eq!(badge_notes(&app, user, "GYM_MEMBER").await.len(), 1);
+    }
+    assert_eq!(
+        badge(&badges(&app, &token).await, "GYM_MEMBER")["progress"],
+        json!({"current": 1, "target": 1, "met": true})
+    );
+}
+
+#[sqlx::test]
 async fn completing_a_goal_earns_goal_getter(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
     let app = seeded(opts, conn).await;
     let c = catalog(&app).await;
