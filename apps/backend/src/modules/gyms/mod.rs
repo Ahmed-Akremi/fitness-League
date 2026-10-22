@@ -3,6 +3,7 @@
 //! queue and logos come with part 5 (spec ruling 3).
 
 pub mod directory;
+pub mod members;
 
 use sqlx::MySqlPool;
 use uuid::Uuid;
@@ -18,6 +19,33 @@ pub fn routes(api: Api) -> Api {
         .post("/api/v1/gyms", directory::create)
         .get("/api/v1/gyms/mine", directory::mine)
         .get("/api/v1/gyms/{id}", directory::profile)
+        .post("/api/v1/gyms/{id}/membership", members::join)
+        .delete("/api/v1/gyms/me/membership", members::leave)
+        .get("/api/v1/gyms/{id}/members", members::list)
+        .get(
+            "/api/v1/gyms/{id}/membership-requests",
+            members::requests,
+        )
+        .post(
+            "/api/v1/gyms/{id}/members/{user_id}/approve",
+            members::approve,
+        )
+        .post(
+            "/api/v1/gyms/{id}/members/{user_id}/reject",
+            members::reject,
+        )
+        .post(
+            "/api/v1/gyms/{id}/members/{user_id}/remove",
+            members::remove,
+        )
+        .post(
+            "/api/v1/gyms/{id}/members/{user_id}/coach",
+            members::appoint,
+        )
+        .delete(
+            "/api/v1/gyms/{id}/members/{user_id}/coach",
+            members::dismiss,
+        )
 }
 
 /// A gym id from a path; a malformed one names no gym.

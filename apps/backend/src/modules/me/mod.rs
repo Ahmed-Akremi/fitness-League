@@ -187,9 +187,11 @@ pub async fn payload(state: &AppState, user: Uuid) -> Result<Value, AppError> {
                   s.show_on_leaderboards AS "show_on_leaderboards: bool", s.streak_freeze_days_per_week,
                   t.xp_total, t.level, t.xp_into_level, t.xp_for_next_level, t.season_lp, t.division_code,
                   t.leaderboard_eligible AS "leaderboard_eligible: bool",
-                  k.current_weeks, k.longest_weeks, k.current_days
+                  k.current_weeks, k.longest_weeks, k.current_days,
+                  gy.id AS "gym_id?: Uuid", gy.name AS "gym_name?", gy.slug AS "gym_slug?"
            FROM users u
            JOIN profiles p ON p.user_id = u.id
+           LEFT JOIN gyms gy ON gy.id = p.primary_gym_id
            JOIN governorates g ON g.id = p.governorate_id
            JOIN cities c ON c.id = p.city_id
            JOIN user_settings s ON s.user_id = u.id
@@ -240,8 +242,7 @@ pub async fn payload(state: &AppState, user: Uuid) -> Result<Value, AppError> {
                 "id": row.city_id.to_string(),
                 "name": name(&row.city_fr, &row.city_en, &row.city_ar),
             },
-            // Gyms arrive with part 3.
-            "gym": null,
+            "gym": row.gym_id.map(|id| json!({"id": id, "name": row.gym_name, "slug": row.gym_slug})),
             "experienceLevelDeclared": row.experience_level_declared,
             "plannedTrainingDaysPerWeek": row.planned_training_days_per_week,
             "calibrationEndsAt": row.calibration_ends_at.map(iso),
