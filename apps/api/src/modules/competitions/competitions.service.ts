@@ -1,5 +1,5 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
-import { CompetitionStatus, Prisma } from '@prisma/client';
+import { CompetitionStatus, Prisma, type Role } from '@prisma/client';
 import { AuditService } from '../../common/audit/audit.service';
 import { AuthUser, JUDGE_ROLES } from '../../common/auth/auth-user';
 import { ClockService } from '../../common/clock/clock.service';
@@ -30,6 +30,8 @@ import { JudgingService } from './judging.service';
 
 type Tx = Prisma.TransactionClient;
 const date = (s?: string | null) => (s ? new Date(s) : undefined);
+/** Accounts that use the app (judge accounts and platform staff sign in to the admin panel). */
+const APP_ROLES: Role[] = ['USER', 'GYM_ADMIN'];
 
 /** Initial category templates (§10). Organizers edit them or create their own. */
 export const CATEGORY_TEMPLATES: Omit<CategoryDto, 'active'>[] = [
@@ -139,6 +141,7 @@ export class CompetitionsService {
     });
     if (!c) throw AppException.notFound('Competition');
     const roles = [...(await this.judging.roles(id, user.id))];
+    const floorJudge = roles.includes('FLOOR_JUDGE') ? await this.prisma.competitionStaff.findFirst({ where: { competitionId: id, userId: user.id, role: 'FLOOR_JUDGE' }, select: { id: true, acceptedAt: true } }) : null;
     const staff = roles.length > 0 || this.judging.isPlatformAdmin(user);
     if (c.status === 'DRAFT' && !staff) throw AppException.notFound('Competition');
     const registration = await this.prisma.competitionRegistration.findUnique({ where: { competitionId_userId: { competitionId: id, userId: user.id } } });
@@ -162,6 +165,8 @@ export class CompetitionsService {
       workouts: c.workouts.filter((w) => staff || !w.releaseAt || w.releaseAt <= now),
       prizes: c.prizes,
       myRoles: roles,
+      /** Floor-judge invitation of the viewer: pending while acceptedAt is null. */
+      myFloorJudge: floorJudge ? { staffId: floorJudge.id, acceptedAt: floorJudge.acceptedAt } : null,
       myRegistration: registration,
       serverTime: now,
     };
@@ -375,6 +380,7 @@ export class CompetitionsService {
    * must be judge accounts (created by admins), which never compete.
    */
   async addStaff(user: AuthUser, competitionId: string, dto: StaffDto) {
+    if (dto.role === 'FLOOR_JUDGE') return this.inviteFloorJudge(user, competitionId, dto.userId);
     await this.judging.requireRole(user, competitionId, dto.role === 'ORGANIZER' ? ['ORGANIZER'] : ['ORGANIZER', 'HEAD_JUDGE']);
     if (dto.role !== 'ORGANIZER') {
       const target = await this.prisma.user.findUnique({ where: { id: dto.userId }, select: { role: true } });
@@ -392,6 +398,28 @@ export class CompetitionsService {
     return staff;
   }
 
+  /**
+   * Floor judges (spec 2026-10-21): the organizer invites an app user to judge an on-site event; the user
+   * accepts or declines in the app. Judge accounts of the admin panel never use the app, so they cannot be invited.
+   */
+  private async inviteFloorJudge(user: AuthUser, competitionId: string, userId: string) {
+    await this.judging.requireRole(user, competitionId, ['ORGANIZER']);
+    const competition = await this.prisma.competition.findFirst({ where: { id: competitionId, deletedAt: null }, select: { title: true, format: true } });
+    if (!competition) throw AppException.notFound('Competition');
+    if (competition.format === 'ONLINE') throw AppException.validation([{ field: 'role', code: 'ONSITE_ONLY' }]);
+    const target = await this.prisma.user.findUnique({ where: { id: userId }, select: { role: true, status: true } });
+    if (!target) throw AppException.notFound('User');
+    if (!APP_ROLES.includes(target.role) || target.status !== 'ACTIVE') throw AppException.validation([{ field: 'userId', code: 'NOT_AN_APP_USER' }]);
+    return this.prisma.$transaction(async (tx) => {
+      const existing = await tx.competitionStaff.findUnique({ where: { competitionId_userId_role: { competitionId, userId, role: 'FLOOR_JUDGE' } } });
+      if (existing) return existing;
+      const staff = await tx.competitionStaff.create({ data: { id: uuidv7(), competitionId, userId, role: 'FLOOR_JUDGE' } });
+      await this.audit.log({ actorId: user.id, actorRole: user.role, action: 'competition.floor_judge.invited', entityType: 'CompetitionStaff', entityId: staff.id, after: { userId } }, tx);
+      await this.notifications.notify(tx, userId, 'COMPETITION_JUDGE_INVITED', { competitionId, title: competition.title });
+      return staff;
+    });
+  }
+
   async listStaff(user: AuthUser, competitionId: string) {
     await this.judging.requireRole(user, competitionId, ['ORGANIZER', 'HEAD_JUDGE']);
     return this.prisma.competitionStaff.findMany({ where: { competitionId }, include: { assignments: true, user: { select: { username: true, profile: { select: { fullName: true } } } } } });
@@ -400,7 +428,7 @@ export class CompetitionsService {
   async removeStaff(user: AuthUser, competitionId: string, staffId: string) {
     const staff = await this.prisma.competitionStaff.findFirst({ where: { id: staffId, competitionId } });
     if (!staff) throw AppException.notFound('Staff');
-    await this.judging.requireRole(user, competitionId, staff.role === 'ORGANIZER' ? ['ORGANIZER'] : ['ORGANIZER', 'HEAD_JUDGE']);
+    await this.judging.requireRole(user, competitionId, staff.role === 'ORGANIZER' || staff.role === 'FLOOR_JUDGE' ? ['ORGANIZER'] : ['ORGANIZER', 'HEAD_JUDGE']);
     await this.prisma.competitionStaff.delete({ where: { id: staffId, competitionId } });
     await this.audit.log({ actorId: user.id, actorRole: user.role, action: 'competition.staff.removed', entityType: 'CompetitionStaff', entityId: staffId });
   }

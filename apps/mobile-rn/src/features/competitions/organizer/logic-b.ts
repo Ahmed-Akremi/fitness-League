@@ -241,11 +241,11 @@ export function autoBody(d: AutoDraft): Json {
 
 // ───────────── Team ─────────────
 
-export const STAFF_ORDER = ['ORGANIZER', 'HEAD_JUDGE', 'JUDGE'] as const;
+export const STAFF_ORDER = ['ORGANIZER', 'HEAD_JUDGE', 'JUDGE', 'FLOOR_JUDGE'] as const;
 export type StaffRole = (typeof STAFF_ORDER)[number];
 
 export function staffByRole(rows: Json[]): Record<StaffRole, Json[]> {
-  const out: Record<StaffRole, Json[]> = { ORGANIZER: [], HEAD_JUDGE: [], JUDGE: [] };
+  const out: Record<StaffRole, Json[]> = { ORGANIZER: [], HEAD_JUDGE: [], JUDGE: [], FLOOR_JUDGE: [] };
   for (const s of rows) out[s.role as StaffRole]?.push(s);
   for (const k of STAFF_ORDER) out[k].sort((a, b) => personName(a).localeCompare(personName(b)));
   return out;

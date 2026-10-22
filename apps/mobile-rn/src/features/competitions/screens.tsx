@@ -14,6 +14,7 @@ import { EmptyState, Loading, SectionHeader, SkeletonList, StatCard, StatusPill,
 import { ErrorText, ErrorView, errorMessage } from '../../core/widgets/error';
 import { Button, Card, Chip, Icon, ListGroup, ListRow, Screen, Segmented, TextField, Txt, toast, type IconName } from '../../core/widgets/kit';
 import { compKeys, competitionsApi, formatMoney, useCompetition, useCompetitions, useCompLeaderboard, useHeats, useMySubmissions, youtubeId, type CompFilter } from './api';
+import { FloorJudgeCard } from './judge/screens';
 import { CompetitionAnnouncements } from './organizer/announcements';
 import { publicationState } from './organizer/logic';
 
@@ -184,6 +185,8 @@ export function CompetitionScreen({ id }: { id: string }) {
                 <Tile icon="fitness-center" label={t('compWods')} onPress={() => setTab('wods')} />
               </View>
 
+              <FloorJudgeCard c={c} />
+
               {c.myRegistration && (
                 <View testID="comp-role" style={{ borderRadius: radius.card, overflow: 'hidden', borderWidth: 1, borderColor: colors.primary }}>
                   <View style={{ backgroundColor: colors.primary, paddingHorizontal: 16, paddingVertical: 14 }}>
@@ -336,8 +339,12 @@ function HeatSchedule({ id }: { id: string }) {
   return (
     <>
       {mine.map(({ heat, lane }) => (
-        <Card key={heat.id} testID="my-heat" style={{ backgroundColor: colors.primary + '22', gap: 4 }}>
-          <Txt variant="label">{t('compMyHeat')}</Txt>
+        <Card key={heat.id} testID="my-heat" onPress={() => router.push(`/competitions/${id}/my-heats`)} style={{ backgroundColor: colors.primary + '22', gap: 4 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Txt variant="label" style={{ flex: 1 }}>{t('compMyHeat')}</Txt>
+            <Txt variant="small" color={colors.primary}>{t('myHeatOpen')}</Txt>
+            <Icon name="chevron-right" color={colors.primary} />
+          </View>
           <Txt style={displayText(24)}>{`${heat.name} · ${t('compLane', { lane })}`}</Txt>
           <Txt>{[heat.workout?.name, when(heat)].filter(Boolean).join(' · ')}</Txt>
         </Card>

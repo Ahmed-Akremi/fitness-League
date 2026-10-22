@@ -17,14 +17,14 @@ export class HeatsService {
     private readonly judging: JudgingService,
   ) {}
 
-  /** Running order with the athletes in each lane; `mine` marks the viewer's own lanes. */
+  /** Running order with the athletes (and floor judges) in each lane; `mine` marks the viewer's own lanes. */
   async list(user: AuthUser, competitionId: string) {
     const heats = await this.prisma.competitionHeat.findMany({
       where: { competitionId },
       orderBy: [{ startsAt: { sort: 'asc', nulls: 'last' } }, { number: 'asc' }],
-      include: { lanes: { orderBy: { lane: 'asc' }, include: { registration: { select: { userId: true } } } }, workout: { select: { id: true, name: true, number: true } }, category: { select: { id: true, name: true } } },
+      include: { lanes: { orderBy: { lane: 'asc' }, include: { registration: { select: { userId: true } }, judge: { select: { id: true, userId: true } } } }, workout: { select: { id: true, name: true, number: true } }, category: { select: { id: true, name: true } } },
     });
-    const names = await this.judging.names(heats.flatMap((h) => h.lanes.map((l) => l.registration.userId)));
+    const names = await this.judging.names(heats.flatMap((h) => h.lanes.flatMap((l) => [l.registration.userId, ...(l.judge ? [l.judge.userId] : [])])));
     return heats.map((h) => ({
       id: h.id,
       number: h.number,
@@ -32,6 +32,7 @@ export class HeatsService {
       startsAt: h.startsAt?.toISOString() ?? null,
       durationMin: h.durationMin,
       laneCount: h.laneCount,
+      startedAt: h.startedAt?.toISOString() ?? null,
       workout: h.workout,
       category: h.category,
       lanes: h.lanes.map((l) => ({
@@ -39,6 +40,9 @@ export class HeatsService {
         registrationId: l.registrationId,
         athlete: { id: l.registration.userId, ...(names.get(l.registration.userId) ?? { fullName: null, username: null }) },
         mine: l.registration.userId === user.id,
+        // Floor judging (spec 2026-10-21): who judges this athlete in this heat.
+        judge: l.judge ? { staffId: l.judge.id, id: l.judge.userId, ...(names.get(l.judge.userId) ?? { fullName: null, username: null }) } : null,
+        judgedByMe: l.judge?.userId === user.id,
       })),
     }));
   }

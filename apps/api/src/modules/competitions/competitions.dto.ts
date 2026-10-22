@@ -281,3 +281,21 @@ export class AutoHeatsDto {
   @IsOptional() @IsISO8601() startsAt?: string;
   @ApiPropertyOptional({ description: 'Minutes between heat starts.' }) @IsOptional() @IsInt() @Min(1) @Max(600) intervalMin?: number;
 }
+
+// ───────────── Floor judging (on-site events) ─────────────
+
+export class LaneJudgeDto {
+  @ApiPropertyOptional({ description: 'A FLOOR_JUDGE staff id of this competition; null frees the lane’s judge.', nullable: true })
+  @IsOptional()
+  @IsUUID()
+  staffId?: string | null;
+}
+
+export class FloorScoreDto {
+  @ApiProperty({ description: 'Client id; a retry with the same id is answered with the stored score.' }) @IsUUID() clientId!: string;
+  @ApiProperty({ description: 'Same shapes as an athlete submission (timeS; capped + reps; rounds + reps + repsPerRound; reps; movementReps; value) plus tieBreakS and noReps.' })
+  @IsObject()
+  raw!: Record<string, unknown>;
+  @ApiProperty({ description: 'The athlete confirmed the score on the judge’s phone.' }) @IsBoolean() athleteConfirmed!: boolean;
+  @ApiPropertyOptional() @IsOptional() @IsString() @Length(0, 1000) notes?: string;
+}

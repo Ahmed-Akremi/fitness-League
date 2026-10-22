@@ -32,13 +32,20 @@ export function useGate(): Gate {
 const GATE_PATHS = new Set(['/', '/splash', '/login', '/register', '/forgot-password', '/onboarding']);
 
 /**
+ * Pages open whatever the gate (signed in or not): the links mailed by the API and the legal documents. Opened
+ * before sign-in, they are done with; they are not reopened once the app is ready.
+ */
+const PUBLIC_PATHS = ['/verify-email', '/reset-password', '/legal'];
+const isPublicPath = (path: string) => PUBLIC_PATHS.some((p) => path === p || path.startsWith(`${p}/`));
+
+/**
  * A link opened before the app is ready (an address typed on the web, a shared app link on a cold start) is
  * replaced by the splash and sign-in screens, then by the home tab: keep it, and open it once the app is.
  */
 function usePendingLink(gate: Gate) {
   const pathname = usePathname();
   const pending = useRef<string | null | undefined>(undefined);
-  if (pending.current === undefined) pending.current = gate === 'app' || GATE_PATHS.has(pathname) ? null : pathname;
+  if (pending.current === undefined) pending.current = gate === 'app' || GATE_PATHS.has(pathname) || isPublicPath(pathname) ? null : pathname;
   useEffect(() => {
     if (gate !== 'app' || !pending.current) return;
     const href = pending.current;
@@ -111,6 +118,11 @@ export function AppRoot() {
           title: config.appName,
         }}
       >
+        {/* Public: the email links and the legal pages, in every state of the session. */}
+        <Stack.Screen name="verify-email" options={{ title: t('verifyEmailTitle') }} />
+        <Stack.Screen name="reset-password" options={{ title: t('resetPasswordTitle') }} />
+        <Stack.Screen name="legal/index" options={{ title: t('legalTitle') }} />
+        <Stack.Screen name="legal/[doc]" options={{ title: t('legalTitle') }} />
         <Stack.Protected guard={gate === 'splash'}>
           <Stack.Screen name="splash" options={{ headerShown: false }} />
         </Stack.Protected>
@@ -157,6 +169,9 @@ export function AppRoot() {
           <Stack.Screen name="competitions/[id]/manage" options={{ title: t('orgManage') }} />
           <Stack.Screen name="competitions/[id]/register" options={{ title: t('compRegister') }} />
           <Stack.Screen name="competitions/[id]/wods/[wodId]/submit" options={{ title: t('compSubmitScore') }} />
+          <Stack.Screen name="competitions/[id]/my-heats" options={{ title: t('myHeatsTitle') }} />
+          <Stack.Screen name="competitions/[id]/judge/index" options={{ title: t('floorOpenSpace') }} />
+          <Stack.Screen name="competitions/[id]/judge/[heatId]" options={{ title: t('floorOpenSpace') }} />
         </Stack.Protected>
       </Stack>
       <ToastHost />

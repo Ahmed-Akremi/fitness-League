@@ -5,6 +5,7 @@ import type { ApiClient, Session } from '../../core/api/client';
 import { setAuthStatus } from '../../core/auth/session';
 import { useServices } from '../../core/services';
 import { isoDate } from '../../core/utils/format';
+import { LEGAL_VERSION } from '../legal/content';
 
 /** Registration payload (spec §6 step 1). */
 export interface RegistrationData {
@@ -30,7 +31,7 @@ export const registrationJson = (d: RegistrationData) => ({
   cityId: d.cityId,
   locale: d.locale,
   // Terms and privacy are ticked explicitly in the form; the version is the one displayed.
-  consents: { terms: true, privacy: true, healthData: d.healthDataConsent, documentVersion: '2026-09' },
+  consents: { terms: true, privacy: true, healthData: d.healthDataConsent, documentVersion: LEGAL_VERSION },
 });
 
 export const authApi = (api: ApiClient) => ({
@@ -52,6 +53,9 @@ export const authApi = (api: ApiClient) => ({
   },
   forgotPassword: (email: string) => api.post<void>('/auth/password/forgot', { email }),
   resendVerification: () => api.post<void>('/auth/email/resend'),
+  /** The links mailed by the API: /verify-email?token=… and /reset-password?token=…. */
+  verifyEmail: (token: string) => api.post<void>('/auth/email/verify', { token }),
+  resetPassword: (token: string, newPassword: string) => api.post<void>('/auth/password/reset', { token, newPassword }),
 });
 
 /** Session transitions. Every change drops cached queries: never show the previous user's data. */
