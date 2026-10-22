@@ -9,6 +9,17 @@ after each). Backend to-do list: `docs/organisation-backend-contract.md`.
   - The live bus (`core/live-bus.ts`, `useLive()`) and the `eventStyle` overlay with `eventStyleOf()`.
   - `LocalBadge`.
   - The test harness puts the same layer (in memory) and a bus in `fakeServices`.
+- **Phase 2 (event setup): done** (`0b9640b`).
+  - Event type (functional fitness / hybrid race + template), visibility, participants, label, invite-only (`event-setup.tsx`).
+  - Contact and links in General, with a `CONTACT` item in the checklist; the Settings page; copying a previous event.
+- **Phase 3 (divisions, pricing, forms): done** (`a5bc857`).
+  - The layer now keeps category fields too.
+  - Division extras (`division-fields.tsx`), the Pricing page (`priceBreakdown`) and the Waiver & form page.
+- **Next: phase 4 (athlete registration).**
+  - `RegisterScreen` is in `features/competitions/screens.tsx` (about line 446), with its tests in `test/screens/competitions.test.tsx`.
+  - Add: queue simulation, locked division code, team/gift, deposit or full payment (`priceBreakdown`), form answers (`answerProblems`) and agreements, waiting list, « My registrations ».
+  - Then phases 5–12 as in the design.
+- **Known limit (security review):** the local store is shared by every account on the device, contact emails and codes included. Real users need `EXPO_PUBLIC_ORG_LOCAL=false`. See the contract doc.
 - **Run the tests with Windows Node:**
   - `node_modules` was installed by Windows pnpm (store `C:\Users\GIGABYTE\AppData\Local\pnpm\store`). Linux Node in WSL fails on it (`@babel/runtime` not found), and a WSL `pnpm install` would want to rebuild everything.
   - From WSL: `cmd.exe /c "cd /d C:\Users\GIGABYTE\fitness-league\apps\mobile-rn && npx jest --maxWorkers=4"`. That's 71 suites in about 35 s (versus about 9 min under WSL). `npx tsc --noEmit` works the same way.
