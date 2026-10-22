@@ -10,13 +10,7 @@ use serde_json::{Value, json};
 use uuid::Uuid;
 
 use super::{gym_param, manageable};
-use crate::{
-    error::AppError,
-    http::auth::AppUser,
-    security::policy,
-    state::AppState,
-    types::iso,
-};
+use crate::{error::AppError, http::auth::AppUser, security::policy, state::AppState, types::iso};
 
 const TREND_WEEKS: i64 = 8;
 const INACTIVE_DAYS: i64 = 14;
@@ -72,7 +66,10 @@ pub async fn dashboard(
     let active_since = |days: i64| {
         members
             .iter()
-            .filter(|m| m.last_workout.is_some_and(|at| at >= now - Duration::days(days)))
+            .filter(|m| {
+                m.last_workout
+                    .is_some_and(|at| at >= now - Duration::days(days))
+            })
             .count()
     };
     let trend: Vec<Value> = (0..TREND_WEEKS)

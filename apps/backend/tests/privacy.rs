@@ -746,6 +746,136 @@ async fn the_export_holds_friends_and_notifications(
     );
 }
 
+/// Verifies the account's email, then submits a gym for it; returns the gym's id.
+async fn submit_gym(app: &TestApp, session: &Value, name: &str) -> Uuid {
+    sqlx::query("UPDATE users SET email_verified_at = UTC_TIMESTAMP(6) WHERE id = ?")
+        .bind(user_of(session))
+        .execute(&app.db)
+        .await
+        .unwrap();
+    let (governorate, city) = common::a_place(app).await;
+    let body = json!({
+        "name": name, "governorateId": governorate, "cityId": city,
+        "proofOfOwnership": "Registre de commerce B123456",
+    });
+    let reply = app
+        .call(Method::POST, "/api/v1/gyms", access(session), Some(body))
+        .await;
+    assert_eq!(reply.status, StatusCode::CREATED, "{}", reply.json);
+    reply.json["id"].as_str().unwrap().parse().unwrap()
+}
+
+#[sqlx::test]
+async fn the_export_holds_gyms(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let app = seeded(opts, conn).await;
+    let session = register(&app, "nour").await;
+    let me = user_of(&session);
+    let owner = create_user(&app, "owner", Role::User).await;
+    let gym = common::a_gym(&app, owner, "Sahel Iron").await;
+    common::member_of(&app, me, gym).await;
+    let mine = submit_gym(&app, &session, "Nour Gym").await;
+
+    let reply = app
+        .call(Method::GET, "/api/v1/me/export", access(&session), None)
+        .await;
+    assert_eq!(reply.status, StatusCode::OK, "{}", reply.json);
+    let membership = &reply.json["gymMemberships"][0];
+    assert_eq!(membership["gymId"], gym.to_string());
+    assert_eq!(membership["gymName"], "Sahel Iron");
+    assert_eq!(membership["status"], "APPROVED");
+    assert_eq!(membership["role"], "MEMBER");
+    assert!(membership["requestedAt"].is_string() && membership["approvedAt"].is_string());
+    assert!(membership["leftAt"].is_null());
+    assert_eq!(reply.json["gymMemberships"].as_array().unwrap().len(), 1);
+    let submitted = &reply.json["gyms"][0];
+    assert_eq!(submitted["id"], mine.to_string());
+    assert_eq!(submitted["name"], "Nour Gym");
+    assert_eq!(submitted["slug"], "nour-gym");
+    assert_eq!(submitted["status"], "PENDING");
+    assert!(submitted["createdAt"].is_string());
+    assert_eq!(
+        submitted["proofOfOwnership"],
+        "Registre de commerce B123456"
+    );
+    assert_eq!(reply.json["gyms"].as_array().unwrap().len(), 1);
+}
+
+#[sqlx::test]
+async fn anonymising_ends_gym_ties(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let app = seeded(opts, conn).await;
+    let session = register(&app, "nour").await;
+    let me = user_of(&session);
+    let verified = common::a_gym(&app, me, "Nour Verified").await;
+    sqlx::query(
+        "INSERT INTO gym_verification_requests (id, gym_id, submitted_by, proof_text, status) \
+         VALUES (?, ?, ?, 'Registre de commerce A654321', 'APPROVED')",
+    )
+    .bind(Uuid::now_v7())
+    .bind(verified)
+    .bind(me)
+    .execute(&app.db)
+    .await
+    .unwrap();
+    let member = create_user(&app, "sami", Role::User).await;
+    common::member_of(&app, member, verified).await;
+    let pending = submit_gym(&app, &session, "Nour Pending").await;
+    delete(&app, &session, PASSWORD).await;
+    let swept = privacy::sweep(&app.db, (Utc::now() + Duration::days(31)).naive_utc())
+        .await
+        .unwrap();
+    assert_eq!(swept.anonymised, 1);
+
+    let count = |sql: &'static str, id: Uuid| {
+        let db = app.db.clone();
+        async move {
+            sqlx::query_scalar::<_, i64>(sql)
+                .bind(id)
+                .fetch_one(&db)
+                .await
+                .unwrap()
+        }
+    };
+    assert_eq!(
+        count("SELECT COUNT(*) FROM gym_members WHERE user_id = ?", me).await,
+        0
+    );
+    assert_eq!(
+        count(
+            "SELECT COUNT(*) FROM profiles WHERE user_id = ? AND primary_gym_id IS NOT NULL",
+            me
+        )
+        .await,
+        0
+    );
+    assert_eq!(
+        count("SELECT COUNT(*) FROM gyms WHERE id = ?", pending).await,
+        0
+    );
+    assert_eq!(
+        count(
+            "SELECT COUNT(*) FROM gym_verification_requests WHERE submitted_by = ?",
+            me
+        )
+        .await,
+        0
+    );
+    let owner: Option<Uuid> =
+        sqlx::query_scalar("SELECT owner_user_id FROM gyms WHERE id = ? AND status = 'VERIFIED'")
+            .bind(verified)
+            .fetch_one(&app.db)
+            .await
+            .unwrap();
+    assert_eq!(owner, None);
+    assert_eq!(
+        count(
+            "SELECT COUNT(*) FROM gym_members WHERE user_id = ? AND status = 'APPROVED'",
+            member
+        )
+        .await,
+        1
+    );
+}
+
 #[sqlx::test]
 async fn anonymising_cuts_the_social_links(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
     let app = seeded(opts, conn).await;

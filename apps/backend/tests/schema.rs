@@ -860,7 +860,10 @@ async fn the_gym_tables_hold_their_rules(opts: MySqlPoolOptions, conn: MySqlConn
         .bind(a)
         .execute(&db)
         .await;
-    assert!(nowhere.is_err(), "a primary gym that does not exist was stored");
+    assert!(
+        nowhere.is_err(),
+        "a primary gym that does not exist was stored"
+    );
 
     sqlx::query(
         "INSERT INTO leaderboard_snapshots (snapshot_date, season_id, scope_type, scope_id, user_id, `rank`, lp) \

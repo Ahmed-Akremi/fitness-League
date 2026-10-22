@@ -223,10 +223,13 @@ pub async fn list(
     let sport = match &query.sport {
         None => None,
         Some(code) => Some(
-            sqlx::query_scalar!(r#"SELECT id AS "id: Uuid" FROM sports WHERE code = ?"#, code)
-                .fetch_optional(&state.db)
-                .await?
-                .ok_or_else(|| AppError::field("sport", "UNKNOWN_SPORT"))?,
+            sqlx::query_scalar!(
+                r#"SELECT id AS "id: Uuid" FROM sports WHERE code = ?"#,
+                code
+            )
+            .fetch_optional(&state.db)
+            .await?
+            .ok_or_else(|| AppError::field("sport", "UNKNOWN_SPORT"))?,
         ),
     };
     let secret = &state.cfg.app_hmac_secret;
@@ -457,7 +460,10 @@ impl Validate for Create {
             check.ensure(&format!("socialLinks.{key}"), ok, "INVALID_LINK");
         }
         if let Some(ids) = &self.sport_ids {
-            let parsed: Vec<Uuid> = ids.iter().filter_map(|id| Uuid::parse_str(id).ok()).collect();
+            let parsed: Vec<Uuid> = ids
+                .iter()
+                .filter_map(|id| Uuid::parse_str(id).ok())
+                .collect();
             if ids.len() > 10 {
                 check.fail("sportIds", "ARRAYMAXSIZE");
             } else if parsed.iter().collect::<HashSet<_>>().len() < parsed.len() {
@@ -479,8 +485,7 @@ pub async fn create(
     user.require_verified()?;
     let governorate = Uuid::parse_str(&body.governorate_id)
         .map_err(|_| AppError::field("governorateId", "ISUUID"))?;
-    let city =
-        Uuid::parse_str(&body.city_id).map_err(|_| AppError::field("cityId", "ISUUID"))?;
+    let city = Uuid::parse_str(&body.city_id).map_err(|_| AppError::field("cityId", "ISUUID"))?;
     let sports: Vec<Uuid> = body
         .sport_ids
         .iter()
@@ -619,7 +624,11 @@ mod tests {
 
     #[test]
     fn links() {
-        for good in ["https://instagram.com/sahel", "http://sahel.tn", "https://x.tn/a?b=c"] {
+        for good in [
+            "https://instagram.com/sahel",
+            "http://sahel.tn",
+            "https://x.tn/a?b=c",
+        ] {
             assert!(is_link(good), "{good}");
         }
         let long = format!("https://x.tn/{}", "a".repeat(290));

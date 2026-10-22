@@ -449,7 +449,13 @@ async fn the_gym_board(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
         athletes(&page),
         [strong.to_string(), middle.to_string(), light.to_string()]
     );
-    assert!(page["data"].as_array().unwrap().iter().all(|r| r["gym"] == gym_view));
+    assert!(
+        page["data"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|r| r["gym"] == gym_view)
+    );
     assert_same_shape(
         "gym board",
         &recorded("GET /leaderboards/gyms/01a0e9e3-45e7-78b3-adf7-00d0f6fb6ab2"),

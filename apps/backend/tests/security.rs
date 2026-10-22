@@ -349,6 +349,72 @@ async fn nothing_secret_is_written_to_redis(opts: MySqlPoolOptions, conn: MySqlC
 /// What other athletes see of someone (profile, search, friend list, friends board) never holds
 /// their email, birth date or a body measurement.
 #[sqlx::test]
+async fn gym_answers_carry_no_private_data(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let app = seeded(opts, conn).await;
+    let owner = create_user(&app, "owner", Role::User).await;
+    let gym = common::a_gym(&app, owner, "Sahel Iron").await;
+    sqlx::query(
+        "UPDATE gyms SET contact_phone = '+21698765432', contact_email = 'gym@private.tn' WHERE id = ?",
+    )
+    .bind(gym)
+    .execute(&app.db)
+    .await
+    .unwrap();
+    sqlx::query(
+        "INSERT INTO gym_verification_requests (id, gym_id, submitted_by, proof_text, status) \
+         VALUES (?, ?, ?, 'SECRET-PROOF-123456', 'APPROVED')",
+    )
+    .bind(uuid::Uuid::now_v7())
+    .bind(gym)
+    .bind(owner)
+    .execute(&app.db)
+    .await
+    .unwrap();
+    let member = create_user(&app, "samira", Role::User).await;
+    common::member_of(&app, member, gym).await;
+    let asker = create_user(&app, "asker", Role::User).await;
+    sqlx::query("INSERT INTO gym_members (id, gym_id, user_id) VALUES (?, ?, ?)")
+        .bind(uuid::Uuid::now_v7())
+        .bind(gym)
+        .bind(asker)
+        .execute(&app.db)
+        .await
+        .unwrap();
+
+    let session = open_session(&app, owner, Role::GymAdmin, Audience::App).await;
+    let token = session["accessToken"].as_str();
+    for path in [
+        "/api/v1/gyms".to_owned(),
+        format!("/api/v1/gyms/{gym}"),
+        format!("/api/v1/gyms/{gym}/members"),
+        format!("/api/v1/gyms/{gym}/membership-requests"),
+        format!("/api/v1/gyms/{gym}/dashboard"),
+    ] {
+        let reply = app.call(Method::GET, &path, token, None).await;
+        assert_eq!(reply.status, StatusCode::OK, "{path}: {}", reply.json);
+        let text = reply.json.to_string();
+        assert!(
+            ["Sahel Iron", "samira", "asker"]
+                .iter()
+                .any(|shown| text.contains(shown)),
+            "{path}: {text}"
+        );
+        for secret in [
+            "+21698765432",
+            "gym@private.tn",
+            "SECRET-PROOF",
+            "@example.com",
+            "1995-05-05",
+            "contactPhone",
+            "contactEmail",
+            "proof",
+        ] {
+            assert!(!text.contains(secret), "{path} shows {secret}: {text}");
+        }
+    }
+}
+
+#[sqlx::test]
 async fn profiles_and_searches_carry_no_private_data(
     opts: MySqlPoolOptions,
     conn: MySqlConnectOptions,

@@ -24,10 +24,7 @@ pub fn routes(api: Api) -> Api {
         .post("/api/v1/gyms/{id}/membership", members::join)
         .delete("/api/v1/gyms/me/membership", members::leave)
         .get("/api/v1/gyms/{id}/members", members::list)
-        .get(
-            "/api/v1/gyms/{id}/membership-requests",
-            members::requests,
-        )
+        .get("/api/v1/gyms/{id}/membership-requests", members::requests)
         .post(
             "/api/v1/gyms/{id}/members/{user_id}/approve",
             members::approve,
