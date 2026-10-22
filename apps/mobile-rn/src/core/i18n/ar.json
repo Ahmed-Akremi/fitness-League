@@ -1050,5 +1050,7 @@
   "changePasswordHint": "يُرسل إليك رابط عبر البريد",
   "changePasswordSent": "أُرسل الرابط إلى {email}",
   "aboutApp": "حول التطبيق",
-  "appVersionLabel": "النسخة {version}"
+  "appVersionLabel": "النسخة {version}",
+  "orgLocalBadge": "محلي",
+  "orgLocalBadgeHint": "محفوظ على هذا الجهاز فقط حاليًا: الخادم لا يحفظه بعد."
 }

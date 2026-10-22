@@ -7,6 +7,11 @@ export type ManageTab = 'dashboard' | 'finances' | 'general' | 'categories' | 'w
 export type ChecklistItem = 'DESCRIPTION' | 'DATES' | 'COVER' | 'CATEGORY' | 'WOD';
 export type PublicationState = 'DRAFT' | 'REQUESTED' | 'RETURNED' | 'PUBLISHED' | 'CANCELLED';
 export type EventFormat = 'ONSITE' | 'ONLINE' | 'HYBRID';
+/** Design 2026-10-22: workouts ranked by points (CrossFit-style) or one race of stations ranked by time (HYROX-style). Not the `HYBRID` format above, which mixes online and on-site. */
+export type EventStyle = 'FUNCTIONAL_FITNESS' | 'HYBRID_RACE';
+
+/** Events made before the style existed, and unknown values, are functional fitness. */
+export const eventStyleOf = (c: Json): EventStyle => (c.eventStyle === 'HYBRID_RACE' ? 'HYBRID_RACE' : 'FUNCTIONAL_FITNESS');
 
 /** Banner limit of the API (PNG, JPEG or WebP). */
 export const COVER_MAX_BYTES = 5 * 1024 * 1024;

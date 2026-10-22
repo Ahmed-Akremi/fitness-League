@@ -1050,5 +1050,7 @@
   "changePasswordHint": "A link is sent to you by email",
   "changePasswordSent": "Link sent to {email}",
   "aboutApp": "About",
-  "appVersionLabel": "Version {version}"
+  "appVersionLabel": "Version {version}",
+  "orgLocalBadge": "Local",
+  "orgLocalBadgeHint": "Saved on this device only for now: the server does not keep it yet."
 }

@@ -3,6 +3,7 @@ import {
   catDraft,
   catValid,
   datesValid,
+  eventStyleOf,
   fromMillimes,
   missingForPublication,
   nextWodNumber,
@@ -177,5 +178,16 @@ describe('WOD versions per category and release date', () => {
     const plain = wodBody({ ...d, variants: [], releaseAt: null });
     expect(plain.variants).toEqual([]);
     expect(plain).not.toHaveProperty('releaseAt');
+  });
+});
+
+describe('event style (functional fitness or hybrid race)', () => {
+  it('reads the hybrid race style', () => {
+    expect(eventStyleOf({ eventStyle: 'HYBRID_RACE' })).toBe('HYBRID_RACE');
+  });
+
+  it('treats an event without a style, or with an unknown one, as functional fitness', () => {
+    expect(eventStyleOf({})).toBe('FUNCTIONAL_FITNESS');
+    expect(eventStyleOf({ eventStyle: 'SOMETHING' })).toBe('FUNCTIONAL_FITNESS');
   });
 });
