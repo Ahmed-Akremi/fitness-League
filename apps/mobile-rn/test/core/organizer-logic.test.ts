@@ -55,11 +55,16 @@ describe('publication', () => {
     coverUrl: 'https://cdn/c.webp',
     categories: [{ id: 'k', active: true }],
     workouts: [{ id: 'w', number: 1 }],
+    contactEmail: 'hello@box.tn',
     status: 'DRAFT',
   };
   it('lists what the draft misses', () => {
     expect(missingForPublication(ready)).toEqual([]);
     expect(missingForPublication({ ...ready, description: '  ', coverUrl: null, categories: [{ id: 'k', active: false }], workouts: [] })).toEqual(['DESCRIPTION', 'COVER', 'CATEGORY', 'WOD']);
+  });
+  it('asks for a valid contact email (phase 2)', () => {
+    expect(missingForPublication({ ...ready, contactEmail: '' })).toEqual(['CONTACT']);
+    expect(missingForPublication({ ...ready, contactEmail: 'hello@' })).toEqual(['CONTACT']);
   });
   it('tells the publication state', () => {
     expect(publicationState(ready)).toBe('DRAFT');

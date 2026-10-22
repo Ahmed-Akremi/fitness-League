@@ -3,15 +3,19 @@ import { router } from 'expo-router';
 import { useRef, useState } from 'react';
 import { View } from 'react-native';
 
+import type { Json } from '../../../core/api/client';
 import { useT } from '../../../core/prefs';
 import { useApi } from '../../../core/services';
 import { space, useTheme } from '../../../core/theme';
 import { SectionHeader } from '../../../core/widgets/common';
 import { ErrorText } from '../../../core/widgets/error';
-import { Button, Chip, Screen, TextField, Txt } from '../../../core/widgets/kit';
+import { Button, Chip, Screen, SwitchRow, TextField, Txt, toast } from '../../../core/widgets/kit';
 import { DateField } from '../../../core/widgets/pickers';
+import { competitionsApi, useCompetitions } from '../api';
 import { createWithFreeSlug, organizerApi, type CompetitionInput } from './api';
-import { datesValid, slugFor, toMillimes, type EventFormat } from './logic';
+import { EventSetupFields } from './event-setup';
+import { datesValid, fromMillimes, slugFor, toMillimes, type EventFormat } from './logic';
+import { copyCategoryBodies, copyWodBodies, setupBody, setupOf, setupValid } from './logic-event';
 
 const DAY = 86_400_000;
 
@@ -41,6 +45,30 @@ export function CreateEventScreen() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const sending = useRef(false);
+  const [setup, setSetup] = useState(() => setupOf({}));
+  // Copy a previous event (phase 2): its details fill the form; its categories and WODs are added after the draft exists.
+  const mine = useCompetitions('ALL', true);
+  const [source, setSource] = useState<Json | null>(null);
+  const [copyCategories, setCopyCategories] = useState(true);
+  const [copyWods, setCopyWods] = useState(true);
+
+  async function pickSource(id: string | null) {
+    if (!id) return setSource(null);
+    try {
+      const s = await competitionsApi(api).get(id);
+      setSource(s);
+      setDescription(s.description ?? '');
+      setFormat(s.format ?? 'ONSITE');
+      if (s.countryCode) setCountryCode(s.countryCode);
+      setCity(s.city ?? '');
+      setPlace(s.location ?? '');
+      setPrice(fromMillimes(s.registrationPrice) || '0');
+      setMax(s.maxParticipants ? String(s.maxParticipants) : '');
+      setSetup(setupOf(s));
+    } catch (e) {
+      setError(e);
+    }
+  }
 
   const onsite = format !== 'ONLINE';
   const priceMillimes = toMillimes(price);
@@ -55,7 +83,8 @@ export function CreateEventScreen() {
     placeOk &&
     datesValid(dates) &&
     priceMillimes != null &&
-    (maxN == null || (Number.isInteger(maxN) && maxN >= 1));
+    (maxN == null || (Number.isInteger(maxN) && maxN >= 1)) &&
+    setupValid(setup);
 
   async function submit() {
     if (sending.current || !valid) return;
@@ -79,7 +108,9 @@ export function CreateEventScreen() {
       ...(maxN != null ? { maxParticipants: maxN } : {}),
     };
     try {
-      const created = await createWithFreeSlug(organizerApi(api), body);
+      const org = organizerApi(api);
+      const created = await createWithFreeSlug(org, { ...body, ...setupBody(setup) });
+      if (source && !(await copyInto(org, created.id))) toast(t('orgCopyFailed'));
       await qc.invalidateQueries({ queryKey: ['competitions'] });
       router.replace(`/competitions/${created.id}/manage`);
     } catch (e) {
@@ -90,6 +121,32 @@ export function CreateEventScreen() {
     }
   }
 
+  /** One request at a time, categories first (WOD versions point at the new categories). False when an item failed. */
+  async function copyInto(org: ReturnType<typeof organizerApi>, id: string): Promise<boolean> {
+    if (!source) return true;
+    let ok = true;
+    const ids: Record<string, string> = {};
+    if (copyCategories) {
+      for (const { sourceId, body: cat } of copyCategoryBodies(source)) {
+        try {
+          ids[sourceId] = (await org.addCategory(id, cat)).id;
+        } catch {
+          ok = false;
+        }
+      }
+    }
+    if (copyWods) {
+      for (const wod of copyWodBodies(source, eventStart, ids)) {
+        try {
+          await org.addWod(id, wod);
+        } catch {
+          ok = false;
+        }
+      }
+    }
+    return ok;
+  }
+
   const formats: { key: EventFormat; label: string }[] = [
     { key: 'ONSITE', label: t('orgFormatOnsite') },
     { key: 'ONLINE', label: t('orgFormatOnline') },
@@ -98,8 +155,26 @@ export function CreateEventScreen() {
   return (
     <Screen>
       <Txt color={colors.outline}>{t('orgCreateIntro')}</Txt>
+      {(mine.data ?? []).length > 0 && (
+        <>
+          <SectionHeader title={t('orgCopyFrom')} />
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
+            <Chip testID="org-copy-none" label={t('orgCopyNone')} selected={!source} onPress={() => pickSource(null)} />
+            {(mine.data ?? []).map((c) => (
+              <Chip key={c.id} testID={`org-copy-${c.id}`} label={c.title} selected={source?.id === c.id} onPress={() => pickSource(c.id)} />
+            ))}
+          </View>
+          {source && (
+            <>
+              <SwitchRow testID="org-copy-categories" title={t('orgCopyCategories')} value={copyCategories} onChange={setCopyCategories} />
+              <SwitchRow testID="org-copy-wods" title={t('orgCopyWods')} value={copyWods} onChange={setCopyWods} />
+            </>
+          )}
+        </>
+      )}
       <TextField testID="org-title" label={t('orgName')} value={title} onChangeText={setTitle} maxLength={120} />
       <TextField testID="org-description" label={t('orgDescription')} value={description} onChangeText={setDescription} maxLength={5000} multiline />
+      <EventSetupFields value={setup} onChange={setSetup} />
       <SectionHeader title={t('orgFormat')} />
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
         {formats.map((f) => (

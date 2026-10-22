@@ -31,8 +31,9 @@ export type CompetitionInput = {
 
 /** Organizer space: the organizer routes of the competitions API (spec 2026-10-14). */
 export const organizerApi = (api: ApiClient) => ({
-  create: (body: CompetitionInput) => api.post<Json>('/competitions', body),
-  update: (id: string, body: Partial<CompetitionInput>) => api.put<Json>(`/competitions/${id}`, body),
+  // `& Json`: the phase 2 fields (setup, contact, settings) ride along; `core/api/org-local.ts` keeps them on the device for now.
+  create: (body: CompetitionInput & Json) => api.post<Json>('/competitions', body),
+  update: (id: string, body: Partial<CompetitionInput> & Json) => api.put<Json>(`/competitions/${id}`, body),
   remove: (id: string) => api.delete<void>(`/competitions/${id}`),
   setStatus: (id: string, status: string) => api.patch<Json>(`/competitions/${id}/status`, { status }),
   requestPublication: (id: string) => api.post<Json>(`/competitions/${id}/publication-request`),
@@ -65,7 +66,7 @@ export const organizerApi = (api: ApiClient) => ({
 });
 
 /** Creates the draft; a taken address name gets one new random suffix (two events may share a title). */
-export async function createWithFreeSlug(org: ReturnType<typeof organizerApi>, body: CompetitionInput): Promise<Json> {
+export async function createWithFreeSlug(org: ReturnType<typeof organizerApi>, body: CompetitionInput & Json): Promise<Json> {
   try {
     return await org.create(body);
   } catch (e) {

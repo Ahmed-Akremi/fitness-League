@@ -26,6 +26,37 @@ adds them back to the response.
 | Field | Type | Default | Since | Notes |
 |---|---|---|---|---|
 | `eventStyle` | `FUNCTIONAL_FITNESS` \| `HYBRID_RACE` | `FUNCTIONAL_FITNESS` (existing events) | phase 1 | Workouts ranked by points (CrossFit-style) or one race of stations ranked by time (HYROX-style). Unrelated to `format` (`ONLINE` / `ONSITE` / `HYBRID`). Read with `eventStyleOf()`. Changing it is refused once the event has a WOD or a flow (ruling 1) |
+| `hybridTemplate` | `HYROX_STYLE` \| `CUSTOM` \| `null` | `null` | phase 2 | Required when `eventStyle` is `HYBRID_RACE`; `null` otherwise |
+| `visibility` | `PUBLIC` \| `PASSWORD` \| `LINK` | `PUBLIC` | phase 2 | `PUBLIC`: listed, anyone registers. `PASSWORD`: listed, registering needs `accessCode`. `LINK`: not listed in the feed, the link is enough |
+| `accessCode` | 6-digit string \| `null` | `null` | phase 2 | Only when `visibility` is `PASSWORD`. The app makes it from `expo-crypto` random bytes; the server should store a hash and check it on `POST /competitions/:id/register` (refusal `ACCESS_CODE_INVALID`, with a rate limit) |
+| `participantTypes` | (`INDIVIDUAL` \| `TEAM`)[] | `["INDIVIDUAL"]` | phase 2 | At least one |
+| `label` | `NONE` \| `QUALIFIER` \| `FINAL` \| `CHARITY` \| `BATTLE` \| `CHALLENGE` \| `WORKSHOP` | `NONE` | phase 2 | Shown on the event page |
+| `inviteOnly` | boolean | `false` | phase 2 | Only invited athletes register (phase 4 uses `settings.invitedEmails`) |
+| `organizerName` | string ≤ 300 | `""` | phase 2 | Legal entity organizing the event |
+| `contactEmail` | email | `""` | phase 2 | **Required for publication** (checklist item `CONTACT`); the server's publication check should refuse a draft without it |
+| `website`, `rulebookUrl` | `http(s)://…` | `""` | phase 2 | |
+| `instagram`, `facebook` | string (no leading `@`) | `""` | phase 2 | |
+| `videoUrl` | YouTube or Vimeo URL | `""` | phase 2 | Presentation video of the event (not a WOD's demo video) |
+| `settings` | object, below | defaults below | phase 2 | Settings page |
+
+`settings`:
+
+| Key | Type | Default | Notes |
+|---|---|---|---|
+| `countVisibility` | `SHOW` \| `HIDE` | `SHOW` | Registration count on the event page |
+| `maxIndividuals`, `maxTeams` | integer ≥ 1 \| `null` | `null` | `null`: no limit (the competition's `maxParticipants` still applies) |
+| `hideAthletesTab` | boolean | `false` | |
+| `coachAssignment` | boolean | `false` | Athletes may name a coach |
+| `restrictToEmailList` | boolean | `false` | When true, only `invitedEmails` register |
+| `invitedEmails` | lower-case emails, no duplicates | `[]` | |
+| `confirmationMessage` | string ≤ 2000 | `""` | Appended to the confirmation email |
+| `notifyOnRegistration` | boolean | `false` | Email the organizers at each registration |
+| `appeals` | `{ enabled: boolean, price: millimes, maxPerAthlete: integer ≥ 1 \| null, deadline: ISO \| null }` | disabled, free | |
+| `neutralCountries` | ISO 3166 alpha-2, upper case | `[]` | Athletes of these countries show a neutral flag |
+
+Copying a previous event (phase 2) needs no new route: the app reads the source with `GET /competitions/:id`,
+creates the draft, then posts the categories and the WODs (dates moved by the gap between the two event starts)
+through the existing routes.
 
 ## Routes
 

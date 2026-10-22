@@ -3,8 +3,8 @@ import type { Json } from '../../../core/api/client';
 /** Organizer space (spec 2026-10-14): the rules the organizer screens share. */
 
 /** `finances` and `timetable` exist only on a computer (lot Web 2); a phone shows `phoneTab(tab)` instead (`web.ts`). */
-export type ManageTab = 'dashboard' | 'finances' | 'general' | 'categories' | 'wods' | 'planning' | 'timetable' | 'participants' | 'team' | 'leaderboard' | 'announcements' | 'coupons';
-export type ChecklistItem = 'DESCRIPTION' | 'DATES' | 'COVER' | 'CATEGORY' | 'WOD';
+export type ManageTab = 'dashboard' | 'finances' | 'general' | 'settings' | 'categories' | 'wods' | 'planning' | 'timetable' | 'participants' | 'team' | 'leaderboard' | 'announcements' | 'coupons';
+export type ChecklistItem = 'DESCRIPTION' | 'DATES' | 'COVER' | 'CONTACT' | 'CATEGORY' | 'WOD';
 export type PublicationState = 'DRAFT' | 'REQUESTED' | 'RETURNED' | 'PUBLISHED' | 'CANCELLED';
 export type EventFormat = 'ONSITE' | 'ONLINE' | 'HYBRID';
 /** Design 2026-10-22: workouts ranked by points (CrossFit-style) or one race of stations ranked by time (HYROX-style). Not the `HYBRID` format above, which mixes online and on-site. */
@@ -16,10 +16,13 @@ export const eventStyleOf = (c: Json): EventStyle => (c.eventStyle === 'HYBRID_R
 /** Banner limit of the API (PNG, JPEG or WebP). */
 export const COVER_MAX_BYTES = 5 * 1024 * 1024;
 
-export const CHECKLIST: ChecklistItem[] = ['DESCRIPTION', 'DATES', 'COVER', 'CATEGORY', 'WOD'];
+export const CHECKLIST: ChecklistItem[] = ['DESCRIPTION', 'DATES', 'COVER', 'CONTACT', 'CATEGORY', 'WOD'];
+
+/** Shared by the contact email of the checklist and the organizer forms (`logic-event.ts`). */
+export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /** Where each missing item is fixed. */
-export const TAB_FOR: Record<ChecklistItem, ManageTab> = { DESCRIPTION: 'general', DATES: 'general', COVER: 'general', CATEGORY: 'categories', WOD: 'wods' };
+export const TAB_FOR: Record<ChecklistItem, ManageTab> = { DESCRIPTION: 'general', DATES: 'general', COVER: 'general', CONTACT: 'general', CATEGORY: 'categories', WOD: 'wods' };
 
 /** The organizer's next statuses once an admin has published the event: the server's table minus cancellation, which stays with the admins. */
 export const ORGANIZER_NEXT: Record<string, string[]> = {
@@ -64,6 +67,8 @@ export function missingForPublication(c: Json): ChecklistItem[] {
   if (!String(c.description ?? '').trim()) out.push('DESCRIPTION');
   if (!datesValid({ registrationStart: c.deadlines?.registrationStart, registrationEnd: c.registrationEnd, eventStart: c.eventStart, eventEnd: c.eventEnd })) out.push('DATES');
   if (!c.coverUrl) out.push('COVER');
+  // Phase 2: kept on the device for now (`contactEmail`, docs/organisation-backend-contract.md).
+  if (!EMAIL_RE.test(String(c.contactEmail ?? '').trim())) out.push('CONTACT');
   if (!(c.categories ?? []).some((x: Json) => x.active)) out.push('CATEGORY');
   if (!(c.workouts ?? []).length) out.push('WOD');
   return out;

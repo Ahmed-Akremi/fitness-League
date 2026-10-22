@@ -12,6 +12,7 @@ export const pageTitle = (t: T, tab: ManageTab): string =>
     dashboard: t('orgMenuOverview'),
     finances: t('orgMenuFinances'),
     general: t('orgMenuEventInfo'),
+    settings: t('orgTabSettings'),
     categories: t('orgTabCategories'),
     coupons: t('orgTabCoupons'),
     team: t('orgTabTeam'),

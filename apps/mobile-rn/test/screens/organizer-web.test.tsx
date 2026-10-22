@@ -60,7 +60,7 @@ describe('organizer space on a computer', () => {
 
   it('top bar: « Preview » opens the public page; a complete draft asks for publication once', async () => {
     const push = jest.spyOn(router, 'push').mockImplementation(() => {});
-    const backend = orgBackend({ ...event, status: 'DRAFT' }).on('POST', '/competitions/c9/publication-request', [200, {}]);
+    const backend = orgBackend({ ...event, status: 'DRAFT', contactEmail: 'hello@box.tn' }).on('POST', '/competitions/c9/publication-request', [200, {}]);
     const screen = await renderScreen(open(), backend);
     await fireEvent.press(await screen.findByTestId('org-top-preview'));
     expect(push).toHaveBeenCalledWith('/competitions/c9');

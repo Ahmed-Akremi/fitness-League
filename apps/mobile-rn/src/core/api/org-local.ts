@@ -8,7 +8,27 @@ import { asyncStoragePersistence, LocalStore } from './local-store';
  * leaves this list.
  */
 export const ORG_LOCAL_LAYER: LocalLayer = {
-  competitionFields: ['eventStyle'],
+  competitionFields: [
+    // Phase 1
+    'eventStyle',
+    // Phase 2: setup
+    'hybridTemplate',
+    'visibility',
+    'accessCode',
+    'participantTypes',
+    'label',
+    'inviteOnly',
+    // Phase 2: contact and links
+    'organizerName',
+    'contactEmail',
+    'website',
+    'instagram',
+    'facebook',
+    'videoUrl',
+    'rulebookUrl',
+    // Phase 2: Settings page
+    'settings',
+  ],
   routes: [],
 };
 
