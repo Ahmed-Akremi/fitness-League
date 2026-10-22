@@ -70,8 +70,15 @@ transactions. Plan 2d adds the league: `GET /me/weekly-scores/current` (the runn
 `/leaderboards/governorates/{id}`, each with `/me`). The worker closes each week into its final score and its
 League Points (with the baseline audit, the weekly streak and the habit goals), opens and closes seasons with a
 soft reset, finalizes calibrations, sweeps badges, snapshots the ranks for the movement arrows and reconciles the
-balances, each job once per key through `job_runs`. Part 2 is complete; parts 3 to 6 (gyms and social,
-competitions, admin, cut-over) come next.
+balances, each job once per key through `job_runs`. Part 2 is complete. Part 3 (gyms and social) is under way.
+Plan 3a adds friends: `GET /friends`, `GET` and `POST /friends/requests`, `POST /friends/requests/{userId}/accept`
+and `/decline`, `DELETE /friends/{userId}`, follows (`POST` and `DELETE /follows/{userId}`) and blocks
+(`POST /blocks/{userId}`), the athlete search (`GET /search/athletes`) and public profiles
+(`GET /users/{username}`). It also adds the bell: `GET /notifications` and `POST /notifications/read`, written for
+friend requests, acceptances and every badge awarded; push preferences (`GET` and `PUT
+/me/notification-preferences`); and the friends leaderboard (`GET /leaderboards/friends`, with `/me`), which
+`GET /me/ranks` now reads. Plans 3b to 3f (gyms, feed and news, gym WODs and wars, battles and duels, challenges
+and leagues) come next, then parts 4 to 6 (competitions, admin, cut-over).
 
 One-time setup (Rust 1.99 through `rustup`, Docker for MariaDB, Redis and Mailpit):
 

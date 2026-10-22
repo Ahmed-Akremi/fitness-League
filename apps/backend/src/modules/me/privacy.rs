@@ -18,7 +18,7 @@ use crate::{
     },
     modules::{
         auth::{accounts, sessions},
-        goals,
+        goals, notifications,
         workouts::intake,
     },
     security::{password, policy},
@@ -191,7 +191,7 @@ async fn export(
     let workouts = intake::load(&state.db, user.id, &intake::Filter::default()).await?;
     // Decrypted: the athlete's own health data, given back to them.
     let body_measurements = super::body::all(&state, user.id, None).await?;
-    Ok(Json(json!({
+    let mut export = json!({
         "exportedAt": iso(Utc::now().naive_utc()),
         "account": account,
         "consents": consents,
@@ -201,7 +201,80 @@ async fn export(
         // Weight goals decrypted, like the weigh-ins.
         "goals": goals::views(&state, user.id, true).await?,
         "leaguePointTransactions": league_points,
-    })))
+    });
+    if let (Some(export), Value::Object(social)) = (
+        export.as_object_mut(),
+        social_export(&state.db, user.id).await?,
+    ) {
+        export.extend(social);
+    }
+    Ok(Json(export))
+}
+
+/// My friendships and requests, whom I follow and block, my notifications and push preferences.
+async fn social_export(db: &MySqlPool, user: Uuid) -> Result<Value, AppError> {
+    let friendships: Vec<Value> = sqlx::query!(
+        r#"SELECT IF(user_low_id = ?, user_high_id, user_low_id) AS "user_id!: Uuid", status,
+                  requested_by = ? AS "mine!: i64", created_at, accepted_at
+           FROM friendships WHERE user_low_id = ? OR user_high_id = ? ORDER BY created_at"#,
+        user,
+        user,
+        user,
+        user
+    )
+    .fetch_all(db)
+    .await?
+    .into_iter()
+    .map(|f| {
+        json!({
+            "userId": f.user_id, "status": f.status, "requestedByMe": f.mine != 0,
+            "createdAt": iso(f.created_at), "acceptedAt": f.accepted_at.map(iso),
+        })
+    })
+    .collect();
+    let following: Vec<Value> = sqlx::query!(
+        r#"SELECT followee_id AS "user_id: Uuid", created_at FROM follows
+           WHERE follower_id = ? ORDER BY created_at"#,
+        user
+    )
+    .fetch_all(db)
+    .await?
+    .into_iter()
+    .map(|f| json!({"userId": f.user_id, "createdAt": iso(f.created_at)}))
+    .collect();
+    let blocked: Vec<Value> = sqlx::query!(
+        r#"SELECT blocked_id AS "user_id: Uuid", created_at FROM blocks
+           WHERE blocker_id = ? ORDER BY created_at"#,
+        user
+    )
+    .fetch_all(db)
+    .await?
+    .into_iter()
+    .map(|b| json!({"userId": b.user_id, "createdAt": iso(b.created_at)}))
+    .collect();
+    let notes = sqlx::query!(
+        r#"SELECT id AS "id: Uuid", type AS kind, payload, read_at, created_at FROM notifications
+           WHERE user_id = ? ORDER BY id"#,
+        user
+    )
+    .fetch_all(db)
+    .await?
+    .into_iter()
+    .map(|n| {
+        Ok(json!({
+            "id": n.id, "type": n.kind,
+            "payload": serde_json::from_str::<Value>(&n.payload).map_err(AppError::internal)?,
+            "read": n.read_at.is_some(), "createdAt": iso(n.created_at),
+        }))
+    })
+    .collect::<Result<Vec<_>, AppError>>()?;
+    Ok(json!({
+        "friendships": friendships,
+        "following": following,
+        "blocked": blocked,
+        "notifications": notes,
+        "notificationPreferences": notifications::preferences::load(db, user).await?,
+    }))
 }
 
 #[derive(Deserialize)]
@@ -415,6 +488,32 @@ async fn anonymise(
         .execute(&mut *tx)
         .await?;
     sqlx::query!("DELETE FROM email_tokens WHERE user_id = ?", user)
+        .execute(&mut *tx)
+        .await?;
+    // Every link with other athletes goes, both ways, and the bell with it. What others were told
+    // about the account names it only by id.
+    sqlx::query!(
+        "DELETE FROM friendships WHERE user_low_id = ? OR user_high_id = ?",
+        user,
+        user
+    )
+    .execute(&mut *tx)
+    .await?;
+    sqlx::query!(
+        "DELETE FROM follows WHERE follower_id = ? OR followee_id = ?",
+        user,
+        user
+    )
+    .execute(&mut *tx)
+    .await?;
+    sqlx::query!(
+        "DELETE FROM blocks WHERE blocker_id = ? OR blocked_id = ?",
+        user,
+        user
+    )
+    .execute(&mut *tx)
+    .await?;
+    sqlx::query!("DELETE FROM notifications WHERE user_id = ?", user)
         .execute(&mut *tx)
         .await?;
     let event = audit::Event {

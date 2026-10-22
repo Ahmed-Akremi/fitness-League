@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "DELETE FROM follows WHERE follower_id = ? OR followee_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "b29d979b6af23e1c29a5f332e0833e4baab9bff9e4c6ec36892c6ad6af7b4ca2"
+}

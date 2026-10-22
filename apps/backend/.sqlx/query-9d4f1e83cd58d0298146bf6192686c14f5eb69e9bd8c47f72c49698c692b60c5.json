@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "INSERT IGNORE INTO blocks (blocker_id, blocked_id) VALUES (?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "9d4f1e83cd58d0298146bf6192686c14f5eb69e9bd8c47f72c49698c692b60c5"
+}

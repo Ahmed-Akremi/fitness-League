@@ -357,11 +357,19 @@ async fn the_friends_board(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
     assert_eq!(athletes(&board), [top, me, low].map(|u| u.to_string()));
     assert_eq!(ranks(&board), [1, 2, 3]);
     assert!(
-        board["data"].as_array().unwrap().iter().all(|r| r["movement"].is_null()),
+        board["data"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|r| r["movement"].is_null()),
         "{board}"
     );
     let around = ok(&app, &token, "/api/v1/leaderboards/friends/me").await;
-    assert_same_shape("friends/me", &recorded("GET /leaderboards/friends/me"), &around);
+    assert_same_shape(
+        "friends/me",
+        &recorded("GET /leaderboards/friends/me"),
+        &around,
+    );
     assert_eq!(around["me"]["rank"], 2);
     assert_eq!(athletes(&around), [top, me, low].map(|u| u.to_string()));
     assert_eq!(ok(&app, &token, "/api/v1/me/ranks").await["friends"], 2);

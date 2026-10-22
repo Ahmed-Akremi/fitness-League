@@ -334,6 +334,29 @@ Friends(Uuid) }`; a friends board compares with no snapshot. Consumes `notificat
 - Export and anonymisation cover the new tables; the security suite passes with the new routes behind a session.
 - fmt, Clippy (online and offline), the whole suite, audit and deny are green, and `.sqlx/` is committed.
 
-## Built
+## Built (2026-10-21): where the code departs from this plan
 
-To be written once the plan is built.
+- `social::summaries(db, ids)` became a shared `Summary` struct that each query (friends, requests, search) fills
+  with `query_as!`: no list of ids to bind.
+- **A race found by the commit security review, fixed:** `target()` read the blocks before the write's
+  transaction, so a block landing between the check and the insert left a friendship or a follow next to it.
+  `social::lock_pair(conn, a, b)` now locks both `users` rows, lower id first, in every writer of a link (request,
+  acceptance, follow, block), and `target` reads under it. `a_block_racing_a_request_leaves_no_link` (twelve
+  rounds of a block, a request and a follow sent together) failed in three runs out of three before, and passes
+  since.
+- `notifications::preferences::load` is public: the export reads it.
+- The recorded `GET /notifications` holds a battle's payload, so its shape check leaves the payload's keys out;
+  the payloads are asserted directly. `recorded(key)` moved to `tests/common`.
+- `GET /me/ranks` gives an eligible athlete with no friends `friends: 1` (first among themselves), as the old API.
+- `profiles_and_searches_carry_no_private_data` passed at once: it pins a property the code already had (each
+  answer must show the athlete, so it is not vacuous).
+- The owner committed tasks 1 to 5 mid-session under their own messages; the content is this plan's.
+- The MariaDB container crashed once (exit 139) during the badge suite and was restarted (handoff §5).
+- Checks: the whole suite (365 green, 1 ignored: 127 unit tests, 238 integration tests in 25 files), fmt, Clippy
+  online and offline, `cargo audit` and `cargo deny check`.
+- **Whole-branch review (2026-10-21, a fresh session, no agent):** `git diff 6e1eaec..HEAD -- apps/backend` read
+  against this plan, the old `SocialService`, `NotificationsService` and `badges.service.ts`, and the ledger's
+  rulings. The five « Review focus » points hold, each pinned by a test. One cosmetic fix: `AppUser`'s doc
+  comment had slid above `impl AuthUser`. Minors left as they are, the old API's too: accepting a request from an
+  account suspended since it was sent succeeds; `GET /friends` lists a suspended friend; `decline` and
+  `unfriend` take no pair lock, which is harmless because a delete cannot leave a link next to a block.

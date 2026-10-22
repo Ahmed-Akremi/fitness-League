@@ -1,54 +1,65 @@
-# Handoff — fitness-league (2026-10-21: Rust backend plan 2d built, part 2 complete, on `feat/rust-backend-2d`)
+# Handoff — fitness-league (2026-10-21: plan 2d reviewed; part 3's spec; plan 3a built, on `feat/rust-backend-3`)
 
 Earlier handoffs are in git: `git show 61b7787:handoff.md` (the full history since 2026-10-04),
 `git show 02a732e:handoff.md` (part 1 complete), `git show 9bb2cdc:handoff.md` (plan 2a built),
-`git show a4464bc:handoff.md` (plan 2b built) and `git show 18e861e:handoff.md` (plan 2c built and reviewed).
-This one keeps what is still true and still to do.
+`git show a4464bc:handoff.md` (plan 2b built), `git show 18e861e:handoff.md` (plan 2c built and reviewed) and
+`git show 1cdb980:handoff.md` (plan 2d built). This one keeps what is still true and still to do.
 
 ## 0. Start here (next session)
 
 Opening prompt to paste:
 
-> Read `handoff.md`, then run plan 2d's whole-branch review as a fresh reviewer (§0 step 2). Then start part 3 of
-> the Rust backend (gyms and social): write its spec from the docs and the old API, split into plans, then write
-> and build plan 3a. Work in this Windows checkout only.
+> Read `handoff.md` (the backend's; `handoff-frontend.md` is the app's and not for this session), then run plan
+> 3a's whole-branch review as a fresh reviewer (§0 step 2). Then write and build plan 3b (gyms) from the part 3
+> spec. Work in this Windows checkout only.
 
 First steps, in order:
-1. **Find where `main` is.** `git fetch && git log --oneline -5 origin/main`. The owner commits, pushes and
-   merges during sessions (five times this session, see §4).
-   - `origin/main` is at `3d42eed` (PR #27): all of plan 2d, the season-boundary fix and the docs.
-   - Local `feat/rust-backend-2d` also holds this handoff's last updates (docs only). **Don't push:** the user
-     pushes themselves.
-   - Start part 3 on a new branch from `origin/main`. Local `main` is far behind: never branch from it.
-2. **Plan 2d's whole-branch review is not done.** The executing-plans skill asks for one fresh review at the end,
-   and no reviewer was spawned (the user did not ask for one). Run it the way plan 2c's was run: a fresh session
-   reads the branch against the plan and the old API, without spawning agents.
+1. **Find where `main` is.** `git fetch && git log --oneline -5 origin/main origin/feat/rust-backend-3`. The
+   owner commits, pushes and merges during sessions; this session they committed plan 3a's tasks from the
+   working tree as they were written, and merged twice (see §4).
+   - At the end of this session, `origin/main` was at `c1e1e9e`:
+     - PR #32 merged `feat/rust-backend-3` up to `29c3bfb`: the spec, plan 3a's tables, notifications, friends,
+       search, profiles, the race fix and the friends board;
+     - PR #33 merged `feat/hig-phone`, the app's Apple HIG work. It is frontend only (`apps/mobile-rn`,
+       `pnpm-lock.yaml`) and has **its own handoff, `handoff-frontend.md`**. It changes no API call and no
+       recorded answer, so the backend contract is unchanged.
+   - **`feat/rust-backend-3`** is pushed up to `86f9d2d`. The rest of plan 3a is there but **not yet in
+     `main`**: `23c1e3f` (friend badges, the badge notification), `b4389e9` (export, anonymisation, the
+     security check), `d343659` (formatting, `.sqlx`), `86f9d2d` (docs). `c1bb8d7` (docs) and this handoff's
+     last update are **local only**. **Don't push:** the user pushes themselves. The branch has no upstream, so
+     a plain `git push` cannot reach `main`.
+   - **Where to work:**
+     - if `main` already holds all of plan 3a, run the review on `feat/rust-backend-3` as it is, then start
+       plan 3b on a new branch from `origin/main`;
+     - otherwise go on with `feat/rust-backend-3`: first `git merge origin/main` (it brings PR #33's frontend
+       work; no conflict is expected, since the branch touches no frontend file), then review and build 3b
+       there.
+   - Local `main` is far behind: never branch from it.
+2. **Plan 3a's whole-branch review is not done.** No reviewer was spawned (the user did not ask for one). Run it
+   the way plan 2d's was run this session: a fresh session reads the branch against the plan and the old API,
+   without spawning agents.
    - Its inputs: the plan's « Review focus » section, the « Built » section, and the ledger
-     `.superpowers/sdd/2026-10-20-rust-backend-2d-league/progress.md` (git-ignored, local only), which holds every
-     `Ruling:` line. Delete that folder once the review is done.
-   - Range: `git diff 18e861e..HEAD -- apps/backend` (18e861e is plan 2c's last commit on this line).
+     `.superpowers/sdd/2026-10-21-rust-backend-3a-friends-notifications/progress.md` (git-ignored, local only),
+     which holds every `Ruling:` line. Delete that folder once the review is done.
+   - Range: `git diff 6e1eaec..HEAD -- apps/backend` (6e1eaec is the spec and plan commit).
 3. **Check Docker.** `docker ps` should show three healthy containers. Otherwise see §5, « Containers
-   stopped ». It stopped three more times this session. If a test panics in sqlx's `testing/mod.rs` with « Error
-   dropping database … Directory not empty », see §5, « A stuck test database ».
+   stopped ». MariaDB crashed once more this session (exit 139). If a test panics in sqlx's `testing/mod.rs` with
+   « Error dropping database … Directory not empty », see §5, « A stuck test database ».
 4. **Set up the environment.** Use §2's environment line in Git Bash for every cargo command, then check the
-   build: `cargo test -j 4 --lib` (125 green).
-5. **For part 3, read:**
-   - its scope, in the part 1 spec's parts table (`docs/superpowers/specs/2026-10-06-rust-backend-foundation-design.md`,
-     row 3): gyms, gym WODs, gym wars, duels, battles, challenges, leagues, feed, follows, notifications
-     (including the `ANNOUNCEMENT` type and `/me/notification-preferences`), push, the live socket, and home news
-     (`GET /announcements`, `PUT` and `DELETE /announcements/:id/like`). That is large: the spec will likely split
-     it into several plans, as part 2 was;
-   - the part 1 spec (the frame of every part) and the part 2 spec, for the house conventions;
-   - `docs/ARCHITECTURE.md` on the same subjects;
-   - the old API modules that are the contract: `gyms`, `gym-wods`, `gym-wars`, `duels`, `battles`,
-     `challenges`, `leagues`, `social` (friendships, follows), `feed`, `notifications`, `push`, `realtime`,
-     `announcements`, and the gym and friends parts of `leaderboards`;
-   - `apps/mobile-rn/src/features/` (the folders of the same names, and `home`) for what the app calls;
-   - what part 2 leaves to part 3: the gym and friends leaderboards with their `/me`; `/me/ranks`' `gym` and
-     `friends`; other people's workouts by visibility; activity events and notifications (badges, level-ups,
-     completed goals); the challenge component of the weekly score (rule set `challenge_component`, off in v2);
-     the badge facts of friends, gyms, battles, duels, gym wars and challenges; gym-scope snapshots and
-     standings.
+   build: `cargo test -j 4 --lib` (127 green).
+5. **For plan 3b (gyms), read:**
+   - the part 3 spec, `docs/superpowers/specs/2026-10-21-rust-backend-gyms-social-design.md`: « Scope »
+     (plan 3b's 16 routes), « Gyms (3b) », « Database », « Plans » and the rulings (ruling 3 moves the gym logo
+     upload and the verification queue to part 5);
+   - plan 3a (`docs/superpowers/plans/2026-10-21-rust-backend-3a-friends-notifications.md`) for the house form;
+   - `docs/ARCHITECTURE.md` §3.11;
+   - the old API's `gyms` module (`gyms.controller.ts`, `gyms.service.ts`, `gym-dashboard.service.ts`,
+     `dto/gym.dto.ts`) and the `GYM` parts of `leaderboards/leaderboards.service.ts`;
+   - the app: `apps/mobile-rn/src/features/gyms/` (`api.ts`, `screens.tsx`) and the `gym` scope of
+     `features/league/api.ts`; the recorded `GET /gyms…` answers in `apps/mobile-rn/assets/demo/api.json`;
+   - what plan 3a leaves to 3b: `gym: null` in leaderboard rows and in `GET /users/{username}`; `/me/ranks.gym`;
+     the `GYM_JOINED` badge fact and the badge sweep's approved memberships; the `GYM` snapshot scope;
+     `profiles.primary_gym_id`'s foreign key.
 6. **Don't ask the owner product questions.** Their words: « you will find everything in the .md files ».
    Take the technical calls yourself and list them in the spec's and plans' « Rulings » sections.
 
@@ -72,7 +83,7 @@ BullMQ (a Node library). Six parts:
 
 1. Foundation and accounts: **done**.
 2. Training loop: **done** (plans 2a to 2d).
-3. Gyms and social: next.
+3. Gyms and social: **under way** (spec written; plan 3a built; plans 3b to 3f to come).
 4. Competitions.
 5. Admin and moderation.
 6. Cut-over: demo data, frontends pointed at Rust, `apps/api` and PostgreSQL removed.
@@ -81,6 +92,9 @@ Spec of part 1 (also the frame of every part):
 `docs/superpowers/specs/2026-10-06-rust-backend-foundation-design.md`.
 Spec of part 2: `docs/superpowers/specs/2026-10-18-rust-backend-training-loop-design.md`. It covers 22 app
 endpoints in plans 2a to 2d, and its « Rulings » section lists the choices the owner can change.
+Spec of part 3: `docs/superpowers/specs/2026-10-21-rust-backend-gyms-social-design.md`. It covers 76 app
+endpoints in plans 3a to 3f (friends and notifications, gyms, feed and news, gym WODs and wars, battles and
+duels, challenges and leagues), with seven rulings for the owner.
 
 **Owner's standing product decisions** (they bind every part of the port):
 - Video proof is a **YouTube link only**.
@@ -101,18 +115,23 @@ endpoints in plans 2a to 2d, and its « Rulings » section lists the choices the
 
 ## 2. Current state
 
-- **`origin/main`** is at `3d42eed`. Merged so far:
+- **`origin/main`** is at `c1e1e9e`. Merged so far:
   - #13 and #14: part 1;
   - #15: the part 2 spec, plan 2a and its code;
   - #16: formatting, the Windows build, and the README, spec and plan updates;
   - #17: plan 2a's handoff;
   - #18, #19 and #21: plan 2b, then plan 2c and its review;
   - #20: the organizer space (UI);
-  - #22, #26 and #27: plan 2d, up to `6f9f1be` (the fix and the docs).
-- **Branch `feat/rust-backend-2d`** (this session) starts at `18e861e` (plan 2c reviewed), with two merges of
-  `main` in it (`a637767`, `fdc0340`). Its commits are listed in §4. `origin/feat/rust-backend-2d` is at
-  `6f9f1be`; only this handoff's last updates are local.
+  - #22, #26 and #27: plan 2d, up to `6f9f1be` (the fix and the docs);
+  - #32: `feat/rust-backend-3` up to `29c3bfb` (plan 2d's review fix, the part 3 spec, plan 3a up to the
+    friends board);
+  - #33: `feat/hig-phone`, the app's Apple HIG work (frontend only; see `handoff-frontend.md`).
+- **Branch `feat/rust-backend-3`** (this session) starts at `3d42eed` and merges `feat/rust-backend-2d`
+  (`1514f26`). Its commits are listed in §4. `origin/feat/rust-backend-3` is at `86f9d2d`; `c1bb8d7` and this
+  handoff's last update are local. It has no upstream.
 - **Other local branches:**
+  - `feat/rust-backend-2d` (plan 2d) is merged through #27, except its last four commits (plan 2d's review fix,
+    its `.sqlx` data and the docs), which reach `main` through `feat/rust-backend-3`;
   - `main` is far behind `origin/main`, so don't use it;
   - `feat/rust-backend-2c` (plan 2c) is merged through #19 and #21;
   - `feat/rust-backend-2b` (plan 2b) is merged through #18;
@@ -121,12 +140,35 @@ endpoints in plans 2a to 2d, and its « Rulings » section lists the choices the
     `origin/main`.
 
   None was deleted (owner's call). No stash.
-- **Rust backend: parts 1 and 2 complete. 48 endpoints.**
-- **Plan 2d built: the league.** Seven routes:
+- **Rust backend: parts 1 and 2 complete, part 3 under way. 65 endpoints.**
+- **Plan 3a built: friends and notifications.** Seventeen routes:
+  - friends: `GET /friends` (by username), `GET /friends/requests?direction=in|out`, `POST /friends/requests`
+    (201 `PENDING`, or `ACCEPTED` when they had asked; 409 when already friends or already sent; 403
+    `EMAIL_NOT_VERIFIED`; 30 a day), `POST /friends/requests/{userId}/accept` and `/decline`,
+    `DELETE /friends/{userId}`;
+  - follows (`POST`, `DELETE /follows/{userId}`, silent) and blocks (`POST /blocks/{userId}`: the friendship and
+    both follows go, and each side is a 404 to the other everywhere but the leaderboards);
+  - `GET /search/athletes?q` (2 to 40 characters, accent- and case-insensitive, wildcards literal, 60 a minute)
+    and `GET /users/{username}` (no email, birth date or body data; the age bracket only when opted in; the
+    friendship state seen from me; `gym: null` until plan 3b);
+  - `GET /notifications` (newest first, `unread`) and `POST /notifications/read` (some or all);
+    `GET` and `PUT /me/notification-preferences` (six categories and quiet hours, stored; nothing is pushed:
+    the app registers no device, spec ruling 2);
+  - `GET /leaderboards/friends` and `/me` (me and my accepted friends, eligible ones only, `movement: null`);
+    `GET /me/ranks` now answers `friends`.
+
+  Notifications are written in the transaction of their cause (`notifications::notify`): friend requests and
+  acceptances, and every badge awarded (`BADGE_AWARDED` with the badge's names). The `FRIEND` badge fact counts
+  accepted friendships, and the badge sweep adds both sides of friendships accepted in the last 26 hours.
+  Writers of a link between two athletes (request, acceptance, follow, block) lock both `users` rows first
+  (`social::lock_pair`), so a block cannot race them. The export adds `friendships`, `following`, `blocked`,
+  `notifications` and `notificationPreferences`; anonymisation deletes the account's friendships, follows,
+  blocks and notifications.
+- **Plan 2d built and reviewed: the league.** Seven routes:
   - `GET /me/weekly-scores/current`: the running week computed on read (progress, consistency and performance
     against the athlete's own expected rate; challenges come with part 4, so their weight is renormalised);
   - `GET /me/lp`: LP, division, next division and the LP missing, in the active season;
-  - `GET /me/ranks`: national and governorate ranks; `gym` and `friends` are `null` until part 3;
+  - `GET /me/ranks`: national and governorate ranks (and `friends` since plan 3a; `gym` is `null` until 3b);
   - `GET /leaderboards/national` and `/leaderboards/governorates/{id}`, each with `/me` (the page centred on
     me): eligible athletes only (active, verified, calibration over, opted in), ranked in SQL, keyset cursor
     `{lp, id}`, movement against the last daily snapshot (`NEW` when absent).
@@ -167,9 +209,9 @@ endpoints in plans 2a to 2d, and its « Rulings » section lists the choices the
   - **Milestone XP** is 150 (`goal_milestone_xp`) and outside the caps.
   - **Badges** are evaluated at the end of both paths and awarded once, under the `user_stats` lock. A revoked
     badge is never given again.
-  - **Facts read today:** workouts accepted, records awarded, goals completed, level, and since plan 2d the best
-    division and the weekly streak. The others are 0 until parts 3 and 4 (friends, gyms, battles, duels, gym
-    wars, challenges).
+  - **Facts read today:** workouts accepted, records awarded, goals completed, level, since plan 2d the best
+    division and the weekly streak, and since plan 3a the friends. The others are 0 until plans 3b to 3f (gyms,
+    battles, duels, gym wars, challenges).
   - **Onboarding:** `steps.goals` is true once the account has a goal.
   - **The export** fills `goals` (weight values decrypted) and adds `account.badges`.
   - **Anonymisation** deletes weight goals and their milestones; the other goals and the badges stay.
@@ -203,7 +245,7 @@ endpoints in plans 2a to 2d, and its « Rulings » section lists the choices the
   it anonymises accounts whose 30-day grace is over and deletes expired tokens. Every 10 minutes it also runs
   the league's jobs (`league::jobs::run_due`, see plan 2d above).
 - **CLI:** `backend promote <email> <role>` creates the first staff account.
-- **Last checks (2026-10-20, native Windows):** see section 4.
+- **Last checks (2026-10-21, native Windows):** see section 4.
 - **Local machine: Windows checkout `C:\Users\moham\OneDrive\Desktop\Projects\fitness-League`.**
   - **Owner's instruction: work here, never in the WSL copy** `/home/th3r3bel/Projects/fitness-League`. That
     copy is stale. It holds a stray `feat/rust-backend-2` (commit `229890e` plus uncommitted spec edits),
@@ -215,8 +257,9 @@ endpoints in plans 2a to 2d, and its « Rulings » section lists the choices the
   - Every cargo command runs in Git Bash with:
     `export PATH="$USERPROFILE/.cargo/bin:$PATH" CARGO_TARGET_DIR="$LOCALAPPDATA/fitness-league/target" AWS_LC_SYS_PREBUILT_NASM=1`,
     and `-j 4`.
-  - The MariaDB (host port 3307), Redis and Mailpit containers are **running** (restarted three times this
-    session). The dev database is migrated to `0009` but **not seeded** (`cargo run -- seed ../../infra/seed-data`).
+  - The MariaDB (host port 3307), Redis and Mailpit containers are **running** (MariaDB restarted once this
+    session, after it crashed). The dev database is migrated to `0010` but **not seeded**
+    (`cargo run -- seed ../../infra/seed-data`).
   - `apps/backend/.env` holds dev keys, including `HEALTH_DATA_KEYS` (git-ignored, never printed).
   - No API process is running.
 - **`gh` is not on the PATH, on Windows or in WSL's default shell.** Pushing and PRs go through the user and the
@@ -269,7 +312,10 @@ endpoints in plans 2a to 2d, and its « Rulings » section lists the choices the
     - `weekly_scores` (closed weeks only, `season_id` NULL outside any season), `season_standings`,
       `leaderboard_snapshots` (national and governorate scopes);
     - `job_runs` (`job`, `run_key` unique, `RUNNING`/`DONE`/`FAILED`, `result`, `error`);
-    - `baselines` gains `corrected_from` and `rule_set_version`.
+    - `baselines` gains `corrected_from` and `rule_set_version`;
+  - `0010_social`: `friendships` (ordered pair, `CHECK (user_low_id < user_high_id)`, `requested_by`), `follows`,
+    `blocks`, `notifications` (type ENUM of the 31 types the app knows, payload JSON, `read_at`); `user_settings`
+    gains six `push_*` switches and `quiet_hours_start`/`end` (both or neither).
 - `src/main.rs`: subcommands `serve`, `worker` (job loop, the daily sweep and the league jobs every 10 min, 1 min
   after a failure), `migrate`, `seed [dir]`, `promote`, `keys`.
 - Infrastructure:
@@ -291,7 +337,8 @@ endpoints in plans 2a to 2d, and its « Rulings » section lists the choices the
   - `audit.rs`, `jobs.rs` (the Redis Stream queue), `mail.rs`, `seed.rs` (now with the badges).
 - `src/http/`:
   - `mod.rs`: `Api` route builder, middleware, `route_table()`;
-  - `auth.rs`: the `AppUser` and `PanelUser` extractors;
+  - `auth.rs`: the `AppUser` and `PanelUser` extractors; `AuthUser::require_verified` (403
+    `EMAIL_NOT_VERIFIED`, the old `@RequiresVerifiedEmail()`);
   - `rate_limit.rs`: every limit of the spec, `ClientIp::subject()`;
   - `page.rs`: the signed keyset cursor (`encode`, `decode`, `limit`, `page`). Parts 2 to 5 reuse it for
     every list.
@@ -328,22 +375,29 @@ endpoints in plans 2a to 2d, and its « Rulings » section lists the choices the
     - `mod.rs`: the four routes, `views` (used by the export), the old API's limits as constants;
     - `milestones.rs`: `on_workout`, `on_weigh_in` and `on_week_closed`, the only writers of
       `goal_milestones.reached_at`.
-  - `badges.rs`: `Rule`, `Fact`, `Division` (rank order), `parse_rule`, `progress`, `evaluate`, `GET /badges`.
+  - `badges.rs`: `Rule`, `Fact`, `Division` (rank order), `parse_rule`, `progress`, `evaluate` (notifies each
+    award), `GET /badges`.
+  - `notifications/`: `mod.rs` (`Kind`, `notify`, `GET /notifications`, `POST /notifications/read`),
+    `preferences.rs` (`GET`/`PUT /me/notification-preferences`, `load`).
+  - `social/`: `mod.rs` (routes, `Summary`, `pair`, `lock_pair`, `target`), `friends.rs` (requests, answers,
+    unfriend, follows, blocks), `athletes.rs` (search, public profile).
   - `league/`:
     - `engine.rs`: the pure rules (components, weighted total, divisions, soft reset, baseline audit, weekly
       streak, last closable week), with the spec's vectors;
     - `weekly.rs`: `compute`, the audit, `close_week`, `GET /me/weekly-scores/current`;
     - `seasons.rs`: `plan` (the seed), `active`, `open_due`, `close`, `GET /me/lp`;
-    - `boards.rs`: the two boards with `/me`, `GET /me/ranks`, `snapshot`;
+    - `boards.rs`: the national, governorate and friends boards (`Scope`) with `/me`, `GET /me/ranks`,
+      `snapshot`;
     - `jobs.rs`: `once` and `run_due`, with calibration finalize, the badge sweep and the reconcile.
 - `tests/`:
   - `common/mod.rs`: `TestApp`, `seeded`, `register`, `create_user`, `open_session`,
-    `seeded_with_cuttable_redis`, `deliver_mail`, `assert_same_shape`, `set_consent`, `calibrated`;
+    `seeded_with_cuttable_redis`, `deliver_mail`, `assert_same_shape`, `recorded` (the app's recorded answer to
+    a route), `set_consent`, `calibrated`;
   - `common/workouts.rs`: workout bodies from the seeded catalog (`catalog`, `athlete`, `lifting`,
     `strength`, `single`, `run`) and `post`, `get`;
   - suites: `schema`, `http_shell`, `rate_limit`, `reference`, `jobs`, `mail`, `emails`, `sessions`,
     `register`, `login`, `admin_auth`, `me`, `profile`, `onboarding`, `privacy`, `security`, `body`,
-    `workouts`, `points`, `goals`, `badges`, `league`, `leaderboards`.
+    `workouts`, `points`, `goals`, `badges`, `league`, `leaderboards`, `notifications`, `social`.
   - `security.rs` holds `PUBLIC`, the 14 routes that answer without a session. **A new public route must be
     added there**; any other new route must answer 401 without a token, or the suite fails. Its role walker
     counts a 403 as a refusal only when the code is `FORBIDDEN`, so `CONSENT_REQUIRED` is not one.
@@ -361,59 +415,63 @@ endpoints in plans 2a to 2d, and its « Rulings » section lists the choices the
   - `docs/superpowers/plans/2026-10-19-rust-backend-2b-points.md`: the same two sections;
   - `docs/superpowers/plans/2026-10-19-rust-backend-2c-goals-badges.md`: the same two sections, and a
     « Review focus » list;
-  - `docs/superpowers/plans/2026-10-20-rust-backend-2d-league.md`: the same three sections.
+  - `docs/superpowers/plans/2026-10-20-rust-backend-2d-league.md`: the same three sections;
+  - `docs/superpowers/plans/2026-10-21-rust-backend-3a-friends-notifications.md`: the same three sections.
 - CI: job `backend` in `.github/workflows/ci.yml`: fmt, Clippy, tests with MariaDB and Redis services,
   audit, deny.
 
-## 4. Changes made this session (2026-10-20 and 21, on `feat/rust-backend-2d`)
+## 4. Changes made this session (2026-10-21)
 
-- `18e861e` (on `feat/rust-backend-2c`): plan 2c's whole-branch review, no critical or important finding
-  (§6 item 4 keeps its two minors).
-- `72c46a0`: plan 2d, `docs/superpowers/plans/2026-10-20-rust-backend-2d-league.md`.
-- `f8d5f11`: the league rules as pure functions, the business week and quarter, the rule-set fields.
-- `ab39830`: migration `0009_league`, the seasons in the seed.
-- `bc3a156`, `67bb937` (the owner, from the working tree): the weekly score, `GET /me/weekly-scores/current`.
-- `abac07f`, `ba50417` (the owner, from the working tree): the LP ledger, the weekly close, the export.
-- `5f71943`: seasons open and close, `GET /me/lp`.
-- `b815b42`: the leaderboards, `GET /me/ranks`, the snapshot.
-- `adffcf8`: the jobs once per key, the division and streak badge facts, the worker.
-- `4022cb8`, `8b070a4` (the owner, from the working tree): rustfmt, two Clippy fixes, `.sqlx/`, the spec status
-  and the plan's « Built » section.
-- `5546c01`: an athlete without a season joins only an active one (found at the season boundary, a departure
-  from the old API); `rustls-webpki` 0.103.16 and `webpki-roots` 1.0.10 (RUSTSEC-2026-0382 and -0381, published
-  on 2026-10-19 and 20).
-- The docs commit: README, the plan's « Built » section, this handoff.
-- The owner merged `main` into the branch twice (`a637767`, `fdc0340`), and the branch was merged into `main`
-  three times (#22, #26, #27).
+The previous session's list (plan 2d's commits and its 14 rulings) is in `git show 1cdb980:handoff.md`, §4.
+
+- **Plan 2d's whole-branch review, on `feat/rust-backend-2d`** (a fresh session, no agent, against the plan, the
+  old API and the ledger's rulings): the five « Review focus » points hold. One important finding, fixed: the
+  week holding a season's end was paid after the season had closed, so its LP moved no balance and missed the
+  standings. A season now closes once the week holding its last instant is closed; `run_due` runs the weekly
+  close first (`a_seasons_last_week_is_paid_before_it_closes`). Five minors, all the old API's too, left as
+  they are (the plan's « Built » section lists them). Commits: `f1d4e2d`, `7476169` (the owner, from the working
+  tree), `07d491b` (`.sqlx`), `759f696` (the plan's « Built » section). The ledger folder was deleted.
+- **`feat/rust-backend-3`** from `origin/main` (`3d42eed`); `1514f26` merges `feat/rust-backend-2d` in.
+- `6e1eaec`: the part 3 spec and plan 3a.
+- Plan 3a, task by task, each committed by the owner from the working tree under their own message:
+  `6a8751e` (migration `0010_social`), `0c164f6` (notifications and preferences), `90ab0f7` (friends, follows,
+  blocks), `c458527` (search and profiles), `43d83df`, `610740c`, `a0da20b` (the race fix below), `27fc866`,
+  `29c3bfb` (the friends board). Then mine: `23c1e3f` (friend badges, the badge notification), `b4389e9`
+  (export, anonymisation, the security check), `d343659` (formatting, `.sqlx`), and the docs: `86f9d2d` (the
+  owner, from the working tree) and `c1bb8d7` (README, the spec's status, the plan's « Built » section, this
+  handoff), then this handoff's last update (where `main` and the branch stand).
+- The owner merged PR #32 (this branch up to `29c3bfb`) and PR #33 (`feat/hig-phone`, frontend only) into
+  `main` during the session, and pushed this branch up to `86f9d2d`.
+- **A race, found by the automatic commit security review and fixed:** a block landing between a friend
+  request's (or a follow's) block check and its write left the friendship next to the block. Every writer of a
+  link between two athletes now locks both `users` rows, lower id first, before it checks and writes
+  (`social::lock_pair`). `a_block_racing_a_request_leaves_no_link` failed in three runs out of three before.
 - **Checks (2026-10-21, native Windows):**
-  - the whole suite before `5546c01`, in four chunks with `-j 2` (the background run was stopped by Claude Code
-    for low memory): **342 green, 1 ignored** (the Windows skip): 125 unit tests and 217 integration tests in
-    23 files. `goals` passed on its second run, after a stuck test database was cleared (§5);
-  - after `5546c01`: `league` (19), `leaderboards`, `privacy` and `schema` green;
+  - the whole suite at `d343659`, in four chunks with `-j 2 --no-fail-fast`: **365 green, 1 ignored** (the
+    Windows skip): 127 unit tests and 238 integration tests in 25 files;
   - `cargo fmt --check`; Clippy `-D warnings`, online and with `SQLX_OFFLINE=true`; `cargo audit` (264 crates)
-    and `cargo deny check` clean after the update.
+    and `cargo deny check` clean.
 
-  Not done: the whole-branch review of plan 2d (§0 step 2), a live run against the real binaries, and the
-  mobile app against the Rust API.
-- **The rulings plan 2d took** (its « Rulings » section, for the owner's review):
-  1. no `divisions` table: six fixed codes, thresholds from the rule set;
-  2. the soft reset follows the old code: the next season starts at 0 with a positive `SEASON_SOFT_RESET` entry;
-  3. a season closes in one transaction, without the old `CLOSING` status;
-  4. a week outside any season is still saved, without LP;
-  5. `weekly_scores` holds closed weeks only;
-  6. the athlete's country decides their season;
-  7. no `seasonId` parameter on `/me/lp` and the leaderboards;
-  8. no audit entry for seasons (`job_runs.result` records them);
-  9. the seed opens seasons at UTC+1;
-  10. division and streak badges come from the daily sweep;
-  11. a correction rescores from the earliest corrected baseline's week;
-  12. snapshots for the national and governorate scopes only;
-  13. `leaderboardEligible` in `GET /me` stays the stored column;
-  14. anonymisation changes nothing in the league tables.
-
-  And during the build (the « Built » section and the ledger): two test values corrected; `reverse_lp` takes the
-  athlete; `on_week_closed` takes the state; no `seasons` count in the seed summary; leaderboard query strings
-  ignore unknown keys; the two crate updates; an athlete without a season joins only an active one.
+  Not done: plan 3a's whole-branch review (§0 step 2), a live run against the real binaries, and the mobile app
+  against the Rust API.
+- **The rulings part 3's spec took** (its « Rulings » section, for the owner's review):
+  1. routes no frontend calls are left out (unblock, mutes, `/me/devices`, gym edit, others), and
+     `GET /workouts/:id` stays owner-only: the app never opens another athlete's workout;
+  2. push preferences are stored and served, but nothing is pushed until the app registers devices;
+  3. the gym logo upload, the gym verification queue and the publishing of home news move to part 5, next to
+     file storage and the admin panel;
+  4. a notification's type is an ENUM of the 31 types the app knows;
+  5. the live socket (plan 3c) speaks socket.io through `socketioxide`, a new crate, because the app uses
+     `socket.io-client`; events cross processes through Redis pub/sub;
+  6. social badge facts are awarded by the nightly badge sweep, as in the old API;
+  7. a malformed id in a path answers 404, like an unknown one.
+- **The rulings plan 3a took** (its « Rulings » section): friends by username, requests newest first; the
+  search keeps the old reach (any active account with a profile); a block needs an existing account;
+  `EMAIL_NOT_VERIFIED` as a new gate; the house's validation codes (`MINLENGTH`, not `ISLENGTH`); push
+  preferences in six columns; anonymisation deletes friendships, follows, blocks and notifications (the old API
+  kept them); the export's new keys; no snapshot, so no movement, on the friends board. And during the build
+  (the « Built » section and the ledger): `Summary` filled by each query instead of `summaries(ids)`;
+  `lock_pair`; `preferences::load` public; the notification list's shape check leaves the payload's keys out.
 
 ## 5. Traps (still true)
 
@@ -520,10 +578,16 @@ endpoints in plans 2a to 2d, and its « Rulings » section lists the choices the
 
 ## 6. Next steps
 
-1. **This handoff's last updates** are the only local commits on `feat/rust-backend-2d`: the user pushes them.
-2. **Plan 2d's whole-branch review** (§0 step 2), with the plan's « Review focus » list and the ledger's rulings.
-3. **Part 3, gyms and social:** its spec, then plan 3a (§0 step 5 lists the inputs and what part 2 leaves to it).
-4. **Plan 2c's whole-branch review: done**, against the old API's `goals` and `badges` modules and the plan.
+1. **The rest of plan 3a reaches `main`:** `feat/rust-backend-3` is pushed up to `86f9d2d`; `c1bb8d7` and this
+   handoff's last update are local. The user pushes them, then the owner merges (PR #32 took the branch up to
+   `29c3bfb`).
+2. **Plan 3a's whole-branch review** (§0 step 2), with the plan's « Review focus » list and the ledger's rulings.
+3. **Plan 3b, gyms,** then 3c (feed and news, the socket), 3d (gym WODs and gym wars), 3e (battles and duels) and
+   3f (challenges and leagues), each written once the previous one is built (§0 step 5 lists 3b's inputs).
+4. **Owner's review of part 3's rulings** (§4, the spec's and plan 3a's « Rulings » sections). The ones that
+   depart from the old API's behaviour: anonymisation now deletes the social links and notifications; a blocked
+   or unknown account is checked before a block (404); writers of a link take the pair's lock.
+5. **Plan 2c's whole-branch review: done**, against the old API's `goals` and `badges` modules and the plan.
    Re-run after it: `--lib` and the `goals`, `badges`, `body`, `points`, `privacy`, `onboarding` and `schema`
    suites, 195 green. Two minors, left as they are:
    - `DELETE /goals/{id}` takes no lock. Sent at the instant a workout reaches a goal's last milestone, it can
@@ -534,23 +598,25 @@ endpoints in plans 2a to 2d, and its « Rulings » section lists the choices the
 
    The onboarding test that was never seen red is sound: the code before it answered `goals: false` always, and
    the test asserts `true` after the first goal.
-5. **Owner's review of the plan 2d rulings** (§4, and the plan's « Rulings » and « Built » sections). The one
-   that departs from the old API's behaviour: an athlete without a season joins only an active one.
-6. **Owner's review of the plan 2c rulings** (the plan's « Rulings » section; listed in
+6. **Owner's review of the plan 2d rulings** (`git show 1cdb980:handoff.md` §4, and the plan's « Rulings » and
+   « Built » sections). The ones that depart from the old API's behaviour: an athlete without a season joins
+   only an active one; a season closes only once the week holding its end is closed (the review's fix).
+7. **Owner's review of the plan 2c rulings** (the plan's « Rulings » section; listed in
    `git show 18e861e:handoff.md`, §4).
-7. **Owner's review of the plan 2b rulings** (the plan's « Rulings » section): the `user_stats` lock that
+8. **Owner's review of the plan 2b rulings** (the plan's « Rulings » section): the `user_stats` lock that
    serialises one athlete's workouts; `workout_id` on XP entries; `bodyWeight` in `/me/progress` only with the
    consent; a malformed exercise id in the series answers 404; the baseline columns of plan 2d left for it;
    no activity events until part 3.
-8. **Owner's review of the plan 2a rulings** (the plan's « Rulings » section):
+9. **Owner's review of the plan 2a rulings** (the plan's « Rulings » section):
    - decimals are rounded, not refused;
    - a sync batch checks each item on its own;
    - reading body measurements also needs the consent;
    - a malformed id answers 404;
    - no soft delete and no `data_source` on workouts.
-9. **By hand:** point the mobile app at the Rust API (`EXPO_PUBLIC_API_URL=http://<this
-   machine>:3100/api/v1`, with its origin in `CORS_ORIGINS`). Seed the database first: it is migrated to `0009`
-   but empty. Run `backend worker` too, for the league's jobs. Part 1's flow (register, onboarding, profile)
+10. **By hand:** point the mobile app at the Rust API (`EXPO_PUBLIC_API_URL=http://<this
+   machine>:3100/api/v1`, with its origin in `CORS_ORIGINS`). Seed the database first: it is migrated to `0010`
+   but empty. Run `backend worker` too, for the league's jobs. Plan 3a's screens (friends, search, profiles, the
+   bell, the notification settings, the friends board) are not watched in the app yet either. Part 1's flow (register, onboarding, profile)
    passed over HTTP. Still to see in the app, the « Done when » of plans 2a to 2d:
    - the outbox flush (`workout-sync.ts`) gets `CREATED`, `REPLAYED`, `CONFLICT`, `REJECTED` and
      `INVALID` as it expects;
@@ -566,7 +632,7 @@ endpoints in plans 2a to 2d, and its « Rulings » section lists the choices the
 
    The tests cover them through the recorded shapes or their own assertions; nobody has watched them in the app
    yet.
-10. **Rust backend, open points for the owner:**
+11. **Rust backend, open points for the owner:**
    - **Plan 1c rulings:**
      - baseline values are rounded to 3 decimals, not refused;
      - a wrong password on `DELETE /me` counts toward the lock;
@@ -596,7 +662,7 @@ endpoints in plans 2a to 2d, and its « Rulings » section lists the choices the
      - the `DRAFT` guard on publish-leaderboard;
      - the YouTube-only submission;
      - the `MOVEMENT_REPS` score.
-11. **Organizer space, waiting for the owner:**
+12. **Organizer space, waiting for the owner:**
    - a creation limit per user per day on `POST /competitions` (spam drafts crowd the admin list);
    - cancellation by organizers (admins only today);
    - « Publier » silently wins when two admins act at once;
@@ -616,7 +682,7 @@ endpoints in plans 2a to 2d, and its « Rulings » section lists the choices the
      - lot Web 1: two separate « Demander la publication » guards; badge vs dashboard « À encaisser »; the
        shared link is still `fitnessleague://…`.
    - To check on a phone: the 30 s reload pauses in the background.
-12. **Before anything goes public:**
+13. **Before anything goes public:**
     - the default banner and the tutorial video show **Alamy watermarks**. Replace
       `apps/mobile-rn/assets/competition-cover.jpg` (about 1440×596), then re-render
       `apps/landing/public/media/tutorial.mp4`;
@@ -628,20 +694,20 @@ endpoints in plans 2a to 2d, and its « Rulings » section lists the choices the
     - the tutorial voice-off is synthetic;
     - a full security audit of `apps/backend` (and of `apps/admin`), with the `security-audit` skill, from
       WSL, before the cut-over. Optional; only when the owner asks for it.
-13. **Needs the owner's accounts or choices:**
+14. **Needs the owner's accounts or choices:**
     - online payment for competitions (Konnect, Stripe…);
     - push notifications (Firebase project + `google-services.json`);
     - EAS builds (Expo account);
     - regenerate the old API's dev JWT keys (`cd apps/api && pnpm keys:generate`; a `.env` read once printed
       their start).
-14. **Optional cleanups:**
+15. **Optional cleanups:**
     - drop `competition_submissions.video_media_id` and `COMPETITION_VIDEO`;
     - rename `apps/mobile-rn` to `apps/mobile`;
     - delete the merged remote branches (`feat/competitions`, `feat/gyms-sports-mobile`, `feat/home-news`,
       `feat/landing`, `feat/organizer-space`, `feat/rn-ui-polish`, `feat/rust-backend`, `feat/rust-backend-2`),
       the local `feat/rust-backend`, `feat/rust-backend-2b` and `feat/gyms-sports-mobile`, and in the WSL copy
       `feat/rust-backend-1c` and the stray `feat/rust-backend-2`.
-15. **Owner's other PC:** Expo answered « Cannot read properties of undefined (reading 'transformFile') ».
+16. **Owner's other PC:** Expo answered « Cannot read properties of undefined (reading 'transformFile') ».
     Likely causes: the checkout in OneDrive, or `npm install` run inside `apps/mobile-rn` in a pnpm workspace.
     Advised: move it out of OneDrive, `pnpm install`, `npx expo start --clear`. The real line
     (`Failed to construct transformer: …`) is still awaited.

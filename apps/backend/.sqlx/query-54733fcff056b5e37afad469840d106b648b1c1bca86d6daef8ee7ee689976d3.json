@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "INSERT INTO notifications (id, user_id, type, payload) VALUES (?, ?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "54733fcff056b5e37afad469840d106b648b1c1bca86d6daef8ee7ee689976d3"
+}

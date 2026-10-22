@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "DELETE FROM blocks WHERE blocker_id = ? OR blocked_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "b20195cab824b0fd8c0f83a92c3fbaa8b578e2bceaa7b7d2f4cbb083bd0a2aa3"
+}

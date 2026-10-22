@@ -16,7 +16,13 @@ async fn notify(app: &TestApp, user: Uuid, payload: Value) {
         .unwrap();
 }
 
-async fn call(app: &TestApp, method: Method, path: &str, token: &str, body: Option<Value>) -> Reply {
+async fn call(
+    app: &TestApp,
+    method: Method,
+    path: &str,
+    token: &str,
+    body: Option<Value>,
+) -> Reply {
     app.call(method, path, Some(token), body).await
 }
 
@@ -46,7 +52,14 @@ async fn my_notifications_page_newest_first(opts: MySqlPoolOptions, conn: MySqlC
     }
     notify(&app, other, json!({"userId": me})).await;
 
-    let first = call(&app, Method::GET, "/api/v1/notifications?limit=2", &token, None).await;
+    let first = call(
+        &app,
+        Method::GET,
+        "/api/v1/notifications?limit=2",
+        &token,
+        None,
+    )
+    .await;
     assert_eq!(first.status, StatusCode::OK, "{}", first.json);
     // A payload's keys depend on its type: the recorded first one is a battle's.
     let mut expected = recorded("GET /notifications");
@@ -90,28 +103,64 @@ async fn marking_read(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
         .unwrap();
     let read = "/api/v1/notifications/read";
 
-    let one = call(&app, Method::POST, read, &token, Some(json!({"ids": [newest]}))).await;
+    let one = call(
+        &app,
+        Method::POST,
+        read,
+        &token,
+        Some(json!({"ids": [newest]})),
+    )
+    .await;
     assert_eq!(one.status, StatusCode::NO_CONTENT, "{}", one.json);
     let page = call(&app, Method::GET, "/api/v1/notifications", &token, None).await;
     assert_eq!(page.json["unread"], 2);
     assert_eq!(page.json["data"][0]["read"], true);
 
-    let foreign = call(&app, Method::POST, read, &token, Some(json!({"ids": [theirs]}))).await;
+    let foreign = call(
+        &app,
+        Method::POST,
+        read,
+        &token,
+        Some(json!({"ids": [theirs]})),
+    )
+    .await;
     assert_eq!(foreign.status, StatusCode::NO_CONTENT);
-    assert_eq!(unread(&app, other).await, 1, "another athlete's notification was read");
+    assert_eq!(
+        unread(&app, other).await,
+        1,
+        "another athlete's notification was read"
+    );
 
     let all = call(&app, Method::POST, read, &token, Some(json!({}))).await;
     assert_eq!(all.status, StatusCode::NO_CONTENT);
     assert_eq!(unread(&app, me).await, 0);
     assert_eq!(unread(&app, other).await, 1);
 
-    let bad = call(&app, Method::POST, read, &token, Some(json!({"ids": ["x"]}))).await;
-    assert_eq!(error(&bad), (StatusCode::UNPROCESSABLE_ENTITY, json!("ids"), json!("ISUUID")));
+    let bad = call(
+        &app,
+        Method::POST,
+        read,
+        &token,
+        Some(json!({"ids": ["x"]})),
+    )
+    .await;
+    assert_eq!(
+        error(&bad),
+        (
+            StatusCode::UNPROCESSABLE_ENTITY,
+            json!("ids"),
+            json!("ISUUID")
+        )
+    );
     let many: Vec<Uuid> = (0..201).map(|_| Uuid::now_v7()).collect();
     let big = call(&app, Method::POST, read, &token, Some(json!({"ids": many}))).await;
     assert_eq!(
         error(&big),
-        (StatusCode::UNPROCESSABLE_ENTITY, json!("ids"), json!("ARRAYMAXSIZE"))
+        (
+            StatusCode::UNPROCESSABLE_ENTITY,
+            json!("ids"),
+            json!("ARRAYMAXSIZE")
+        )
     );
 }
 
@@ -123,33 +172,69 @@ async fn push_preferences(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
 
     let start = call(&app, Method::GET, path, &token, None).await;
     assert_eq!(start.status, StatusCode::OK, "{}", start.json);
-    assert_same_shape(path, &recorded("GET /me/notification-preferences"), &start.json);
+    assert_same_shape(
+        path,
+        &recorded("GET /me/notification-preferences"),
+        &start.json,
+    );
     let all_on = json!({"SOCIAL": true, "BATTLES": true, "COMPETITION": true, "CHALLENGES": true, "BADGES": true, "GYM": true});
-    assert_eq!(start.json, json!({"categories": all_on, "quietHours": null}));
+    assert_eq!(
+        start.json,
+        json!({"categories": all_on, "quietHours": null})
+    );
 
-    let set = json!({"categories": {"SOCIAL": false}, "quietHours": {"start": "22:00", "end": "07:00"}});
+    let set =
+        json!({"categories": {"SOCIAL": false}, "quietHours": {"start": "22:00", "end": "07:00"}});
     let changed = call(&app, Method::PUT, path, &token, Some(set)).await;
     assert_eq!(changed.status, StatusCode::OK, "{}", changed.json);
     assert_eq!(changed.json["categories"]["SOCIAL"], false);
     assert_eq!(changed.json["categories"]["BADGES"], true);
-    assert_eq!(changed.json["quietHours"], json!({"start": "22:00", "end": "07:00"}));
+    assert_eq!(
+        changed.json["quietHours"],
+        json!({"start": "22:00", "end": "07:00"})
+    );
 
     let kept = call(&app, Method::PUT, path, &token, Some(json!({}))).await;
     assert_eq!(kept.json, changed.json);
-    let cleared = call(&app, Method::PUT, path, &token, Some(json!({"quietHours": null}))).await;
+    let cleared = call(
+        &app,
+        Method::PUT,
+        path,
+        &token,
+        Some(json!({"quietHours": null})),
+    )
+    .await;
     assert_eq!(cleared.json["quietHours"], Value::Null);
     assert_eq!(cleared.json["categories"]["SOCIAL"], false);
-    assert_eq!(call(&app, Method::GET, path, &token, None).await.json, cleared.json);
+    assert_eq!(
+        call(&app, Method::GET, path, &token, None).await.json,
+        cleared.json
+    );
 
     let late = json!({"quietHours": {"start": "24:00", "end": "07:00"}});
     let late = call(&app, Method::PUT, path, &token, Some(late)).await;
     assert_eq!(
         error(&late),
-        (StatusCode::UNPROCESSABLE_ENTITY, json!("quietHours.start"), json!("MATCHES"))
+        (
+            StatusCode::UNPROCESSABLE_ENTITY,
+            json!("quietHours.start"),
+            json!("MATCHES")
+        )
     );
-    let party = call(&app, Method::PUT, path, &token, Some(json!({"categories": {"PARTY": true}}))).await;
+    let party = call(
+        &app,
+        Method::PUT,
+        path,
+        &token,
+        Some(json!({"categories": {"PARTY": true}})),
+    )
+    .await;
     assert_eq!(
         error(&party),
-        (StatusCode::UNPROCESSABLE_ENTITY, json!("categories.PARTY"), json!("UNKNOWN_FIELD"))
+        (
+            StatusCode::UNPROCESSABLE_ENTITY,
+            json!("categories.PARTY"),
+            json!("UNKNOWN_FIELD")
+        )
     );
 }

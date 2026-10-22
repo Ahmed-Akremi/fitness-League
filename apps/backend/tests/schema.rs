@@ -745,7 +745,10 @@ async fn the_social_tables_hold_their_rules(opts: MySqlPoolOptions, conn: MySqlC
         .bind(l)
         .execute(&db)
     };
-    assert!(friendship(high, low).await.is_err(), "an unordered pair was stored");
+    assert!(
+        friendship(high, low).await.is_err(),
+        "an unordered pair was stored"
+    );
     friendship(low, high).await.unwrap();
     let twice = friendship(low, high).await.unwrap_err();
     assert!(is_unique_violation(&twice), "{twice}");
@@ -754,7 +757,11 @@ async fn the_social_tables_hold_their_rules(opts: MySqlPoolOptions, conn: MySqlC
         "INSERT INTO follows (follower_id, followee_id) VALUES (?, ?)",
         "INSERT INTO blocks (blocker_id, blocked_id) VALUES (?, ?)",
     ] {
-        let own = sqlx::query(AssertSqlSafe(sql)).bind(a).bind(a).execute(&db).await;
+        let own = sqlx::query(AssertSqlSafe(sql))
+            .bind(a)
+            .bind(a)
+            .execute(&db)
+            .await;
         assert!(own.is_err(), "{sql} accepted oneself");
     }
     let unknown = sqlx::query(
@@ -764,16 +771,105 @@ async fn the_social_tables_hold_their_rules(opts: MySqlPoolOptions, conn: MySqlC
     .bind(a)
     .execute(&db)
     .await;
-    assert!(unknown.is_err(), "a notification of an unknown type was stored");
+    assert!(
+        unknown.is_err(),
+        "a notification of an unknown type was stored"
+    );
 
     sqlx::query("INSERT INTO user_settings (user_id) VALUES (?)")
         .bind(a)
         .execute(&db)
         .await
         .unwrap();
-    let half = sqlx::query("UPDATE user_settings SET quiet_hours_start = '22:00' WHERE user_id = ?")
+    let half =
+        sqlx::query("UPDATE user_settings SET quiet_hours_start = '22:00' WHERE user_id = ?")
+            .bind(a)
+            .execute(&db)
+            .await;
+    assert!(half.is_err(), "quiet hours without an end were stored");
+}
+
+#[sqlx::test]
+async fn the_gym_tables_hold_their_rules(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let db = backend::db::pool(opts, conn);
+    backend::seed::run(&db, &seed_dir()).await.unwrap();
+    let a = insert_user(&db, "a@example.tn", "user_a").await.unwrap();
+    let (governorate, city): (Uuid, Uuid) =
+        sqlx::query_as("SELECT governorate_id, id FROM cities ORDER BY code LIMIT 1")
+            .fetch_one(&db)
+            .await
+            .unwrap();
+    let mut gyms = Vec::new();
+    for slug in ["one", "two", "three"] {
+        let id = Uuid::now_v7();
+        sqlx::query(
+            "INSERT INTO gyms (id, name, slug, governorate_id, city_id, status) VALUES (?, ?, ?, ?, ?, 'VERIFIED')",
+        )
+        .bind(id)
+        .bind(slug)
+        .bind(slug)
+        .bind(governorate)
+        .bind(city)
+        .execute(&db)
+        .await
+        .unwrap();
+        gyms.push(id);
+    }
+    let member = |gym: Uuid, status: &'static str| {
+        sqlx::query("INSERT INTO gym_members (id, gym_id, user_id, status) VALUES (?, ?, ?, ?)")
+            .bind(Uuid::now_v7())
+            .bind(gym)
+            .bind(a)
+            .bind(status)
+            .execute(&db)
+    };
+    member(gyms[0], "LEFT").await.unwrap();
+    member(gyms[1], "PENDING").await.unwrap();
+    for live in ["PENDING", "APPROVED"] {
+        let second = member(gyms[2], live).await.unwrap_err();
+        assert!(is_unique_violation(&second), "{live}: {second}");
+    }
+
+    let request = |status: &'static str| {
+        sqlx::query(
+            "INSERT INTO gym_verification_requests (id, gym_id, submitted_by, proof_text, status) \
+             VALUES (?, ?, ?, 'Registre 123456', ?)",
+        )
+        .bind(Uuid::now_v7())
+        .bind(gyms[0])
+        .bind(a)
+        .bind(status)
+        .execute(&db)
+    };
+    request("REJECTED").await.unwrap();
+    request("PENDING").await.unwrap();
+    let second = request("PENDING").await.unwrap_err();
+    assert!(is_unique_violation(&second), "{second}");
+
+    sqlx::query(
+        "INSERT INTO profiles (user_id, full_name, governorate_id, city_id) VALUES (?, 'A', ?, ?)",
+    )
+    .bind(a)
+    .bind(governorate)
+    .bind(city)
+    .execute(&db)
+    .await
+    .unwrap();
+    let nowhere = sqlx::query("UPDATE profiles SET primary_gym_id = ? WHERE user_id = ?")
+        .bind(Uuid::now_v7())
         .bind(a)
         .execute(&db)
         .await;
-    assert!(half.is_err(), "quiet hours without an end were stored");
+    assert!(nowhere.is_err(), "a primary gym that does not exist was stored");
+
+    sqlx::query(
+        "INSERT INTO leaderboard_snapshots (snapshot_date, season_id, scope_type, scope_id, user_id, `rank`, lp) \
+         VALUES (CURRENT_DATE, ?, 'GYM', ?, ?, 1, 0)",
+    )
+    .bind(active_season(&db).await)
+    .bind(gyms[0])
+    .bind(a)
+    .execute(&db)
+    .await
+    .unwrap();
 }

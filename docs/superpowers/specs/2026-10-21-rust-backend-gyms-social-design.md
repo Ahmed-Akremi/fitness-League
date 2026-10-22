@@ -1,6 +1,6 @@
 # Rust + MariaDB backend, part 3: gyms and social — design
 
-Date: 2026-10-21 · Status: plan 3a written and being built; plans 3b to 3f to come; the rulings are open to the
+Date: 2026-10-21 · Status: plan 3a built (2026-10-21); plans 3b to 3f to come; the rulings are open to the
 owner's review · Frame: part 1 (`docs/superpowers/specs/2026-10-06-rust-backend-foundation-design.md`) and part 2
 (`docs/superpowers/specs/2026-10-18-rust-backend-training-loop-design.md`): their conventions, security rules,
 rate-limit plumbing, testing approach, CI and rulings apply unchanged and are not repeated here.

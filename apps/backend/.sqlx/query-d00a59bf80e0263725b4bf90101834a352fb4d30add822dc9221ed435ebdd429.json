@@ -1,0 +1,150 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT push_social AS \"social: bool\", push_battles AS \"battles: bool\",\n                  push_competition AS \"competition: bool\", push_challenges AS \"challenges: bool\",\n                  push_badges AS \"badges: bool\", push_gym AS \"gym: bool\",\n                  quiet_hours_start AS \"start: NaiveTime\", quiet_hours_end AS \"end: NaiveTime\"\n           FROM user_settings WHERE user_id = ?",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "social: bool",
+        "type_info": {
+          "type": "Tiny",
+          "flags": "NOT_NULL",
+          "collation": 63,
+          "max_size": 1
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.user_settings",
+            "name": "push_social"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "battles: bool",
+        "type_info": {
+          "type": "Tiny",
+          "flags": "NOT_NULL",
+          "collation": 63,
+          "max_size": 1
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.user_settings",
+            "name": "push_battles"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "competition: bool",
+        "type_info": {
+          "type": "Tiny",
+          "flags": "NOT_NULL",
+          "collation": 63,
+          "max_size": 1
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.user_settings",
+            "name": "push_competition"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "challenges: bool",
+        "type_info": {
+          "type": "Tiny",
+          "flags": "NOT_NULL",
+          "collation": 63,
+          "max_size": 1
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.user_settings",
+            "name": "push_challenges"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "badges: bool",
+        "type_info": {
+          "type": "Tiny",
+          "flags": "NOT_NULL",
+          "collation": 63,
+          "max_size": 1
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.user_settings",
+            "name": "push_badges"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "gym: bool",
+        "type_info": {
+          "type": "Tiny",
+          "flags": "NOT_NULL",
+          "collation": 63,
+          "max_size": 1
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.user_settings",
+            "name": "push_gym"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "start: NaiveTime",
+        "type_info": {
+          "type": "Time",
+          "flags": "BINARY",
+          "collation": 63,
+          "max_size": 10
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.user_settings",
+            "name": "quiet_hours_start"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "end: NaiveTime",
+        "type_info": {
+          "type": "Time",
+          "flags": "BINARY",
+          "collation": 63,
+          "max_size": 10
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.user_settings",
+            "name": "quiet_hours_end"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "d00a59bf80e0263725b4bf90101834a352fb4d30add822dc9221ed435ebdd429"
+}

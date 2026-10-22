@@ -2,9 +2,15 @@
 mod common;
 
 use axum::http::{Method, StatusCode};
-use backend::modules::me::privacy::{self, Swept};
+use backend::{
+    modules::{
+        me::privacy::{self, Swept},
+        notifications::{self, Kind},
+    },
+    types::Role,
+};
 use chrono::{DateTime, Duration, NaiveDate, Utc};
-use common::{PASSWORD, Reply, TestApp, register, seeded, seeded_with};
+use common::{PASSWORD, Reply, TestApp, create_user, register, seeded, seeded_with};
 use serde_json::{Value, json};
 use sqlx::mysql::{MySqlConnectOptions, MySqlPoolOptions};
 use uuid::Uuid;
@@ -640,4 +646,132 @@ async fn anonymisation_deletes_weight_goals(opts: MySqlPoolOptions, conn: MySqlC
         .await
         .unwrap();
     assert!(badges >= 1);
+}
+
+/// `me` and `friend` friends (asked by `me`) following each other, `me` and `blocked` blocking each
+/// other, and one notification for `me`.
+async fn social_links(app: &TestApp, me: Uuid, friend: Uuid, blocked: Uuid) {
+    let (low, high) = if me < friend {
+        (me, friend)
+    } else {
+        (friend, me)
+    };
+    sqlx::query(
+        "INSERT INTO friendships (user_low_id, user_high_id, status, requested_by, accepted_at) \
+         VALUES (?, ?, 'ACCEPTED', ?, UTC_TIMESTAMP(6))",
+    )
+    .bind(low)
+    .bind(high)
+    .bind(me)
+    .execute(&app.db)
+    .await
+    .unwrap();
+    for (sql, a, b) in [
+        (
+            "INSERT INTO follows (follower_id, followee_id) VALUES (?, ?)",
+            me,
+            friend,
+        ),
+        (
+            "INSERT INTO follows (follower_id, followee_id) VALUES (?, ?)",
+            friend,
+            me,
+        ),
+        (
+            "INSERT INTO blocks (blocker_id, blocked_id) VALUES (?, ?)",
+            me,
+            blocked,
+        ),
+        (
+            "INSERT INTO blocks (blocker_id, blocked_id) VALUES (?, ?)",
+            blocked,
+            me,
+        ),
+    ] {
+        sqlx::query(sql)
+            .bind(a)
+            .bind(b)
+            .execute(&app.db)
+            .await
+            .unwrap();
+    }
+    let mut conn = app.db.acquire().await.unwrap();
+    notifications::notify(
+        &mut conn,
+        me,
+        Kind::FriendRequest,
+        json!({"userId": friend}),
+    )
+    .await
+    .unwrap();
+}
+
+#[sqlx::test]
+async fn the_export_holds_friends_and_notifications(
+    opts: MySqlPoolOptions,
+    conn: MySqlConnectOptions,
+) {
+    let app = seeded(opts, conn).await;
+    let session = register(&app, "nour").await;
+    let me = user_of(&session);
+    let friend = create_user(&app, "sami", Role::User).await;
+    let blocked = create_user(&app, "karim", Role::User).await;
+    social_links(&app, me, friend, blocked).await;
+    let quiet = json!({"categories": {"GYM": false}});
+    let path = "/api/v1/me/notification-preferences";
+    app.call(Method::PUT, path, access(&session), Some(quiet))
+        .await;
+
+    let reply = app
+        .call(Method::GET, "/api/v1/me/export", access(&session), None)
+        .await;
+    assert_eq!(reply.status, StatusCode::OK, "{}", reply.json);
+    let export = &reply.json;
+    let friendship = &export["friendships"][0];
+    assert_eq!(friendship["userId"], friend.to_string());
+    assert_eq!(friendship["status"], "ACCEPTED");
+    assert_eq!(friendship["requestedByMe"], true);
+    assert!(friendship["createdAt"].is_string() && friendship["acceptedAt"].is_string());
+    assert_eq!(export["following"][0]["userId"], friend.to_string());
+    assert_eq!(export["following"].as_array().unwrap().len(), 1);
+    assert_eq!(export["blocked"][0]["userId"], blocked.to_string());
+    assert_eq!(export["blocked"].as_array().unwrap().len(), 1);
+    let note = &export["notifications"][0];
+    assert_eq!(note["type"], "FRIEND_REQUEST");
+    assert_eq!(note["payload"], json!({"userId": friend}));
+    assert_eq!(note["read"], false);
+    assert_eq!(
+        export["notificationPreferences"]["categories"]["GYM"],
+        false
+    );
+}
+
+#[sqlx::test]
+async fn anonymising_cuts_the_social_links(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let app = seeded(opts, conn).await;
+    let session = register(&app, "nour").await;
+    let me = user_of(&session);
+    let friend = create_user(&app, "sami", Role::User).await;
+    let blocked = create_user(&app, "karim", Role::User).await;
+    social_links(&app, me, friend, blocked).await;
+    delete(&app, &session, PASSWORD).await;
+    let swept = privacy::sweep(&app.db, (Utc::now() + Duration::days(31)).naive_utc())
+        .await
+        .unwrap();
+    assert_eq!(swept.anonymised, 1);
+
+    for sql in [
+        "SELECT COUNT(*) FROM friendships WHERE user_low_id = ? OR user_high_id = ?",
+        "SELECT COUNT(*) FROM follows WHERE follower_id = ? OR followee_id = ?",
+        "SELECT COUNT(*) FROM blocks WHERE blocker_id = ? OR blocked_id = ?",
+        "SELECT COUNT(*) FROM notifications WHERE user_id = ? OR user_id = ?",
+    ] {
+        let left: i64 = sqlx::query_scalar(sql)
+            .bind(me)
+            .bind(me)
+            .fetch_one(&app.db)
+            .await
+            .unwrap();
+        assert_eq!(left, 0, "{sql}");
+    }
 }
