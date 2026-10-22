@@ -219,6 +219,19 @@ pub fn uuid_param(field: &str, value: Option<&str>) -> Result<Option<Uuid>, AppE
         .transpose()
 }
 
+/// `%text%` for `LIKE … ESCAPE '|'`, the text's own wildcards matched as themselves.
+pub fn contains(text: &str) -> String {
+    let mut pattern = String::from("%");
+    for c in text.chars() {
+        if matches!(c, '|' | '%' | '_') {
+            pattern.push('|');
+        }
+        pattern.push(c);
+    }
+    pattern.push('%');
+    pattern
+}
+
 /// An instant written in RFC 3339 (`2026-09-25T07:30:00Z`), the form the clients send.
 pub fn rfc3339(raw: &str) -> Option<DateTime<Utc>> {
     DateTime::parse_from_rfc3339(raw)
@@ -517,6 +530,12 @@ mod tests {
             (status, body["code"].as_str()),
             (StatusCode::PAYLOAD_TOO_LARGE, Some("PAYLOAD_TOO_LARGE"))
         );
+    }
+
+    #[test]
+    fn wildcards_are_matched_as_themselves() {
+        assert_eq!(contains("sam"), "%sam%");
+        assert_eq!(contains("%_|"), "%|%|_||%");
     }
 
     #[test]

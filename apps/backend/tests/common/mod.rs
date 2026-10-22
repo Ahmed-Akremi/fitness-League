@@ -296,6 +296,58 @@ pub async fn calibrated(app: &TestApp, user: Uuid) {
     .expect("the profile row");
 }
 
+/// A `VERIFIED` gym in `a_place`, offering the catalog's first two sports. Its owner becomes
+/// `GYM_ADMIN` and an approved member, with the gym as primary.
+pub async fn a_gym(app: &TestApp, owner: Uuid, name: &str) -> Uuid {
+    let id = Uuid::now_v7();
+    let (governorate, city) = a_place(app).await;
+    sqlx::query(
+        "INSERT INTO gyms (id, name, slug, governorate_id, city_id, status, owner_user_id, verified_at) \
+         VALUES (?, ?, ?, ?, ?, 'VERIFIED', ?, UTC_TIMESTAMP(6))",
+    )
+    .bind(id)
+    .bind(name)
+    .bind(backend::seed::slugify(name))
+    .bind(governorate)
+    .bind(city)
+    .bind(owner)
+    .execute(&app.db)
+    .await
+    .expect("the gym row");
+    sqlx::query("INSERT INTO gym_sports (gym_id, sport_id) SELECT ?, id FROM sports ORDER BY code LIMIT 2")
+        .bind(id)
+        .execute(&app.db)
+        .await
+        .expect("the gym's sports");
+    sqlx::query("UPDATE users SET role = 'GYM_ADMIN' WHERE id = ?")
+        .bind(owner)
+        .execute(&app.db)
+        .await
+        .expect("the owner's role");
+    member_of(app, owner, id).await;
+    id
+}
+
+/// An approved membership of `gym`, which becomes the athlete's primary gym.
+pub async fn member_of(app: &TestApp, user: Uuid, gym: Uuid) {
+    sqlx::query(
+        "INSERT INTO gym_members (id, gym_id, user_id, status, approved_at) \
+         VALUES (?, ?, ?, 'APPROVED', UTC_TIMESTAMP(6))",
+    )
+    .bind(Uuid::now_v7())
+    .bind(gym)
+    .bind(user)
+    .execute(&app.db)
+    .await
+    .expect("the membership row");
+    sqlx::query("UPDATE profiles SET primary_gym_id = ? WHERE user_id = ?")
+        .bind(gym)
+        .bind(user)
+        .execute(&app.db)
+        .await
+        .expect("the primary gym");
+}
+
 /// The app's recorded answer to `key` (`"GET /friends"`) in `apps/mobile-rn/assets/demo/api.json`.
 pub fn recorded(key: &str) -> Value {
     let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../mobile-rn/assets/demo/api.json");

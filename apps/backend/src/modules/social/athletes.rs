@@ -15,7 +15,7 @@ use crate::{
     http::{auth::AppUser, page, rate_limit},
     security::policy,
     state::AppState,
-    validate::{Check, ValidQuery},
+    validate::{Check, ValidQuery, contains},
 };
 
 #[derive(Deserialize)]
@@ -30,19 +30,6 @@ pub struct SearchQuery {
 #[derive(Serialize, Deserialize)]
 struct After {
     u: String,
-}
-
-/// `%text%` for `LIKE … ESCAPE '|'`, the text's own wildcards matched as themselves.
-fn contains(text: &str) -> String {
-    let mut pattern = String::from("%");
-    for c in text.chars() {
-        if matches!(c, '|' | '%' | '_') {
-            pattern.push('|');
-        }
-        pattern.push(c);
-    }
-    pattern.push('%');
-    pattern
 }
 
 /// Active athletes whose username or full name holds the text, accent- and case-insensitive (the
@@ -179,15 +166,4 @@ pub async fn profile(
         "following": row.following,
         "friendship": friendship,
     })))
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn wildcards_are_matched_as_themselves() {
-        assert_eq!(contains("sam"), "%sam%");
-        assert_eq!(contains("%_|"), "%|%|_||%");
-    }
 }
