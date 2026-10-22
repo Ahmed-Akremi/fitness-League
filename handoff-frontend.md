@@ -1,3 +1,19 @@
+# Organisation update (branch `organisation-update`, from 2026-10-22)
+
+Design: `docs/superpowers/specs/2026-10-22-organisation-update-design.md` (approved; 12 phases, one review stop
+after each). Backend to-do list: `docs/organisation-backend-contract.md`.
+
+- **Phase 1 (foundations): done.**
+  - Local store (`core/api/local-store.ts`) and the fetch wrapper (`core/api/local-routes.ts`).
+  - The organizer layer and its flag (`core/api/org-local.ts`, `config.orgLocal`).
+  - The live bus (`core/live-bus.ts`, `useLive()`) and the `eventStyle` overlay with `eventStyleOf()`.
+  - `LocalBadge`.
+  - The test harness puts the same layer (in memory) and a bus in `fakeServices`.
+- **Run the tests with Windows Node:**
+  - `node_modules` was installed by Windows pnpm (store `C:\Users\GIGABYTE\AppData\Local\pnpm\store`). Linux Node in WSL fails on it (`@babel/runtime` not found), and a WSL `pnpm install` would want to rebuild everything.
+  - From WSL: `cmd.exe /c "cd /d C:\Users\GIGABYTE\fitness-league\apps\mobile-rn && npx jest --maxWorkers=4"`. That's 71 suites in about 35 s (versus about 9 min under WSL). `npx tsc --noEmit` works the same way.
+- **Trap:** Node has a global `BroadcastChannel`. `browserChannel()` opens one only when `Platform.OS === 'web'`; an open channel keeps jest alive.
+
 # Handoff — frontend, phone app (2026-10-21: Apple HIG work, 8 lots built on `feat/hig-phone`, pushed)
 
 The backend handoff stays in `handoff.md`. This file covers `apps/mobile-rn` only: the iPhone-first HIG
