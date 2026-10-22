@@ -112,12 +112,14 @@ pub async fn profile(
         r#"SELECT u.id AS "id: Uuid", u.username, u.status, u.date_of_birth, p.full_name, p.bio,
                   g.code, g.name_fr, g.name_en, g.name_ar, s.show_age_bracket AS "show_age_bracket: bool",
                   us.level, us.division_code, us.season_lp,
+                  gy.id AS "gym_id?: Uuid", gy.name AS "gym_name?",
                   (SELECT COUNT(*) FROM follows f WHERE f.followee_id = u.id) AS "followers!: i64",
                   (SELECT COUNT(*) FROM follows f WHERE f.follower_id = u.id) AS "following!: i64",
                   EXISTS (SELECT 1 FROM blocks b WHERE (b.blocker_id = ? AND b.blocked_id = u.id)
                                                   OR (b.blocker_id = u.id AND b.blocked_id = ?)) AS "blocked!: i64"
            FROM users u JOIN profiles p ON p.user_id = u.id JOIN governorates g ON g.id = p.governorate_id
              JOIN user_settings s ON s.user_id = u.id JOIN user_stats us ON us.user_id = u.id
+             LEFT JOIN gyms gy ON gy.id = p.primary_gym_id
            WHERE u.username = ?"#,
         user.id,
         user.id,
@@ -157,8 +159,7 @@ pub async fn profile(
         "bio": row.bio,
         "ageBracket": age_bracket,
         "governorate": {"code": row.code, "name": {"fr": row.name_fr, "en": row.name_en, "ar": row.name_ar}},
-        // Gyms come with plan 3b.
-        "gym": null,
+        "gym": row.gym_id.map(|id| json!({"id": id, "name": row.gym_name})),
         "level": row.level,
         "division": row.division_code,
         "seasonLp": row.season_lp,

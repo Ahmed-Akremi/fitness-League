@@ -408,3 +408,372 @@ async fn a_gym_profile(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
     let unknown = get(&app, &owner_token, &format!("{GYMS}/{}", Uuid::now_v7())).await;
     assert_eq!(unknown.status, StatusCode::NOT_FOUND);
 }
+
+async fn join(app: &TestApp, token: &str, gym: impl std::fmt::Display) -> Reply {
+    call(
+        app,
+        Method::POST,
+        &format!("{GYMS}/{gym}/membership"),
+        token,
+        None,
+    )
+    .await
+}
+
+async fn decide(app: &TestApp, token: &str, gym: Uuid, user: Uuid, verb: &str) -> Reply {
+    call(
+        app,
+        Method::POST,
+        &format!("{GYMS}/{gym}/members/{user}/{verb}"),
+        token,
+        None,
+    )
+    .await
+}
+
+async fn coach(app: &TestApp, method: Method, token: &str, gym: Uuid, user: Uuid) -> Reply {
+    call(
+        app,
+        method,
+        &format!("{GYMS}/{gym}/members/{user}/coach"),
+        token,
+        None,
+    )
+    .await
+}
+
+/// The onboarding steps, as every onboarding route answers them.
+async fn steps(app: &TestApp, token: &str) -> Value {
+    let reply = call(
+        app,
+        Method::POST,
+        "/api/v1/me/onboarding/baselines",
+        token,
+        Some(json!({"entries": []})),
+    )
+    .await;
+    assert_eq!(reply.status, StatusCode::OK, "{}", reply.json);
+    reply.json["steps"].clone()
+}
+
+/// A member page's `(username, role)` pairs.
+fn roster(page: &Value) -> Vec<(String, String)> {
+    page["data"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|m| {
+            (
+                m["username"].as_str().unwrap().to_owned(),
+                m["role"].as_str().unwrap().to_owned(),
+            )
+        })
+        .collect()
+}
+
+async fn audited(app: &TestApp, action: &str, user: Uuid, gym: Uuid) -> i64 {
+    sqlx::query_scalar(
+        "SELECT COUNT(*) FROM audit_log WHERE action = ? AND entity_id = ? \
+           AND JSON_VALUE(after_json, '$.gymId') = ?",
+    )
+    .bind(action)
+    .bind(user)
+    .bind(gym.to_string())
+    .fetch_one(&app.db)
+    .await
+    .unwrap()
+}
+
+async fn primary_gym(app: &TestApp, user: Uuid) -> Option<Uuid> {
+    sqlx::query_scalar("SELECT primary_gym_id FROM profiles WHERE user_id = ?")
+        .bind(user)
+        .fetch_one(&app.db)
+        .await
+        .unwrap()
+}
+
+#[sqlx::test]
+async fn joining_and_leaving(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let app = seeded(opts, conn).await;
+    let (owner, owner_token) = athlete(&app, "owner").await;
+    let gym = a_gym(&app, owner, "Sahel Iron").await;
+    let (other_owner, _) = athlete(&app, "rival").await;
+    let other = a_gym(&app, other_owner, "Ariana Fit").await;
+    let (a, token) = athlete(&app, "a").await;
+    let profile_path = format!("{GYMS}/{gym}");
+
+    let joined = join(&app, &token, gym).await;
+    assert_eq!(joined.status, StatusCode::CREATED, "{}", joined.json);
+    assert_eq!(joined.json, json!({"gymId": gym, "status": "PENDING"}));
+    assert_eq!(
+        ok(&app, &token, &profile_path).await["myMembership"],
+        json!({"status": "PENDING", "role": null})
+    );
+    assert_eq!(steps(&app, &token).await["gym"], true);
+    assert_eq!(
+        ok(&app, &token, "/api/v1/me").await["profile"]["gym"],
+        Value::Null
+    );
+
+    let twice = join(&app, &token, other).await;
+    assert_eq!(twice.status, StatusCode::CONFLICT, "{}", twice.json);
+    assert_eq!(twice.json["code"], "CONFLICT");
+    assert_eq!(twice.json["gymId"], gym.to_string());
+    assert_eq!(twice.json["membershipStatus"], "PENDING");
+
+    let requests = ok(
+        &app,
+        &owner_token,
+        &format!("{GYMS}/{gym}/membership-requests"),
+    )
+    .await;
+    assert_eq!(requests.as_array().unwrap().len(), 1);
+    assert_eq!(requests[0]["userId"], a.to_string());
+    assert_eq!(requests[0]["username"], "a");
+    assert_eq!(requests[0]["fullName"], "Athlete a");
+    assert!(requests[0]["requestedAt"].is_string());
+
+    let approved = decide(&app, &owner_token, gym, a, "approve").await;
+    assert_eq!(approved.status, StatusCode::OK, "{}", approved.json);
+    assert_eq!(approved.json, json!({"userId": a, "status": "APPROVED"}));
+    let me = ok(&app, &token, "/api/v1/me").await;
+    assert_same_shape("GET /me", &recorded("GET /me"), &me);
+    assert_eq!(
+        me["profile"]["gym"],
+        json!({"id": gym, "name": "Sahel Iron", "slug": "sahel-iron"})
+    );
+    assert_eq!(
+        ok(&app, &owner_token, "/api/v1/users/a").await["gym"],
+        json!({"id": gym, "name": "Sahel Iron"})
+    );
+    let members = ok(&app, &token, &format!("{GYMS}/{gym}/members")).await;
+    let recorded_members = "GET /gyms/01a0e9e3-45e7-78b3-adf7-00d0f6fb6ab2/members";
+    assert_same_shape(recorded_members, &recorded(recorded_members), &members);
+    assert_eq!(
+        roster(&members),
+        [("owner".into(), "MEMBER".into()), ("a".into(), "MEMBER".into())]
+    );
+    assert!(members["data"][1]["since"].is_string());
+    assert_eq!(
+        ok(&app, &token, &profile_path).await["myMembership"],
+        json!({"status": "APPROVED", "role": "MEMBER"})
+    );
+
+    let left = call(
+        &app,
+        Method::DELETE,
+        &format!("{GYMS}/me/membership"),
+        &token,
+        None,
+    )
+    .await;
+    assert_eq!(left.status, StatusCode::NO_CONTENT);
+    assert_eq!(
+        ok(&app, &token, "/api/v1/me").await["profile"]["gym"],
+        Value::Null
+    );
+    assert_eq!(
+        ok(&app, &owner_token, "/api/v1/users/a").await["gym"],
+        Value::Null
+    );
+    assert_eq!(
+        ok(&app, &token, &profile_path).await["myMembership"],
+        json!({"status": "NONE", "role": null})
+    );
+    assert_eq!(roster(&ok(&app, &token, &format!("{GYMS}/{gym}/members")).await).len(), 1);
+    let again = call(
+        &app,
+        Method::DELETE,
+        &format!("{GYMS}/me/membership"),
+        &token,
+        None,
+    )
+    .await;
+    assert_eq!(again.status, StatusCode::NO_CONTENT);
+
+    sqlx::query("UPDATE gyms SET status = 'PENDING' WHERE id = ?")
+        .bind(other)
+        .execute(&app.db)
+        .await
+        .unwrap();
+    for target in [other.to_string(), Uuid::now_v7().to_string(), "nope".to_owned()] {
+        let refused = join(&app, &token, &target).await;
+        assert_eq!(refused.status, StatusCode::NOT_FOUND, "{target}");
+        assert_eq!(refused.json["title"], "Gym not found", "{target}");
+    }
+}
+
+#[sqlx::test]
+async fn two_joins_at_once(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let app = seeded(opts, conn).await;
+    let (first_owner, _) = athlete(&app, "first").await;
+    let first = a_gym(&app, first_owner, "First Gym").await;
+    let (second_owner, _) = athlete(&app, "second").await;
+    let second = a_gym(&app, second_owner, "Second Gym").await;
+    let (a, token) = athlete(&app, "a").await;
+    let (one, two) = tokio::join!(join(&app, &token, first), join(&app, &token, second));
+    let mut statuses = [one.status, two.status];
+    statuses.sort();
+    assert_eq!(statuses, [StatusCode::CREATED, StatusCode::CONFLICT]);
+    let live: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM gym_members WHERE user_id = ? AND status IN ('PENDING', 'APPROVED')",
+    )
+    .bind(a)
+    .fetch_one(&app.db)
+    .await
+    .unwrap();
+    assert_eq!(live, 1);
+}
+
+#[sqlx::test]
+async fn the_admin_decides(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let app = seeded(opts, conn).await;
+    let (owner, owner_token) = athlete(&app, "owner").await;
+    let gym = a_gym(&app, owner, "Sahel Iron").await;
+    let (a, token) = athlete(&app, "a").await;
+    let (b, _) = athlete(&app, "b").await;
+
+    assert_eq!(join(&app, &token, gym).await.status, StatusCode::CREATED);
+    let rejected = decide(&app, &owner_token, gym, a, "reject").await;
+    assert_eq!(rejected.status, StatusCode::OK, "{}", rejected.json);
+    assert_eq!(rejected.json, json!({"userId": a, "status": "REJECTED"}));
+    assert_eq!(audited(&app, "GYM_MEMBER_REJECT", a, gym).await, 1);
+    let not_pending = decide(&app, &owner_token, gym, a, "approve").await;
+    assert_eq!(not_pending.status, StatusCode::NOT_FOUND);
+    assert_eq!(not_pending.json["title"], "Membership not found");
+    assert_eq!(join(&app, &token, gym).await.status, StatusCode::CREATED);
+    assert_eq!(
+        decide(&app, &owner_token, gym, b, "approve").await.status,
+        StatusCode::NOT_FOUND
+    );
+    assert_eq!(
+        decide(&app, &owner_token, gym, a, "approve").await.status,
+        StatusCode::OK
+    );
+    assert_eq!(audited(&app, "GYM_MEMBER_APPROVE", a, gym).await, 1);
+    assert_eq!(primary_gym(&app, a).await, Some(gym));
+
+    for _ in 0..2 {
+        let appointed = coach(&app, Method::POST, &owner_token, gym, a).await;
+        assert_eq!(appointed.status, StatusCode::OK, "{}", appointed.json);
+        assert_eq!(appointed.json, json!({"userId": a, "role": "COACH"}));
+    }
+    assert!(audited(&app, "GYM_COACH_APPOINTED", a, gym).await >= 1);
+    let members = ok(&app, &token, &format!("{GYMS}/{gym}/members")).await;
+    assert_eq!(roster(&members)[1], ("a".into(), "COACH".into()));
+    assert_eq!(
+        ok(&app, &token, &format!("{GYMS}/{gym}")).await["myMembership"],
+        json!({"status": "APPROVED", "role": "COACH"})
+    );
+    let dismissed = coach(&app, Method::DELETE, &owner_token, gym, a).await;
+    assert_eq!(dismissed.status, StatusCode::NO_CONTENT);
+    assert_eq!(audited(&app, "GYM_COACH_REMOVED", a, gym).await, 1);
+    let members = ok(&app, &token, &format!("{GYMS}/{gym}/members")).await;
+    assert_eq!(roster(&members)[1], ("a".into(), "MEMBER".into()));
+    for method in [Method::POST, Method::DELETE] {
+        let stranger = coach(&app, method.clone(), &owner_token, gym, b).await;
+        assert_eq!(stranger.status, StatusCode::NOT_FOUND, "{method}");
+        assert_eq!(stranger.json["title"], "Membership not found");
+    }
+
+    let removed = decide(&app, &owner_token, gym, a, "remove").await;
+    assert_eq!(removed.status, StatusCode::OK, "{}", removed.json);
+    assert_eq!(removed.json, json!({"userId": a, "status": "REMOVED"}));
+    assert_eq!(audited(&app, "GYM_MEMBER_REMOVE", a, gym).await, 1);
+    assert_eq!(primary_gym(&app, a).await, None);
+    assert_eq!(
+        decide(&app, &owner_token, gym, a, "remove").await.status,
+        StatusCode::NOT_FOUND
+    );
+    let malformed = call(
+        &app,
+        Method::POST,
+        &format!("{GYMS}/{gym}/members/nope/approve"),
+        &owner_token,
+        None,
+    )
+    .await;
+    assert_eq!(malformed.status, StatusCode::NOT_FOUND);
+}
+
+#[sqlx::test]
+async fn who_manages(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let app = seeded(opts, conn).await;
+    let (owner, _) = athlete(&app, "owner").await;
+    let gym = a_gym(&app, owner, "Sahel Iron").await;
+    let (member, member_token) = athlete(&app, "member").await;
+    member_of(&app, member, gym).await;
+    let (coach_id, coach_token) = athlete(&app, "coach").await;
+    member_of(&app, coach_id, gym).await;
+    sqlx::query("UPDATE gym_members SET role = 'COACH' WHERE user_id = ?")
+        .bind(coach_id)
+        .execute(&app.db)
+        .await
+        .unwrap();
+    let (demoted, demoted_token) = athlete(&app, "demoted").await;
+    let demoted_gym = a_gym(&app, demoted, "Demoted Gym").await;
+    sqlx::query("UPDATE users SET role = 'USER' WHERE id = ?")
+        .bind(demoted)
+        .execute(&app.db)
+        .await
+        .unwrap();
+    let (submitter, submitter_token) = verified(&app, "submitter").await;
+    let pending = call(
+        &app,
+        Method::POST,
+        GYMS,
+        &submitter_token,
+        Some(submission(&app, "Pending Gym").await),
+    )
+    .await
+    .json["id"]
+        .as_str()
+        .unwrap()
+        .parse::<Uuid>()
+        .unwrap();
+    // A gym admin of another gym: the role alone does not make them this one's admin.
+    sqlx::query("UPDATE users SET role = 'GYM_ADMIN' WHERE id = ?")
+        .bind(submitter)
+        .execute(&app.db)
+        .await
+        .unwrap();
+    let (asker, asker_token) = athlete(&app, "asker").await;
+    assert_eq!(join(&app, &asker_token, gym).await.status, StatusCode::CREATED);
+
+    let cases = [
+        (&member_token, gym),
+        (&coach_token, gym),
+        (&demoted_token, demoted_gym),
+        (&submitter_token, pending),
+        (&submitter_token, gym),
+    ];
+    for (token, target) in cases {
+        let requests = get(
+            &app,
+            token,
+            &format!("{GYMS}/{target}/membership-requests"),
+        )
+        .await;
+        let approve = decide(&app, token, target, asker, "approve").await;
+        let appoint = coach(&app, Method::POST, token, target, member).await;
+        for reply in [requests, approve, appoint] {
+            assert_eq!(reply.status, StatusCode::FORBIDDEN, "{target}: {}", reply.json);
+            assert_eq!(reply.json["code"], "FORBIDDEN");
+            assert_eq!(reply.json["detail"], "Only this gym's admin can do that.");
+        }
+    }
+    let unknown = get(
+        &app,
+        &member_token,
+        &format!("{GYMS}/{}/membership-requests", Uuid::now_v7()),
+    )
+    .await;
+    assert_eq!(unknown.status, StatusCode::NOT_FOUND);
+    assert_eq!(unknown.json["title"], "Gym not found");
+
+    let admin = create_user(&app, "admin", Role::Admin).await;
+    let session = open_session(&app, admin, Role::Admin, Audience::App).await;
+    let admin_token = session["accessToken"].as_str().unwrap();
+    let approved = decide(&app, admin_token, gym, asker, "approve").await;
+    assert_eq!(approved.status, StatusCode::OK, "{}", approved.json);
+}

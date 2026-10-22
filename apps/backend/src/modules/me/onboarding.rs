@@ -1,5 +1,6 @@
 //! Onboarding: the sports an athlete practises, the starting values they declare, and the start of
-//! the calibration period. Goals are a step of their own (`goals`), and the gym comes with part 3.
+//! the calibration period. Goals (`goals`) and the gym (`gym`, a pending or approved membership) are
+//! steps of their own.
 
 use std::collections::HashSet;
 
@@ -31,15 +32,16 @@ async fn progress(db: &MySqlPool, user: Uuid) -> Result<Value, AppError> {
         r#"SELECT onboarding_completed_at, calibration_ends_at,
                   EXISTS (SELECT 1 FROM user_sports WHERE user_id = p.user_id) AS "sports!",
                   EXISTS (SELECT 1 FROM baselines WHERE user_id = p.user_id) AS "baselines!",
-                  EXISTS (SELECT 1 FROM goals WHERE user_id = p.user_id) AS "goals!"
+                  EXISTS (SELECT 1 FROM goals WHERE user_id = p.user_id) AS "goals!",
+                  EXISTS (SELECT 1 FROM gym_members WHERE user_id = p.user_id
+                            AND status IN ('PENDING', 'APPROVED')) AS "gym!"
            FROM profiles p WHERE p.user_id = ?"#,
         user
     )
     .fetch_one(db)
     .await?;
     Ok(json!({
-        // The gym arrives with part 3.
-        "steps": {"sports": row.sports != 0, "baselines": row.baselines != 0, "goals": row.goals != 0, "gym": false},
+        "steps": {"sports": row.sports != 0, "baselines": row.baselines != 0, "goals": row.goals != 0, "gym": row.gym != 0},
         "completed": row.onboarding_completed_at.is_some(),
         "calibrationEndsAt": row.calibration_ends_at.map(iso),
     }))
