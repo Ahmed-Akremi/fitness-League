@@ -2,6 +2,7 @@
 //! dashboard. A port of the old API's `GymsService` and `GymDashboardService`; the verification
 //! queue and logos come with part 5 (spec ruling 3).
 
+pub mod dashboard;
 pub mod directory;
 pub mod members;
 
@@ -19,6 +20,7 @@ pub fn routes(api: Api) -> Api {
         .post("/api/v1/gyms", directory::create)
         .get("/api/v1/gyms/mine", directory::mine)
         .get("/api/v1/gyms/{id}", directory::profile)
+        .get("/api/v1/gyms/{id}/dashboard", dashboard::dashboard)
         .post("/api/v1/gyms/{id}/membership", members::join)
         .delete("/api/v1/gyms/me/membership", members::leave)
         .get("/api/v1/gyms/{id}/members", members::list)
