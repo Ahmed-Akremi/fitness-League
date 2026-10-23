@@ -23,7 +23,7 @@ export type MenuSection = { key: MenuSectionKey; tabs: ManageTab[] };
 export const ORG_MENU: MenuSection[] = [
   { key: 'dashboard', tabs: ['dashboard', 'finances'] },
   { key: 'general', tabs: ['general', 'settings', 'categories', 'pricing', 'forms', 'coupons', 'team'] },
-  { key: 'participants', tabs: ['participants'] },
+  { key: 'participants', tabs: ['participants', 'roster', 'staff'] },
   { key: 'planning', tabs: ['wods', 'planning', 'timetable'] },
   { key: 'leaderboard', tabs: ['leaderboard'] },
   { key: 'messages', tabs: ['announcements'] },
@@ -62,6 +62,8 @@ export const MENU_ICON: Record<ManageTab, IconName> = {
   coupons: 'local-offer',
   team: 'groups',
   participants: 'group',
+  roster: 'how-to-reg',
+  staff: 'badge',
   wods: 'fitness-center',
   planning: 'local-fire-department',
   timetable: 'schedule',

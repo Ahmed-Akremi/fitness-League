@@ -45,6 +45,32 @@ describe('waiting list (phase 4, answered on the device)', () => {
   });
 });
 
+describe('lists kept on the device (phase 5: sponsors, check-ins, staff…)', () => {
+  const client = () => new ApiClient('http://test', new MemoryTokenStorage(), () => {}, withOrgLocal(new FakeBackend().fetch, true, new LocalStore(memoryPersistence())));
+
+  it('creates, updates and removes a sponsor', async () => {
+    const api = client();
+    const s = await api.post<{ id: string }>('/competitions/c1/sponsors', { name: 'Box Gear', showOnLeaderboard: true });
+    await api.put(`/competitions/c1/sponsors/${s.id}`, { country: 'TN' });
+    await expect(api.get('/competitions/c1/sponsors')).resolves.toEqual([expect.objectContaining({ id: s.id, name: 'Box Gear', showOnLeaderboard: true, country: 'TN' })]);
+    await api.delete(`/competitions/c1/sponsors/${s.id}`);
+    await expect(api.get('/competitions/c1/sponsors')).resolves.toEqual([]);
+  });
+
+  it('answers 404 for an unknown item and 422 for a sponsor without a name', async () => {
+    const api = client();
+    await expect(api.put('/competitions/c1/sponsors/nope', { name: 'X' })).rejects.toMatchObject({ status: 404 });
+    await expect(api.post('/competitions/c1/sponsors', { name: ' ' })).rejects.toMatchObject({ status: 422 });
+  });
+
+  it('checks a registration in once, under its own id', async () => {
+    const api = client();
+    await api.post('/competitions/c1/checkins', { id: 'r1' });
+    await api.post('/competitions/c1/checkins', { id: 'r1' });
+    await expect(api.get('/competitions/c1/checkins')).resolves.toEqual([expect.objectContaining({ id: 'r1' })]);
+  });
+});
+
 describe('services (the app as built)', () => {
   const saved = process.env.EXPO_PUBLIC_DEMO;
   afterEach(() => {

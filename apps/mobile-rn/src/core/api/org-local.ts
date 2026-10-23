@@ -1,6 +1,59 @@
 import type { Fetch, Json } from './client';
-import { withLocalRoutes, type LocalLayer } from './local-routes';
+import { withLocalRoutes, type LocalLayer, type LocalRoute } from './local-routes';
 import { asyncStoragePersistence, LocalStore } from './local-store';
+
+type Check = (body: Json) => string | null;
+const required = (field: string): Check => (body) => (String(body?.[field] ?? '').trim() ? null : field);
+
+/**
+ * A list kept per competition (phase 5): `GET` the list, `POST` an item (an `id` in the body replaces the item with that
+ * id, so a check-in happens once), `PUT /:itemId` merges fields, `DELETE /:itemId`. `check` names a missing field (422).
+ */
+function listRoutes(collection: string, path: string, check?: Check): LocalRoute[] {
+  const base = `/competitions/:id/${path}`;
+  const invalid = (field: string) => ({ status: 422, body: { code: 'VALIDATION_FAILED', status: 422, errors: [{ field, code: 'REQUIRED' }] } });
+  return [
+    { method: 'GET', path: base, handle: ({ params }, store) => ({ status: 200, body: store.competition(params.id).collections[collection] ?? [] }) },
+    {
+      method: 'POST',
+      path: base,
+      handle: async ({ params, body }, store) => {
+        const field = check?.(body);
+        if (field) return invalid(field);
+        const item: Json = { ...body, id: typeof body?.id === 'string' ? body.id : store.newId(), createdAt: new Date().toISOString() };
+        await store.update(params.id, (c) => {
+          c.collections[collection] = [...(c.collections[collection] ?? []).filter((x) => x.id !== item.id), item];
+        });
+        return { status: 201, body: item };
+      },
+    },
+    {
+      method: 'PUT',
+      path: `${base}/:itemId`,
+      handle: async ({ params, body }, store) => {
+        const current = (store.competition(params.id).collections[collection] ?? []).find((x) => x.id === params.itemId);
+        if (!current) return { status: 404, body: { code: 'NOT_FOUND', status: 404 } };
+        const next = { ...current, ...body, id: params.itemId };
+        const field = check?.(next);
+        if (field) return invalid(field);
+        await store.update(params.id, (c) => {
+          c.collections[collection] = (c.collections[collection] ?? []).map((x) => (x.id === params.itemId ? next : x));
+        });
+        return { status: 200, body: next };
+      },
+    },
+    {
+      method: 'DELETE',
+      path: `${base}/:itemId`,
+      handle: async ({ params }, store) => {
+        await store.update(params.id, (c) => {
+          c.collections[collection] = (c.collections[collection] ?? []).filter((x) => x.id !== params.itemId);
+        });
+        return { status: 204 };
+      },
+    },
+  ];
+}
 
 /**
  * What the organizer space keeps on the device until the API has it (design 2026-10-22). Each phase adds its routes
@@ -38,6 +91,12 @@ export const ORG_LOCAL_LAYER: LocalLayer = {
   // Phase 4: extras of a registration (athlete side)
   registrationFields: ['answers', 'agreementsAccepted', 'teamName', 'teamMembers', 'giftFor', 'paymentPlan', 'guardian', 'faceRecognition'],
   routes: [
+    // Phase 5: participants and staff
+    ...listRoutes('sponsors', 'sponsors', required('name')),
+    ...listRoutes('checkins', 'checkins'),
+    ...listRoutes('finalists', 'finalist-invitations', required('userId')),
+    ...listRoutes('staffForms', 'staff-forms', required('title')),
+    ...listRoutes('staffApplications', 'staff-applications', (b) => required('name')(b) ?? required('email')(b) ?? required('role')(b)),
     // Phase 4: waiting list of a full division
     { method: 'GET', path: '/competitions/:id/waiting-list', handle: ({ params }, store) => ({ status: 200, body: store.competition(params.id).collections.waitingList ?? [] }) },
     {

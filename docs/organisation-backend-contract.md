@@ -121,6 +121,21 @@ Today the layer keeps them per registration id (`collections.registrations`).
 | `POST /competitions/:id/waiting-list` | `{ categoryId, name, email }` → `201` entry | phase 4 | The athlete of a full division. `422` without a category or a valid email |
 | `DELETE /competitions/:id/waiting-list/:entryId` | `204` | phase 4 | Organizer (phase 5 invites the next one) |
 
+Phase 5 lists all follow the same pattern:
+- `GET /competitions/:id/<list>` returns the items;
+- `POST` creates one, and an `id` in the body replaces the item with that id;
+- `PUT /:itemId` merges fields (`404` if unknown);
+- `DELETE /:itemId` answers `204`;
+- `422 VALIDATION_FAILED` names the missing field.
+
+| List | Item | Required | Notes |
+|---|---|---|---|
+| `sponsors` | `{ id, name, country?, showOnLeaderboard, showOnLanding, createdAt }` | `name` | |
+| `checkins` | `{ id: registrationId, createdAt }` | | One per registration; `DELETE` undoes a check-in. The server should also check teams in (`/teams/:id/checkin` in the research) |
+| `finalist-invitations` | `{ id: "<categoryId>:<userId>", categoryId, categoryName, userId, name, rank, status: INVITED }` | `userId` | Built from the qualifier's `GET /competitions/:q/leaderboard?categoryId` (top N per division). The server should notify the athlete and let them accept (`/final-invitations` in the research) |
+| `staff-forms` | `{ id, title, roles: string[], shifts: string[] }` | `title` | The public page `/competitions/:id/staff-apply?form=<id>` reads it (anyone, also signed out) |
+| `staff-applications` | `{ id, formId, name, email, role, shifts: string[], status: PENDING \| APPROVED \| DECLINED, checkedIn }` | `name`, `email`, `role` | Anyone may `POST` one; only organizers read, approve, decline and check in |
+
 ## Live events
 
 Today they travel on one device only (`src/core/live-bus.ts`): in the page, and to other tabs of the same browser

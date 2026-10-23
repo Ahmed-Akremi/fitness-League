@@ -19,6 +19,8 @@ export const pageTitle = (t: T, tab: ManageTab): string =>
     coupons: t('orgTabCoupons'),
     team: t('orgTabTeam'),
     participants: t('orgTabParticipants'),
+    roster: t('orgTabRoster'),
+    staff: t('orgTabStaff'),
     wods: t('orgTabWods'),
     planning: t('orgMenuHeats'),
     timetable: t('orgMenuTimetable'),
