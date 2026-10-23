@@ -13,11 +13,12 @@ use crate::{
     error::AppError,
     http::{Api, auth::AppUser},
     modules::{
+        feed::{self, Activity},
         league,
         notifications::{self, Kind},
     },
     state::AppState,
-    types::iso,
+    types::{Visibility, iso},
 };
 
 pub fn routes(api: Api) -> Api {
@@ -268,16 +269,28 @@ pub async fn evaluate(
     let facts = facts(tx, user, &needed).await?;
     for (badge, rule) in &pending {
         if progress(rule, &facts).met {
+            let award = Uuid::now_v7();
             sqlx::query!(
                 "INSERT INTO user_badges (id, user_id, badge_id, awarded_at, source_ref) \
                  VALUES (?, ?, ?, UTC_TIMESTAMP(6), ?)",
-                Uuid::now_v7(),
+                award,
                 user,
                 badge.id,
                 source_ref
             )
             .execute(&mut *tx)
             .await?;
+            let item = Activity {
+                user,
+                kind: feed::Kind::Badge,
+                ref_id: award,
+                visibility: Visibility::Friends.as_str(),
+                payload: json!({"badge": badge.code}),
+                sport: None,
+                exercise: None,
+                badge: Some(badge.id),
+            };
+            feed::record(&mut *tx, item).await?;
             let name = json!({"fr": badge.name_fr, "en": badge.name_en, "ar": badge.name_ar});
             let payload = json!({"badge": badge.code, "name": name});
             notifications::notify(&mut *tx, user, Kind::BadgeAwarded, payload).await?;

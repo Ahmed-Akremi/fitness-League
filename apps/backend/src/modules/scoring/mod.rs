@@ -25,7 +25,12 @@ use self::{
 use crate::{
     error::AppError,
     http::{Api, auth::AppUser},
-    modules::{badges, goals, workouts::metrics::WorkoutInput},
+    modules::{
+        badges,
+        feed::{self, Activity},
+        goals,
+        workouts::metrics::WorkoutInput,
+    },
     rules::Rules,
     security::policy,
     state::AppState,
@@ -74,6 +79,8 @@ pub struct Scoring<'a> {
     /// False for a late log: history and progress only.
     pub counts_for_competition: bool,
     pub body_weight_kg: Option<f64>,
+    /// The workout's visibility, which its feed items take.
+    pub visibility: &'a str,
 }
 
 /// Turns an accepted workout into records and XP, in the caller's transaction (docs §5.3). A
@@ -112,6 +119,36 @@ pub async fn score(
         counts_for_competition: s.counts_for_competition,
     };
     let (observations, prs) = records::record(tx, &ctx).await?;
+    // The feed's items, late logs included, as in the old API.
+    let item = |kind, ref_id, payload, sport, exercise| Activity {
+        user: s.user,
+        kind,
+        ref_id,
+        visibility: s.visibility,
+        payload,
+        sport,
+        exercise,
+        badge: None,
+    };
+    let payload = json!({"sportId": s.workout.sport_id, "durationS": s.workout.duration_s});
+    let workout = item(
+        feed::Kind::Workout,
+        s.workout_id,
+        payload,
+        Some(s.workout.sport_id),
+        None,
+    );
+    feed::record(tx, workout).await?;
+    for pr in prs
+        .iter()
+        .filter(|p| p.status == "AWARDED" && XP_METRICS.contains(&p.metric))
+    {
+        let payload = json!({
+            "exerciseId": pr.exercise_id, "metric": pr.metric, "value": pr.value, "previous": pr.previous,
+        });
+        let record = item(feed::Kind::Pr, pr.id, payload, None, Some(pr.exercise_id));
+        feed::record(tx, record).await?;
+    }
 
     let day = policy::business_today(performed, state.cfg.business_utc_offset_minutes);
     daily_streak(tx, s.user, day, profile.streak_freeze_days_per_week).await?;
