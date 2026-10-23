@@ -1,0 +1,89 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT a.id AS \"id: Uuid\", a.body, a.created_at,\n                  (SELECT COUNT(*) FROM announcement_likes l WHERE l.announcement_id = a.id) AS \"likes!: i64\",\n                  EXISTS (SELECT 1 FROM announcement_likes l\n                          WHERE l.announcement_id = a.id AND l.user_id = ?) AS \"mine!: i64\"\n           FROM announcements a\n           WHERE a.deleted_at IS NULL AND (? IS NULL OR a.id < ?)\n           ORDER BY a.id DESC\n           LIMIT ?",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | PRIMARY_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.announcements",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "body",
+        "type_info": {
+          "type": "VarString",
+          "flags": "",
+          "collation": 224,
+          "max_size": 8000
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.announcements",
+            "name": "body"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "created_at",
+        "type_info": {
+          "type": "Datetime",
+          "flags": "NOT_NULL | BINARY",
+          "collation": 63,
+          "max_size": 26
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.announcements",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "likes!: i64",
+        "type_info": {
+          "type": "LongLong",
+          "flags": "BINARY",
+          "collation": 63,
+          "max_size": 21
+        },
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 4,
+        "name": "mine!: i64",
+        "type_info": {
+          "type": "Long",
+          "flags": "NOT_NULL | BINARY",
+          "collation": 63,
+          "max_size": 1
+        },
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": [
+      false,
+      true,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "6573a52dc94c1ac22a12fe705f971b142cb6ae068cd90b846bec32b65e959c70"
+}

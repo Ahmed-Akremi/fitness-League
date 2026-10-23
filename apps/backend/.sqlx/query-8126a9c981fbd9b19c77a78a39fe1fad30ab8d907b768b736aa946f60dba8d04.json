@@ -1,0 +1,72 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT e.user_id AS \"owner: Uuid\", e.visibility,\n                  EXISTS (SELECT 1 FROM blocks b WHERE (b.blocker_id = ? AND b.blocked_id = e.user_id)\n                                                  OR (b.blocker_id = e.user_id AND b.blocked_id = ?)) AS \"blocked!: i64\",\n                  EXISTS (SELECT 1 FROM friendships f WHERE f.status = 'ACCEPTED'\n                            AND ((f.user_low_id = ? AND f.user_high_id = e.user_id)\n                              OR (f.user_low_id = e.user_id AND f.user_high_id = ?))) AS \"friends!: i64\"\n           FROM activity_events e WHERE e.id = ?",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "owner: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | MULTIPLE_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.activity_events",
+            "name": "user_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "visibility",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | ENUM | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 28
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.activity_events",
+            "name": "visibility"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "blocked!: i64",
+        "type_info": {
+          "type": "Long",
+          "flags": "NOT_NULL | BINARY",
+          "collation": 63,
+          "max_size": 1
+        },
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 3,
+        "name": "friends!: i64",
+        "type_info": {
+          "type": "Long",
+          "flags": "NOT_NULL | BINARY",
+          "collation": 63,
+          "max_size": 1
+        },
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 5
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "8126a9c981fbd9b19c77a78a39fe1fad30ab8d907b768b736aa946f60dba8d04"
+}

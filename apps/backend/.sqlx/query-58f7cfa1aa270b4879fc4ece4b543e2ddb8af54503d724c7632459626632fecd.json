@@ -72,7 +72,7 @@
         "name": "created_at",
         "type_info": {
           "type": "Datetime",
-          "flags": "NOT_NULL | BINARY",
+          "flags": "NOT_NULL | MULTIPLE_KEY | BINARY",
           "collation": 63,
           "max_size": 26
         },

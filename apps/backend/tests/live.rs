@@ -114,10 +114,7 @@ async fn a_socket_needs_a_session(opts: MySqlPoolOptions, conn: MySqlConnectOpti
 }
 
 #[sqlx::test]
-async fn notifications_reach_their_athlete_live(
-    opts: MySqlPoolOptions,
-    conn: MySqlConnectOptions,
-) {
+async fn notifications_reach_their_athlete_live(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
     let app = seeded(opts, conn).await;
     let (address, io) = serve(&app).await;
     let (a, a_token) = athlete(&app, "anis").await;

@@ -56,10 +56,17 @@ async fn the_news(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
     let first = &page["data"][0];
     assert_eq!(first["body"], "Registrations close on October 11.");
     assert_eq!(
-        (&first["imageUrl"], &first["imageWidth"], &first["imageHeight"]),
+        (
+            &first["imageUrl"],
+            &first["imageWidth"],
+            &first["imageHeight"]
+        ),
         (&Value::Null, &Value::Null, &Value::Null)
     );
-    assert_eq!((&first["likeCount"], &first["likedByMe"]), (&json!(0), &json!(false)));
+    assert_eq!(
+        (&first["likeCount"], &first["likedByMe"]),
+        (&json!(0), &json!(false))
+    );
 
     let one = read(&app, &token, "?limit=1").await;
     assert_eq!(ids(&one), [final_]);

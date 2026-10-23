@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "INSERT IGNORE INTO activity_reactions (activity_event_id, user_id, type) VALUES (?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "5e2ea781c00a115685d638535237a369d6b43e2be4e4112c3b7c0f4d41169ff4"
+}
