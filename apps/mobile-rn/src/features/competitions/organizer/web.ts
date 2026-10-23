@@ -21,12 +21,12 @@ export type MenuSection = { key: MenuSectionKey; tabs: ManageTab[] };
 
 /** Left menu, grouped by stage like the Circle21 portal; a section with one page is a single entry. */
 export const ORG_MENU: MenuSection[] = [
-  { key: 'dashboard', tabs: ['dashboard', 'finances'] },
+  { key: 'dashboard', tabs: ['dashboard', 'finances', 'tickets', 'shop'] },
   { key: 'general', tabs: ['general', 'settings', 'categories', 'pricing', 'forms', 'coupons', 'team'] },
   { key: 'participants', tabs: ['participants', 'roster', 'staff'] },
   { key: 'planning', tabs: ['wods', 'race', 'planning', 'waves', 'timetable', 'live', 'tools'] },
   { key: 'leaderboard', tabs: ['leaderboard', 'results'] },
-  { key: 'messages', tabs: ['announcements'] },
+  { key: 'messages', tabs: ['announcements', 'messages'] },
 ];
 
 /** Content column: forms stay readable (720 px of fields + padding), figures and tables use the room. */
@@ -74,6 +74,9 @@ export const MENU_ICON: Record<ManageTab, IconName> = {
   leaderboard: 'emoji-events',
   results: 'insights',
   announcements: 'campaign',
+  messages: 'mail',
+  tickets: 'local-activity',
+  shop: 'storefront',
 };
 
 /** Opens a page; the overview can open Participants already filtered on one category. */

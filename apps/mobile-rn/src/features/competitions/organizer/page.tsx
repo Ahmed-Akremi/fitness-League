@@ -31,6 +31,9 @@ export const pageTitle = (t: T, tab: ManageTab): string =>
     leaderboard: t('orgTabLeaderboard'),
     results: t('orgTabResults'),
     announcements: t('orgTabAnnouncements'),
+    messages: t('orgTabMessages'),
+    tickets: t('orgTabTickets'),
+    shop: t('orgTabShop'),
   })[tab];
 
 /** The header row that starts every page on a computer (Circle21 refs 01, 12, 20): the page's name, its actions on the right. Nothing on a phone. */

@@ -13,7 +13,11 @@ The screens do not change.
 
 **Security limit of the local layer (until the server takes these over):**
 - The device store (`org-local:v1`) is shared by every account signed in on that phone or browser, and it stays after sign-out.
-- It holds contact emails, the invited-email list and the registration and unlock codes.
+- It holds personal data:
+  - contact emails, the invited-email list, the registration and unlock codes;
+  - registration extras: teammates and the guardian of a minor (phase 4);
+  - waiting-list and staff-application names and emails (phases 4 and 5);
+  - message recipients' names (phase 11) and ticket and shop buyers' names (phase 11).
 - That is what lets one browser demo organizer → athlete → judge → displays. But any build given to real users must use `EXPO_PUBLIC_ORG_LOCAL=false`, or the server must store these fields first. Codes must then be stored hashed and checked with a rate limit.
 
 Conventions (same as the existing competitions API):
@@ -157,6 +161,11 @@ Phase 5 lists all follow the same pattern:
 | `lane-penalties` | `{ id: "<heatId>:<lane>", heatId, lane, workoutId, missedReps, minor, major }` | `heatId` | Phase 8: penalty counts of a functional-fitness lane, for the WOD's `penalties`. Should become fields of the lane score body (`PUT …/lanes/:lane/score`) |
 | `imported-results` | `{ id: "<target>:<registrationId>", target: <workoutId> \| "race", registrationId, categoryId, name, raw }` | `registrationId` | Phase 10: results imported from a spreadsheet after a dry run (`parseResultsCsv`, `matchImport`). `raw` is the score shape of the lane score (`{ timeS }`, `{ capped, reps }`, `{ reps }`, `{ value }`). The server should take them as `POST /competitions/:id/workouts/:workoutId/results/import` (and `/race/results/import`) with the same dry-run answer `{ ok, problems: [{ line, code: NO_MATCH \| BAD_SCORE \| DUPLICATE }] }` |
 | `board-freezes` | `{ id: <categoryId>, rows: [{ key, rank, name, value }], at }` | `rows` | Phase 10: the standings kept by « Freeze »; the displays show them while `resultsSettings.frozenAt` is set |
+| `messages` | `{ id, subject, body, segment: { kind: ALL_ATHLETES \| DIVISION \| UNPAID \| NOT_CHECKED_IN \| WAITING_LIST \| STAFF \| VOLUNTEERS, categoryId }, channels: (EMAIL \| PUSH)[], recipients: [{ id, name }], sendAt, cancelled }` | `subject`, `sendAt` | Phase 11: the outbox. Nothing is sent: the server must resolve the segment itself at `sendAt` (`recipients()` is the reference), send by email and push, and record the delivery. Recipients keep names only |
+| `ticket-types` | `{ id, name, price, limit: integer \| null, salesEnd: ISO \| null }` | `name` | Phase 11: spectator tickets (price in millimes) |
+| `ticket-orders` | `{ id, itemId, quantity, status: RESERVED \| PAID \| USED \| CANCELLED, userId, name, code }` | `itemId` | Phase 11: `code` is 8 random characters (`ticketCode()`, from `expo-crypto`); the door check sets `USED`. The server must make the code, refuse a quantity above what is left (`orderProblems()`), and take the payment |
+| `shop-products` | `{ id, name, price, limit: integer \| null, sizes: string[] }` | `name` | Phase 11: event merchandise |
+| `shop-orders` | `{ id, itemId, quantity, size, status: RESERVED \| PAID \| PICKED_UP \| CANCELLED, userId, name }` | `itemId` | Phase 11: paid and picked up at the stand |
 | `calls` | `{ id: "current", kind: WARM_UP \| CORRAL \| null, label, seq, at }` | | Phase 9: the call shown on the call screen, sent from the Live page |
 | `timers` | `{ id: <locationId \| competitionId>, config: { type: FOR_TIME \| AMRAP \| EMOM \| TABATA \| COUNTDOWN, capSec, intervalSec, rounds, workSec, restSec }, startTimestamp: ISO \| null, pausedAt: ISO \| null, pausedMs }` | `config` | Phase 8: the snapshot a display loads before it listens to `timer.<id>`. `timerView()` computes the time from it; the server should stamp `startTimestamp` with its own clock |
 
@@ -256,4 +265,15 @@ and judge tabs save.
 - **Age filters** need the athlete's age on the event day: the organizer list `GET /competitions/:id/registrations`
   should add `ageAtEvent` (an integer; better than sending the birth date). Until then, the filter leaves out the
   athletes without an age and says how many.
+
+## Messages, tickets and shop (phase 11)
+
+- **Messages:** organizer only. The app keeps what it would send; the server must:
+  - resolve the segment at send time;
+  - send by email and push;
+  - honour the athlete's notification settings;
+  - give each message a status (scheduled, sent, failed, cancelled).
+- **Tickets and shop:** public (`/competitions/:id/shop`, signed in) for reserving; organizer pages for types, products,
+  orders and the door check. Payment stays on site until a payment provider exists (ruling 8). The remaining
+  quantity must be checked on the server inside the order transaction (two buyers can see the same last ticket).
 

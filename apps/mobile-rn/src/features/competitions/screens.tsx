@@ -16,6 +16,7 @@ import { Button, Card, Chip, Icon, ListGroup, ListRow, Screen, Segmented, TextFi
 import { compKeys, competitionsApi, formatMoney, useCompetition, useCompetitions, useCompLeaderboard, useHeats, useMySubmissions, youtubeId, type CompFilter } from './api';
 import { FloorJudgeCard } from './judge/screens';
 import { CompetitionAnnouncements } from './organizer/announcements';
+import { ShopLink } from './organizer/shop';
 import { publicationState } from './organizer/logic';
 
 const statusLabel = (t: T, s: string) => (t as (k: string) => string)(`compStatus${s}`);
@@ -218,6 +219,7 @@ export function CompetitionScreen({ id }: { id: string }) {
               </ListGroup>
               <HeatSchedule id={id} />
               <CompetitionAnnouncements id={id} />
+              <ShopLink id={id} />
 
               {categories.length > 0 && (
                 <View onLayout={anchor('categories')} style={{ gap: space.md }}>

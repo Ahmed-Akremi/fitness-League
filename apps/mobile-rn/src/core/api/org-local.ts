@@ -108,6 +108,12 @@ export const ORG_LOCAL_LAYER: LocalLayer = {
     // Phase 10: results imported from a spreadsheet, and the standings kept by « Freeze »
     ...listRoutes('importedResults', 'imported-results', required('registrationId')),
     ...listRoutes('boardFreezes', 'board-freezes', required('rows')),
+    // Phase 11: messages (the outbox), spectator tickets and the shop
+    ...listRoutes('messages', 'messages', (b) => required('subject')(b) ?? required('sendAt')(b)),
+    ...listRoutes('ticketTypes', 'ticket-types', required('name')),
+    ...listRoutes('ticketOrders', 'ticket-orders', required('itemId')),
+    ...listRoutes('shopProducts', 'shop-products', required('name')),
+    ...listRoutes('shopOrders', 'shop-orders', required('itemId')),
     // Phase 6: locations (stages, floors) and the location of each heat ({ id: heatId, locationId })
     ...listRoutes('locations', 'locations', required('name')),
     ...listRoutes('heatLocations', 'heat-locations', required('locationId')),
