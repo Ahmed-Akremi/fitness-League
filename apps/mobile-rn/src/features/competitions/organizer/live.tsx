@@ -10,7 +10,7 @@ import { displayText, space, useTheme } from '../../../core/theme';
 import { formatDuration } from '../../../core/utils/format';
 import { SectionHeader, SkeletonList } from '../../../core/widgets/common';
 import { ErrorText } from '../../../core/widgets/error';
-import { Button, Card, Chip, Screen, TextField, Txt } from '../../../core/widgets/kit';
+import { Button, Card, Chip, Screen, TextField, Txt, toast } from '../../../core/widgets/kit';
 import { useHeats } from '../api';
 import { LocalBadge } from './local-badge';
 import { defaultTimer, TIMER_TYPES, timerPause, timerResume, timerSeconds, timerStart, timerView, type TimerConfig, type TimerState, type TimerType } from './logic-timer';
@@ -48,6 +48,7 @@ export function LiveTab({ c }: { c: Json }) {
         </View>
         {/* Keyed by the place: each timer starts from its own saved state. */}
         {timers.data ? <TimerPanel key={where} c={c} channelId={where} saved={timers.data.find((x) => x.id === where) as TimerState | undefined} /> : <SkeletonList count={1} height={160} />}
+        <Calls c={c} />
         <LiveFeed c={c} />
       </Screen>
     </>
@@ -85,9 +86,10 @@ function TimerPanel({ c, channelId, saved }: { c: Json; channelId: string; saved
     setState(next);
     setNow(Date.now());
     setError(null);
-    live.publish(`timer.${channelId}`, event, { ...next, seq: nextSeq(), serverTs: Date.now() });
+    const seq = nextSeq();
+    live.publish(`timer.${channelId}`, event, { ...next, seq, serverTs: Date.now() });
     try {
-      await api.post(`/competitions/${c.id}/timers`, { id: channelId, ...next });
+      await api.post(`/competitions/${c.id}/timers`, { id: channelId, ...next, seq });
       await qc.invalidateQueries({ queryKey: ['competitions', c.id, 'local', 'timers'] });
     } catch (e) {
       setError(e);
@@ -130,6 +132,51 @@ function TimerPanel({ c, channelId, saved }: { c: Json; channelId: string; saved
       </View>
       <ErrorText error={error} />
     </Card>
+  );
+}
+
+/** Phase 9: the call screen's text (`event.<id>` call_warm_up / call_corral / call_clear, kept as the `calls` item « current »). */
+function Calls({ c }: { c: Json }) {
+  const t = useT();
+  const api = useApi();
+  const live = useLive();
+  const heats = useHeats(c.id);
+  const waves = useLocalList(c.id, 'waves');
+  const [target, setTarget] = useState<string | null>(null);
+  const [error, setError] = useState<unknown>(null);
+  const targets: Json[] = [...(heats.data ?? []), ...(waves.data ?? [])];
+  const label = targets.find((x) => x.id === target)?.name ?? '';
+
+  async function call(kind: 'WARM_UP' | 'CORRAL' | null) {
+    const seq = nextSeq();
+    const event = kind === 'WARM_UP' ? 'call_warm_up' : kind === 'CORRAL' ? 'call_corral' : 'call_clear';
+    live.publish(`event.${c.id}`, event, { label, seq, at: new Date().toISOString() });
+    setError(null);
+    try {
+      await api.post(`/competitions/${c.id}/calls`, { id: 'current', kind, label, seq, at: new Date().toISOString() });
+      toast(t('liveCallSent'));
+    } catch (e) {
+      setError(e);
+    }
+  }
+
+  return (
+    <>
+      <SectionHeader title={t('liveCalls')} />
+      <Card style={{ gap: space.sm }}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
+          {targets.map((x) => (
+            <Chip key={x.id} testID={`call-target-${x.id}`} label={x.name} selected={target === x.id} onPress={() => setTarget(x.id)} />
+          ))}
+        </View>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
+          <Button testID="call-warmup" icon="campaign" label={t('liveCallWarmUp')} disabled={!target} onPress={() => void call('WARM_UP')} />
+          <Button testID="call-corral" kind="tonal" icon="campaign" label={t('liveCallCorral')} disabled={!target} onPress={() => void call('CORRAL')} />
+          <Button testID="call-clear" kind="outlined" icon="clear" label={t('liveCallClear')} onPress={() => void call(null)} />
+        </View>
+        <ErrorText error={error} />
+      </Card>
+    </>
   );
 }
 

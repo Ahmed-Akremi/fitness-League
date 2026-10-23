@@ -149,6 +149,7 @@ Phase 5 lists all follow the same pattern:
 | `waves` | `{ id, number, name, categoryId, startsAt, registrationIds: string[], athletes: [{ registrationId, name }], liveStart: ISO \| null }` | `startsAt` | Phase 7: start groups of a hybrid race, cut by `planWaves()`. `liveStart` set = racing; the shared clock of a wave counts from it. `athletes` (phase 8) lets race judges show names without the organizer's registration list; the server should expose a wave to its judges only |
 | `race-results` | `{ id: "<waveId>:<registrationId>", waveId, registrationId, splits: ms[], adjustments: number[], dnf, finished }` | `registrationId` | Phase 8: what a race judge records. `splits[i]` is the wave clock at the end of stage i (runs included); `adjustments` are scoring-rule values. `raceTotalMs()` is the reference. The server should accept them from the wave's judges only and keep an audit trail |
 | `lane-penalties` | `{ id: "<heatId>:<lane>", heatId, lane, workoutId, missedReps, minor, major }` | `heatId` | Phase 8: penalty counts of a functional-fitness lane, for the WOD's `penalties`. Should become fields of the lane score body (`PUT …/lanes/:lane/score`) |
+| `calls` | `{ id: "current", kind: WARM_UP \| CORRAL \| null, label, seq, at }` | | Phase 9: the call shown on the call screen, sent from the Live page |
 | `timers` | `{ id: <locationId \| competitionId>, config: { type: FOR_TIME \| AMRAP \| EMOM \| TABATA \| COUNTDOWN, capSec, intervalSec, rounds, workSec, restSec }, startTimestamp: ISO \| null, pausedAt: ISO \| null, pausedMs }` | `config` | Phase 8: the snapshot a display loads before it listens to `timer.<id>`. `timerView()` computes the time from it; the server should stamp `startTimestamp` with its own clock |
 
 ## WOD fields (phase 6)
@@ -199,3 +200,32 @@ Channels and events are added by the phases that use them (8: judges and timers,
 
 `seq` grows with each update (`nextSeq()`); a display keeps the update with the higher `seq`. `serverTs` is the
 sender's estimate of the server time; with the socket, the server sets both.
+
+## Displays (phase 9)
+
+Web routes, read-only, with no sign-in (`src/app/display/[id]/[kind].tsx`, public in `shell/root.tsx`):
+
+| Route | Snapshot | Live channels | Options |
+|---|---|---|---|
+| `/display/:id/timer` | `timers` item | `timer.<loc \| id>` | `loc` |
+| `/display/:id/heat` | `GET /competitions/:id/heats` | `heat.<heatId>` | `heat` (default: the heat on the floor now) |
+| `/display/:id/lane` | same | same | `heat`, `lane` |
+| `/display/:id/race` | `waves`, `race-results`, the competition's `flow` | `wave.<waveId>`, `event.<id>` (wave_started / wave_stopped) | `wave` (default: the last wave started) |
+| `/display/:id/leaderboard` | `GET /competitions/:id/leaderboard?categoryId` (hybrid: `waves` + `race-results`) | — (read every 30 s) | `rotate` (seconds per division), `category` |
+| `/display/:id/schedule` | heats, `waves` | — (read every 30 s) | |
+| `/display/:id/call` | `calls` item `current` | `event.<id>` call_warm_up / call_corral / call_clear | |
+
+Every display takes `overlay=1` (transparent background, for a green-screen overlay in the stream).
+
+**What the server must provide:**
+- **Public reads for a published event:** heats with lane athletes, the leaderboard, waves (names only), race results,
+  the timers and the current call. Without sign-in, and only for a published event.
+- **No private data on a display:** no email, guardian or answers.
+- **The snapshot-then-updates order:** a display loads the snapshot, then applies only updates whose `seq` is higher
+  than the one in the snapshot (`applyRaceEvent`, `keepNewer`). It reads the snapshot again every 30 s, so it
+  recovers after a lost connection.
+
+**Local layer and several tabs:** `LocalStore` reads the saved data again before each change (two tabs never erase each
+other), and in the web build it follows the browser's `storage` event, so a display tab sees what the organizer
+and judge tabs save.
+

@@ -83,9 +83,10 @@ export function planWaves(o: { entries: Entry[]; perWave: number; start: Date; i
 
 /**
  * What the judge of one athlete records: `splits[i]` is the race clock (ms since the wave started) at the end of
- * stage i, runs included; `adjustments` are the scoring-rule values the judge applied (seconds or reps).
+ * stage i, runs included; `adjustments` are the scoring-rule values the judge applied (seconds or reps); `seq`: the
+ * judge's last live update in it, so a display can merge the saved result and the updates it heard.
  */
-export type RaceResult = { id: string; waveId: string; registrationId: string; splits: number[]; adjustments: number[]; dnf: boolean; finished: boolean };
+export type RaceResult = { id: string; waveId: string; registrationId: string; splits: number[]; adjustments: number[]; dnf: boolean; finished: boolean; seq?: number };
 
 export const emptyResult = (waveId: string, registrationId: string): RaceResult => ({ id: `${waveId}:${registrationId}`, waveId, registrationId, splits: [], adjustments: [], dnf: false, finished: false });
 

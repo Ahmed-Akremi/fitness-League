@@ -128,13 +128,15 @@ function AthleteRace({ c, flow, wave, athlete, saved }: { c: Json; flow: Flow; w
     return () => clearInterval(timer);
   }, [liveStart, cursor]);
 
-  const publish = (event: string, payload: Json) => live.publish(`wave.${wave.id}`, event, { registrationId: athlete.registrationId, ...payload, seq: nextSeq(), serverTs: Date.now() });
+  const publish = (event: string, payload: Json, seq = nextSeq()) => live.publish(`wave.${wave.id}`, event, { registrationId: athlete.registrationId, ...payload, seq, serverTs: Date.now() });
 
-  /** Shows the change at once, tells the displays, then keeps it on the device. */
-  async function keep(next: RaceResult, event: string, payload: Json) {
+  /** Shows the change at once, tells the displays, then keeps it on the device with the same `seq`. */
+  async function keep(change: RaceResult, event: string, payload: Json) {
+    const seq = nextSeq();
+    const next = { ...change, seq };
     setR(next);
     setError(null);
-    publish(event, payload);
+    publish(event, payload, seq);
     try {
       await api.post(`/competitions/${c.id}/race-results`, next);
       await qc.invalidateQueries({ queryKey: ['competitions', c.id, 'local', 'race-results'] });

@@ -26,6 +26,7 @@ export const pageTitle = (t: T, tab: ManageTab): string =>
     planning: t('orgMenuHeats'),
     waves: t('orgTabWaves'),
     live: t('orgTabLive'),
+    tools: t('orgTabTools'),
     timetable: t('orgMenuTimetable'),
     leaderboard: t('orgTabLeaderboard'),
     announcements: t('orgTabAnnouncements'),

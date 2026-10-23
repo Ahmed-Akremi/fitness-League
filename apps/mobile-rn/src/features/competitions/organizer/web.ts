@@ -24,7 +24,7 @@ export const ORG_MENU: MenuSection[] = [
   { key: 'dashboard', tabs: ['dashboard', 'finances'] },
   { key: 'general', tabs: ['general', 'settings', 'categories', 'pricing', 'forms', 'coupons', 'team'] },
   { key: 'participants', tabs: ['participants', 'roster', 'staff'] },
-  { key: 'planning', tabs: ['wods', 'race', 'planning', 'waves', 'timetable', 'live'] },
+  { key: 'planning', tabs: ['wods', 'race', 'planning', 'waves', 'timetable', 'live', 'tools'] },
   { key: 'leaderboard', tabs: ['leaderboard'] },
   { key: 'messages', tabs: ['announcements'] },
 ];
@@ -69,6 +69,7 @@ export const MENU_ICON: Record<ManageTab, IconName> = {
   planning: 'local-fire-department',
   waves: 'waves',
   live: 'sensors',
+  tools: 'cast',
   timetable: 'schedule',
   leaderboard: 'emoji-events',
   announcements: 'campaign',

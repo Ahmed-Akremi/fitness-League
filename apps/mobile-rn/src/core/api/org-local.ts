@@ -101,6 +101,8 @@ export const ORG_LOCAL_LAYER: LocalLayer = {
     ...listRoutes('raceResults', 'race-results', required('registrationId')),
     ...listRoutes('lanePenalties', 'lane-penalties', required('heatId')),
     ...listRoutes('timers', 'timers', required('config')),
+    // Phase 9: the call shown on the call screen ({ id: 'current', kind: WARM_UP | CORRAL | null, label, seq, at })
+    ...listRoutes('calls', 'calls'),
     // Phase 6: locations (stages, floors) and the location of each heat ({ id: heatId, locationId })
     ...listRoutes('locations', 'locations', required('name')),
     ...listRoutes('heatLocations', 'heat-locations', required('locationId')),

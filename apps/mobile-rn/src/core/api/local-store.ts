@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 
 import type { Json } from './client';
 
@@ -18,6 +19,8 @@ type Saved = { version: number; competitions: Record<string, CompetitionLocal> }
 export interface Persistence {
   read(): Promise<string | null>;
   write(value: string): Promise<void>;
+  /** Another tab of this browser saved (the storage event); absent on a phone, where one app owns the data. */
+  subscribe?(listener: (value: string | null) => void): () => void;
 }
 
 export const memoryPersistence = (initial: string | null = null): Persistence => {
@@ -28,9 +31,18 @@ export const memoryPersistence = (initial: string | null = null): Persistence =>
   };
 };
 
+/** In the web build AsyncStorage is localStorage: a display tab hears what the judge and organizer tabs save. */
 export const asyncStoragePersistence = (key = LOCAL_STORE_KEY): Persistence => ({
   read: () => AsyncStorage.getItem(key),
   write: (v) => AsyncStorage.setItem(key, v),
+  subscribe:
+    Platform.OS === 'web' && typeof window !== 'undefined' && typeof window.addEventListener === 'function'
+      ? (listener) => {
+          const on = (e: StorageEvent) => e.key === key && listener(e.newValue);
+          window.addEventListener('storage', on);
+          return () => window.removeEventListener('storage', on);
+        }
+      : undefined,
 });
 
 const empty = (): CompetitionLocal => ({ fields: {}, categories: {}, collections: {} });
@@ -40,8 +52,13 @@ let counter = 0;
 export class LocalStore {
   private data: Saved = { version: VERSION, competitions: {} };
   private loading: Promise<void> | null = null;
+  private queue: Promise<void> = Promise.resolve();
 
-  constructor(private readonly persistence: Persistence) {}
+  constructor(private readonly persistence: Persistence) {
+    persistence.subscribe?.((text) => {
+      this.data = parse(text) ?? { version: VERSION, competitions: {} };
+    });
+  }
 
   /** Loads the saved data once; unreadable data or another schema version starts empty. */
   ready(): Promise<void> {
@@ -56,12 +73,22 @@ export class LocalStore {
     return structuredClone(this.data.competitions[id] ?? empty());
   }
 
-  async update(id: string, change: (c: CompetitionLocal) => void): Promise<void> {
-    await this.ready();
-    const next = this.competition(id);
-    change(next);
-    this.data.competitions[id] = next;
-    await this.persistence.write(JSON.stringify(this.data));
+  /**
+   * Changes run one after the other, each on the latest saved data: another tab may have saved since this one
+   * loaded, and its changes must not be erased.
+   */
+  update(id: string, change: (c: CompetitionLocal) => void): Promise<void> {
+    const run = this.queue.then(async () => {
+      await this.ready();
+      const saved = parse(await this.persistence.read());
+      if (saved) this.data = saved;
+      const next = this.competition(id);
+      change(next);
+      this.data.competitions[id] = next;
+      await this.persistence.write(JSON.stringify(this.data));
+    });
+    this.queue = run.catch(() => undefined);
+    return run;
   }
 
   newId(): string {
