@@ -15,20 +15,26 @@ Opening prompt to paste:
 > part 3 spec. Work in this Windows checkout only.
 
 First steps, in order:
-1. **Find where `main` is.** `git fetch && git log --oneline -5 origin/main feat/rust-backend-3`. The owner
-   commits, pushes and merges during sessions; this session they committed plan 3b's tasks 2, 3 and 5 and the
-   `.sqlx` data from the working tree, and merged twice (see §4).
-   - At the end of this session, `origin/main` was at `8dfc78f`: PRs #35 and #36 merged `feat/rust-backend-3`
-     up to `d3ccf4e` (all of plan 3a, its review, plan 3b's plan, tables, directory and memberships). PR #34
-     (`feat/floor-judging`, the app and the old API only) came in before.
-   - **`feat/rust-backend-3`** holds the rest of plan 3b, **local only**: `9c6f60a` (the dashboard),
-     `716b13a`, `1348876`, `24b92c0` (the board, ranks and badge, the owner's), `fe4c1a8` (export,
-     anonymisation, the security check, formatting), `c8a9ea5` (`.sqlx`, the owner's), `1d76c25` (two
-     dependency patch bumps for new advisories) and the docs commit.
+1. **Find where `main` is.** `git fetch && git log --oneline -5 origin/main origin/feat/rust-backend-3
+   feat/rust-backend-3`. The owner commits, pushes and merges during sessions; this session they committed plan
+   3b's tasks 2, 3 and 5 and the `.sqlx` data from the working tree, and merged three times (see §4).
+   - At the end of this session, `origin/main` was at `79ad468`:
+     - PRs #35, #36 and #37 merged `feat/rust-backend-3` up to `1348876` (plan 3a's rest and review, plan 3b up
+       to the gym board);
+     - PR #38 merged `organisation-update`, the app's organisation update (frontend and docs only, its own
+       handoff in `handoff-frontend.md`). It changes no API call; part 4 inherits its backend contract (step 5);
+     - PR #34 (`feat/floor-judging`, the app and the old API) came in earlier.
+   - **`feat/rust-backend-3`** holds the rest of plan 3b, **not yet in `main`**:
+     - pushed (`origin/feat/rust-backend-3` = `c8a9ea5`): `24b92c0` (the badge), `fe4c1a8` (export,
+       anonymisation, the security check, formatting), `c8a9ea5` (`.sqlx`);
+     - **local only:** `1d76c25` (two dependency patch bumps for new advisories), `2e67610` (plan 3b's docs), the
+       merge of `origin/main` (`79ad468`) and this handoff update.
+
      **Don't push:** the user pushes themselves.
    - **Where to work:** if `main` holds all of plan 3b, run the review on `feat/rust-backend-3` as it is, then
      start plan 3c on a new branch from `origin/main`; otherwise go on with `feat/rust-backend-3` (merge
-     `origin/main` first). Local `main` is far behind: never branch from it.
+     `origin/main` first; it touches no backend file, so only `handoff.md` can conflict). Local `main` is far
+     behind: never branch from it.
 2. **Plan 3b's whole-branch review is not done.** No reviewer was spawned (the user did not ask for one). Run it
    as plan 3a's was run: a fresh session reads the branch against the plan and the old API, without agents.
    - Its inputs: the plan's « Review focus » and « Built » sections, and the ledger
@@ -42,12 +48,24 @@ First steps, in order:
    build: `cargo test -j 4 --lib` (131 green). Then run the three suites the last session could not run on the
    final code (§4, « Checks »): `cargo test -j 2 --no-fail-fast --test league --test notifications --test social`.
 5. **For plan 3c (feed and news), read:**
-   - the part 3 spec, `docs/superpowers/specs/2026-10-21-rust-backend-gyms-social-design.md`: « Scope »
-     (plan 3c's routes), its feed, news and socket sections, « Database », « Plans » and the rulings (ruling 3
-     moves the publishing of home news to part 5; ruling 5 is the socket through `socketioxide`);
+   - the part 3 spec, `docs/superpowers/specs/2026-10-21-rust-backend-gyms-social-design.md`: « Scope of part 3 »
+     (plan 3c's 6 feed routes and 3 news routes), « Notifications » (the live `notification.new`), « Feed and home
+     news (3c) », « Database » (`activity_events`, `activity_reactions`, `activity_comments`, `announcements`,
+     `announcement_likes`), « Security additions », « Plans » and the rulings (ruling 3 leaves the publishing of
+     home news to part 5; ruling 5 is the socket at `/ws` through `socketioxide`, a new crate, with Redis
+     pub/sub between processes);
    - plans 3a and 3b for the house form;
-   - the old API's feed, news and realtime modules, and the app's callers (`features/feed`, `features/home`,
-     the socket client) and their recorded answers in `apps/mobile-rn/assets/demo/api.json`.
+   - the old API's `feed`, `announcements` and `realtime` modules;
+   - the app's callers: `features/feed`, `features/announcements`, `features/home`, `core/realtime.ts`, and their
+     recorded answers in `apps/mobile-rn/assets/demo/api.json`;
+   - what part 2's code paths must now write: the activity events (`WORKOUT`, `PR`, `BADGE`, `LEVEL_UP`,
+     `GOAL_COMPLETED`) in the transaction of their cause (part 2's ruling 9).
+
+   Part 4 (competitions) comes after part 3. Its inputs now include `docs/organisation-backend-contract.md`, the
+   organisation update's to-do list. Its rule « Registration gates are a demo in the app, not a protection » is
+   required: never send `accessCode`, `unlockCode` or `invitedEmails` to non-organizers (send booleans), and check
+   typed codes against hashes with a rate limit (422 `ACCESS_CODE_INVALID` / `UNLOCK_CODE_INVALID`, 403
+   `NOT_INVITED`).
 6. **Don't ask the owner product questions.** Their words: « you will find everything in the .md files ».
    Take the technical calls yourself and list them in the spec's and plans' « Rulings » sections.
 
@@ -72,7 +90,8 @@ BullMQ (a Node library). Six parts:
 1. Foundation and accounts: **done**.
 2. Training loop: **done** (plans 2a to 2d).
 3. Gyms and social: **under way** (spec written; plans 3a and 3b built; plans 3c to 3f to come).
-4. Competitions.
+4. Competitions. Its inputs include `docs/organisation-backend-contract.md` (the organisation update, PR #38) and
+   floor judging (PR #34).
 5. Admin and moderation.
 6. Cut-over: demo data, frontends pointed at Rust, `apps/api` and PostgreSQL removed.
 
@@ -103,7 +122,7 @@ duels, challenges and leagues), with seven rulings for the owner.
 
 ## 2. Current state
 
-- **`origin/main`** is at `8dfc78f`. Merged so far:
+- **`origin/main`** is at `79ad468`. Merged so far:
   - #13 and #14: part 1;
   - #15: the part 2 spec, plan 2a and its code;
   - #16: formatting, the Windows build, and the README, spec and plan updates;
@@ -117,10 +136,14 @@ duels, challenges and leagues), with seven rulings for the owner.
   - #34: `feat/floor-judging`, floor judging in the app and the old API (no backend file). It adds the
     `COMPETITION_JUDGE_INVITED` notification type, which `0010_social`'s ENUM lacks: part 4 adds it, with the
     floor-judging routes the app now calls;
-  - #35 and #36: `feat/rust-backend-3` up to `d3ccf4e` (the rest of plan 3a, its review, plan 3b up to the
-    memberships).
-- **Branch `feat/rust-backend-3`** starts at `3d42eed`. Its commits since `8dfc78f` (the rest of plan 3b) are
-  local only; §4 lists them. It has no upstream.
+  - #35, #36 and #37: `feat/rust-backend-3` up to `1348876` (the rest of plan 3a, its review, plan 3b up to the
+    gym board);
+  - #38: `organisation-update`, the app's organisation update in 12 phases (frontend and docs; see
+    `handoff-frontend.md`). It changes no API call: what the API lacks, a local layer keeps on the device
+    (`apps/mobile-rn/src/core/api/org-local.ts`, flag `EXPO_PUBLIC_ORG_LOCAL`).
+    `docs/organisation-backend-contract.md` is part 4's to-do list for it (§0 step 5).
+- **Branch `feat/rust-backend-3`** starts at `3d42eed`. Its commits after `1348876` are not in `main`;
+  `origin/feat/rust-backend-3` is at `c8a9ea5`, and the rest is local (§0 step 1). It has no upstream.
 - **Other local branches:**
   - `feat/rust-backend-2d` (plan 2d) is merged through #27, except its last four commits (plan 2d's review fix,
     its `.sqlx` data and the docs), which reach `main` through `feat/rust-backend-3`;
@@ -457,7 +480,10 @@ The previous session's list (plan 2d's review, plan 3a's commits, the `lock_pair
   `9c6f60a` (the dashboard), `716b13a`, `1348876`, `24b92c0` (the gym board, ranks, snapshot and badge; the
   owner), `fe4c1a8` (export, anonymisation, the security check, formatting), `c8a9ea5` (`.sqlx`; the owner), and
   the docs commit (README, the spec's status, the plan's « Built » section, this handoff).
-- The owner merged PRs #35 and #36 (the branch up to `d3ccf4e`) into `main` during the session.
+- The owner merged PRs #35, #36 and #37 (the branch up to `1348876`) and PR #38 (`organisation-update`) into
+  `main` during the session, and pushed the branch up to `c8a9ea5`. The last commit merges `origin/main`
+  (`79ad468`) back into the branch; only `handoff.md` conflicted (PR #38 had added a 2026-10-23 block to it, now
+  folded into §0, §1, §2 and §6).
 - `1d76c25`: `ctutils` 0.4.3 → 0.4.5 (RUSTSEC-2026-0385, non-constant-time comparisons, under `argon2` and
   `hmac`) and `tokio` 1.53.2 → 1.53.3 (RUSTSEC-2026-0386, unsound, which `cargo deny` refuses): two advisories
   published since the last check.
@@ -614,8 +640,9 @@ The previous session's list (plan 2d's review, plan 3a's commits, the `lock_pair
 
 ## 6. Next steps
 
-1. **The rest of plan 3b reaches `main`:** `feat/rust-backend-3`'s commits after `8dfc78f` are local. The user
-   pushes them, then the owner merges (PRs #35 and #36 took the branch up to `d3ccf4e`).
+1. **The rest of plan 3b reaches `main`:** `feat/rust-backend-3`'s commits after `1348876` (pushed up to
+   `c8a9ea5`, the rest local). The user pushes them, then the owner merges (PR #37 took the branch up to
+   `1348876`).
 2. **Plan 3b's whole-branch review** (§0 step 2), with the plan's « Review focus » list and the ledger's rulings.
 3. **Plan 3c, feed and news** (with the socket), then 3d (gym WODs and gym wars), 3e (battles and duels) and 3f
    (challenges and leagues), each written once the previous one is built (§0 step 5 lists 3c's inputs).
@@ -624,10 +651,15 @@ The previous session's list (plan 2d's review, plan 3a's commits, the `lock_pair
    memberships, pending gyms and verification requests; a blocked or unknown account is checked before a block
    (404); writers of a link take the pair's lock; a gym's top athletes leave out those who hide from
    leaderboards.
-5. **Part 4 must carry over PR #34:** the floor-judging routes the app now calls in on-site events, and the
-   `COMPETITION_JUDGE_INVITED` notification type (add it to the `notifications.type` ENUM). Floor judging in the
-   app sits beside the standing decision « judges work only in the admin panel »: read
-   `docs/superpowers/specs/2026-10-21-floor-judging-design.md` before part 4's spec.
+5. **Part 4 must carry over PRs #34 and #38:**
+   - the floor-judging routes the app now calls in on-site events, and the `COMPETITION_JUDGE_INVITED`
+     notification type (add it to the `notifications.type` ENUM). Floor judging in the app sits beside the
+     standing decision « judges work only in the admin panel »: read
+     `docs/superpowers/specs/2026-10-21-floor-judging-design.md` before part 4's spec;
+   - the organisation update: `docs/organisation-backend-contract.md` (competition, division, registration and
+     WOD fields, the new routes, live events, the displays' public reads, results, messages, tickets and the
+     shop), with its required rule on registration gates (§0 step 5). Each item built on the server leaves the
+     app's `ORG_LOCAL_LAYER` and the contract.
 6. **Plan 2c's whole-branch review: done**, against the old API's `goals` and `badges` modules and the plan.
    Re-run after it: `--lib` and the `goals`, `badges`, `body`, `points`, `privacy`, `onboarding` and `schema`
    suites, 195 green. Two minors, left as they are:

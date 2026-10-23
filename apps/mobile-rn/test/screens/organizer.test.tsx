@@ -98,6 +98,7 @@ const draft = {
 const complete = {
   ...draft,
   coverUrl: 'https://cdn.test/cover.webp',
+  contactEmail: 'hello@box.tn',
   categories: [{ id: 'k1', name: 'RX Mixed', gender: 'MIXED', active: true, sortOrder: 0 }],
   workouts: [{ id: 'w1', number: 1, name: 'WOD 1', scoreType: 'REPS' }],
 };
@@ -121,8 +122,8 @@ describe('organizer space', () => {
   it('lists what the draft misses and keeps the request button off', async () => {
     const screen = await renderScreen(() => <ManageScreen id="c9" />, organizerBackend(draft));
     expect(await screen.findByText('Draft: only you can see it.')).toBeTruthy();
-    for (const item of ['COVER', 'CATEGORY', 'WOD']) expect(screen.getByTestId(`check-${item}`)).toBeTruthy();
-    expect(screen.getAllByText('To do: tap to fix')).toHaveLength(3);
+    for (const item of ['COVER', 'CONTACT', 'CATEGORY', 'WOD']) expect(screen.getByTestId(`check-${item}`)).toBeTruthy();
+    expect(screen.getAllByText('To do: tap to fix')).toHaveLength(4);
     expect(screen.getByTestId('org-request').props.accessibilityState?.disabled).toBe(true);
     expect(await screen.findByText('12')).toBeTruthy();
   });

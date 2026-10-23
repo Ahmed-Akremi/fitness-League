@@ -5,16 +5,21 @@ import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 
 import type { Json } from '../../../core/api/client';
 import { useLocale, useT, type T } from '../../../core/prefs';
-import { useApi } from '../../../core/services';
+import { nextSeq } from '../../../core/live-bus';
+import { useApi, useLive } from '../../../core/services';
 import { displayText, radius, space, useTheme } from '../../../core/theme';
 import { formatDate, formatDuration } from '../../../core/utils/format';
 import { newClientId } from '../../../core/utils/ids';
 import { EmptyState, SkeletonList, StatusPill, TimeField } from '../../../core/widgets/common';
 import { ErrorText, ErrorView } from '../../../core/widgets/error';
 import { Button, Card, Chip, Dialog, Expander, Icon, Screen, TextField, Txt, toast, type IconName } from '../../../core/widgets/kit';
+import { useCompetition } from '../api';
+import { eventStyleOf } from '../organizer/logic';
 import { personName } from '../organizer/logic-b';
+import { penaltiesOf, scorecardOf, type Scorecard } from '../organizer/logic-scorecard';
 import { floorApi, flushPending, pendingScores, sendScore, useJudgeLanes, type PendingScore } from './api';
 import { elapsedMs, formatClock, laneOrder, movementPoints, rawScore, scoringKind, tallyFromRaw, wholeSeconds, type Tally } from './logic';
+import { scorecardCursor, tapBack, tapNext, tieBreakReps } from './logic-scorecard';
 
 /** Pending scores of one competition, sent again on open, every 15 s and on « Réessayer » (ruling 6). */
 function usePending(id: string, onSent: () => void) {
@@ -120,6 +125,7 @@ export function JudgeHomeScreen({ id }: { id: string }) {
   const locale = useLocale();
   const { colors } = useTheme();
   const lanes = useJudgeLanes(id, 15_000);
+  const comp = useCompetition(id);
   const { waiting, flush } = usePending(id, () => void lanes.refetch());
   if (lanes.isError) return <ErrorView error={lanes.error} onRetry={() => lanes.refetch()} />;
   if (!lanes.data) return <SkeletonList count={4} height={96} />;
@@ -130,6 +136,13 @@ export function JudgeHomeScreen({ id }: { id: string }) {
       <ScrollView contentContainerStyle={{ padding: space.lg, gap: space.md }} refreshControl={<RefreshControl refreshing={false} onRefresh={() => lanes.refetch()} tintColor={colors.primary} />}>
         <Txt variant="title">{lanes.data.competition.title}</Txt>
         {lanes.data.competition.locked ? <Txt color={colors.outline}>{t('floorLocked')}</Txt> : null}
+        {comp.data && eventStyleOf(comp.data) === 'HYBRID_RACE' ? (
+          <Card testID="judge-race" style={{ gap: space.sm, borderWidth: 1, borderColor: colors.primary }}>
+            <Txt variant="title">{t('judgeRaceOpen')}</Txt>
+            <Txt color={colors.outline}>{t('judgeRaceHint')}</Txt>
+            <Button testID="judge-race-open" icon="directions-run" label={t('judgeRaceOpen')} onPress={() => router.push(`/competitions/${id}/judge/race`)} />
+          </Card>
+        ) : null}
         {waiting.length > 0 ? (
           <Card testID="floor-pending" style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, backgroundColor: colors.surfaceHigh }}>
             <Icon name="cloud-off" color={colors.error} />
@@ -209,8 +222,14 @@ function LaneScoring({ id, lane, offsetMs, locked, onChanged }: { id: string; la
   const [error, setError] = useState<unknown>(null);
   const [now, setNow] = useState(Date.now());
   const sending = useRef(false);
+  const live = useLive();
   const startedAt: string | null = lane.heat.startedAt;
   const kind = w ? scoringKind(w.scoreType) : 'value';
+  // Phase 8: a WOD with a scorecard is counted movement by movement; its penalties get their own counters.
+  const sc = w ? scorecardOf(w) : null;
+  const bySc = sc != null && sc.sets.length > 0 && (kind === 'reps' || kind === 'time');
+  const pen = w ? penaltiesOf(w) : null;
+  const [extra, setExtra] = useState({ missedReps: 0, minor: 0, major: 0 });
   const capMs = w?.timeCapS ? w.timeCapS * 1000 : null;
   const elapsed = elapsedMs(startedAt, offsetMs, now);
   const finished = kind === 'time' && (tally.timeS != null || tally.capped);
@@ -232,6 +251,25 @@ function LaneScoring({ id, lane, offsetMs, locked, onChanged }: { id: string; la
   }, [kind, editing, capMs, elapsed, tally.timeS, tally.capped]);
   // Remounts the time field when « FINI » fills it, never while the judge types in it.
   const [timeField, setTimeField] = useState(0);
+
+  // The tie-break time is taken from the heat clock when the athlete ends the scorecard's tie-break set.
+  const tieAt = bySc ? tieBreakReps(sc) : null;
+  useEffect(() => {
+    if (tieAt == null || !startedAt || tally.tieBreakS != null || tally.reps < tieAt) return;
+    setTally((x) => ({ ...x, tieBreakS: wholeSeconds(elapsedMs(startedAt, offsetMs) ?? 0) }));
+  }, [tieAt, startedAt, offsetMs, tally.reps, tally.tieBreakS]);
+
+  // Every change is published on the heat's live channel (displays, organizer). Refs: the lanes are read again every
+  // 5 s, which must not publish anything by itself.
+  const liveCtx = useRef({ live, heatId: lane.heat.id, lane: lane.lane, workoutId: w?.id ?? null, offsetMs });
+  liveCtx.current = { live, heatId: lane.heat.id, lane: lane.lane, workoutId: w?.id ?? null, offsetMs };
+  const published = useRef(tally);
+  useEffect(() => {
+    if (published.current === tally) return;
+    published.current = tally;
+    const x = liveCtx.current;
+    x.live.publish(`heat.${x.heatId}`, 'score_update', { lane: x.lane, workoutId: x.workoutId, reps: tally.reps, rounds: tally.rounds, timeS: tally.timeS, capped: tally.capped, tieBreakS: tally.tieBreakS, noReps: tally.noReps, seq: nextSeq(), serverTs: Date.now() + x.offsetMs });
+  }, [tally]);
 
   if (!w) return <EmptyState icon="event-busy" message={t('floorNoWod')} />;
   const raw = rawScore(w.scoreType, tally);
@@ -257,6 +295,8 @@ function LaneScoring({ id, lane, offsetMs, locked, onChanged }: { id: string; la
     setError(null);
     try {
       const r = await sendScore(api, { competitionId: id, heatId: lane.heat.id, lane: lane.lane, body: { clientId: newClientId(), raw, athleteConfirmed: true } });
+      if (extra.missedReps || extra.minor || extra.major) await api.post(`/competitions/${id}/lane-penalties`, { id: `${lane.heat.id}:${lane.lane}`, heatId: lane.heat.id, lane: lane.lane, workoutId: w!.id, ...extra });
+      live.publish(`heat.${lane.heat.id}`, 'done', { lane: lane.lane, workoutId: w!.id, raw, seq: nextSeq(), serverTs: Date.now() + offsetMs });
       setQueued(r.queued);
       setEditing(false);
       toast(r.queued ? t('floorScoreQueued') : t('floorScoreSent'));
@@ -325,9 +365,10 @@ function LaneScoring({ id, lane, offsetMs, locked, onChanged }: { id: string; la
           ) : null}
           {kind === 'time' && tally.capped ? <Txt testID="judge-capped" color={colors.primary} style={{ fontWeight: '700' }}>{t('floorCapReached')}</Txt> : null}
           {kind === 'time' ? <Chip testID="judge-capped-toggle" icon="timer-off" label={t('floorCapped')} selected={tally.capped} onPress={() => set({ capped: !tally.capped, timeS: null })} /> : null}
-          {kind === 'time' && tally.tieBreakS != null ? <Txt color={colors.outline}>{t('floorTieBreakAt', { time: formatDuration(tally.tieBreakS) })}</Txt> : null}
+          {tally.tieBreakS != null ? <Txt testID="judge-tiebreak-at" color={colors.outline}>{t('floorTieBreakAt', { time: formatDuration(tally.tieBreakS) })}</Txt> : null}
 
-          {(kind === 'reps' || (kind === 'time' && tally.capped)) && <Counter testID="judge-reps" label={t('floorReps')} value={tally.reps} onChange={(reps) => set({ reps })} addLabel={t('floorAddRep')} removeLabel={t('floorRemoveRep')} />}
+          {bySc && <ScorecardCounter sc={sc} reps={tally.reps} onChange={(reps) => set({ reps })} />}
+          {!bySc && (kind === 'reps' || (kind === 'time' && tally.capped)) && <Counter testID="judge-reps" label={t('floorReps')} value={tally.reps} onChange={(reps) => set({ reps })} addLabel={t('floorAddRep')} removeLabel={t('floorRemoveRep')} />}
           {kind === 'rounds' && (
             <>
               <Counter testID="judge-rounds" label={t('floorRounds')} value={tally.rounds} onChange={(rounds) => set({ rounds, reps: rounds > tally.rounds ? 0 : tally.reps })} addLabel={t('floorAddRound')} removeLabel={t('floorRemoveRound')} big={false} />
@@ -355,6 +396,10 @@ function LaneScoring({ id, lane, offsetMs, locked, onChanged }: { id: string; la
             <Txt style={{ flex: 1 }} color={colors.outline}>{t('floorNoRepCount', { count: tally.noReps })}</Txt>
             <Button testID="judge-norep" kind="tonal" icon="block" label={t('floorNoRep')} onPress={() => set({ noReps: tally.noReps + 1 })} />
           </View>
+          {pen && pen.missedRepSeconds > 0 ? <PenaltyRow testID="judge-missed" label={t('judgeMissed')} count={extra.missedReps} onAdd={() => setExtra((e) => ({ ...e, missedReps: e.missedReps + 1 }))} /> : null}
+          {pen && pen.minorPct > 0 ? <PenaltyRow testID="judge-minor" label={t('judgeMinor')} count={extra.minor} onAdd={() => setExtra((e) => ({ ...e, minor: e.minor + 1 }))} /> : null}
+          {pen && pen.majorPct > 0 ? <PenaltyRow testID="judge-major" label={t('judgeMajor')} count={extra.major} onAdd={() => setExtra((e) => ({ ...e, major: e.major + 1 }))} /> : null}
+          <Txt variant="small" color={colors.outline}>{t('judgeLiveHint')}</Txt>
 
           <ErrorText error={error} />
           <Button testID="judge-validate" icon="check" label={t('floorValidate')} busy={busy} disabled={!raw || locked} onPress={() => setConfirming(true)} />
@@ -429,6 +474,56 @@ function Counter({ label, value, onChange, addLabel, removeLabel, testID, big = 
           <Icon name="add" size={big ? 40 : 28} color={colors.onPrimary} />
         </Pressable>
       </View>
+    </View>
+  );
+}
+
+/** Phase 8: where the athlete is on the scorecard; one tap counts the movement's « count every ». */
+function ScorecardCounter({ sc, reps, onChange }: { sc: Scorecard; reps: number; onChange: (reps: number) => void }) {
+  const t = useT();
+  const { colors } = useTheme();
+  const cur = scorecardCursor(sc, reps);
+  if (!cur) return null;
+  return (
+    <Card testID="judge-sc" style={{ gap: space.sm }}>
+      <Txt variant="label" color={colors.outline}>{cur.done ? t('judgeScDone') : t('judgeScWhere', { set: sc.sets[cur.set].name || String(cur.set + 1), round: cur.round })}</Txt>
+      <Txt testID="judge-sc-name" style={displayText(32)}>{cur.name}</Txt>
+      <Txt color={colors.outline}>{`${cur.moveReps} / ${cur.moveTarget} ${cur.unit}`}</Txt>
+      <View style={{ flexDirection: 'row', alignItems: 'stretch', gap: space.sm }}>
+        <Pressable
+          testID="judge-sc-minus"
+          accessibilityRole="button"
+          accessibilityLabel={t('judgeScRemove')}
+          disabled={reps === 0}
+          onPress={() => onChange(tapBack(sc, reps))}
+          style={({ pressed }) => ({ width: 72, minHeight: 96, borderRadius: radius.card, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surfaceHigh, opacity: reps === 0 ? 0.45 : pressed ? 0.8 : 1 })}
+        >
+          <Icon name="remove" size={28} />
+        </Pressable>
+        <Pressable
+          testID="judge-sc-plus"
+          accessibilityRole="button"
+          accessibilityLabel={t('judgeScAdd', { step: cur.step })}
+          accessibilityState={{ disabled: cur.done }}
+          disabled={cur.done}
+          onPress={() => onChange(tapNext(sc, reps))}
+          style={({ pressed }) => ({ flex: 1, minHeight: 96, borderRadius: radius.card, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primary, opacity: cur.done ? 0.45 : pressed ? 0.8 : 1 })}
+        >
+          <Txt style={displayText(40)} color={colors.onPrimary}>{`+${cur.step}`}</Txt>
+        </Pressable>
+      </View>
+      <Txt testID="judge-sc-progress" accessibilityLiveRegion="polite" style={{ fontWeight: '700' }}>{t('judgeScProgress', { reps, total: cur.total })}</Txt>
+    </Card>
+  );
+}
+
+function PenaltyRow({ label, count, onAdd, testID }: { label: string; count: number; onAdd: () => void; testID: string }) {
+  const t = useT();
+  const { colors } = useTheme();
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
+      <Txt testID={`${testID}-count`} style={{ flex: 1 }} color={colors.outline}>{t('judgePenaltyLine', { label, count })}</Txt>
+      <Button testID={testID} kind="tonal" icon="report" label={label} onPress={onAdd} />
     </View>
   );
 }

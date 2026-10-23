@@ -12,7 +12,8 @@ export const competitionsApi = (api: ApiClient) => ({
   list: (filter: CompFilter, mine = false) => api.get<Json[]>('/competitions', { filter, ...(mine ? { mine: 'true' } : {}) }),
   get: (id: string) => api.get<Json>(`/competitions/${id}`),
   checkCoupon: (id: string, categoryId: string, code: string) => api.post<Json>(`/competitions/${id}/coupon/validate`, { categoryId, code }),
-  register: (id: string, categoryId: string, couponCode?: string) => api.post<Json>(`/competitions/${id}/register`, { categoryId, ...(couponCode ? { couponCode } : {}) }),
+  // `extras` (team, answers, payment plan…): kept on the device for now by `core/api/org-local.ts`.
+  register: (id: string, categoryId: string, couponCode?: string, extras: Json = {}) => api.post<Json>(`/competitions/${id}/register`, { categoryId, ...(couponCode ? { couponCode } : {}), ...extras }),
   submit: (id: string, wodId: string, body: Json) => api.post<Json>(`/competitions/${id}/wods/${wodId}/submissions`, body),
   heats: (id: string) => api.get<Json[]>(`/competitions/${id}/heats`),
   mySubmissions: (id: string) => api.get<Json[]>(`/competitions/${id}/my-submissions`),

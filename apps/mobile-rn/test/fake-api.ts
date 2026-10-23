@@ -44,8 +44,10 @@ export class FakeBackend {
   }
 }
 
-export function fakeClient(backend: FakeBackend, opts: { tokens?: TokenStorage; onExpired?: () => void } = {}) {
-  return new ApiClient('http://test', opts.tokens ?? new MemoryTokenStorage(), opts.onExpired ?? (() => {}), backend.fetch);
+/** `wrap`: what the app puts in front of the network (the organizer local layer in `fakeServices`). */
+export function fakeClient(backend: FakeBackend, opts: { tokens?: TokenStorage; onExpired?: () => void; wrap?: (f: Fetch) => Fetch } = {}) {
+  const fetch = opts.wrap ? opts.wrap(backend.fetch) : backend.fetch;
+  return new ApiClient('http://test', opts.tokens ?? new MemoryTokenStorage(), opts.onExpired ?? (() => {}), fetch);
 }
 
 export const session = (suffix = '1') => ({ accessToken: `access-${suffix}`, refreshToken: `refresh-${suffix}`, userId: 'u1', expiresIn: 900 });

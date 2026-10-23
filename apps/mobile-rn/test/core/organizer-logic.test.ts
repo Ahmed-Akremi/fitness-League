@@ -3,6 +3,7 @@ import {
   catDraft,
   catValid,
   datesValid,
+  eventStyleOf,
   fromMillimes,
   missingForPublication,
   nextWodNumber,
@@ -54,11 +55,16 @@ describe('publication', () => {
     coverUrl: 'https://cdn/c.webp',
     categories: [{ id: 'k', active: true }],
     workouts: [{ id: 'w', number: 1 }],
+    contactEmail: 'hello@box.tn',
     status: 'DRAFT',
   };
   it('lists what the draft misses', () => {
     expect(missingForPublication(ready)).toEqual([]);
     expect(missingForPublication({ ...ready, description: '  ', coverUrl: null, categories: [{ id: 'k', active: false }], workouts: [] })).toEqual(['DESCRIPTION', 'COVER', 'CATEGORY', 'WOD']);
+  });
+  it('asks for a valid contact email (phase 2)', () => {
+    expect(missingForPublication({ ...ready, contactEmail: '' })).toEqual(['CONTACT']);
+    expect(missingForPublication({ ...ready, contactEmail: 'hello@' })).toEqual(['CONTACT']);
   });
   it('tells the publication state', () => {
     expect(publicationState(ready)).toBe('DRAFT');
@@ -177,5 +183,16 @@ describe('WOD versions per category and release date', () => {
     const plain = wodBody({ ...d, variants: [], releaseAt: null });
     expect(plain.variants).toEqual([]);
     expect(plain).not.toHaveProperty('releaseAt');
+  });
+});
+
+describe('event style (functional fitness or hybrid race)', () => {
+  it('reads the hybrid race style', () => {
+    expect(eventStyleOf({ eventStyle: 'HYBRID_RACE' })).toBe('HYBRID_RACE');
+  });
+
+  it('treats an event without a style, or with an unknown one, as functional fitness', () => {
+    expect(eventStyleOf({})).toBe('FUNCTIONAL_FITNESS');
+    expect(eventStyleOf({ eventStyle: 'SOMETHING' })).toBe('FUNCTIONAL_FITNESS');
   });
 });

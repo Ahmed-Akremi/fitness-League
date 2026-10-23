@@ -11,11 +11,12 @@ import { displayText, radius, space, useTheme } from '../../core/theme';
 import { formatDate } from '../../core/utils/format';
 import { newClientId } from '../../core/utils/ids';
 import { EmptyState, Loading, SectionHeader, SkeletonList, StatCard, StatusPill, TimeField } from '../../core/widgets/common';
-import { ErrorText, ErrorView, errorMessage } from '../../core/widgets/error';
+import { ErrorText, ErrorView } from '../../core/widgets/error';
 import { Button, Card, Chip, Icon, ListGroup, ListRow, Screen, Segmented, TextField, Txt, toast, type IconName } from '../../core/widgets/kit';
 import { compKeys, competitionsApi, formatMoney, useCompetition, useCompetitions, useCompLeaderboard, useHeats, useMySubmissions, youtubeId, type CompFilter } from './api';
 import { FloorJudgeCard } from './judge/screens';
 import { CompetitionAnnouncements } from './organizer/announcements';
+import { ShopLink } from './organizer/shop';
 import { publicationState } from './organizer/logic';
 
 const statusLabel = (t: T, s: string) => (t as (k: string) => string)(`compStatus${s}`);
@@ -195,6 +196,8 @@ export function CompetitionScreen({ id }: { id: string }) {
                   <View style={{ padding: 12, gap: 10, backgroundColor: colors.surface }}>
                     <Txt color={colors.outline}>{t('compMyActions')}</Txt>
                     <ActionRow done={registered} title={t('compRegistration')} subtitle={registered ? t('compAllSet') : t('compPaymentPending')} />
+                    {c.myRegistration.teamName ? <Txt testID="my-team">{t('compMyTeam', { name: c.myRegistration.teamName })}</Txt> : null}
+                    {c.myRegistration.paymentPlan === 'DEPOSIT' ? <Txt color={colors.outline}>{t('compDepositPlan')}</Txt> : null}
                     {registered && <ActionRow done={c.workouts.length > 0 && c.workouts.every((w: Json) => subs.has(w.id))} title={t('compSubmitScore')} subtitle={t('compScoresSent', { done: subs.size, total: c.workouts.length })} onPress={() => setTab('wods')} />}
                   </View>
                 </View>
@@ -216,6 +219,7 @@ export function CompetitionScreen({ id }: { id: string }) {
               </ListGroup>
               <HeatSchedule id={id} />
               <CompetitionAnnouncements id={id} />
+              <ShopLink id={id} />
 
               {categories.length > 0 && (
                 <View onLayout={anchor('categories')} style={{ gap: space.md }}>
@@ -443,104 +447,8 @@ export function CompLeaderboard({ id, categories, workouts }: { id: string; cate
 // ───────────── Registration ─────────────
 
 /** Competition → category → coupon → price → confirmation (§12). The server re-checks everything. */
-export function RegisterScreen({ id }: { id: string }) {
-  const t = useT();
-  const locale = useLocale();
-  const { colors } = useTheme();
-  const api = useApi();
-  const qc = useQueryClient();
-  const comp = useCompetition(id);
-  const [categoryId, setCategoryId] = useState<string | null>(null);
-  const [code, setCode] = useState('');
-  const [quote, setQuote] = useState<Json | null>(null);
-  const [couponError, setCouponError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<unknown>(null);
-  const [done, setDone] = useState<Json | null>(null);
-  if (comp.isError) return <ErrorView error={comp.error} />;
-  if (!comp.data) return <Loading />;
-  const c = comp.data;
-  const category = c.categories.find((x: Json) => x.id === categoryId);
-  const money = (p: number) => (p === 0 ? t('compFree') : formatMoney(p, c.currency, locale));
-
-  async function applyCoupon() {
-    setCouponError(null);
-    try {
-      setQuote(await competitionsApi(api).checkCoupon(id, categoryId!, code.trim().toUpperCase()));
-    } catch (e) {
-      setQuote(null);
-      setCouponError(e instanceof ApiError && e.status === 422 ? t('compCouponRefused') : errorMessage(t, e));
-    }
-  }
-
-  async function confirm() {
-    setBusy(true);
-    setError(null);
-    try {
-      const r = await competitionsApi(api).register(id, categoryId!, quote ? code.trim().toUpperCase() : undefined);
-      await qc.invalidateQueries({ queryKey: ['competitions'] });
-      setDone(r);
-    } catch (e) {
-      if (e instanceof ApiError && e.fieldCode('categoryId')) setError(t('compNotEligible'));
-      else if (e instanceof ApiError && e.fieldCode('couponCode')) setError(t('compCouponRefused'));
-      else if (e instanceof ApiError && e.code === 'PRECONDITION_FAILED') setError(t('compRegistrationClosed'));
-      else setError(e);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  if (done) {
-    return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16, padding: 32, backgroundColor: colors.background }}>
-        <Icon name={done.registrationStatus === 'CONFIRMED' ? 'check-circle' : 'hourglass-top'} size={64} color={colors.primary} />
-        <Txt variant="title" style={{ textAlign: 'center' }}>{done.registrationStatus === 'CONFIRMED' ? t('compRegistered') : t('compPaymentPending')}</Txt>
-        <Button label={t('compMyCompetition')} onPress={() => router.replace(`/competitions/${id}`)} />
-      </View>
-    );
-  }
-
-  return (
-    <Screen>
-      <SectionHeader title={t('compChooseCategory')} />
-      {c.categories
-        .filter((x: Json) => x.active)
-        .map((x: Json) => (
-          <Pressable key={x.id} testID={`cat-${x.id}`} accessibilityRole="radio" accessibilityState={{ checked: x.id === categoryId }} onPress={() => { setCategoryId(x.id); setQuote(null); }} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10 }}>
-            <Icon name={x.id === categoryId ? 'radio-button-checked' : 'radio-button-unchecked'} color={x.id === categoryId ? colors.primary : colors.outline} />
-            <Txt style={{ flex: 1 }}>{x.name}</Txt>
-            <Txt style={{ fontWeight: '700' }}>{money(x.price)}</Txt>
-          </Pressable>
-        ))}
-      {category && (
-        <>
-          <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 8 }}>
-            <TextField testID="coupon" style={{ flex: 1 }} label={t('compCoupon')} value={code} onChangeText={setCode} autoCapitalize="characters" error={couponError} />
-            <Button testID="coupon-apply" kind="tonal" label={t('compApplyCoupon')} disabled={code.trim().length < 3} onPress={applyCoupon} />
-          </View>
-          <Card style={{ gap: 4 }}>
-            <View style={{ flexDirection: 'row' }}>
-              <Txt style={{ flex: 1 }}>{t('compPrice')}</Txt>
-              <Txt>{money(quote?.originalPrice ?? category.price)}</Txt>
-            </View>
-            {quote && (
-              <View style={{ flexDirection: 'row' }}>
-                <Txt style={{ flex: 1 }}>{t('compDiscount')}</Txt>
-                <Txt color={colors.primary}>{`− ${money(quote.discount)}`}</Txt>
-              </View>
-            )}
-            <View style={{ flexDirection: 'row', marginTop: 4 }}>
-              <Txt variant="title" style={{ flex: 1 }}>{t('compTotal')}</Txt>
-              <Txt testID="final-price" style={displayText(24)}>{money(quote?.finalPrice ?? category.price)}</Txt>
-            </View>
-          </Card>
-        </>
-      )}
-      {typeof error === 'string' ? <Txt color={colors.error}>{error}</Txt> : <ErrorText error={error} />}
-      <Button testID="register-confirm" label={t('compConfirmRegistration')} busy={busy} disabled={!category} onPress={confirm} style={{ marginTop: 8 }} />
-    </Screen>
-  );
-}
+/** Registration lives in `register.tsx` (phase 4 of the organisation update). */
+export { RegisterScreen } from './register';
 
 // ───────────── Submission ─────────────
 
