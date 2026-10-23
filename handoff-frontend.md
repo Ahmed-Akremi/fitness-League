@@ -4,8 +4,8 @@ Design: `docs/superpowers/specs/2026-10-22-organisation-update-design.md`.
 Backend to-do list: `docs/organisation-backend-contract.md`.
 Demo: `docs/organisation-demo-script.md`.
 
-**All 12 phases are built, one commit per phase, not pushed.** The owner asked to go through every phase without
-the review stops.
+**All 12 phases are built, one commit per phase, and pushed to `origin/organisation-update` (2026-10-23).** Not
+merged; no pull request yet. The owner asked to go through every phase without the review stops.
 
 | Phase | Commit | What |
 |---|---|---|
@@ -20,7 +20,8 @@ the review stops.
 | 9 Displays | `83f212e` | `/display/:id/:kind` (7 kinds, overlay), Tools page, calls; tabs of one browser share the local data |
 | 10 Results | `78fcb17` | Points tables, visibility, finalists, freeze, ages, hybrid ranking by station, CSV import with dry run |
 | 11 Messages, tickets, shop | `9af0930` | Segments, schedule, outbox; ticket types, door check; shop with sizes; public shop page |
-| 12 Polish | (this commit) | Arabic render test of every new page, end-to-end demo test, error states, robust display links, docs |
+| 12 Polish | `7f08d8f` | Arabic render test of every new page, end-to-end demo test, error states, robust display links, docs |
+| Security note | `aa897ba` | Contract: the registration gates (codes, invite list) must be checked, and the secrets hidden, by the server |
 
 **Checks:** 94 suites, 687 tests, `tsc` clean (Windows Node, see below).
 
@@ -38,7 +39,44 @@ the review stops.
   - the remaining quantity checked inside the order transaction;
   - hashed codes with a rate limit.
 
+**Seen in the web build (2026-10-23):**
+- **Screenshots:** 39, outside the repository, in `C:\Users\GIGABYTE\Desktop\organisation-screenshots\`.
+  - They cover every organizer page, the TV screens, the public shop, the race judge screen, the phone width and
+    Arabic.
+  - Taken in demo mode (`EXPO_PUBLIC_DEMO=true`) on the demo event `01a10804-0000-7000-8000-00000000d001`, with
+    headless Edge driven over CDP.
+- **Problems found, not fixed.** The code involved is the same on `main`:
+  - **A cold load lands on « Email verification ».**
+    - Any typed address, `/` included, opens `/verify-email` (« Invalid or expired link ») and stays there.
+    - Why: while the session loads, the guarded route is not available, so the router falls back to the first
+      public screen of `shell/root.tsx`.
+    - Leaving it takes « Continue ».
+    - The demo script's « open … in another tab » steps run into it. The `/display/…` pages do not: they are
+      public.
+  - **Arabic is not mirrored on the web.**
+    - `useRtl` skips the web (« the web build follows the document direction »), but nothing sets `dir="rtl"` on
+      the page.
+    - The texts are in Arabic and right-aligned, but the rows and the menu still run left to right.
+    - So the demo script's « every page reads right to left » is meant for a phone (`I18nManager`), and does not
+      hold on the web.
+    - The HYROX-style stage names stay in English: they are data.
+  - **A `<button>` inside a `<button>` on Planning.** Each heat row (`ListRow` with `onPress`) holds its edit
+    `IconButton`. React Native Web 0.21 renders `role="button"` as `<button>`, so React warns in development.
+  - **No link to the race judge screen for an organizer.** It opens from the floor-judge card of an accepted
+    invitation (`floor-open`, then `judge-race-open`), so an organizer without an invitation has no link to it.
+- **Next:**
+  - open the pull request;
+  - fix the problems above, then correct the two demo script claims;
+  - the device checks;
+  - each contract item, once Rust part 4 serves it.
+
 **Working on it:**
+- **Run the web build from WSL** (Windows Node, demo mode):
+  `cmd.exe /c 'cd /d C:\Users\GIGABYTE\fitness-league\apps\mobile-rn && set EXPO_PUBLIC_DEMO=true&& npx expo start --web --port 8081 --clear'`.
+  - Put no quotes around `set`. WSL passes `"` to `cmd` as `\"`, so `set "X=1"` sets a different variable, and
+    Metro then calls `10.0.2.2`.
+  - Add `--clear` after changing an `EXPO_PUBLIC_*` variable.
+  - WSL cannot reach `localhost:8081` on Windows: drive a Windows browser.
 - **Run the tests with Windows Node:**
   - `node_modules` was installed by Windows pnpm, so Linux Node in WSL fails on it (`@babel/runtime` not found).
   - From WSL: `cmd.exe /c "cd /d C:\Users\GIGABYTE\fitness-league\apps\mobile-rn && npx jest"`, about 40 s.

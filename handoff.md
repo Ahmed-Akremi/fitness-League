@@ -1,9 +1,39 @@
-# Handoff — fitness-league (2026-10-21: plan 2d reviewed; part 3's spec; plan 3a built, on `feat/rust-backend-3`)
+# Handoff — fitness-league (2026-10-21: plan 2d reviewed; part 3's spec; plan 3a built, on `feat/rust-backend-3`; update of 2026-10-23 below)
 
 Earlier handoffs are in git: `git show 61b7787:handoff.md` (the full history since 2026-10-04),
 `git show 02a732e:handoff.md` (part 1 complete), `git show 9bb2cdc:handoff.md` (plan 2a built),
 `git show a4464bc:handoff.md` (plan 2b built), `git show 18e861e:handoff.md` (plan 2c built and reviewed) and
 `git show 1cdb980:handoff.md` (plan 2d built). This one keeps what is still true and still to do.
+
+## Update of 2026-10-23 (frontend session; §0 to §6 below still describe 2026-10-21)
+
+- **`origin/main` is at `cdd9924`**, no longer `c1e1e9e`. Merged since then:
+  - #34, `feat/floor-judging`: floor judging for on-site events in the app and in the old API (`fd49086`), the
+    « Mon heat » page, the verify-email, reset-password and legal pages;
+  - #35, #36 and #37, `feat/rust-backend-3`: the rest of plan 3a (`23c1e3f` to `4b27150`), plan 3a's
+    whole-branch review (`38f66b7`), plan 3b (`857a623`) and its gym code (`eed6b57` to `1348876`).
+
+  So §0 step 2 and §6 items 1 and 2 are done. Plan 3b's file has no « Built » section, and no review of it is
+  recorded.
+- **Branch `organisation-update`** (frontend only), pushed on 2026-10-23 (`aa897ba`, then this handoff update).
+  Not merged, no pull request yet.
+  - It holds the organisation update of the app, in 12 phases; the details are in `handoff-frontend.md`, top
+    section.
+  - It changes no API call and no recorded answer. What the API does not have yet is kept on the device by a
+    local layer (`apps/mobile-rn/src/core/api/org-local.ts`, flag `EXPO_PUBLIC_ORG_LOCAL`).
+- **For the Rust backend, part 4 (competitions):** `docs/organisation-backend-contract.md` is its to-do list for
+  the organisation update:
+  - the new fields of competitions, divisions, registrations and WODs;
+  - the new routes;
+  - the live events and the displays' public reads;
+  - results, then messages, tickets and the shop.
+
+  Its section « Registration gates are a demo in the app, not a protection » is required:
+  - never send `accessCode`, `unlockCode` or `invitedEmails` to non-organizers; send booleans instead;
+  - check the typed codes against hashes, with a rate limit (422 `ACCESS_CODE_INVALID` / `UNLOCK_CODE_INVALID`,
+    403 `NOT_INVITED`).
+
+  Floor judging (#34, in the old API since `fd49086`) belongs to part 4 as well.
 
 ## 0. Start here (next session)
 
@@ -84,7 +114,8 @@ BullMQ (a Node library). Six parts:
 1. Foundation and accounts: **done**.
 2. Training loop: **done** (plans 2a to 2d).
 3. Gyms and social: **under way** (spec written; plan 3a built; plans 3b to 3f to come).
-4. Competitions.
+4. Competitions. Its inputs include `docs/organisation-backend-contract.md` (the organisation update, see the
+   2026-10-23 block above).
 5. Admin and moderation.
 6. Cut-over: demo data, frontends pointed at Rust, `apps/api` and PostgreSQL removed.
 
