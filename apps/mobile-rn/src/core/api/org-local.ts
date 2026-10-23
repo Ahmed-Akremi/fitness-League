@@ -85,6 +85,8 @@ export const ORG_LOCAL_LAYER: LocalLayer = {
     'pricing',
     'registrationForm',
     'agreements',
+    // Phase 7: the race of a hybrid event (`features/competitions/organizer/logic-hybrid.ts`)
+    'flow',
   ],
   // Phase 3: divisions (`features/competitions/organizer/logic-division.ts`)
   categoryFields: ['type', 'teamMale', 'teamFemale', 'parentId', 'locked', 'unlockCode', 'earlyPrice', 'earlyUntil', 'teamNameChangeUntil', 'memberChangeUntil', 'memberChangePrice', 'oneMemberStays'],
@@ -93,6 +95,8 @@ export const ORG_LOCAL_LAYER: LocalLayer = {
   // Phase 6: a WOD's scorecard, penalties and tie-break
   workoutFields: ['scorecard', 'penalties', 'tieBreak'],
   routes: [
+    // Phase 7: waves of a hybrid race ({ number, name, categoryId, startsAt, registrationIds, liveStart })
+    ...listRoutes('waves', 'waves', required('startsAt')),
     // Phase 6: locations (stages, floors) and the location of each heat ({ id: heatId, locationId })
     ...listRoutes('locations', 'locations', required('name')),
     ...listRoutes('heatLocations', 'heat-locations', required('locationId')),

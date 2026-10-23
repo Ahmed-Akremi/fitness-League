@@ -24,7 +24,7 @@ export const ORG_MENU: MenuSection[] = [
   { key: 'dashboard', tabs: ['dashboard', 'finances'] },
   { key: 'general', tabs: ['general', 'settings', 'categories', 'pricing', 'forms', 'coupons', 'team'] },
   { key: 'participants', tabs: ['participants', 'roster', 'staff'] },
-  { key: 'planning', tabs: ['wods', 'planning', 'timetable'] },
+  { key: 'planning', tabs: ['wods', 'race', 'planning', 'waves', 'timetable'] },
   { key: 'leaderboard', tabs: ['leaderboard'] },
   { key: 'messages', tabs: ['announcements'] },
 ];
@@ -65,7 +65,9 @@ export const MENU_ICON: Record<ManageTab, IconName> = {
   roster: 'how-to-reg',
   staff: 'badge',
   wods: 'fitness-center',
+  race: 'directions-run',
   planning: 'local-fire-department',
+  waves: 'waves',
   timetable: 'schedule',
   leaderboard: 'emoji-events',
   announcements: 'campaign',

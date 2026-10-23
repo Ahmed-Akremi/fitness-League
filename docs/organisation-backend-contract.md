@@ -67,6 +67,15 @@ Phase 3 adds three competition fields:
 | `registrationForm` | `[{ id, label ≤ 80, type: TEXT \| NUMBER \| SELECT \| SIZE \| DATE \| PHONE, required, options: string[] }]` | `SELECT` needs ≥ 2 options; `SIZE` answers are XS–XXL. Answers are checked with `answerProblems()` |
 | `agreements` | `{ liability: { required, text }, custom: { required, title, text }, minors: { enabled, age 1–21, photoConsent }, medicalReport: { required, description }, additionalDocument: { required, title, description }, faceRecognition: { required } }` | A required agreement needs its text |
 
+Phase 7 adds `flow`, the race of a hybrid event (`features/competitions/organizer/logic-hybrid.ts`):
+
+| Field | Shape | Notes |
+|---|---|---|
+| `flow` | `{ template: HYROX_STYLE \| CUSTOM, timeCapSec \| null, totalScoring: TIME \| REPS \| CALORIES \| DISTANCE, stages: [{ id, name, kind: STATION \| TRANSITION, scoring: TIME \| REPS \| CALORIES \| DISTANCE \| NONE, target > 0, unit }], breaks: [{ afterStage 1..stages-1, seconds > 0 }], scoringRule: { op: ADD \| REMOVE, value > 0 \| null, unit: SEC \| REP } \| null }` | `HYROX_STYLE` is fixed: a 1 km run (`TRANSITION`) before each of the 8 stations, 16 stages; the server should refuse other stages for it. `flowProblems()` is the reference check. A `null` rule value means the judge enters it. "HYROX" is a trademark: never label the template without « -style » |
+
+The first save of a race also creates one server WOD (`scoreType: TIME`, name « Race »), so the publication check
+(`WOD` item) and the style lock keep working until the server knows flows.
+
 ## Category (division) fields
 
 The app sends these in `POST /competitions/:id/categories` and `PUT /competitions/:id/categories/:categoryId`, and
@@ -137,6 +146,7 @@ Phase 5 lists all follow the same pattern:
 | `staff-applications` | `{ id, formId, name, email, role, shifts: string[], status: PENDING \| APPROVED \| DECLINED, checkedIn }` | `name`, `email`, `role` | Anyone may `POST` one; only organizers read, approve, decline and check in |
 | `locations` | `{ id, name, lanes }` | `name` | Phase 6: stages and floors |
 | `heat-locations` | `{ id: heatId, locationId }` | `locationId` | Phase 6: should become a `locationId` column on `competition_heats` |
+| `waves` | `{ id, number, name, categoryId, startsAt, registrationIds: string[], liveStart: ISO \| null }` | `startsAt` | Phase 7: start groups of a hybrid race, cut by `planWaves()`. `liveStart` set = racing; the shared clock of a wave counts from it |
 
 ## WOD fields (phase 6)
 
@@ -168,3 +178,8 @@ through `BroadcastChannel('fl-live')`.
 | Any event | `{ channel: string, event: string, payload: object }` |
 
 Channels and events are added by the phases that use them (8: judges and timers, 9: displays).
+
+| Channel | Event | Payload | Since | Sent by |
+|---|---|---|---|---|
+| `event.<competitionId>` | `wave_started`, `wave_stopped` | `{ waveId, at }` | phase 7 | Waves page (organizer) |
+| `timer.<competitionId>` | `timer_start`, `timer_stop` | `{ waveId, startTimestamp }` | phase 7 | Waves page (organizer) |
