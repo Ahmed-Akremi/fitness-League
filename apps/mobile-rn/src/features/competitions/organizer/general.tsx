@@ -13,7 +13,10 @@ import { Button, Chip, Dialog, Screen, TextField, Txt, toast } from '../../../co
 import { DateField } from '../../../core/widgets/pickers';
 import { DEFAULT_COVER, statusLabelForCompetition } from '../screens';
 import { organizerApi, useRefreshCompetition } from './api';
+import { EventSetupFields } from './event-setup';
+import { LocalBadge } from './local-badge';
 import { COVER_MAX_BYTES, datesValid, fromMillimes, ORGANIZER_NEXT, toMillimes, type EventFormat } from './logic';
+import { detailsBody, detailsErrors, detailsOf, setupBody, setupOf, setupValid, styleLocked, type DetailsError, type DetailsExtra } from './logic-event';
 import { OrgPageHeader } from './page';
 
 export function GeneralTab({ c }: { c: Json }) {
@@ -38,6 +41,9 @@ export function GeneralTab({ c }: { c: Json }) {
   const [deleting, setDeleting] = useState(false);
   const [confirming, setConfirming] = useState<string | null>(null);
   const sending = useRef(false);
+  const [setup, setSetup] = useState(() => setupOf(c));
+  const [details, setDetails] = useState<DetailsExtra>(() => detailsOf(c));
+  const detailErrors = detailsErrors(details);
 
   const onsite = format !== 'ONLINE';
   const priceMillimes = toMillimes(price);
@@ -45,7 +51,15 @@ export function GeneralTab({ c }: { c: Json }) {
   const dates = { registrationStart: regStart, registrationEnd: regEnd, eventStart, eventEnd };
   const placeOk = !onsite || (city.trim().length > 0 && place.trim().length > 0);
   const valid =
-    title.trim().length >= 3 && title.trim().length <= 120 && description.trim().length >= 1 && placeOk && datesValid(dates) && priceMillimes != null && (maxN == null || (Number.isInteger(maxN) && maxN >= 1));
+    title.trim().length >= 3 &&
+    title.trim().length <= 120 &&
+    description.trim().length >= 1 &&
+    placeOk &&
+    datesValid(dates) &&
+    priceMillimes != null &&
+    (maxN == null || (Number.isInteger(maxN) && maxN >= 1)) &&
+    setupValid(setup) &&
+    Object.keys(detailErrors).length === 0;
   const draft = c.status === 'DRAFT';
   const bannerWidth = Math.min(width, 720) - 32;
   const nextLabels: Record<string, string> = {
@@ -101,9 +115,19 @@ export function GeneralTab({ c }: { c: Json }) {
           eventEnd: eventEnd.toISOString(),
           registrationPrice: priceMillimes!,
           maxParticipants: maxN,
+          ...setupBody(setup),
+          ...detailsBody(details),
         }),
       t('orgSaved'),
     );
+
+  const errorText: Record<DetailsError, string> = { EMAIL: t('orgEmailInvalid'), URL: t('orgUrlInvalid'), VIDEO: t('orgVideoInvalid') };
+  const detailField = (key: keyof DetailsExtra, testID: string, label: string, keyboardType: 'default' | 'email-address' | 'url' = 'default') => (
+    <>
+      <TextField testID={testID} label={label} value={details[key]} onChangeText={(v) => setDetails({ ...details, [key]: v })} maxLength={300} keyboardType={keyboardType} autoCapitalize={keyboardType === 'default' ? 'sentences' : 'none'} />
+      {detailErrors[key] && <Txt variant="small" color={colors.error}>{errorText[detailErrors[key]!]}</Txt>}
+    </>
+  );
 
   async function pickBanner() {
     const picked = await pickImage(COVER_MAX_BYTES);
@@ -165,6 +189,19 @@ export function GeneralTab({ c }: { c: Json }) {
         {!datesValid(dates) && <Txt variant="small" color={colors.error}>{t('orgDatesInvalid')}</Txt>}
         <TextField testID="org-price" label={t('orgPrice')} value={price} onChangeText={setPrice} keyboardType="decimal-pad" />
         <TextField testID="org-max" label={t('orgMaxParticipants')} value={max} onChangeText={setMax} keyboardType="number-pad" />
+        <EventSetupFields value={setup} onChange={setSetup} locked={styleLocked(c)} />
+
+        <SectionHeader title={t('orgDetailsMore')} />
+        <View style={{ alignSelf: 'flex-start' }}>
+          <LocalBadge />
+        </View>
+        {detailField('organizerName', 'org-organizer-name', t('orgOrganizerName'))}
+        {detailField('contactEmail', 'org-contact-email', t('orgContactEmail'), 'email-address')}
+        {detailField('website', 'org-website', t('orgWebsite'), 'url')}
+        {detailField('instagram', 'org-instagram', t('orgInstagram'))}
+        {detailField('facebook', 'org-facebook', t('orgFacebook'))}
+        {detailField('videoUrl', 'org-promo-video', t('orgPromoVideo'), 'url')}
+        {detailField('rulebookUrl', 'org-rulebook', t('orgRulebookUrl'), 'url')}
         <ErrorText error={error} />
         <Button testID="org-save" label={t('save')} busy={busy === 'save'} disabled={!valid} onPress={save} />
 

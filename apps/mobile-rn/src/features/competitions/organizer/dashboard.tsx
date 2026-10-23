@@ -23,7 +23,7 @@ export function DashboardTab({ c, onGo }: { c: Json; onGo: Go }) {
   const wide = useWideWeb();
   const dash = useOrganizerDashboard(c.id);
   const { state, missing, canRequest, busy, error, request, share } = usePublication(c);
-  const labels: Record<ChecklistItem, string> = { DESCRIPTION: t('orgCheckDescription'), DATES: t('orgCheckDates'), COVER: t('orgCheckCover'), CATEGORY: t('orgCheckCategory'), WOD: t('orgCheckWod') };
+  const labels: Record<ChecklistItem, string> = { DESCRIPTION: t('orgCheckDescription'), DATES: t('orgCheckDates'), COVER: t('orgCheckCover'), CONTACT: t('orgCheckContact'), CATEGORY: t('orgCheckCategory'), WOD: t('orgCheckWod') };
   const stateText = {
     DRAFT: t('orgStateDraft'),
     REQUESTED: t('orgStateRequested'),

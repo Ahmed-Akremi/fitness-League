@@ -1,3 +1,94 @@
+# Organisation update (branch `organisation-update`, 2026-10-22 → 2026-10-23)
+
+Design: `docs/superpowers/specs/2026-10-22-organisation-update-design.md`.
+Backend to-do list: `docs/organisation-backend-contract.md`.
+Demo: `docs/organisation-demo-script.md`.
+
+**All 12 phases are built, one commit per phase, and pushed to `origin/organisation-update` (2026-10-23).** Not
+merged; no pull request yet. The owner asked to go through every phase without the review stops.
+
+| Phase | Commit | What |
+|---|---|---|
+| 1 Foundations | `2535877` | Local store, `withLocalRoutes`, `org-local.ts` + flag, live bus, `eventStyle`, « Local » badge |
+| 2 Event setup | `0b9640b` | Event type and template, visibility, participants, label, invite-only, contact, Settings, copy an event |
+| 3 Divisions, pricing, forms | `a5bc857` | Team and sub-divisions, locked divisions, early-bird; fees, VAT, deposit; form builder, agreements, minors |
+| 4 Registration | `9b45b17`, `c117174` | Queue, code, team / gift, deposit or full, consents, waiting list, « My registration » |
+| 5 Participants and staff | `aa2a5f3` | Roster (check-in, sponsors, finalists), staff forms and applications (public page) |
+| 6 Planning (functional fitness) | `d9f6a77` | Scorecard, penalties, tie-break, locations, advanced heat generator |
+| 7 Planning (hybrid) | `2841bd8` | Race page (HYROX-style locked / custom stages, breaks, rule), Waves page (start / stop) |
+| 8 Judges and live | `18dbed0` | Scorecard-driven floor judging, race judge screen, Live page (timers, feed) |
+| 9 Displays | `83f212e` | `/display/:id/:kind` (7 kinds, overlay), Tools page, calls; tabs of one browser share the local data |
+| 10 Results | `78fcb17` | Points tables, visibility, finalists, freeze, ages, hybrid ranking by station, CSV import with dry run |
+| 11 Messages, tickets, shop | `9af0930` | Segments, schedule, outbox; ticket types, door check; shop with sizes; public shop page |
+| 12 Polish | `7f08d8f` | Arabic render test of every new page, end-to-end demo test, error states, robust display links, docs |
+| Security note | `aa897ba` | Contract: the registration gates (codes, invite list) must be checked, and the secrets hidden, by the server |
+
+**Checks:** 94 suites, 687 tests, `tsc` clean (Windows Node, see below).
+
+**Before any build for real users:**
+- **`EXPO_PUBLIC_ORG_LOCAL=false`.** The local store keeps personal data (contact emails, codes, teammates, the
+  guardian details of minors, waiting-list and staff-application emails, buyers' names) unscoped. It is shared by
+  every account on the device and stays after sign-out. That is fine for a one-browser demo, not for real users.
+  The contract's security note lists it all.
+- **The server work:** each item of the contract moves to the server (Rust part 4), then leaves `ORG_LOCAL_LAYER`.
+  The screens do not change.
+- **Server must-haves called out in the contract:**
+  - public read-only endpoints for the displays;
+  - `ageAtEvent` on organizer registrations (age filters);
+  - an import endpoint with the same dry run;
+  - the remaining quantity checked inside the order transaction;
+  - hashed codes with a rate limit.
+
+**Seen in the web build (2026-10-23):**
+- **Screenshots:** 39, outside the repository, in `C:\Users\GIGABYTE\Desktop\organisation-screenshots\`.
+  - They cover every organizer page, the TV screens, the public shop, the race judge screen, the phone width and
+    Arabic.
+  - Taken in demo mode (`EXPO_PUBLIC_DEMO=true`) on the demo event `01a10804-0000-7000-8000-00000000d001`, with
+    headless Edge driven over CDP.
+- **Problems found, not fixed.** The code involved is the same on `main`:
+  - **A cold load lands on « Email verification ».**
+    - Any typed address, `/` included, opens `/verify-email` (« Invalid or expired link ») and stays there.
+    - Why: while the session loads, the guarded route is not available, so the router falls back to the first
+      public screen of `shell/root.tsx`.
+    - Leaving it takes « Continue ».
+    - The demo script's « open … in another tab » steps run into it. The `/display/…` pages do not: they are
+      public.
+  - **Arabic is not mirrored on the web.**
+    - `useRtl` skips the web (« the web build follows the document direction »), but nothing sets `dir="rtl"` on
+      the page.
+    - The texts are in Arabic and right-aligned, but the rows and the menu still run left to right.
+    - So the demo script's « every page reads right to left » is meant for a phone (`I18nManager`), and does not
+      hold on the web.
+    - The HYROX-style stage names stay in English: they are data.
+  - **A `<button>` inside a `<button>` on Planning.** Each heat row (`ListRow` with `onPress`) holds its edit
+    `IconButton`. React Native Web 0.21 renders `role="button"` as `<button>`, so React warns in development.
+  - **No link to the race judge screen for an organizer.** It opens from the floor-judge card of an accepted
+    invitation (`floor-open`, then `judge-race-open`), so an organizer without an invitation has no link to it.
+- **Next:**
+  - open the pull request;
+  - fix the problems above, then correct the two demo script claims;
+  - the device checks;
+  - each contract item, once Rust part 4 serves it.
+
+**Working on it:**
+- **Run the web build from WSL** (Windows Node, demo mode):
+  `cmd.exe /c 'cd /d C:\Users\GIGABYTE\fitness-league\apps\mobile-rn && set EXPO_PUBLIC_DEMO=true&& npx expo start --web --port 8081 --clear'`.
+  - Put no quotes around `set`. WSL passes `"` to `cmd` as `\"`, so `set "X=1"` sets a different variable, and
+    Metro then calls `10.0.2.2`.
+  - Add `--clear` after changing an `EXPO_PUBLIC_*` variable.
+  - WSL cannot reach `localhost:8081` on Windows: drive a Windows browser.
+- **Run the tests with Windows Node:**
+  - `node_modules` was installed by Windows pnpm, so Linux Node in WSL fails on it (`@babel/runtime` not found).
+  - From WSL: `cmd.exe /c "cd /d C:\Users\GIGABYTE\fitness-league\apps\mobile-rn && npx jest"`, about 40 s.
+    `npx tsc --noEmit` works the same way.
+- **Test traps:**
+  - Never pass an `async` callback to `waitFor`: with the harness's fake timers React stops flushing later updates.
+    Wait on the UI (`findBy*`), then read the API.
+  - Fake timers do not move `Date.now()`: count interval ticks when time must pass.
+  - Node has a global `BroadcastChannel`; `browserChannel()` opens one only on the web.
+- **Stage files by name.** About 165 unrelated files (`brag-output-…`, prompts, reports) are staged in the index by
+  someone else; every commit of this branch names its paths.
+
 # Handoff — frontend, phone app (2026-10-21: Apple HIG work, 8 lots built on `feat/hig-phone`, pushed)
 
 The backend handoff stays in `handoff.md`. This file covers `apps/mobile-rn` only: the iPhone-first HIG

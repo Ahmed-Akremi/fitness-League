@@ -32,10 +32,11 @@ export function useGate(): Gate {
 const GATE_PATHS = new Set(['/', '/splash', '/login', '/register', '/forgot-password', '/onboarding']);
 
 /**
- * Pages open whatever the gate (signed in or not): the links mailed by the API and the legal documents. Opened
+ * Pages open whatever the gate (signed in or not): the links mailed by the API, the legal documents and the event
+ * displays of a TV or a projector (organisation update, phase 9). Opened
  * before sign-in, they are done with; they are not reopened once the app is ready.
  */
-const PUBLIC_PATHS = ['/verify-email', '/reset-password', '/legal'];
+const PUBLIC_PATHS = ['/verify-email', '/reset-password', '/legal', '/display'];
 const isPublicPath = (path: string) => PUBLIC_PATHS.some((p) => path === p || path.startsWith(`${p}/`));
 
 /**
@@ -123,6 +124,7 @@ export function AppRoot() {
         <Stack.Screen name="reset-password" options={{ title: t('resetPasswordTitle') }} />
         <Stack.Screen name="legal/index" options={{ title: t('legalTitle') }} />
         <Stack.Screen name="legal/[doc]" options={{ title: t('legalTitle') }} />
+        <Stack.Screen name="display/[id]/[kind]" options={{ headerShown: false }} />
         <Stack.Protected guard={gate === 'splash'}>
           <Stack.Screen name="splash" options={{ headerShown: false }} />
         </Stack.Protected>
@@ -172,6 +174,8 @@ export function AppRoot() {
           <Stack.Screen name="competitions/[id]/my-heats" options={{ title: t('myHeatsTitle') }} />
           <Stack.Screen name="competitions/[id]/judge/index" options={{ title: t('floorOpenSpace') }} />
           <Stack.Screen name="competitions/[id]/judge/[heatId]" options={{ title: t('floorOpenSpace') }} />
+          <Stack.Screen name="competitions/[id]/judge/race" options={{ title: t('raceJudgeTitle') }} />
+          <Stack.Screen name="competitions/[id]/shop" options={{ title: t('shopTitle') }} />
         </Stack.Protected>
       </Stack>
       <ToastHost />

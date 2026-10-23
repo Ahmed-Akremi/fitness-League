@@ -4,7 +4,10 @@ import { renderRouter } from 'expo-router/testing-library';
 import type { ReactElement } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { LocalStore, memoryPersistence } from '../src/core/api/local-store';
+import { withOrgLocal } from '../src/core/api/org-local';
 import { setAuthStatus, type AuthStatus } from '../src/core/auth/session';
+import { LocalLiveBus } from '../src/core/live-bus';
 import type { Locale } from '../src/core/i18n';
 import { MemoryOutboxStore, type OutboxStore } from '../src/core/offline/outbox';
 import { WorkoutSyncService } from '../src/core/offline/workout-sync';
@@ -16,9 +19,11 @@ import { fakeClient, type FakeBackend } from './fake-api';
 
 const metrics = { frame: { x: 0, y: 0, width: 432, height: 960 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } };
 
+/** Like the app: the organizer local layer (a fresh in-memory store per render) and a live bus kept in the page. */
 export function fakeServices(backend: FakeBackend, store: OutboxStore = new MemoryOutboxStore()): Services {
-  const api = fakeClient(backend, { onExpired: () => setAuthStatus('signedOut') });
-  return { api, sync: new WorkoutSyncService(api, store), realtime: new NoopRealtime() };
+  const local = new LocalStore(memoryPersistence());
+  const api = fakeClient(backend, { onExpired: () => setAuthStatus('signedOut'), wrap: (f) => withOrgLocal(f, true, local) });
+  return { api, sync: new WorkoutSyncService(api, store), realtime: new NoopRealtime(), live: new LocalLiveBus(null) };
 }
 
 export const testQueryClient = () => new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity }, mutations: { retry: false } } });

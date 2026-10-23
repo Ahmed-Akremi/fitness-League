@@ -19,6 +19,7 @@ import { Guide } from './guide';
 import type { ManageTab } from './logic';
 import { autoBody, autoValid, csvFileName, csvSeparator, filterHeats, freeLanes, heatBody, heatDays, heatDraft, heatsCsv, heatValid, laneCandidates, personName, type AutoDraft, type HeatDraft, type HeatFilter } from './logic-b';
 import { ExportButton, OrgPageHeader } from './page';
+import { HeatGenerator, LocationsSection } from './heat-generator';
 import { TimetableCard } from './timetable';
 import { useWideWeb } from './web';
 
@@ -41,6 +42,8 @@ export function PlanningTab({ c, onGo }: { c: Json; onGo?: (tab: ManageTab) => v
   const [filter, setFilter] = useState<HeatFilter>({ day: null, categoryId: null, workoutId: null, q: '' });
   const [edit, setEdit] = useState<HeatDraft | null>(null);
   const [auto, setAuto] = useState<AutoDraft | null>(null);
+  // Phase 6: the advanced generator (order, lane placement, transitions, pauses, location).
+  const [gen, setGen] = useState(false);
   const [lanesOf, setLanesOf] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const sending = useRef(false);
@@ -112,6 +115,18 @@ export function PlanningTab({ c, onGo }: { c: Json; onGo?: (tab: ManageTab) => v
       />
     );
   }
+  if (gen) {
+    return (
+      <HeatGenerator
+        c={c}
+        onDone={(n) => {
+          setGen(false);
+          setNotice(t('genDone', { heats: n }));
+        }}
+        onCancel={() => setGen(false)}
+      />
+    );
+  }
   const open = lanesOf ? all.find((h) => h.id === lanesOf) : undefined;
   if (open) {
     const floor = floorApi(api);
@@ -137,6 +152,7 @@ export function PlanningTab({ c, onGo }: { c: Json; onGo?: (tab: ManageTab) => v
   const autoBtn = (
     <Button testID="heat-auto" kind="outlined" icon="auto-fix-high" label={t('orgHeatAuto')} disabled={categories.length === 0} onPress={() => setAuto({ categoryId: categories[0]?.id ?? null, workoutId: null, lanes: '8', start: null, interval: '15' })} />
   );
+  const genBtn = <Button testID="heat-gen-open" kind="outlined" icon="tune" label={t('genOpen')} disabled={categories.length === 0} onPress={() => setGen(true)} />;
   const exportBtn = <ExportButton testID="heat-export" disabled={shown.length === 0} onPress={() => exportCsv(csvFileName(c, 'heats'), heatsCsv(shown, csvSeparator(locale)))} />;
   return (
     <>
@@ -146,6 +162,7 @@ export function PlanningTab({ c, onGo }: { c: Json; onGo?: (tab: ManageTab) => v
           <>
             {create}
             {autoBtn}
+            {genBtn}
             {all.length > 0 ? exportBtn : null}
           </>
         }
@@ -159,11 +176,13 @@ export function PlanningTab({ c, onGo }: { c: Json; onGo?: (tab: ManageTab) => v
             <View style={{ flex: 1 }}>{autoBtn}</View>
           </View>
         )}
+        {wide ? null : genBtn}
         {notice ? (
           <Txt testID="heat-notice" color={colors.primary}>
             {notice}
           </Txt>
         ) : null}
+        <LocationsSection c={c} />
         <ErrorText error={heats.error} />
         <ErrorText error={error} />
         {all.length === 0 ? (
