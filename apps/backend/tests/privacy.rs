@@ -4,6 +4,7 @@ mod common;
 use axum::http::{Method, StatusCode};
 use backend::{
     modules::{
+        feed::{self, Activity},
         me::privacy::{self, Swept},
         notifications::{self, Kind},
     },
@@ -903,5 +904,151 @@ async fn anonymising_cuts_the_social_links(opts: MySqlPoolOptions, conn: MySqlCo
             .await
             .unwrap();
         assert_eq!(left, 0, "{sql}");
+    }
+}
+
+/// A `LEVEL_UP` of `user`, as the ledger writes them; its id.
+async fn level_up(app: &TestApp, user: Uuid, from: i32) -> Uuid {
+    let mut conn = app.db.acquire().await.unwrap();
+    let activity = Activity {
+        user,
+        kind: feed::Kind::LevelUp,
+        ref_id: Uuid::now_v7(),
+        visibility: "FRIENDS",
+        payload: json!({"from": from, "to": from + 1}),
+        sport: None,
+        exercise: None,
+        badge: None,
+    };
+    feed::record(&mut conn, activity).await.unwrap()
+}
+
+/// `user` reacts to and comments on `activity`; the comment's id.
+async fn engage(app: &TestApp, user: Uuid, activity: Uuid, comment: &str) -> Uuid {
+    sqlx::query(
+        "INSERT INTO activity_reactions (activity_event_id, user_id, type) VALUES (?, ?, 'FIRE')",
+    )
+    .bind(activity)
+    .bind(user)
+    .execute(&app.db)
+    .await
+    .unwrap();
+    let id = Uuid::now_v7();
+    sqlx::query(
+        "INSERT INTO activity_comments (id, activity_event_id, user_id, body) VALUES (?, ?, ?, ?)",
+    )
+    .bind(id)
+    .bind(activity)
+    .bind(user)
+    .bind(comment)
+    .execute(&app.db)
+    .await
+    .unwrap();
+    id
+}
+
+async fn liked_post(app: &TestApp, user: Uuid) -> Uuid {
+    let post = Uuid::now_v7();
+    sqlx::query("INSERT INTO announcements (id, body) VALUES (?, 'Welcome')")
+        .bind(post)
+        .execute(&app.db)
+        .await
+        .unwrap();
+    sqlx::query("INSERT INTO announcement_likes (announcement_id, user_id) VALUES (?, ?)")
+        .bind(post)
+        .bind(user)
+        .execute(&app.db)
+        .await
+        .unwrap();
+    post
+}
+
+#[sqlx::test]
+async fn the_export_holds_the_feed(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let app = seeded(opts, conn).await;
+    let session = register(&app, "nour").await;
+    let me = user_of(&session);
+    let other = create_user(&app, "sami", Role::User).await;
+    let mine = level_up(&app, me, 1).await;
+    let theirs = level_up(&app, other, 3).await;
+    let comment = engage(&app, me, theirs, "Bravo").await;
+    let post = liked_post(&app, me).await;
+
+    let reply = app
+        .call(Method::GET, "/api/v1/me/export", access(&session), None)
+        .await;
+    assert_eq!(reply.status, StatusCode::OK, "{}", reply.json);
+    let activities = reply.json["activities"].as_array().unwrap();
+    assert_eq!(activities.len(), 1, "{activities:?}");
+    assert_eq!(activities[0]["id"], json!(mine));
+    assert_eq!(activities[0]["type"], "LEVEL_UP");
+    assert_eq!(activities[0]["visibility"], "FRIENDS");
+    assert_eq!(activities[0]["details"], json!({"from": 1, "to": 2}));
+    assert!(activities[0]["createdAt"].is_string());
+    let reactions = reply.json["activityReactions"].as_array().unwrap();
+    assert_eq!(reactions.len(), 1);
+    assert_eq!(reactions[0]["activityId"], json!(theirs));
+    assert_eq!(reactions[0]["type"], "FIRE");
+    assert!(reactions[0]["createdAt"].is_string());
+    let comments = reply.json["activityComments"].as_array().unwrap();
+    assert_eq!(comments.len(), 1);
+    assert_eq!(comments[0]["id"], json!(comment));
+    assert_eq!(comments[0]["activityId"], json!(theirs));
+    assert_eq!(comments[0]["body"], "Bravo");
+    assert!(comments[0]["createdAt"].is_string() && comments[0]["deletedAt"].is_null());
+    let likes = reply.json["announcementLikes"].as_array().unwrap();
+    assert_eq!(likes.len(), 1);
+    assert_eq!(likes[0]["announcementId"], json!(post));
+    assert!(likes[0]["createdAt"].is_string());
+}
+
+#[sqlx::test]
+async fn anonymising_ends_feed_ties(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let app = seeded(opts, conn).await;
+    let session = register(&app, "nour").await;
+    let me = user_of(&session);
+    let other = create_user(&app, "sami", Role::User).await;
+    let mine = level_up(&app, me, 1).await;
+    engage(&app, other, mine, "Bravo Nour").await;
+    let theirs = level_up(&app, other, 3).await;
+    engage(&app, me, theirs, "Bravo Sami").await;
+    liked_post(&app, me).await;
+    delete(&app, &session, PASSWORD).await;
+    let swept = privacy::sweep(&app.db, (Utc::now() + Duration::days(31)).naive_utc())
+        .await
+        .unwrap();
+    assert_eq!(swept.anonymised, 1);
+
+    for sql in [
+        "SELECT COUNT(*) FROM activity_events WHERE user_id = ?",
+        "SELECT COUNT(*) FROM activity_reactions WHERE user_id = ?",
+        "SELECT COUNT(*) FROM activity_comments WHERE user_id = ?",
+        "SELECT COUNT(*) FROM announcement_likes WHERE user_id = ?",
+    ] {
+        let left: i64 = sqlx::query_scalar(sql)
+            .bind(me)
+            .fetch_one(&app.db)
+            .await
+            .unwrap();
+        assert_eq!(left, 0, "{sql}");
+    }
+    // Sami's item stays, without what I left on it.
+    for (sql, expected) in [
+        ("SELECT COUNT(*) FROM activity_events WHERE id = ?", 1),
+        (
+            "SELECT COUNT(*) FROM activity_reactions WHERE activity_event_id = ?",
+            0,
+        ),
+        (
+            "SELECT COUNT(*) FROM activity_comments WHERE activity_event_id = ?",
+            0,
+        ),
+    ] {
+        let left: i64 = sqlx::query_scalar(sql)
+            .bind(theirs)
+            .fetch_one(&app.db)
+            .await
+            .unwrap();
+        assert_eq!(left, expected, "{sql}");
     }
 }

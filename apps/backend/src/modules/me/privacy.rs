@@ -202,13 +202,76 @@ async fn export(
         "goals": goals::views(&state, user.id, true).await?,
         "leaguePointTransactions": league_points,
     });
-    if let (Some(export), Value::Object(social)) = (
-        export.as_object_mut(),
+    for part in [
         social_export(&state.db, user.id).await?,
-    ) {
-        export.extend(social);
+        feed_export(&state.db, user.id).await?,
+    ] {
+        if let (Some(export), Value::Object(part)) = (export.as_object_mut(), part) {
+            export.extend(part);
+        }
     }
     Ok(Json(export))
+}
+
+/// My feed items, and the reactions, comments and likes I left (plan 3c ruling 10).
+async fn feed_export(db: &MySqlPool, user: Uuid) -> Result<Value, AppError> {
+    let activities = sqlx::query!(
+        r#"SELECT id AS "id: Uuid", type AS kind, visibility, created_at, payload
+           FROM activity_events WHERE user_id = ? ORDER BY id"#,
+        user
+    )
+    .fetch_all(db)
+    .await?
+    .into_iter()
+    .map(|e| {
+        let details: Value = serde_json::from_str(&e.payload).map_err(AppError::internal)?;
+        Ok(json!({
+            "id": e.id, "type": e.kind, "visibility": e.visibility, "createdAt": iso(e.created_at),
+            "details": details,
+        }))
+    })
+    .collect::<Result<Vec<_>, AppError>>()?;
+    let reactions: Vec<Value> = sqlx::query!(
+        r#"SELECT activity_event_id AS "activity: Uuid", type AS kind, created_at FROM activity_reactions
+           WHERE user_id = ? ORDER BY created_at, activity_event_id"#,
+        user
+    )
+    .fetch_all(db)
+    .await?
+    .into_iter()
+    .map(|r| json!({"activityId": r.activity, "type": r.kind, "createdAt": iso(r.created_at)}))
+    .collect();
+    let comments: Vec<Value> = sqlx::query!(
+        r#"SELECT id AS "id: Uuid", activity_event_id AS "activity: Uuid", body, created_at, deleted_at
+           FROM activity_comments WHERE user_id = ? ORDER BY id"#,
+        user
+    )
+    .fetch_all(db)
+    .await?
+    .into_iter()
+    .map(|c| {
+        json!({
+            "id": c.id, "activityId": c.activity, "body": c.body, "createdAt": iso(c.created_at),
+            "deletedAt": c.deleted_at.map(iso),
+        })
+    })
+    .collect();
+    let likes: Vec<Value> = sqlx::query!(
+        r#"SELECT announcement_id AS "announcement: Uuid", created_at FROM announcement_likes
+           WHERE user_id = ? ORDER BY created_at, announcement_id"#,
+        user
+    )
+    .fetch_all(db)
+    .await?
+    .into_iter()
+    .map(|l| json!({"announcementId": l.announcement, "createdAt": iso(l.created_at)}))
+    .collect();
+    Ok(json!({
+        "activities": activities,
+        "activityReactions": reactions,
+        "activityComments": comments,
+        "announcementLikes": likes,
+    }))
 }
 
 /// My friendships and requests, whom I follow and block, my notifications and push preferences, my
@@ -554,6 +617,20 @@ async fn anonymise(
     .execute(&mut *tx)
     .await?;
     sqlx::query!("DELETE FROM notifications WHERE user_id = ?", user)
+        .execute(&mut *tx)
+        .await?;
+    // The feed: my items, whose reactions and comments go with them, and what I left on others'
+    // items and on the news (plan 3c ruling 9).
+    sqlx::query!("DELETE FROM activity_events WHERE user_id = ?", user)
+        .execute(&mut *tx)
+        .await?;
+    sqlx::query!("DELETE FROM activity_reactions WHERE user_id = ?", user)
+        .execute(&mut *tx)
+        .await?;
+    sqlx::query!("DELETE FROM activity_comments WHERE user_id = ?", user)
+        .execute(&mut *tx)
+        .await?;
+    sqlx::query!("DELETE FROM announcement_likes WHERE user_id = ?", user)
         .execute(&mut *tx)
         .await?;
     // Out of every gym. A submission still waiting goes with its request; a gym already decided
