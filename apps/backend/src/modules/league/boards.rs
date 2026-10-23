@@ -1,6 +1,6 @@
 //! Leaderboards (docs §15): the active season's eligible athletes ranked by LP, nationally, per
-//! governorate, per gym and among my friends, with the movement since the last daily snapshot. A port of the
-//! old API's `LeaderboardsService`; ranked in SQL (spec ruling 3).
+//! governorate, per gym and among my friends, with the movement since the last daily snapshot. A
+//! port of the old API's `LeaderboardsService`; ranked in SQL (spec ruling 3).
 
 use axum::{
     Json,
@@ -458,8 +458,7 @@ pub async fn my_ranks(
 }
 
 /// Today's ranks of every active season's eligible athletes, nationally, per governorate and per
-/// primary gym: the
-/// reference of tomorrow's movement arrows. A second run the same day adds nothing.
+/// primary gym: the reference of tomorrow's movement arrows. A second run the same day adds nothing.
 pub async fn snapshot(db: &MySqlPool, now: DateTime<Utc>, offset: i32) -> Result<Value, AppError> {
     let day = policy::business_today(now, offset);
     let at = now.naive_utc();

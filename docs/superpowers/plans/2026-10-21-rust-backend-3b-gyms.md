@@ -530,6 +530,21 @@ The shapes:
   tests and 219 integration tests green, 1 ignored, in 23 of 26 files. Claude Code stopped the last chunk for low
   system memory, so `league`, `notifications` and `social` did not run on the final code (`league` and `social`
   passed earlier in the build), and the integration suites were not rerun after the dependency bump.
-- The whole-branch review is not done: no agent was spawned (the user did not ask for one). A fresh session runs
-  it, as for plan 3a, with this plan's « Review focus » and the ledger
-  `.superpowers/sdd/2026-10-21-rust-backend-3b-gyms/progress.md`.
+- **Whole-branch review (2026-10-23, a fresh session, no agent):** `857a623..HEAD` read against this plan, the
+  ledger's rulings and the old `GymsService`, `GymDashboardService` and controller. The five « Review focus » points
+  hold:
+  1. two joins at once meet the unique `live_user`; the loser's duplicate key is the 409, read back with its
+     `gymId` and `membershipStatus`;
+  2. a directory cursor is accepted only with its sort's key (`n` or `m`) and an id; a cursor of another list
+     lacks both and is the 422;
+  3. `q` goes through `validate::contains` with `ESCAPE '|'`;
+  4. `manageable` reads the gym, then `can_manage` (owner and `GYM_ADMIN` and `VERIFIED`, or staff);
+  5. leave and remove clear `primary_gym_id` in the membership's transaction (remove only when it names the
+     gym), and the gym board, `/me/ranks.gym` and `profile.gym` all read that column.
+
+  A leave racing an approval cannot deadlock: both lock the membership row, then the profile. One cosmetic fix: two
+  doc comments in `league/boards.rs` were wrapped badly. Two departures from the old API, left as they are: the
+  dashboard's `name` is the full name with no username fallback (the column is `NOT NULL`, so the old fallback never
+  applied); and like every house route, a malformed `POST /gyms` body answers 422 before an unverified account's 403
+  (the body extractor runs first, while the old guard ran before its pipes). `league`, `notifications` and `social`
+  then passed on the final code, dependency bump included (20, 3 and 10). The ledger folder was deleted.
