@@ -59,20 +59,32 @@ pub async fn react(
     let activity = activity_param(&id)?;
     let mut tx = state.db.begin().await?;
     let owner = viewable(&mut tx, user.id, activity).await?;
-    // 1 row for a new reaction, 2 for a changed one, 0 for the same again: only a new one notifies,
-    // so a double tap cannot notify twice (plan 3c ruling 5).
-    let written = sqlx::query!(
-        "INSERT INTO activity_reactions (activity_event_id, user_id, type) VALUES (?, ?, ?) \
-         ON DUPLICATE KEY UPDATE type = VALUES(type)",
+    // The key decides what is new: a double tap inserts once and notifies once (plan 3c ruling 5).
+    // An upsert's row count cannot tell: sqlx asks for found rows, so « the same again » counts 1.
+    let inserted = sqlx::query!(
+        "INSERT IGNORE INTO activity_reactions (activity_event_id, user_id, type) VALUES (?, ?, ?)",
         activity,
         user.id,
         body.kind
     )
     .execute(&mut *tx)
-    .await?;
-    if written.rows_affected() == 1 && owner != user.id {
-        let payload = json!({"activityId": activity, "type": body.kind, "byUserId": user.id});
-        notifications::notify(&mut tx, owner, Kind::ActivityReaction, payload).await?;
+    .await?
+    .rows_affected()
+        == 1;
+    if inserted {
+        if owner != user.id {
+            let payload = json!({"activityId": activity, "type": body.kind, "byUserId": user.id});
+            notifications::notify(&mut tx, owner, Kind::ActivityReaction, payload).await?;
+        }
+    } else {
+        sqlx::query!(
+            "UPDATE activity_reactions SET type = ? WHERE activity_event_id = ? AND user_id = ?",
+            body.kind,
+            activity,
+            user.id
+        )
+        .execute(&mut *tx)
+        .await?;
     }
     let answer = summary(&mut tx, user.id, activity).await?;
     tx.commit().await?;

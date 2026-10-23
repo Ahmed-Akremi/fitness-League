@@ -22,13 +22,14 @@ use tower_http::{
     catch_panic::CatchPanicLayer,
     cors::{AllowOrigin, CorsLayer},
 };
+use socketioxide::SocketIo;
 use tracing::Instrument;
 use uuid::Uuid;
 
 use crate::{
     config::{AppEnv, Config},
     error::{AppError, REQUEST_ID},
-    modules,
+    live, modules,
     state::AppState,
 };
 
@@ -111,6 +112,7 @@ fn api() -> Api {
     let api = modules::social::routes(api);
     let api = modules::gyms::routes(api);
     let api = modules::feed::routes(api);
+    let api = modules::announcements::routes(api);
     modules::scoring::routes(api)
 }
 
@@ -120,9 +122,16 @@ pub fn route_table() -> Vec<(Method, &'static str)> {
 }
 
 pub fn app(state: AppState) -> Router {
+    app_live(state).0
+}
+
+/// The router with the live socket, and the socket's handle, which `serve` gives the tail.
+pub fn app_live(state: AppState) -> (Router, SocketIo) {
+    let (socket, io) = live::socket(state.clone());
     // A request crosses the layers from the last `.layer` to the first: request context, panic catcher,
-    // security headers, CORS, timeout, the per-address rate limit, and then the route.
-    api()
+    // security headers, CORS, timeout, the per-address rate limit, the live socket (`/socket.io/`), and
+    // then the route.
+    let router = api()
         .router
         .fallback(|| async { AppError::not_found("Route") })
         .method_not_allowed_fallback(|| async {
@@ -132,6 +141,7 @@ pub fn app(state: AppState) -> Router {
                 "Method not allowed",
             )
         })
+        .layer(socket)
         .layer(DefaultBodyLimit::max(MAX_BODY_BYTES))
         .layer(middleware::from_fn_with_state(
             state.clone(),
@@ -145,7 +155,8 @@ pub fn app(state: AppState) -> Router {
         ))
         .layer(CatchPanicLayer::custom(panic_response))
         .layer(middleware::from_fn(request_context))
-        .with_state(state)
+        .with_state(state);
+    (router, io)
 }
 
 /// Gives the request an id, makes it available to error rendering, and writes one access-log line.
