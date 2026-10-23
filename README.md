@@ -77,8 +77,14 @@ and `/decline`, `DELETE /friends/{userId}`, follows (`POST` and `DELETE /follows
 (`GET /users/{username}`). It also adds the bell: `GET /notifications` and `POST /notifications/read`, written for
 friend requests, acceptances and every badge awarded; push preferences (`GET` and `PUT
 /me/notification-preferences`); and the friends leaderboard (`GET /leaderboards/friends`, with `/me`), which
-`GET /me/ranks` now reads. Plans 3b to 3f (gyms, feed and news, gym WODs and wars, battles and duels, challenges
-and leagues) come next, then parts 4 to 6 (competitions, admin, cut-over).
+`GET /me/ranks` now reads. Plan 3b adds gyms: the directory (`GET /gyms`, by name or members, filtered by name,
+sport and governorate), submissions (`POST /gyms`, pending until an admin verifies them in part 5), `GET /gyms/mine`
+and the gym page (`GET /gyms/{id}`); joining and leaving (`POST /gyms/{id}/membership`, `DELETE
+/gyms/me/membership`, one gym per athlete), the member list, and the gym admin's requests, decisions, coaches and
+dashboard; the gym leaderboard (`GET /leaderboards/gyms/{id}`, with `/me`), which `GET /me/ranks` now reads; the gym
+in `GET /me`, public profiles, leaderboard rows and onboarding; and the gym badge. Plans 3c to 3f (feed and news,
+gym WODs and wars, battles and duels, challenges and leagues) come next, then parts 4 to 6 (competitions, admin,
+cut-over).
 
 One-time setup (Rust 1.99 through `rustup`, Docker for MariaDB, Redis and Mailpit):
 

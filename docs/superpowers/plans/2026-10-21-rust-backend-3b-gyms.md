@@ -499,3 +499,37 @@ The shapes:
 - Export and anonymisation cover the new tables, and the security suite passes with the new routes behind a
   session.
 - fmt, Clippy (online and offline), the whole suite, audit and deny are green, and `.sqlx/` is committed.
+
+## Built (2026-10-23): where the code departs from this plan
+
+- **Anonymisation also deletes the account's remaining verification requests** (ruling 9 extended): a decided
+  gym stays without an owner, but the free text of the proof the account wrote goes with the account
+  (`anonymising_ends_gym_ties` holds an `APPROVED` request too).
+- The gym card lives in `directory.rs`, not `mod.rs`: only the directory and the profile read it. `mod.rs` holds
+  `gym_param`, `can_manage` and `manageable`.
+- `topAthletes` filters on `show_on_leaderboards` (with an `ACTIVE` account and an active season, as the old API),
+  not on the whole board eligibility (verified, calibrated): ruling 7 names the opt-out only.
+- The slug is found by inserting and retrying on `uq_gyms_slug`, not by reading first, so two submissions of one
+  name at the same moment cannot fail.
+- `contactEmail` is stored normalised (trimmed, lower-cased), like every email of the house. It is never shown.
+- `sportIds` duplicates are compared once parsed: one id written in two cases is `ARRAYUNIQUE`, not a primary-key
+  error.
+- Appointing a coach who already is one answers 200 and writes a second `GYM_COACH_APPOINTED` entry, as the old API.
+- The dashboard's 403 says « Only this gym's admin can do that. », the detail of every management route; the old
+  API said « … can see its dashboard. ».
+- `GET /me/ranks` reads the gym board only when I have a primary gym.
+- `gym_answers_carry_no_private_data` passed at once: it pins a property the code already had (each answer must
+  show the gym or a member, so it is not vacuous).
+- **Trap:** `#[sqlx::test]` embeds the migrations at compile time. After adding `0011_gyms.sql`, a run that did not
+  rebuild still failed with « Table … gyms doesn't exist »: touch a source file after adding a migration.
+- The owner committed tasks 2, 3 and 5 and the `.sqlx` data from the working tree under their own messages, and
+  merged the branch into `main` after task 3 (PRs #35 and #36).
+- `cargo audit` found two advisories published since plan 3a: `ctutils` (RUSTSEC-2026-0385, under `argon2` and
+  `hmac`) and `tokio` (RUSTSEC-2026-0386, unsound). `1d76c25` takes the patched versions (0.4.5 and 1.53.3).
+- Checks: fmt, Clippy online and offline, `cargo audit` and `cargo deny check` clean. The whole suite: 131 unit
+  tests and 219 integration tests green, 1 ignored, in 23 of 26 files. Claude Code stopped the last chunk for low
+  system memory, so `league`, `notifications` and `social` did not run on the final code (`league` and `social`
+  passed earlier in the build), and the integration suites were not rerun after the dependency bump.
+- The whole-branch review is not done: no agent was spawned (the user did not ask for one). A fresh session runs
+  it, as for plan 3a, with this plan's « Review focus » and the ledger
+  `.superpowers/sdd/2026-10-21-rust-backend-3b-gyms/progress.md`.
