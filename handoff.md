@@ -1,4 +1,4 @@
-# Handoff — fitness-league (2026-10-23: plan 3b reviewed; plan 3c built, on `feat/rust-backend-3`)
+# Handoff — fitness-league (2026-10-23: plan 3b reviewed; plan 3c built, on `feat/rust-backend-3`; plan 3d under way in another session; next: plan 3e)
 
 Earlier handoffs are in git: `git show 61b7787:handoff.md` (the full history since 2026-10-04),
 `git show 02a732e:handoff.md` (part 1 complete), `git show 9bb2cdc:handoff.md` (plan 2a built),
@@ -10,65 +10,114 @@ Earlier handoffs are in git: `git show 61b7787:handoff.md` (the full history sin
 
 Opening prompt to paste:
 
-> Read `handoff.md` (the backend's; `handoff-frontend.md` is the app's and not for this session), then run plan
-> 3c's whole-branch review as a fresh reviewer (§0 step 2). Then write and build plan 3d (gym WODs and gym wars)
-> from the part 3 spec. Work in this Windows checkout only.
+> Read `handoff.md` (the backend's; `handoff-frontend.md` is the app's and not for this session). Another session
+> is building plan 3d (gym WODs and gym wars) in `.worktrees/rust-backend-3d` on `feat/rust-backend-3d`: don't
+> touch that worktree or branch. First finish plan 3c's test run and its whole-branch review as a fresh reviewer
+> (§0 steps 3 and 4). Then write and build plan 3e (battles and duels) from the part 3 spec, in a worktree of its
+> own, reusing plan 3d's `glicko.rs` (§0 steps 2 and 8). Work in this Windows checkout only.
 
 First steps, in order:
-1. **Find where `main` is.** `git fetch && git log --oneline -5 origin/main origin/feat/rust-backend-3
-   feat/rust-backend-3`. The owner commits, pushes and merges during sessions; this session they committed parts of
-   plan 3c's tasks 3 and 5 and the `.sqlx` data from the working tree, and merged four times (see §4).
+1. **Find where everything is.** `git fetch && git worktree list && git log --oneline -5 origin/main
+   feat/rust-backend-3 feat/rust-backend-3d`. The owner commits, pushes and merges during sessions; this session
+   they committed parts of plan 3c's tasks 3 and 5 and the `.sqlx` data from the working tree, and merged four
+   times (see §4).
    - At the end of this session, `origin/main` was at `8183e41`:
      - PRs #39 to #42 merged `feat/rust-backend-3` up to `b505ad4` (plan 3b's rest, its review, plan 3c up to
        its export and anonymisation, and the `.sqlx` data);
      - PR #43 merged `organisation-update`'s `113049c`, which **removed `apps/api`** (the old NestJS API) and its
-       pnpm workspace entries (step 5).
-   - **`feat/rust-backend-3`** holds, **not yet in `main`** and local only: `f48f290` (formatting, the Clippy fix
-     in `live.rs`, the last `.sqlx` data) and the docs commit (README, the spec's status, plan 3c's « Built »
-     section, this handoff).
+       pnpm workspace entries (step 7).
+   - **`feat/rust-backend-3`** (this checkout) holds, **not yet in `main`** and local only: `f48f290`
+     (formatting, the Clippy fix in `live.rs`, the last `.sqlx` data), `01751f3` (plan 3c's docs) and this handoff
+     update. Plan 3c is complete on it.
+   - **`feat/rust-backend-3d`** (another session, worktree `.worktrees/rust-backend-3d`, git-ignored through
+     `.git/info/exclude`): plan 3d, branched from `origin/main` at `67fe751` (plan 3c's tasks 1 to 5, so without
+     plan 3c's task 6). At the end of this session it held `2e9810b` (the plan,
+     `docs/superpowers/plans/2026-10-23-rust-backend-3d-gym-wods-wars.md`), `aabb4aa` (the tables, `0013_gym_wars`),
+     `c5cd12b` (Glicko-2 and the gym-war maths), `c6f001b` and `9ba9058` (gym WODs). It builds in
+     `$LOCALAPPDATA/fitness-league/target-3d` against the dev database `fitness_league_3d`.
 
      **Don't push:** the user pushes themselves.
-   - **Where to work:** if `main` holds all of plan 3c, run the review on `feat/rust-backend-3` as it is, then
-     start plan 3d on a new branch from `origin/main`; otherwise go on with `feat/rust-backend-3` (merge
-     `origin/main` first). Local `main` is far behind: never branch from it.
-2. **Plan 3c's whole-branch review is not done.** No reviewer was spawned (the user did not ask for one). Run it
+   - Local `main` is far behind: never branch from it.
+2. **Plan 3e runs next to plan 3d: coordinate.**
+   - **Work in a worktree of your own:** `git worktree add .worktrees/rust-backend-3e -b feat/rust-backend-3e
+     feat/rust-backend-3d`, then merge `feat/rust-backend-3` into it (plan 3c's task 6 and docs, which 3d's base
+     lacks). Branching from 3d brings `glicko.rs`, `0013_gym_wars` and the rule-set keys plan 3e needs. Merge
+     `feat/rust-backend-3d` again before 3e's last task, and `origin/main` whenever the owner merges 3d.
+   - **Your own build and database,** as plan 3d does (copy its « Where it is built » paragraph):
+     `CARGO_TARGET_DIR="$LOCALAPPDATA/fitness-league/target-3e"` and
+     `DATABASE_URL=mysql://root:fl_root_dev@127.0.0.1:3307/fitness_league_3e` (create that database as `root` first,
+     then `sqlx migrate run --source migrations --database-url "$DATABASE_URL"`). Tests create their own databases
+     either way.
+   - **Memory:** Claude Code stopped three test runs this session for low system memory while the plan 3d session
+     was building in parallel (§4, « Checks »), which likely contributed. Two sessions building and testing at once
+     on this machine will hit it again: build and test with `-j 2`, one suite or two at a time, in the foreground,
+     and avoid running a suite while the other session builds.
+   - **Migration `0014_battles.sql`:** plan 3d holds `0013`. If 3d adds another migration, renumber yours before
+     merging.
+   - **Reuse, don't copy:** plan 3d's `modules/glicko.rs` is Glicko-2 for both (the old `duels/glicko2.ts`):
+     `glicko::Rating {rating, rd, volatility}`, `glicko::NEW` (1500, 350, 0.06), `glicko::rate(player, games, tau)`,
+     `glicko::expected(a, b)`, `glicko::decay(r, periods)`, with the paper's vector as its unit test. Its
+     `rules.rs` adds `duel.glicko_tau` (0.5), which the duels read.
+   - **Files both plans change:** `modules/mod.rs` and `http/mod.rs` (routes); `rules.rs` (the battle and duel
+     numbers next to 3d's `gym_war` block); `notifications/mod.rs` (`Kind`: 3d adds the gym-war and WOD kinds, 3e
+     `BattleInvite`, `BattleStarted`, `BattleDeclined`, `BattleResult`, `DuelMatched`, `DuelGhost`); `feed/mod.rs`
+     (3d adds `Kind::GymWarWin` and `Activity.gym`, 3e `Kind::BattleWin` and `Activity.opponent`, with an
+     `opponent_id` column rendered as `details.opponent`); `badges.rs` (facts); `league/jobs.rs` (`run_due`);
+     `me/privacy.rs`; `tests/privacy.rs`, `tests/security.rs`; `.sqlx/`; and the documents (README, the spec's status,
+     this handoff). Add at the ends of lists and match arms, and merge 3d often.
+3. **Finish plan 3c's test run** (it did not complete this session; §4, « Checks »). On `feat/rust-backend-3`, one
+   or two suites at a time, in the foreground, with `-j 2 --no-fail-fast`: `privacy`, `security`, `workouts`,
+   `goals`, `badges`, `league`, `leaderboards`, `notifications`, `social`, `gyms`, `feed`, `announcements`, `live`
+   (its `a_socket_outlives_the_request_timeout` has never run; if it fails, move the socket layer outside the
+   `timeout` middleware in `http::app_live`). The rest passed on the final code.
+4. **Plan 3c's whole-branch review is not done.** No reviewer was spawned (the user did not ask for one). Run it
    as plans 3a's and 3b's were run: a fresh session reads the branch against the plan and the old API, without
    agents.
    - Its inputs: the plan's « Review focus » and « Built » sections, and the ledger
      `.superpowers/sdd/2026-10-23-rust-backend-3c-feed-news/progress.md` (git-ignored, local only), which holds every
      `Ruling:` line. Delete that folder once the review is done.
-   - Range: `git diff b6a87cd..HEAD -- apps/backend` (b6a87cd is the plan commit).
-   - The old API's code is no longer in the tree: read it from git (step 5).
-3. **Check Docker.** `docker ps` should show three healthy containers. Otherwise see §5, « Containers
-   stopped ». If a test panics in sqlx's `testing/mod.rs` with « Error dropping database … Directory not empty »,
-   see §5, « A stuck test database ».
-4. **Set up the environment.** Use §2's environment line in Git Bash for every cargo command, then check the
-   build: `cargo test -j 4 --lib` (131 green).
-5. **The old API is in git history only.** PR #43 (`113049c`) deleted `apps/api`. Read its files at a commit
-   before that one, for example `git show 1075b91:apps/api/src/modules/gym-wods/gym-wods.service.ts`, or list them
-   with `git ls-tree -r --name-only 1075b91 apps/api/src/modules/gym-wars`. The recorded answers
+   - Range: `git diff b6a87cd..feat/rust-backend-3 -- apps/backend` (b6a87cd is the plan commit).
+   - Any fix goes on `feat/rust-backend-3`; then merge it into `feat/rust-backend-3e`.
+5. **Check Docker.** `docker ps` should show three healthy containers. Otherwise see §5, « Containers
+   stopped » (and « The Docker engine answers 500 »). If a test panics in sqlx's `testing/mod.rs` with « Error
+   dropping database … Directory not empty », see §5, « A stuck test database ».
+6. **Set up the environment.** Use §2's environment line in Git Bash for every cargo command (in the 3e worktree,
+   with step 2's `CARGO_TARGET_DIR` and `DATABASE_URL`), then check the build: `cargo test -j 2 --lib`.
+7. **The old API is in git history only.** PR #43 (`113049c`) deleted `apps/api`. Read its files at a commit
+   before that one, for example `git show 1075b91:apps/api/src/modules/battles/battles.service.ts`, or list them
+   with `git ls-tree -r --name-only 1075b91 apps/api/src/modules/duels`. The recorded answers
    (`apps/mobile-rn/assets/demo/api.json`) are still in the tree.
-6. **For plan 3d (gym WODs and gym wars), read:**
+8. **For plan 3e (battles and duels), read:**
    - the part 3 spec, `docs/superpowers/specs/2026-10-21-rust-backend-gyms-social-design.md`: « Scope of part 3 »
-     (plan 3d's 7 gym WOD routes and 4 gym war routes), « Gym WODs and gym wars (3d) », « Notifications »
-     (`GYM_WAR_STARTED`, `GYM_WAR_RESULT`, `GYM_WOD_SCORE_INVALIDATED`), « Database » (`gym_wods`,
-     `gym_wod_scores`, `gym_wars`, `gym_war_participants`, `gym_ratings`), « Testing » (§6.2's worked example) and
-     the rulings;
-   - `docs/ARCHITECTURE.md` §3.11 and §6.2 (the gym-war algorithm and its worked example);
-   - plans 3b and 3c for the house form; plan 3b ruling 2 lists what 3d replaces (`level: 1`, `warRecord: null`,
-     the dashboard's `rating: 1500`, `wods: []` and wars at 0);
-   - the old API's `gym-wods` and `gym-wars` modules, `gym-war.ts` and the `jobs` runner (step 5);
-   - the app's callers: `features/gym-wods`, `features/gym-wars`, `features/gyms` (dashboard `wods`, `wars`,
-     `warRecord`), `features/home` (the gym's WODs), and their recorded answers;
-   - what plan 3d writes into the feed: `GYM_WAR_WIN` with a new `gym_id` column on `activity_events` (plan 3c
-     ruling 1), rendered as `details.gymName`; and the gym-war badge fact.
+     (plan 3e's routes: `POST`, `GET /battles`, `GET /battles/:id`, `POST /battles/:id/accept|decline|cancel`;
+     `GET`, `POST`, `DELETE /duels/queue`; the socket's `battle.score`), « Social graph » (a block cancels any
+     pending battle between the two), « Notifications » (battle invite, start, decline and result; duel matched and
+     ghost), « Battles, duels, challenges and leagues (3e, 3f) », « Database » (`battles`, `battle_participants`,
+     `mmr_ratings`, `duel_queue_entries`), « Security additions » (battles 10 a day, the duel queue 20 an hour, a
+     verified email for battles, their acceptance and the queue), « Testing » (the duel MMR window and greedy
+     pairing: §6.1's worked example, A–B, D–E, then C–F at 18:00), « Plans » and the rulings;
+   - `docs/ARCHITECTURE.md` §3.9 (battles and matchmaking), §5.7 (battle scoring), §6.1 (the duel algorithm and its
+     worked example) and §8 (the jobs);
+   - plans 3c and 3d for the house form (3d's plan is on `feat/rust-backend-3d`);
+   - the old API (step 7): `battles/` (`battles.service.ts`, its `computeWindow`, `dto/battle.dto.ts`), `duels/`
+     (`duels.service.ts`, `matchmaking.ts`, `duels.spec.ts`), `realtime/realtime.gateway.ts` (`battle.subscribe`,
+     participants only) and `realtime.module.ts` (`battle.score` on a workout's change), `jobs/jobs.service.ts`
+     (`battles.closeDue`, the hourly duel pairing from Sunday 12:00 to Monday 12:00, the week's ghost duels);
+   - the app's callers: `features/battles` (`api.ts`, `screens.tsx`), `features/home`, `features/social` (the battle
+     button on a profile), `features/notifications/api.ts` (`BATTLE_*`, `DUEL_*`), `core/realtime.ts`
+     (`battle.subscribe`, `battle.unsubscribe`, `battle.score`), and the recorded `GET /battles`,
+     `/battles?status=PENDING|ACTIVE|COMPLETED` and `GET /battles/<id>`;
+   - what plan 3e adds elsewhere: `BATTLE_WIN` in the feed (plan 3c ruling 1: an `opponent_id` column, rendered
+     `details.opponent {username, fullName}`); the battle and duel badge facts and the sweep; `battle.score` on the
+     socket, which plan 3c ruling 7 leaves to 3e (no notification row carries it: Redis pub/sub, or a row the tail
+     reads); the block's cancellation in `social/friends.rs`; export and anonymisation of the new tables.
 
    Part 4 (competitions) comes after part 3. Its inputs now include `docs/organisation-backend-contract.md`, the
    organisation update's to-do list. Its rule « Registration gates are a demo in the app, not a protection » is
    required: never send `accessCode`, `unlockCode` or `invitedEmails` to non-organizers (send booleans), and check
    typed codes against hashes with a rate limit (422 `ACCESS_CODE_INVALID` / `UNLOCK_CODE_INVALID`, 403
    `NOT_INVITED`).
-6. **Don't ask the owner product questions.** Their words: « you will find everything in the .md files ».
+9. **Don't ask the owner product questions.** Their words: « you will find everything in the .md files ».
    Take the technical calls yourself and list them in the spec's and plans' « Rulings » sections.
 
 ## 1. Goal
@@ -80,7 +129,7 @@ Fitness League: a training and competition app for athletes, gyms and event orga
 |---|---|---|
 | `apps/mobile-rn` | The app (React Native, Expo); the only mobile app since the Flutter one was removed | Live code |
 | `apps/admin` | Admin panel (Vite + React): staff, judges, publication of events | Live code |
-| `apps/api` | Old API (NestJS, Prisma, PostgreSQL), the port's reference | **Removed from `main` by PR #43** (`113049c`); read it from git (§0 step 5) |
+| `apps/api` | Old API (NestJS, Prisma, PostgreSQL), the port's reference | **Removed from `main` by PR #43** (`113049c`); read it from git (§0 step 7) |
 | `apps/backend` | **New API in Rust** (Axum, sqlx, MariaDB 11.4, Redis) | **Current work** |
 | `apps/landing` | Landing page (Vite + React), merged in PR #8 | Done, not public yet |
 
@@ -91,7 +140,8 @@ BullMQ (a Node library). Six parts:
 
 1. Foundation and accounts: **done**.
 2. Training loop: **done** (plans 2a to 2d).
-3. Gyms and social: **under way** (spec written; plans 3a to 3c built; plans 3d to 3f to come).
+3. Gyms and social: **under way** (spec written; plans 3a to 3c built; plan 3d being built by another session on
+   `feat/rust-backend-3d`; plan 3e next, in parallel; plan 3f after them).
 4. Competitions. Its inputs include `docs/organisation-backend-contract.md` (the organisation update, PR #38) and
    floor judging (PR #34).
 5. Admin and moderation.
@@ -148,7 +198,7 @@ duels, challenges and leagues), with seven rulings for the owner.
   - #39: `feat/rust-backend-3` up to `c8a9ea5` (the rest of plan 3b);
   - #40, #41 and #42: `feat/rust-backend-3` up to `b505ad4` (plan 3b's docs and review, plan 3c up to its export,
     anonymisation and `.sqlx` data);
-  - #43: `organisation-update`'s `113049c`, which **deleted `apps/api`** and its pnpm workspace entries (§0 step 5).
+  - #43: `organisation-update`'s `113049c`, which **deleted `apps/api`** and its pnpm workspace entries (§0 step 7).
 - **Branch `feat/rust-backend-3`** starts at `3d42eed`. Its commits after `b505ad4` are not in `main`, and are local
   only (§0 step 1). It has no upstream.
 - **Other local branches:**
@@ -543,16 +593,22 @@ The previous sessions' lists (plan 3a's review, plan 3b's commits, the dependenc
     ignored), `sessions` (13), and `privacy`'s two new tests; the 131 unit tests at the start;
   - after the last code change: `cargo fmt --check`; Clippy `-D warnings` online and with `SQLX_OFFLINE=true`,
     clean; `cargo sqlx prepare` (committed); `cargo audit` (276 crates) and `cargo deny check` clean;
-  - **the whole suite did not run.** Claude Code stopped the first chunk for low system memory, and `link.exe` had
-    already failed on `announcements` with `0xc0000142` (DLL initialisation failed, the same pressure). Not run
-    on the final code: the whole of `privacy`, and `register`, `login`, `admin_auth`, `me`, `profile`,
-    `onboarding`, `body`, `league`, `leaderboards`, `social`, `gyms`, `rate_limit`, `reference`, `jobs`, `mail`,
-    `emails`. **Run the whole suite first next session** (§5, « The whole `cargo test` »);
+  - **the whole suite, on the final code (`01751f3`), only partly.** A first attempt was stopped by Claude Code for
+    low system memory (and `link.exe` failed on `announcements` with `0xc0000142`, the same pressure). The Docker
+    engine then answered 500 (§5); after `docker desktop restart` and the containers' start, a second attempt
+    passed: the 131 unit tests; `schema` 22, `http_shell` 7 (1 ignored), `jobs` 4, `mail` 2, `rate_limit` 5,
+    `reference` 10; `admin_auth` 5, `emails` 11, `login` 7, `me` 4, `profile` 4, `register` 7, `sessions` 13;
+    `body` 4, `onboarding` 6, `points` 16. **Claude Code stopped it again for low memory in `privacy`.** Not run
+    on the final code: `privacy`, `security`, `workouts`, `goals`, `badges`, `league`, `leaderboards`,
+    `notifications`, `social`, `gyms`, `feed`, `announcements`, `live` (§0 step 3). Of these, `security`,
+    `workouts`, `goals`, `badges`, `notifications`, `feed`, `announcements`, `live` and `privacy`'s two new tests
+    passed during their tasks; `league`, `leaderboards`, `social` and `gyms` have not run since plan 3c's changes.
+    No failure was seen;
   - **`live::a_socket_outlives_the_request_timeout` was written after the last run and has never run.** It checks
     that a socket open longer than the 15 s request timeout still receives its event (the timeout wraps only the
     upgrade's response, so it should pass). If it fails, move the socket layer outside the `timeout` middleware.
 
-  Not done: plan 3c's whole-branch review (§0 step 2), a live run against the real binaries, and the mobile app
+  Not done: plan 3c's whole-branch review (§0 step 4), a live run against the real binaries, and the mobile app
   against the Rust API (its socket included).
 - **The rulings part 3's spec took** (its « Rulings » section, for the owner's review):
   1. routes no frontend calls are left out (unblock, mutes, `/me/devices`, gym edit, others), and
@@ -629,6 +685,12 @@ The previous sessions' lists (plan 3a's review, plan 3b's commits, the dependenc
 
   Otherwise every `query!` reports « error communicating with database ». The dev data survives. It stopped
   three more times on 2026-10-20 and 21, once together with a low-memory episode.
+- **The Docker engine answers 500** (« request returned 500 Internal Server Error for API route … dockerDesktop
+  LinuxEngine »), while the Docker Desktop app still runs: it happened on 2026-10-23 during a low-memory episode,
+  and every `#[sqlx::test]` then panics in `testing/mod.rs:227` with `PoolTimedOut`. `docker desktop restart`
+  brought the engine back in seconds; the three containers had exited (255), so start them again with
+  `docker compose -f infra/docker-compose.yml up -d --wait mariadb redis mailpit` from the repository root. The
+  first suites after it run about twice as slowly (a cold database).
 - **A stuck test database.** After the engine stops in the middle of a test, a `#[sqlx::test]` can panic in
   `testing/mod.rs` with « Error dropping database (can't rmdir './_sqlx_test_…', errno: 39 "Directory not
   empty") ». The test database's name comes from the test's name, so the same test fails every time. Look inside
@@ -720,28 +782,30 @@ The previous sessions' lists (plan 3a's review, plan 3b's commits, the dependenc
 
 ## 6. Next steps
 
-1. **Run the whole suite on the final code** (§4, « Checks »: it did not run this session, and
-   `live::a_socket_outlives_the_request_timeout` has never run). Then the rest of plan 3c reaches `main`:
+1. **Finish plan 3c's test run** (§0 step 3: the suites that did not run on the final code, and
+   `live::a_socket_outlives_the_request_timeout`, which has never run). Then the rest of plan 3c reaches `main`:
    `feat/rust-backend-3`'s commits after `b505ad4` (local). The user pushes them, then the owner merges.
-2. **Plan 3c's whole-branch review** (§0 step 2), with the plan's « Review focus » list and the ledger's rulings.
-3. **Plan 3d, gym WODs and gym wars**, then 3e (battles and duels, with `battle.score` on the socket) and 3f
-   (challenges and leagues), each written once the previous one is built (§0 step 6 lists 3d's inputs).
-4. **Owner's review of part 3's rulings** (§4, the spec's and plans 3a's to 3c's « Rulings » sections). The ones
+2. **Plan 3c's whole-branch review** (§0 step 4), with the plan's « Review focus » list and the ledger's rulings.
+3. **Plan 3d, gym WODs and gym wars:** another session is building it on `feat/rust-backend-3d`, in
+   `.worktrees/rust-backend-3d` (§0 step 1). Its whole-branch review comes after it, in a fresh session.
+4. **Plan 3e, battles and duels** (with `battle.score` on the socket), **next, in parallel with 3d** (§0 step 2 for
+   the coordination, step 8 for its inputs). Then 3f (challenges and leagues), once 3d and 3e are built.
+5. **Owner's review of part 3's rulings** (§4, the spec's and plans 3a's to 3c's « Rulings » sections). The ones
    that depart from the old API's behaviour or the spec: anonymisation now deletes the social links,
    notifications, gym memberships, pending gyms, verification requests and the feed's rows; a blocked or unknown
    account is checked before a block (404); writers of a link take the pair's lock; a gym's top athletes leave out
    those who hide from leaderboards; `LEVEL_UP` for every grant; and the live events' transport (the notifications
    table, not Redis pub/sub: plan 3c ruling 7).
-5. **Part 4 must carry over PRs #34 and #38:**
+6. **Part 4 must carry over PRs #34 and #38:**
    - the floor-judging routes the app now calls in on-site events, and the `COMPETITION_JUDGE_INVITED`
      notification type (add it to the `notifications.type` ENUM). Floor judging in the app sits beside the
      standing decision « judges work only in the admin panel »: read
      `docs/superpowers/specs/2026-10-21-floor-judging-design.md` before part 4's spec;
    - the organisation update: `docs/organisation-backend-contract.md` (competition, division, registration and
      WOD fields, the new routes, live events, the displays' public reads, results, messages, tickets and the
-     shop), with its required rule on registration gates (§0 step 6). Each item built on the server leaves the
+     shop), with its required rule on registration gates (§0 step 8). Each item built on the server leaves the
      app's `ORG_LOCAL_LAYER` and the contract.
-6. **Plan 2c's whole-branch review: done**, against the old API's `goals` and `badges` modules and the plan.
+7. **Plan 2c's whole-branch review: done**, against the old API's `goals` and `badges` modules and the plan.
    Re-run after it: `--lib` and the `goals`, `badges`, `body`, `points`, `privacy`, `onboarding` and `schema`
    suites, 195 green. Two minors, left as they are:
    - `DELETE /goals/{id}` takes no lock. Sent at the instant a workout reaches a goal's last milestone, it can
@@ -752,22 +816,22 @@ The previous sessions' lists (plan 3a's review, plan 3b's commits, the dependenc
 
    The onboarding test that was never seen red is sound: the code before it answered `goals: false` always, and
    the test asserts `true` after the first goal.
-7. **Owner's review of the plan 2d rulings** (`git show 1cdb980:handoff.md` §4, and the plan's « Rulings » and
+8. **Owner's review of the plan 2d rulings** (`git show 1cdb980:handoff.md` §4, and the plan's « Rulings » and
    « Built » sections). The ones that depart from the old API's behaviour: an athlete without a season joins
    only an active one; a season closes only once the week holding its end is closed (the review's fix).
-8. **Owner's review of the plan 2c rulings** (the plan's « Rulings » section; listed in
+9. **Owner's review of the plan 2c rulings** (the plan's « Rulings » section; listed in
    `git show 18e861e:handoff.md`, §4).
-9. **Owner's review of the plan 2b rulings** (the plan's « Rulings » section): the `user_stats` lock that
+10. **Owner's review of the plan 2b rulings** (the plan's « Rulings » section): the `user_stats` lock that
    serialises one athlete's workouts; `workout_id` on XP entries; `bodyWeight` in `/me/progress` only with the
    consent; a malformed exercise id in the series answers 404; the baseline columns of plan 2d left for it;
    no activity events until part 3.
-10. **Owner's review of the plan 2a rulings** (the plan's « Rulings » section):
+11. **Owner's review of the plan 2a rulings** (the plan's « Rulings » section):
    - decimals are rounded, not refused;
    - a sync batch checks each item on its own;
    - reading body measurements also needs the consent;
    - a malformed id answers 404;
    - no soft delete and no `data_source` on workouts.
-11. **By hand:** point the mobile app at the Rust API (`EXPO_PUBLIC_API_URL=http://<this
+12. **By hand:** point the mobile app at the Rust API (`EXPO_PUBLIC_API_URL=http://<this
    machine>:3100/api/v1`, with its origin in `CORS_ORIGINS`). Seed the database first: it is migrated to `0012`
    but empty. Run `backend worker` too, for the league's jobs. Plan 3a's screens (friends, search, profiles, the
    bell, the notification settings, the friends board), plan 3b's (the gym directory, a gym's page, joining,
@@ -789,7 +853,7 @@ The previous sessions' lists (plan 3a's review, plan 3b's commits, the dependenc
 
    The tests cover them through the recorded shapes or their own assertions; nobody has watched them in the app
    yet.
-12. **Rust backend, open points for the owner:**
+13. **Rust backend, open points for the owner:**
    - **Plan 1c rulings:**
      - baseline values are rounded to 3 decimals, not refused;
      - a wrong password on `DELETE /me` counts toward the lock;
@@ -819,7 +883,7 @@ The previous sessions' lists (plan 3a's review, plan 3b's commits, the dependenc
      - the `DRAFT` guard on publish-leaderboard;
      - the YouTube-only submission;
      - the `MOVEMENT_REPS` score.
-13. **Organizer space, waiting for the owner:**
+14. **Organizer space, waiting for the owner:**
    - a creation limit per user per day on `POST /competitions` (spam drafts crowd the admin list);
    - cancellation by organizers (admins only today);
    - « Publier » silently wins when two admins act at once;
@@ -838,7 +902,7 @@ The previous sessions' lists (plan 3a's review, plan 3b's commits, the dependenc
      - lot Web 1: two separate « Demander la publication » guards; badge vs dashboard « À encaisser »; the
        shared link is still `fitnessleague://…`.
    - To check on a phone: the 30 s reload pauses in the background.
-14. **Before anything goes public:**
+15. **Before anything goes public:**
     - the default banner and the tutorial video show **Alamy watermarks**. Replace
       `apps/mobile-rn/assets/competition-cover.jpg` (about 1440×596), then re-render
       `apps/landing/public/media/tutorial.mp4`;
@@ -850,20 +914,20 @@ The previous sessions' lists (plan 3a's review, plan 3b's commits, the dependenc
     - the tutorial voice-off is synthetic;
     - a full security audit of `apps/backend` (and of `apps/admin`), with the `security-audit` skill, from
       WSL, before the cut-over. Optional; only when the owner asks for it.
-15. **Needs the owner's accounts or choices:**
+16. **Needs the owner's accounts or choices:**
     - online payment for competitions (Konnect, Stripe…);
     - push notifications (Firebase project + `google-services.json`);
     - EAS builds (Expo account);
     - the old API's dev JWT keys (a `.env` read once printed their start) left with `apps/api`; regenerate them
       only if a checkout from before `113049c` is run again.
-16. **Optional cleanups:**
+17. **Optional cleanups:**
     - drop `competition_submissions.video_media_id` and `COMPETITION_VIDEO`;
     - rename `apps/mobile-rn` to `apps/mobile`;
     - delete the merged remote branches (`feat/competitions`, `feat/gyms-sports-mobile`, `feat/home-news`,
       `feat/landing`, `feat/organizer-space`, `feat/rn-ui-polish`, `feat/rust-backend`, `feat/rust-backend-2`),
       the local `feat/rust-backend`, `feat/rust-backend-2b` and `feat/gyms-sports-mobile`, and in the WSL copy
       `feat/rust-backend-1c` and the stray `feat/rust-backend-2`.
-17. **Owner's other PC:** Expo answered « Cannot read properties of undefined (reading 'transformFile') ».
+18. **Owner's other PC:** Expo answered « Cannot read properties of undefined (reading 'transformFile') ».
     Likely causes: the checkout in OneDrive, or `npm install` run inside `apps/mobile-rn` in a pnpm workspace.
     Advised: move it out of OneDrive, `pnpm install`, `npx expo start --clear`. The real line
     (`Failed to construct transformer: …`) is still awaited.
