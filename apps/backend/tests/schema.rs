@@ -876,3 +876,77 @@ async fn the_gym_tables_hold_their_rules(opts: MySqlPoolOptions, conn: MySqlConn
     .await
     .unwrap();
 }
+
+#[sqlx::test]
+async fn the_feed_tables_hold_their_rules(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let db = backend::db::pool(opts, conn);
+    let a = insert_user(&db, "a@example.tn", "user_a").await.unwrap();
+    let b = insert_user(&db, "b@example.tn", "user_b").await.unwrap();
+    let event = |kind: &'static str, payload: &'static str| {
+        sqlx::query(
+            "INSERT INTO activity_events (id, user_id, type, ref_type, ref_id, visibility, payload) \
+             VALUES (?, ?, ?, 'workout', ?, 'FRIENDS', ?)",
+        )
+        .bind(Uuid::now_v7())
+        .bind(a)
+        .bind(kind)
+        .bind(Uuid::now_v7())
+        .bind(payload)
+        .execute(&db)
+    };
+    event("WORKOUT", "{}").await.unwrap();
+    assert!(event("WORKOUT", "not json").await.is_err());
+    assert!(event("LOVE", "{}").await.is_err());
+    let id: Uuid = sqlx::query_scalar("SELECT id FROM activity_events")
+        .fetch_one(&db)
+        .await
+        .unwrap();
+
+    let react = |kind: &'static str| {
+        sqlx::query(
+            "INSERT INTO activity_reactions (activity_event_id, user_id, type) VALUES (?, ?, ?)",
+        )
+        .bind(id)
+        .bind(b)
+        .bind(kind)
+        .execute(&db)
+    };
+    react("FIRE").await.unwrap();
+    assert!(is_unique_violation(&react("LIKE").await.unwrap_err()));
+    sqlx::query("INSERT INTO activity_comments (id, activity_event_id, user_id, body) VALUES (?, ?, ?, 'Bravo')")
+        .bind(Uuid::now_v7())
+        .bind(id)
+        .bind(b)
+        .execute(&db)
+        .await
+        .unwrap();
+
+    let post = Uuid::now_v7();
+    sqlx::query("INSERT INTO announcements (id, body) VALUES (?, 'Welcome')")
+        .bind(post)
+        .execute(&db)
+        .await
+        .unwrap();
+    let like = || {
+        sqlx::query("INSERT INTO announcement_likes (announcement_id, user_id) VALUES (?, ?)")
+            .bind(post)
+            .bind(b)
+            .execute(&db)
+    };
+    like().await.unwrap();
+    assert!(is_unique_violation(&like().await.unwrap_err()));
+
+    // An event takes its reactions and comments with it.
+    sqlx::query("DELETE FROM activity_events WHERE id = ?")
+        .bind(id)
+        .execute(&db)
+        .await
+        .unwrap();
+    for count in [
+        "SELECT COUNT(*) FROM activity_reactions",
+        "SELECT COUNT(*) FROM activity_comments",
+    ] {
+        let left: i64 = sqlx::query_scalar(count).fetch_one(&db).await.unwrap();
+        assert_eq!(left, 0, "{count}");
+    }
+}
