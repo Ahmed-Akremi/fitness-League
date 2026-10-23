@@ -21,6 +21,7 @@ import { ParticipantsTab } from './participants';
 import { LiveTab } from './live';
 import { PlanningTab } from './planning';
 import { RaceTab } from './race';
+import { ResultsTab } from './results';
 import { ScheduleTab } from './schedule';
 import { SettingsTab } from './settings';
 import { PricingTab } from './pricing';
@@ -35,7 +36,7 @@ import { OrganizerWeb } from './web-shell';
 import { WodsTab } from './wods';
 
 /** Tabs of the organizer space on a phone, in display order (the computer layout groups them, `ORG_MENU`). */
-const TABS: ManageTab[] = ['dashboard', 'general', 'settings', 'categories', 'pricing', 'forms', 'wods', 'race', 'planning', 'waves', 'live', 'tools', 'participants', 'roster', 'staff', 'team', 'leaderboard', 'announcements', 'coupons'];
+const TABS: ManageTab[] = ['dashboard', 'general', 'settings', 'categories', 'pricing', 'forms', 'wods', 'race', 'planning', 'waves', 'live', 'tools', 'participants', 'roster', 'staff', 'team', 'leaderboard', 'results', 'announcements', 'coupons'];
 
 export function ManageScreen({ id, initialTab = 'dashboard' }: { id: string; initialTab?: ManageTab }) {
   const t = useT();
@@ -49,7 +50,7 @@ export function ManageScreen({ id, initialTab = 'dashboard' }: { id: string; ini
     setFocus(f ?? null);
     setTab(next);
   };
-  const labels: Record<ManageTab, string> = { dashboard: t('orgTabDashboard'), finances: t('orgMenuFinances'), timetable: t('orgMenuTimetable'), general: t('orgTabGeneral'), settings: t('orgTabSettings'), pricing: t('orgTabPricing'), forms: t('orgTabForms'), roster: t('orgTabRoster'), staff: t('orgTabStaff'), categories: t('orgTabCategories'), wods: t('orgTabWods'), race: t('orgTabRace'), planning: t('orgTabPlanning'), waves: t('orgTabWaves'), live: t('orgTabLive'), tools: t('orgTabTools'), participants: t('orgTabParticipants'), team: t('orgTabTeam'), leaderboard: t('orgTabLeaderboard'), announcements: t('orgTabAnnouncements'), coupons: t('orgTabCoupons') };
+  const labels: Record<ManageTab, string> = { dashboard: t('orgTabDashboard'), finances: t('orgMenuFinances'), timetable: t('orgMenuTimetable'), general: t('orgTabGeneral'), settings: t('orgTabSettings'), pricing: t('orgTabPricing'), forms: t('orgTabForms'), roster: t('orgTabRoster'), staff: t('orgTabStaff'), categories: t('orgTabCategories'), wods: t('orgTabWods'), race: t('orgTabRace'), planning: t('orgTabPlanning'), waves: t('orgTabWaves'), live: t('orgTabLive'), tools: t('orgTabTools'), participants: t('orgTabParticipants'), team: t('orgTabTeam'), leaderboard: t('orgTabLeaderboard'), results: t('orgTabResults'), announcements: t('orgTabAnnouncements'), coupons: t('orgTabCoupons') };
 
   // The server answers 404 (a draft) or 403 to anyone who is not on the staff.
   if (comp.error instanceof ApiError && (comp.error.status === 404 || comp.error.status === 403)) return <EmptyState icon="lock" message={t('orgOnly')} />;
@@ -81,6 +82,7 @@ export function ManageScreen({ id, initialTab = 'dashboard' }: { id: string; ini
       {shown === 'staff' && <StaffTab c={c} />}
       {shown === 'team' && <TeamTab c={c} />}
       {shown === 'leaderboard' && <LeaderboardTab c={c} onGo={go} />}
+      {shown === 'results' && <ResultsTab c={c} />}
       {shown === 'announcements' && <AnnouncementsTab c={c} />}
       {shown === 'coupons' && <CouponsTab c={c} />}
     </>

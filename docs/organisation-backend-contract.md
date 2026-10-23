@@ -73,6 +73,12 @@ Phase 7 adds `flow`, the race of a hybrid event (`features/competitions/organize
 |---|---|---|
 | `flow` | `{ template: HYROX_STYLE \| CUSTOM, timeCapSec \| null, totalScoring: TIME \| REPS \| CALORIES \| DISTANCE, stages: [{ id, name, kind: STATION \| TRANSITION, scoring: TIME \| REPS \| CALORIES \| DISTANCE \| NONE, target > 0, unit }], breaks: [{ afterStage 1..stages-1, seconds > 0 }], scoringRule: { op: ADD \| REMOVE, value > 0 \| null, unit: SEC \| REP } \| null }` | `HYROX_STYLE` is fixed: a 1 km run (`TRANSITION`) before each of the 8 stations, 16 stages; the server should refuse other stages for it. `flowProblems()` is the reference check. A `null` rule value means the judge enters it. "HYROX" is a trademark: never label the template without « -style » |
 
+Phase 10 adds `resultsSettings`, the organizer's ranking choices (`features/competitions/organizer/logic-results.ts`):
+
+| Field | Shape | Notes |
+|---|---|---|
+| `resultsSettings` | `{ table: SERVER \| RANK \| DESCENDING, first, step, visibility: RANKED \| RANDOM \| HIDDEN, finalists: integer \| null, frozenAt: ISO \| null }` | `RANK`: points = place, lowest total wins; `DESCENDING`: `first − (place − 1) × step`, highest wins. Equal totals: countback of places, then the last workout (`overallRanking()`). `visibility` and `frozenAt` apply to the public screens (displays, and later the public leaderboard) |
+
 The first save of a race also creates one server WOD (`scoreType: TIME`, name « Race »), so the publication check
 (`WOD` item) and the style lock keep working until the server knows flows.
 
@@ -149,6 +155,8 @@ Phase 5 lists all follow the same pattern:
 | `waves` | `{ id, number, name, categoryId, startsAt, registrationIds: string[], athletes: [{ registrationId, name }], liveStart: ISO \| null }` | `startsAt` | Phase 7: start groups of a hybrid race, cut by `planWaves()`. `liveStart` set = racing; the shared clock of a wave counts from it. `athletes` (phase 8) lets race judges show names without the organizer's registration list; the server should expose a wave to its judges only |
 | `race-results` | `{ id: "<waveId>:<registrationId>", waveId, registrationId, splits: ms[], adjustments: number[], dnf, finished }` | `registrationId` | Phase 8: what a race judge records. `splits[i]` is the wave clock at the end of stage i (runs included); `adjustments` are scoring-rule values. `raceTotalMs()` is the reference. The server should accept them from the wave's judges only and keep an audit trail |
 | `lane-penalties` | `{ id: "<heatId>:<lane>", heatId, lane, workoutId, missedReps, minor, major }` | `heatId` | Phase 8: penalty counts of a functional-fitness lane, for the WOD's `penalties`. Should become fields of the lane score body (`PUT …/lanes/:lane/score`) |
+| `imported-results` | `{ id: "<target>:<registrationId>", target: <workoutId> \| "race", registrationId, categoryId, name, raw }` | `registrationId` | Phase 10: results imported from a spreadsheet after a dry run (`parseResultsCsv`, `matchImport`). `raw` is the score shape of the lane score (`{ timeS }`, `{ capped, reps }`, `{ reps }`, `{ value }`). The server should take them as `POST /competitions/:id/workouts/:workoutId/results/import` (and `/race/results/import`) with the same dry-run answer `{ ok, problems: [{ line, code: NO_MATCH \| BAD_SCORE \| DUPLICATE }] }` |
+| `board-freezes` | `{ id: <categoryId>, rows: [{ key, rank, name, value }], at }` | `rows` | Phase 10: the standings kept by « Freeze »; the displays show them while `resultsSettings.frozenAt` is set |
 | `calls` | `{ id: "current", kind: WARM_UP \| CORRAL \| null, label, seq, at }` | | Phase 9: the call shown on the call screen, sent from the Live page |
 | `timers` | `{ id: <locationId \| competitionId>, config: { type: FOR_TIME \| AMRAP \| EMOM \| TABATA \| COUNTDOWN, capSec, intervalSec, rounds, workSec, restSec }, startTimestamp: ISO \| null, pausedAt: ISO \| null, pausedMs }` | `config` | Phase 8: the snapshot a display loads before it listens to `timer.<id>`. `timerView()` computes the time from it; the server should stamp `startTimestamp` with its own clock |
 
@@ -228,4 +236,24 @@ Every display takes `overlay=1` (transparent background, for a green-screen over
 **Local layer and several tabs:** `LocalStore` reads the saved data again before each change (two tabs never erase each
 other), and in the web build it follows the browser's `storage` event, so a display tab sees what the organizer
 and judge tabs save.
+
+## Results (phase 10)
+
+- **Functional fitness:** the server's leaderboard stays the reference. With `resultsSettings.table` other than `SERVER`,
+  the app re-ranks from each row's `wodPoints` (place per workout = order of points). The server should apply the
+  same table itself (`pointsFor()`, `overallRanking()`) so every screen agrees.
+- **Per-workout ranking rules** are in `rankFunctional()`:
+  - For Time: finishers by time plus penalty seconds (`penaltySeconds()`), then capped athletes by reps, then the
+    tie-break time;
+  - scaled after Rx, DNF last;
+  - equal entries share a place.
+- **Hybrid race:** `hybridRanking()`:
+  - finishers by total time (scoring-rule seconds included);
+  - past the time cap, or not finished: ranked after the finishers, by stations completed within the cap, then by the
+    last split;
+  - DNF last, without a place.
+  - Results columns are the stations (`stationTimes()`); runs count in the total but are not shown.
+- **Age filters** need the athlete's age on the event day: the organizer list `GET /competitions/:id/registrations`
+  should add `ageAtEvent` (an integer; better than sending the birth date). Until then, the filter leaves out the
+  athletes without an age and says how many.
 

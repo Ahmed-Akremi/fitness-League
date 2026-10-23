@@ -87,6 +87,8 @@ export const ORG_LOCAL_LAYER: LocalLayer = {
     'agreements',
     // Phase 7: the race of a hybrid event (`features/competitions/organizer/logic-hybrid.ts`)
     'flow',
+    // Phase 10: ranking choices (`features/competitions/organizer/logic-results.ts`)
+    'resultsSettings',
   ],
   // Phase 3: divisions (`features/competitions/organizer/logic-division.ts`)
   categoryFields: ['type', 'teamMale', 'teamFemale', 'parentId', 'locked', 'unlockCode', 'earlyPrice', 'earlyUntil', 'teamNameChangeUntil', 'memberChangeUntil', 'memberChangePrice', 'oneMemberStays'],
@@ -103,6 +105,9 @@ export const ORG_LOCAL_LAYER: LocalLayer = {
     ...listRoutes('timers', 'timers', required('config')),
     // Phase 9: the call shown on the call screen ({ id: 'current', kind: WARM_UP | CORRAL | null, label, seq, at })
     ...listRoutes('calls', 'calls'),
+    // Phase 10: results imported from a spreadsheet, and the standings kept by « Freeze »
+    ...listRoutes('importedResults', 'imported-results', required('registrationId')),
+    ...listRoutes('boardFreezes', 'board-freezes', required('rows')),
     // Phase 6: locations (stages, floors) and the location of each heat ({ id: heatId, locationId })
     ...listRoutes('locations', 'locations', required('name')),
     ...listRoutes('heatLocations', 'heat-locations', required('locationId')),

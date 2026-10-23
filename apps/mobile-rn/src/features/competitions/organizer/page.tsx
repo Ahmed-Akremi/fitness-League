@@ -29,6 +29,7 @@ export const pageTitle = (t: T, tab: ManageTab): string =>
     tools: t('orgTabTools'),
     timetable: t('orgMenuTimetable'),
     leaderboard: t('orgTabLeaderboard'),
+    results: t('orgTabResults'),
     announcements: t('orgTabAnnouncements'),
   })[tab];
 

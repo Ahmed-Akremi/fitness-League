@@ -14,6 +14,7 @@ import { formatClock } from '../judge/logic';
 import { eventStyleOf } from '../organizer/logic';
 import { personName } from '../organizer/logic-b';
 import { flowOf, type Flow, type RaceResult } from '../organizer/logic-hybrid';
+import { overallRanking, resultsSettingsOf, tableOf, visibleRows, type ResultsSettings } from '../organizer/logic-results';
 import { timerSeconds, timerView, type TimerState } from '../organizer/logic-timer';
 import { applyRaceEvent, keepNewer, raceRows, rotation, scheduleNow, type LaneLive } from './logic';
 
@@ -293,13 +294,54 @@ function LeaderboardDisplay({ id, rotateSec, categoryId }: { id: string; rotateS
   const seconds = useTicks(1_000);
   const cats: Json[] = (comp.data?.categories ?? []).filter((k: Json) => k.active !== false);
   const cat = categoryId ? cats.find((k) => k.id === categoryId) : cats[rotation(cats.length, rotateSec, 0, seconds * 1000)];
+  const freezes = useSnapshot(id, 'board-freezes');
   const hybrid = comp.data ? eventStyleOf(comp.data) === 'HYBRID_RACE' : false;
+  // Phase 10: the organizer's choices for the screens (hidden, random order, frozen standings, points table).
+  const s = comp.data ? resultsSettingsOf(comp.data) : null;
+  const frozen = s?.frozenAt && cat ? freezes.data?.find((f) => f.id === cat.id) : null;
+  if (s?.visibility === 'HIDDEN') {
+    return (
+      <Center>
+        <Txt style={displayText(56)} color={D.muted}>{t('displayHidden')}</Txt>
+      </Center>
+    );
+  }
   return (
     <>
-      <Title>{cat?.name ?? comp.data?.title ?? ''}</Title>
-      {comp.data ? hybrid ? <HybridBoard id={id} c={comp.data} categoryId={cat?.id} /> : <PointsBoard id={id} categoryId={cat?.id} /> : null}
+      <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 24 }}>
+        <View style={{ flex: 1 }}>
+          <Title>{cat?.name ?? comp.data?.title ?? ''}</Title>
+        </View>
+        {frozen ? <Txt style={displayText(32)} color={D.accent}>{t('displayFrozen')}</Txt> : null}
+      </View>
+      {frozen ? (
+        <ShownRows rows={(frozen.rows ?? []) as BoardLine[]} s={s!} seed={cat?.id ?? ''} />
+      ) : comp.data && s ? (
+        hybrid ? (
+          <HybridBoard id={id} c={comp.data} categoryId={cat?.id} s={s} />
+        ) : (
+          <PointsBoard id={id} categoryId={cat?.id} s={s} />
+        )
+      ) : null}
       {!cat && comp.data ? <Txt color={D.muted}>{t('displayBoardEmpty')}</Txt> : null}
     </>
+  );
+}
+
+type BoardLine = { key: string; rank: number | null; name: string; value: string };
+
+/** Ranked, or the same names in random order without ranks nor scores (prompt §5, visibility). */
+function ShownRows({ rows, s, seed }: { rows: BoardLine[]; s: ResultsSettings; seed: string }) {
+  const t = useT();
+  const D = useD();
+  const shown = visibleRows(rows.slice(0, 10), s.visibility, seed);
+  if (shown.length === 0) return <Txt style={displayText(40)} color={D.muted}>{t('displayBoardEmpty')}</Txt>;
+  return (
+    <View style={{ gap: 12 }}>
+      {shown.map((r) => (
+        <BoardRow key={r.key} rank={r.rank} name={r.name} value={s.visibility === 'RANDOM' ? '' : r.value} />
+      ))}
+    </View>
   );
 }
 
@@ -314,39 +356,27 @@ function BoardRow({ rank, name, value }: { rank: number | null; name: string; va
   );
 }
 
-function PointsBoard({ id, categoryId }: { id: string; categoryId?: string }) {
+function PointsBoard({ id, categoryId, s }: { id: string; categoryId?: string; s: ResultsSettings }) {
   const t = useT();
-  const D = useD();
   const board = useCompLeaderboard(id, categoryId, undefined, SNAPSHOT_MS);
-  const rows: Json[] = (board.data?.rows ?? []).slice(0, 10);
-  if (board.data && rows.length === 0) return <Txt style={displayText(40)} color={D.muted}>{t('displayBoardEmpty')}</Txt>;
-  return (
-    <View style={{ gap: 12 }}>
-      {rows.map((r) => (
-        <BoardRow key={r.athlete.id} rank={r.rank} name={r.athlete.fullName || r.athlete.username || '—'} value={t('orgBoardPoints', { points: r.totalPoints })} />
-      ))}
-    </View>
-  );
+  if (!board.data) return null;
+  const table = tableOf(s);
+  const rows: Json[] = table ? overallRanking(board.data.rows ?? [], board.data.workouts ?? [], table) : (board.data.rows ?? []).map((r: Json) => ({ ...r, localRank: r.rank, localTotal: r.totalPoints }));
+  const lines = rows.map((r) => ({ key: r.athlete.id, rank: r.localRank, name: r.athlete.fullName || r.athlete.username || '—', value: t('orgBoardPoints', { points: r.localTotal }) }));
+  return <ShownRows rows={lines} s={s} seed={categoryId ?? ''} />;
 }
 
 /** A hybrid event ranks by race time: every wave of the division together. */
-function HybridBoard({ id, c, categoryId }: { id: string; c: Json; categoryId?: string }) {
+function HybridBoard({ id, c, categoryId, s }: { id: string; c: Json; categoryId?: string; s: ResultsSettings }) {
   const t = useT();
-  const D = useD();
   const waves = useSnapshot(id, 'waves');
   const mine = (waves.data ?? []).filter((w) => w.categoryId === categoryId);
   const results = useRaceResults(id, mine.map((w) => w.id));
   const flow = flowOf(c);
   if (!flow) return null;
-  const rows = raceRows(flow, results.filter((r) => mine.some((w) => w.id === r.waveId)), mine.flatMap((w) => w.athletes ?? [])).filter((r) => r.status !== 'WAITING').slice(0, 10);
-  if (rows.length === 0) return <Txt style={displayText(40)} color={D.muted}>{t('displayBoardEmpty')}</Txt>;
-  return (
-    <View style={{ gap: 12 }}>
-      {rows.map((r) => (
-        <BoardRow key={r.registrationId} rank={r.rank} name={r.name} value={r.status === 'FINISHED' && r.totalMs != null ? formatClock(r.totalMs) : r.status === 'DNF' ? t('displayDnf') : t('displayStages', { done: r.stagesDone, total: flow.stages.length })} />
-      ))}
-    </View>
-  );
+  const rows = raceRows(flow, results.filter((r) => mine.some((w) => w.id === r.waveId)), mine.flatMap((w) => w.athletes ?? [])).filter((r) => r.status !== 'WAITING');
+  const lines = rows.map((r) => ({ key: r.registrationId, rank: r.rank, name: r.name, value: r.status === 'FINISHED' && r.totalMs != null ? formatClock(r.totalMs) : r.status === 'DNF' ? t('displayDnf') : t('displayStages', { done: r.stagesDone, total: flow.stages.length }) }));
+  return <ShownRows rows={lines} s={s} seed={categoryId ?? ''} />;
 }
 
 // ───────────── Schedule ─────────────
