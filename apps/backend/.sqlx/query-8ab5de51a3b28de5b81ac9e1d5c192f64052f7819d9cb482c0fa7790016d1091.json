@@ -1,6 +1,6 @@
 {
   "db_name": "MySQL",
-  "query": "SELECT governorate_id AS \"id: Uuid\" FROM profiles WHERE user_id = ?",
+  "query": "SELECT governorate_id AS \"id: Uuid\" FROM cities WHERE id = ?",
   "describe": {
     "columns": [
       {
@@ -14,7 +14,7 @@
         },
         "origin": {
           "Table": {
-            "table": "fitness_league.profiles",
+            "table": "fitness_league.cities",
             "name": "governorate_id"
           }
         }
@@ -27,5 +27,5 @@
       false
     ]
   },
-  "hash": "c562f2bd8cedfd978cec1a1d9c060283ca525fc6cf27408491a4ed051edf6125"
+  "hash": "8ab5de51a3b28de5b81ac9e1d5c192f64052f7819d9cb482c0fa7790016d1091"
 }

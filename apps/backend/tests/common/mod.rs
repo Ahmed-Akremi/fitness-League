@@ -314,11 +314,13 @@ pub async fn a_gym(app: &TestApp, owner: Uuid, name: &str) -> Uuid {
     .execute(&app.db)
     .await
     .expect("the gym row");
-    sqlx::query("INSERT INTO gym_sports (gym_id, sport_id) SELECT ?, id FROM sports ORDER BY code LIMIT 2")
-        .bind(id)
-        .execute(&app.db)
-        .await
-        .expect("the gym's sports");
+    sqlx::query(
+        "INSERT INTO gym_sports (gym_id, sport_id) SELECT ?, id FROM sports ORDER BY code LIMIT 2",
+    )
+    .bind(id)
+    .execute(&app.db)
+    .await
+    .expect("the gym's sports");
     sqlx::query("UPDATE users SET role = 'GYM_ADMIN' WHERE id = ?")
         .bind(owner)
         .execute(&app.db)

@@ -1,0 +1,337 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT c.id AS \"id!: Uuid\", c.name AS \"name!\", c.slug AS \"slug!\", c.owner_user_id AS \"owner: Uuid\",\n                  c.address_line, c.instagram_url, c.facebook_url, c.website_url, c.tiktok_url,\n                  c.city_fr AS \"city_fr!\", c.city_en AS \"city_en!\", c.city_ar AS \"city_ar!\",\n                  c.governorate_id AS \"governorate_id!: Uuid\", c.governorate_code AS \"governorate_code!\",\n                  c.governorate_fr AS \"governorate_fr!\", c.governorate_en AS \"governorate_en!\",\n                  c.governorate_ar AS \"governorate_ar!\", c.members AS \"members!: i64\", c.sports AS \"sports: String\"\n           FROM (SELECT g.id, g.name, g.slug, g.owner_user_id, g.address_line, g.instagram_url, g.facebook_url,\n                        g.website_url, g.tiktok_url, ci.name_fr AS city_fr, ci.name_en AS city_en,\n                        ci.name_ar AS city_ar, gv.id AS governorate_id, gv.code AS governorate_code,\n                        gv.name_fr AS governorate_fr, gv.name_en AS governorate_en, gv.name_ar AS governorate_ar,\n                        (SELECT COUNT(*) FROM gym_members m WHERE m.gym_id = g.id AND m.status = 'APPROVED') AS members,\n                        (SELECT JSON_ARRAYAGG(JSON_OBJECT('code', s.code,\n                                  'name', JSON_OBJECT('fr', s.name_fr, 'en', s.name_en, 'ar', s.name_ar),\n                                  'icon', s.icon) ORDER BY s.code)\n                         FROM gym_sports gs JOIN sports s ON s.id = gs.sport_id WHERE gs.gym_id = g.id) AS sports\n                 FROM gyms g JOIN cities ci ON ci.id = g.city_id JOIN governorates gv ON gv.id = g.governorate_id\n                 WHERE g.status = 'VERIFIED' AND (? IS NULL OR g.id = ?)\n                   AND (? IS NULL OR g.governorate_id = ?)\n                   AND (? IS NULL OR EXISTS (SELECT 1 FROM gym_sports x WHERE x.gym_id = g.id AND x.sport_id = ?))\n                   AND (? IS NULL OR g.name LIKE ? ESCAPE '|')) c\n           WHERE (? IS NULL OR c.name > ? OR (c.name = ? AND c.id > ?))\n             AND (? IS NULL OR c.members < ? OR (c.members = ? AND c.id < ?))\n           ORDER BY IF(?, c.members, NULL) DESC, IF(?, c.id, NULL) DESC, c.name, c.id\n           LIMIT ?",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | PRIMARY_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.c",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "name!",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 320
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.c",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "slug!",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | UNIQUE_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 240
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.c",
+            "name": "slug"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "owner: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "MULTIPLE_KEY | BINARY",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.c",
+            "name": "owner_user_id"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "address_line",
+        "type_info": {
+          "type": "VarString",
+          "flags": "",
+          "collation": 224,
+          "max_size": 800
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.c",
+            "name": "address_line"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "instagram_url",
+        "type_info": {
+          "type": "VarString",
+          "flags": "",
+          "collation": 224,
+          "max_size": 1200
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.c",
+            "name": "instagram_url"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "facebook_url",
+        "type_info": {
+          "type": "VarString",
+          "flags": "",
+          "collation": 224,
+          "max_size": 1200
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.c",
+            "name": "facebook_url"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "website_url",
+        "type_info": {
+          "type": "VarString",
+          "flags": "",
+          "collation": 224,
+          "max_size": 1200
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.c",
+            "name": "website_url"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "tiktok_url",
+        "type_info": {
+          "type": "VarString",
+          "flags": "",
+          "collation": 224,
+          "max_size": 1200
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.c",
+            "name": "tiktok_url"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "city_fr!",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 320
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.c",
+            "name": "city_fr"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "city_en!",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 320
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.c",
+            "name": "city_en"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "city_ar!",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 320
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.c",
+            "name": "city_ar"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "governorate_id!: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | PRIMARY_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.c",
+            "name": "governorate_id"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "governorate_code!",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | UNIQUE_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 64
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.c",
+            "name": "governorate_code"
+          }
+        }
+      },
+      {
+        "ordinal": 14,
+        "name": "governorate_fr!",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 320
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.c",
+            "name": "governorate_fr"
+          }
+        }
+      },
+      {
+        "ordinal": 15,
+        "name": "governorate_en!",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 320
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.c",
+            "name": "governorate_en"
+          }
+        }
+      },
+      {
+        "ordinal": 16,
+        "name": "governorate_ar!",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 320
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.c",
+            "name": "governorate_ar"
+          }
+        }
+      },
+      {
+        "ordinal": 17,
+        "name": "members!: i64",
+        "type_info": {
+          "type": "LongLong",
+          "flags": "BINARY",
+          "collation": 63,
+          "max_size": 21
+        },
+        "origin": {
+          "Table": {
+            "table": "c",
+            "name": "members"
+          }
+        }
+      },
+      {
+        "ordinal": 18,
+        "name": "sports: String",
+        "type_info": {
+          "type": "Blob",
+          "flags": "",
+          "collation": 224,
+          "max_size": 16777224
+        },
+        "origin": {
+          "Table": {
+            "table": "c",
+            "name": "sports"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 19
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "9277bd1b7e9370ce6303e0f0d5f81dee6dd8ec9131565b051aae23624116459d"
+}

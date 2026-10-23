@@ -551,7 +551,10 @@ async fn joining_and_leaving(opts: MySqlPoolOptions, conn: MySqlConnectOptions) 
     assert_same_shape(recorded_members, &recorded(recorded_members), &members);
     assert_eq!(
         roster(&members),
-        [("owner".into(), "MEMBER".into()), ("a".into(), "MEMBER".into())]
+        [
+            ("owner".into(), "MEMBER".into()),
+            ("a".into(), "MEMBER".into())
+        ]
     );
     assert!(members["data"][1]["since"].is_string());
     assert_eq!(
@@ -580,7 +583,10 @@ async fn joining_and_leaving(opts: MySqlPoolOptions, conn: MySqlConnectOptions) 
         ok(&app, &token, &profile_path).await["myMembership"],
         json!({"status": "NONE", "role": null})
     );
-    assert_eq!(roster(&ok(&app, &token, &format!("{GYMS}/{gym}/members")).await).len(), 1);
+    assert_eq!(
+        roster(&ok(&app, &token, &format!("{GYMS}/{gym}/members")).await).len(),
+        1
+    );
     let again = call(
         &app,
         Method::DELETE,
@@ -596,7 +602,11 @@ async fn joining_and_leaving(opts: MySqlPoolOptions, conn: MySqlConnectOptions) 
         .execute(&app.db)
         .await
         .unwrap();
-    for target in [other.to_string(), Uuid::now_v7().to_string(), "nope".to_owned()] {
+    for target in [
+        other.to_string(),
+        Uuid::now_v7().to_string(),
+        "nope".to_owned(),
+    ] {
         let refused = join(&app, &token, &target).await;
         assert_eq!(refused.status, StatusCode::NOT_FOUND, "{target}");
         assert_eq!(refused.json["title"], "Gym not found", "{target}");
@@ -738,7 +748,10 @@ async fn who_manages(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
         .await
         .unwrap();
     let (asker, asker_token) = athlete(&app, "asker").await;
-    assert_eq!(join(&app, &asker_token, gym).await.status, StatusCode::CREATED);
+    assert_eq!(
+        join(&app, &asker_token, gym).await.status,
+        StatusCode::CREATED
+    );
 
     let cases = [
         (&member_token, gym),
@@ -748,16 +761,16 @@ async fn who_manages(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
         (&submitter_token, gym),
     ];
     for (token, target) in cases {
-        let requests = get(
-            &app,
-            token,
-            &format!("{GYMS}/{target}/membership-requests"),
-        )
-        .await;
+        let requests = get(&app, token, &format!("{GYMS}/{target}/membership-requests")).await;
         let approve = decide(&app, token, target, asker, "approve").await;
         let appoint = coach(&app, Method::POST, token, target, member).await;
         for reply in [requests, approve, appoint] {
-            assert_eq!(reply.status, StatusCode::FORBIDDEN, "{target}: {}", reply.json);
+            assert_eq!(
+                reply.status,
+                StatusCode::FORBIDDEN,
+                "{target}: {}",
+                reply.json
+            );
             assert_eq!(reply.json["code"], "FORBIDDEN");
             assert_eq!(reply.json["detail"], "Only this gym's admin can do that.");
         }

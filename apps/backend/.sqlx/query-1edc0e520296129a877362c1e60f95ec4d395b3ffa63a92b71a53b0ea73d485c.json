@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "INSERT INTO gym_verification_requests (id, gym_id, submitted_by, proof_text) VALUES (?, ?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "1edc0e520296129a877362c1e60f95ec4d395b3ffa63a92b71a53b0ea73d485c"
+}

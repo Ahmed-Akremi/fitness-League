@@ -1,0 +1,31 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT name FROM gyms WHERE id = ?",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "name",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 320
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.gyms",
+            "name": "name"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "905797e243b9860c97a87892b38f2812ad01b9c9e4960379e9253d15be4ddec9"
+}

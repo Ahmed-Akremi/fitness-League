@@ -1,0 +1,26 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT COUNT(*) FROM gym_members WHERE gym_id = ? AND status = 'PENDING'",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "COUNT(*)",
+        "type_info": {
+          "type": "LongLong",
+          "flags": "NOT_NULL | BINARY",
+          "collation": 63,
+          "max_size": 21
+        },
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "930e9bcdd458cb6836a7ffd6f1ae21ee73b7e5e3844954e3577202f8eed6cca6"
+}

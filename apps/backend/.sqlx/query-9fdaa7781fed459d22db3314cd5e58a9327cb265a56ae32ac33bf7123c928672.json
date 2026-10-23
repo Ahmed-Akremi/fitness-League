@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "INSERT INTO gyms (id, name, slug, governorate_id, city_id, address_line, contact_phone, contact_email, instagram_url, facebook_url, website_url, tiktok_url, owner_user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 13
+    },
+    "nullable": []
+  },
+  "hash": "9fdaa7781fed459d22db3314cd5e58a9327cb265a56ae32ac33bf7123c928672"
+}

@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "UPDATE gym_members SET status = 'REJECTED', left_at = ? WHERE gym_id = ? AND user_id = ? AND status = 'PENDING'",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "439462c98131acfa1b4e596b96c6cf5180351561143f7e381be0a7a03fdf4ec6"
+}

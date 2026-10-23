@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "DELETE FROM gym_verification_requests WHERE submitted_by = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "b340072e09700ff8ac86dfb8f4848a80611882d56b3f44ca4cbbab4ad4be2276"
+}

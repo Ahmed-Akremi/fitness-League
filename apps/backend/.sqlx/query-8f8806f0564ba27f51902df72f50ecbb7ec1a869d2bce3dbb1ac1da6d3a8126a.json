@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "INSERT IGNORE INTO leaderboard_snapshots (snapshot_date, season_id, scope_type, scope_id, user_id, `rank`, lp) SELECT ?, ?, 'GYM', p.primary_gym_id, us.user_id, RANK() OVER (PARTITION BY p.primary_gym_id ORDER BY us.season_lp DESC), us.season_lp FROM user_stats us JOIN users u ON u.id = us.user_id JOIN profiles p ON p.user_id = us.user_id JOIN user_settings s ON s.user_id = us.user_id WHERE us.current_season_id = ? AND u.status = 'ACTIVE' AND u.email_verified_at IS NOT NULL AND p.calibration_ends_at <= ? AND s.show_on_leaderboards AND p.primary_gym_id IS NOT NULL",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "8f8806f0564ba27f51902df72f50ecbb7ec1a869d2bce3dbb1ac1da6d3a8126a"
+}

@@ -1,0 +1,26 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT r.ranked AS \"ranked!: i64\"\n           FROM (SELECT p.primary_gym_id AS gym_id,\n                        CAST(RANK() OVER (ORDER BY SUM(us.season_lp) DESC) AS SIGNED) AS ranked\n                 FROM user_stats us JOIN profiles p ON p.user_id = us.user_id\n                   JOIN seasons se ON se.id = us.current_season_id AND se.status = 'ACTIVE'\n                   JOIN gyms g ON g.id = p.primary_gym_id AND g.status = 'VERIFIED'\n                 GROUP BY p.primary_gym_id\n                 HAVING SUM(us.season_lp) > 0) r\n           WHERE r.gym_id = ?",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "ranked!: i64",
+        "type_info": {
+          "type": "LongLong",
+          "flags": "NOT_NULL",
+          "collation": 63,
+          "max_size": 21
+        },
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "6b65a0c2b899971afbe0ac493eafd357286d52d23a595b5127d04627c86910df"
+}

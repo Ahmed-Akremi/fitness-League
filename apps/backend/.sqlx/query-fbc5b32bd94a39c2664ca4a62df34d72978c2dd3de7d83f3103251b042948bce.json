@@ -1,0 +1,72 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT ws.user_id AS \"user_id: Uuid\", ws.week_start, CAST(ws.total AS DOUBLE) AS \"total!: f64\",\n                  CAST(ws.progress_c AS DOUBLE) AS \"progress!: f64\"\n           FROM weekly_scores ws\n             JOIN gym_members m ON m.user_id = ws.user_id AND m.gym_id = ? AND m.status = 'APPROVED'\n           WHERE ws.week_start >= ? AND ws.week_start < ?",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "user_id: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | MULTIPLE_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.weekly_scores",
+            "name": "user_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "week_start",
+        "type_info": {
+          "type": "Date",
+          "flags": "NOT_NULL | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 10
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.weekly_scores",
+            "name": "week_start"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "total!: f64",
+        "type_info": {
+          "type": "Double",
+          "flags": "BINARY",
+          "collation": 63,
+          "max_size": 22
+        },
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 3,
+        "name": "progress!: f64",
+        "type_info": {
+          "type": "Double",
+          "flags": "BINARY",
+          "collation": 63,
+          "max_size": 22
+        },
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "fbc5b32bd94a39c2664ca4a62df34d72978c2dd3de7d83f3103251b042948bce"
+}

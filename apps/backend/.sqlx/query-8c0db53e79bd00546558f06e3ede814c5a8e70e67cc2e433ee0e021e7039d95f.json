@@ -1,0 +1,133 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT m.gym_id AS \"gym_id: Uuid\", g.name, m.status, m.role, m.requested_at, m.approved_at, m.left_at\n           FROM gym_members m JOIN gyms g ON g.id = m.gym_id\n           WHERE m.user_id = ? ORDER BY m.requested_at, m.id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "gym_id: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | MULTIPLE_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.gym_members",
+            "name": "gym_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 320
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.gyms",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "status",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | ENUM",
+          "collation": 224,
+          "max_size": 32
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.gym_members",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "role",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | ENUM",
+          "collation": 224,
+          "max_size": 24
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.gym_members",
+            "name": "role"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "requested_at",
+        "type_info": {
+          "type": "Datetime",
+          "flags": "NOT_NULL | BINARY",
+          "collation": 63,
+          "max_size": 26
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.gym_members",
+            "name": "requested_at"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "approved_at",
+        "type_info": {
+          "type": "Datetime",
+          "flags": "BINARY",
+          "collation": 63,
+          "max_size": 26
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.gym_members",
+            "name": "approved_at"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "left_at",
+        "type_info": {
+          "type": "Datetime",
+          "flags": "BINARY",
+          "collation": 63,
+          "max_size": 26
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.gym_members",
+            "name": "left_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "8c0db53e79bd00546558f06e3ede814c5a8e70e67cc2e433ee0e021e7039d95f"
+}

@@ -219,7 +219,15 @@ async fn facts(
                 .fetch_one(&mut *conn)
                 .await?
             }
-            // Plans 3b to 3f: gyms, battles, duels, gym wars and challenges.
+            Fact::Count(Event::GymJoined) => {
+                sqlx::query_scalar!(
+                    "SELECT COUNT(*) FROM gym_members WHERE user_id = ? AND status = 'APPROVED'",
+                    user
+                )
+                .fetch_one(&mut *conn)
+                .await?
+            }
+            // Plans 3c to 3f: battles, duels, gym wars and challenges.
             _ => 0,
         };
         out.insert(*fact, value);

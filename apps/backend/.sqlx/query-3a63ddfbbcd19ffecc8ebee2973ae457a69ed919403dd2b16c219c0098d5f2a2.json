@@ -1,6 +1,6 @@
 {
   "db_name": "MySQL",
-  "query": "SELECT onboarding_completed_at, calibration_ends_at,\n                  EXISTS (SELECT 1 FROM user_sports WHERE user_id = p.user_id) AS \"sports!\",\n                  EXISTS (SELECT 1 FROM baselines WHERE user_id = p.user_id) AS \"baselines!\",\n                  EXISTS (SELECT 1 FROM goals WHERE user_id = p.user_id) AS \"goals!\"\n           FROM profiles p WHERE p.user_id = ?",
+  "query": "SELECT onboarding_completed_at, calibration_ends_at,\n                  EXISTS (SELECT 1 FROM user_sports WHERE user_id = p.user_id) AS \"sports!\",\n                  EXISTS (SELECT 1 FROM baselines WHERE user_id = p.user_id) AS \"baselines!\",\n                  EXISTS (SELECT 1 FROM goals WHERE user_id = p.user_id) AS \"goals!\",\n                  EXISTS (SELECT 1 FROM gym_members WHERE user_id = p.user_id\n                            AND status IN ('PENDING', 'APPROVED')) AS \"gym!\"\n           FROM profiles p WHERE p.user_id = ?",
   "describe": {
     "columns": [
       {
@@ -67,6 +67,17 @@
           "max_size": 1
         },
         "origin": "Expression"
+      },
+      {
+        "ordinal": 5,
+        "name": "gym!",
+        "type_info": {
+          "type": "Long",
+          "flags": "NOT_NULL | BINARY",
+          "collation": 63,
+          "max_size": 1
+        },
+        "origin": "Expression"
       }
     ],
     "parameters": {
@@ -77,8 +88,9 @@
       true,
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "73368d21bf7de6d5994a5e92a7cbd1732fbcec5bd6f3868999c8aa9ab99aa240"
+  "hash": "3a63ddfbbcd19ffecc8ebee2973ae457a69ed919403dd2b16c219c0098d5f2a2"
 }

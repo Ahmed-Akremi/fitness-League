@@ -211,7 +211,8 @@ async fn export(
     Ok(Json(export))
 }
 
-/// My friendships and requests, whom I follow and block, my notifications and push preferences.
+/// My friendships and requests, whom I follow and block, my notifications and push preferences, my
+/// gym memberships and the gyms I submitted.
 async fn social_export(db: &MySqlPool, user: Uuid) -> Result<Value, AppError> {
     let friendships: Vec<Value> = sqlx::query!(
         r#"SELECT IF(user_low_id = ?, user_high_id, user_low_id) AS "user_id!: Uuid", status,
@@ -268,12 +269,50 @@ async fn social_export(db: &MySqlPool, user: Uuid) -> Result<Value, AppError> {
         }))
     })
     .collect::<Result<Vec<_>, AppError>>()?;
+    let memberships: Vec<Value> = sqlx::query!(
+        r#"SELECT m.gym_id AS "gym_id: Uuid", g.name, m.status, m.role, m.requested_at, m.approved_at, m.left_at
+           FROM gym_members m JOIN gyms g ON g.id = m.gym_id
+           WHERE m.user_id = ? ORDER BY m.requested_at, m.id"#,
+        user
+    )
+    .fetch_all(db)
+    .await?
+    .into_iter()
+    .map(|m| {
+        json!({
+            "gymId": m.gym_id, "gymName": m.name, "status": m.status, "role": m.role,
+            "requestedAt": iso(m.requested_at), "approvedAt": m.approved_at.map(iso),
+            "leftAt": m.left_at.map(iso),
+        })
+    })
+    .collect();
+    // The gyms I submitted, with my own proof of ownership.
+    let gyms: Vec<Value> = sqlx::query!(
+        r#"SELECT g.id AS "id: Uuid", g.name, g.slug, g.status, g.created_at,
+                  (SELECT r.proof_text FROM gym_verification_requests r WHERE r.gym_id = g.id
+                     AND r.submitted_by = ? ORDER BY r.created_at DESC LIMIT 1) AS proof
+           FROM gyms g WHERE g.owner_user_id = ? ORDER BY g.created_at, g.id"#,
+        user,
+        user
+    )
+    .fetch_all(db)
+    .await?
+    .into_iter()
+    .map(|g| {
+        json!({
+            "id": g.id, "name": g.name, "slug": g.slug, "status": g.status,
+            "createdAt": iso(g.created_at), "proofOfOwnership": g.proof,
+        })
+    })
+    .collect();
     Ok(json!({
         "friendships": friendships,
         "following": following,
         "blocked": blocked,
         "notifications": notes,
         "notificationPreferences": notifications::preferences::load(db, user).await?,
+        "gymMemberships": memberships,
+        "gyms": gyms,
     }))
 }
 
@@ -454,7 +493,8 @@ async fn anonymise(
     .execute(&mut *tx)
     .await?;
     sqlx::query!(
-        "UPDATE profiles SET full_name = 'Deleted athlete', bio = NULL, gender = NULL WHERE user_id = ?",
+        "UPDATE profiles SET full_name = 'Deleted athlete', bio = NULL, gender = NULL, primary_gym_id = NULL \
+         WHERE user_id = ?",
         user
     )
     .execute(&mut *tx)
@@ -516,6 +556,29 @@ async fn anonymise(
     sqlx::query!("DELETE FROM notifications WHERE user_id = ?", user)
         .execute(&mut *tx)
         .await?;
+    // Out of every gym. A submission still waiting goes with its request; a gym already decided
+    // stays, without an owner, and the free text of every proof the account wrote goes.
+    sqlx::query!("DELETE FROM gym_members WHERE user_id = ?", user)
+        .execute(&mut *tx)
+        .await?;
+    sqlx::query!(
+        "DELETE FROM gyms WHERE owner_user_id = ? AND status = 'PENDING'",
+        user
+    )
+    .execute(&mut *tx)
+    .await?;
+    sqlx::query!(
+        "DELETE FROM gym_verification_requests WHERE submitted_by = ?",
+        user
+    )
+    .execute(&mut *tx)
+    .await?;
+    sqlx::query!(
+        "UPDATE gyms SET owner_user_id = NULL WHERE owner_user_id = ?",
+        user
+    )
+    .execute(&mut *tx)
+    .await?;
     let event = audit::Event {
         actor: None,
         action: "ACCOUNT_ANONYMISED",

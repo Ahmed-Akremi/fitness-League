@@ -1,0 +1,48 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT owner_user_id AS \"owner: Uuid\", status FROM gyms WHERE id = ?",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "owner: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "MULTIPLE_KEY | BINARY",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.gyms",
+            "name": "owner_user_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "status",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | ENUM",
+          "collation": 224,
+          "max_size": 36
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.gyms",
+            "name": "status"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false
+    ]
+  },
+  "hash": "048e2d4e703506ec69b85649a2e9332de70c4996471a5f07eb862c61e1c6a9f2"
+}

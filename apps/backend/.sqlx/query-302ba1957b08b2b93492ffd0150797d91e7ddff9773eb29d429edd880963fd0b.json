@@ -1,0 +1,48 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT status, role FROM gym_members WHERE gym_id = ? AND user_id = ? AND status IN ('PENDING', 'APPROVED')",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "status",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | ENUM",
+          "collation": 224,
+          "max_size": 32
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.gym_members",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "role",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | ENUM",
+          "collation": 224,
+          "max_size": 24
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.gym_members",
+            "name": "role"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "302ba1957b08b2b93492ffd0150797d91e7ddff9773eb29d429edd880963fd0b"
+}
