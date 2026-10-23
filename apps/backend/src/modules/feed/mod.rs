@@ -52,13 +52,14 @@ pub struct Activity<'a> {
     pub badge: Option<Uuid>,
 }
 
-/// Writes an event in the caller's transaction: a cause rolled back leaves none.
-pub async fn record(conn: &mut MySqlConnection, a: Activity<'_>) -> Result<(), AppError> {
+/// Writes an event in the caller's transaction, and gives its id: a cause rolled back leaves none.
+pub async fn record(conn: &mut MySqlConnection, a: Activity<'_>) -> Result<Uuid, AppError> {
+    let id = Uuid::now_v7();
     sqlx::query!(
         "INSERT INTO activity_events (id, user_id, type, ref_type, ref_id, visibility, payload, sport_id, \
            exercise_id, badge_id) \
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        Uuid::now_v7(),
+        id,
         a.user,
         a.kind.as_str(),
         a.kind.ref_type(),
@@ -71,5 +72,5 @@ pub async fn record(conn: &mut MySqlConnection, a: Activity<'_>) -> Result<(), A
     )
     .execute(conn)
     .await?;
-    Ok(())
+    Ok(id)
 }
