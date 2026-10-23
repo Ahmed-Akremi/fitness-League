@@ -10,40 +10,6 @@ permissions:
   contents: read
 
 jobs:
-  api:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: apps/api
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_USER: fl
-          POSTGRES_PASSWORD: fl
-          POSTGRES_DB: fl_test
-        ports: ["5432:5432"]
-        options: >-
-          --health-cmd "pg_isready -U fl" --health-interval 5s --health-retries 10
-    env:
-      TEST_DATABASE_URL: postgresql://fl:fl@localhost:5432/fl_test?schema=public
-      DATABASE_URL: postgresql://fl:fl@localhost:5432/fl_test?schema=public
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-        working-directory: .
-      - run: pnpm prisma:generate
-      - run: pnpm lint
-      - run: pnpm typecheck
-      - run: pnpm test:unit
-      - run: pnpm test:integration
-      - run: pnpm build
-
   admin:
     runs-on: ubuntu-latest
     defaults:

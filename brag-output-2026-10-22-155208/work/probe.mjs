@@ -1,0 +1,10 @@
+const list = await (await fetch('http://127.0.0.1:9333/json/list')).json();
+const page = list.find((x) => x.type === 'page' && x.url.includes('8790'));
+const ws = new WebSocket(page.webSocketDebuggerUrl);
+await new Promise((r) => (ws.onopen = r));
+let id = 0; const pend = new Map();
+ws.onmessage = ({ data }) => { const m = JSON.parse(data); pend.get(m.id)?.(m); };
+const send = (method, params = {}) => new Promise((r) => { const i = ++id; pend.set(i, r); ws.send(JSON.stringify({ id: i, method, params })); });
+console.log(JSON.stringify(await send('Emulation.setSafeAreaInsetsOverride', { insets: { top: 47, topMax: 47, bottom: 34, bottomMax: 34, left: 0, leftMax: 0, right: 0, rightMax: 0 } })));
+console.log(JSON.stringify(await send('Runtime.evaluate', { expression: "getComputedStyle(document.documentElement).getPropertyValue('--x') + (()=>{const d=document.createElement('div');d.style.paddingTop='env(safe-area-inset-top)';document.body.appendChild(d);const v=getComputedStyle(d).paddingTop;d.remove();return v})()", returnByValue: true })));
+ws.close();

@@ -5,19 +5,6 @@ name: fitness-league
 # Databases, object storage and the mail catcher are published on this machine only (127.0.0.1): their
 # development passwords are in this repository, and Docker publishes ports past most host firewalls.
 services:
-  db:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-fl}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-fl}
-      POSTGRES_DB: ${POSTGRES_DB:-fitness_league}
-    ports: ["127.0.0.1:5432:5432"]
-    volumes: [pgdata:/var/lib/postgresql/data]
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-fl}"]
-      interval: 5s
-      retries: 10
-
   redis:
     image: redis:7-alpine
     command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:-fl_redis_dev}"]
@@ -29,7 +16,7 @@ services:
       interval: 5s
       retries: 10
 
-  # New Rust backend (apps/backend). PostgreSQL above stays until the old API is retired.
+  # Database of the Rust backend (apps/backend).
   mariadb:
     image: mariadb:11.4
     command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_uca1400_ai_ci"]
@@ -59,29 +46,7 @@ services:
     image: axllent/mailpit:latest
     ports: ["127.0.0.1:1025:1025", "127.0.0.1:8025:8025"]
 
-  api:
-    build: { context: .., dockerfile: apps/api/Dockerfile }
-    depends_on:
-      db: { condition: service_healthy }
-      redis: { condition: service_healthy }
-    environment: &api-env
-      NODE_ENV: development
-      PORT: 3000
-      LOG_LEVEL: info
-      DATABASE_URL: postgresql://${POSTGRES_USER:-fl}:${POSTGRES_PASSWORD:-fl}@db:5432/${POSTGRES_DB:-fitness_league}?schema=public
-      REDIS_URL: redis://:${REDIS_PASSWORD:-fl_redis_dev}@redis:6379
-      CURSOR_HMAC_SECRET: ${CURSOR_HMAC_SECRET:-local-dev-cursor-secret-change-me-000}
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
-      OPENAPI_ENABLED: "true"
-    # Apply migrations and the (idempotent) seed, then start.
-    command: ["sh", "-c", "npx prisma migrate deploy && node dist/database/seed.js && node dist/main.js"]
-    # The one port other devices are meant to reach (a phone running the app).
-    ports: ["3000:3000"]
-
-  # The worker joins the stack with the first background job (module 6+); today it has nothing to run.
-
 volumes:
-  pgdata:
   redisdata:
   miniodata:
   mariadbdata:
