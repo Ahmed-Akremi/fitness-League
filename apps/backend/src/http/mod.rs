@@ -111,6 +111,7 @@ fn api() -> Api {
     let api = modules::social::routes(api);
     let api = modules::gyms::routes(api);
     let api = modules::feed::routes(api);
+    let api = modules::announcements::routes(api);
     modules::scoring::routes(api)
 }
 

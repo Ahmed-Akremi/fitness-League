@@ -1,4 +1,5 @@
 pub mod admin_auth;
+pub mod announcements;
 pub mod auth;
 pub mod badges;
 pub mod feed;
