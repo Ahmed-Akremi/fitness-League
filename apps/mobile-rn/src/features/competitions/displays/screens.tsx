@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { View } from 'react-native';
 
 import type { Json } from '../../../core/api/client';
@@ -229,8 +229,8 @@ function useRaceResults(id: string, waveIds: string[]) {
       .flatMap((waveId) => ['split', 'clear', 'penalty', 'done', 'dnf'].map((event) => live.subscribe(`wave.${waveId}`, event, (p) => setEvents((xs) => [...xs, { waveId, event, payload: (p ?? {}) as Json }].slice(-500)))));
     return () => offs.forEach((off) => off());
   }, [live, keys]);
-  const saved = (results.data ?? []) as RaceResult[];
-  return events.reduce((rs, e) => applyRaceEvent(rs, e.waveId, e.event, e.payload), saved);
+  // Memoised: the race view re-renders twice a second for its clock.
+  return useMemo(() => events.reduce((rs, e) => applyRaceEvent(rs, e.waveId, e.event, e.payload), (results.data ?? []) as RaceResult[]), [events, results.data]);
 }
 
 function RaceDisplay({ id, waveId }: { id: string; waveId?: string }) {

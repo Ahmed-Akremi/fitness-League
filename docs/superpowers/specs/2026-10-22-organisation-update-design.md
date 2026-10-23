@@ -88,6 +88,9 @@ ApiClient ── fetch ──▶ withLocalRoutes(innerFetch)
 
 ## Phases (in order; each stops for the owner's review)
 
+**Status (2026-10-23):** all 12 phases are built on `organisation-update` (commits listed in `handoff-frontend.md`). The owner
+waived the review stops after phase 2 (« don't stop until you complete all phase »).
+
 | # | Content | Done when |
 |---|---|---|
 | 1 | Foundations: local store, `withLocalRoutes` (routes + overlays), flag, « Local » badge, `LiveBus` (BroadcastChannel / emitter), the contract doc, `eventStyle` overlay. Menu entries arrive with the phase that builds each page (no empty pages) | Unit tests for the store, wrapper and bus; existing suites still green |

@@ -183,7 +183,7 @@ function AthleteRace({ c, flow, wave, athlete, saved }: { c: Json; flow: Flow; w
         <>
           <View style={{ gap: 2 }}>
             <Txt variant="label" color={colors.outline}>{`${(cursor ?? 0) + 1} / ${flow.stages.length} · ${stage.kind === 'TRANSITION' ? t('raceRun') : t('raceStation')}`}</Txt>
-            <Txt testID="race-current" style={displayText(36)}>{stage.name}</Txt>
+            <Txt testID="race-current" accessibilityLiveRegion="polite" style={displayText(36)}>{stage.name}</Txt>
             <Txt color={colors.outline}>{`${stage.target} ${stage.unit}`}</Txt>
           </View>
           <Pressable

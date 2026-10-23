@@ -18,6 +18,19 @@ import { useLocalList } from './roster';
 const TITLE: Record<DisplayKind, MessageKey> = { timer: 'toolTimer', heat: 'toolHeat', lane: 'toolLane', race: 'toolRace', leaderboard: 'toolLeaderboard', schedule: 'toolSchedule', call: 'toolCall' };
 const HINT: Record<DisplayKind, MessageKey> = { timer: 'toolTimerHint', heat: 'toolHeatHint', lane: 'toolLaneHint', race: 'toolRaceHint', leaderboard: 'toolLeaderboardHint', schedule: 'toolScheduleHint', call: 'toolCallHint' };
 
+/**
+ * The address to open on the TV: the page's own origin on the web; the app link elsewhere, or the bare path when the
+ * build has no URL scheme (`createURL` throws then).
+ */
+function displayBase(path: string): string {
+  if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location?.origin) return `${window.location.origin}${path}`;
+  try {
+    return Linking.createURL(path);
+  } catch {
+    return path;
+  }
+}
+
 /** Phase 9: the links of the displays (`/display/<id>/<kind>`), with their options, to open on the TV computer. */
 export function ToolsTab({ c }: { c: Json }) {
   const t = useT();
@@ -59,7 +72,7 @@ function ToolCard({ c, kind }: { c: Json; kind: DisplayKind }) {
   if (overlay) query.overlay = '1';
   const path = `/display/${c.id}/${kind}`;
   const search = new URLSearchParams(query).toString();
-  const url = `${Linking.createURL(path)}${search ? `?${search}` : ''}`;
+  const url = `${displayBase(path)}${search ? `?${search}` : ''}`;
   const choices: Json[] = kind === 'timer' ? (locations.data ?? []) : kind === 'heat' || kind === 'lane' ? (heats.data ?? []) : kind === 'race' ? (waves.data ?? []) : [];
 
   function open() {

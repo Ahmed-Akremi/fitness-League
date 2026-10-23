@@ -1,29 +1,55 @@
-# Organisation update (branch `organisation-update`, from 2026-10-22)
+# Organisation update (branch `organisation-update`, 2026-10-22 → 2026-10-23)
 
-Design: `docs/superpowers/specs/2026-10-22-organisation-update-design.md` (approved; 12 phases, one review stop
-after each). Backend to-do list: `docs/organisation-backend-contract.md`.
+Design: `docs/superpowers/specs/2026-10-22-organisation-update-design.md`.
+Backend to-do list: `docs/organisation-backend-contract.md`.
+Demo: `docs/organisation-demo-script.md`.
 
-- **Phase 1 (foundations): done.**
-  - Local store (`core/api/local-store.ts`) and the fetch wrapper (`core/api/local-routes.ts`).
-  - The organizer layer and its flag (`core/api/org-local.ts`, `config.orgLocal`).
-  - The live bus (`core/live-bus.ts`, `useLive()`) and the `eventStyle` overlay with `eventStyleOf()`.
-  - `LocalBadge`.
-  - The test harness puts the same layer (in memory) and a bus in `fakeServices`.
-- **Phase 2 (event setup): done** (`0b9640b`).
-  - Event type (functional fitness / hybrid race + template), visibility, participants, label, invite-only (`event-setup.tsx`).
-  - Contact and links in General, with a `CONTACT` item in the checklist; the Settings page; copying a previous event.
-- **Phase 3 (divisions, pricing, forms): done** (`a5bc857`).
-  - The layer now keeps category fields too.
-  - Division extras (`division-fields.tsx`), the Pricing page (`priceBreakdown`) and the Waiver & form page.
-- **Next: phase 4 (athlete registration).**
-  - `RegisterScreen` is in `features/competitions/screens.tsx` (about line 446), with its tests in `test/screens/competitions.test.tsx`.
-  - Add: queue simulation, locked division code, team/gift, deposit or full payment (`priceBreakdown`), form answers (`answerProblems`) and agreements, waiting list, « My registrations ».
-  - Then phases 5–12 as in the design.
-- **Known limit (security review):** the local store is shared by every account on the device, contact emails and codes included. Real users need `EXPO_PUBLIC_ORG_LOCAL=false`. See the contract doc.
+**All 12 phases are built, one commit per phase, not pushed.** The owner asked to go through every phase without
+the review stops.
+
+| Phase | Commit | What |
+|---|---|---|
+| 1 Foundations | `2535877` | Local store, `withLocalRoutes`, `org-local.ts` + flag, live bus, `eventStyle`, « Local » badge |
+| 2 Event setup | `0b9640b` | Event type and template, visibility, participants, label, invite-only, contact, Settings, copy an event |
+| 3 Divisions, pricing, forms | `a5bc857` | Team and sub-divisions, locked divisions, early-bird; fees, VAT, deposit; form builder, agreements, minors |
+| 4 Registration | `9b45b17`, `c117174` | Queue, code, team / gift, deposit or full, consents, waiting list, « My registration » |
+| 5 Participants and staff | `aa2a5f3` | Roster (check-in, sponsors, finalists), staff forms and applications (public page) |
+| 6 Planning (functional fitness) | `d9f6a77` | Scorecard, penalties, tie-break, locations, advanced heat generator |
+| 7 Planning (hybrid) | `2841bd8` | Race page (HYROX-style locked / custom stages, breaks, rule), Waves page (start / stop) |
+| 8 Judges and live | `18dbed0` | Scorecard-driven floor judging, race judge screen, Live page (timers, feed) |
+| 9 Displays | `83f212e` | `/display/:id/:kind` (7 kinds, overlay), Tools page, calls; tabs of one browser share the local data |
+| 10 Results | `78fcb17` | Points tables, visibility, finalists, freeze, ages, hybrid ranking by station, CSV import with dry run |
+| 11 Messages, tickets, shop | `9af0930` | Segments, schedule, outbox; ticket types, door check; shop with sizes; public shop page |
+| 12 Polish | (this commit) | Arabic render test of every new page, end-to-end demo test, error states, robust display links, docs |
+
+**Checks:** 94 suites, 687 tests, `tsc` clean (Windows Node, see below).
+
+**Before any build for real users:**
+- **`EXPO_PUBLIC_ORG_LOCAL=false`.** The local store keeps personal data (contact emails, codes, teammates, the
+  guardian details of minors, waiting-list and staff-application emails, buyers' names) unscoped. It is shared by
+  every account on the device and stays after sign-out. That is fine for a one-browser demo, not for real users.
+  The contract's security note lists it all.
+- **The server work:** each item of the contract moves to the server (Rust part 4), then leaves `ORG_LOCAL_LAYER`.
+  The screens do not change.
+- **Server must-haves called out in the contract:**
+  - public read-only endpoints for the displays;
+  - `ageAtEvent` on organizer registrations (age filters);
+  - an import endpoint with the same dry run;
+  - the remaining quantity checked inside the order transaction;
+  - hashed codes with a rate limit.
+
+**Working on it:**
 - **Run the tests with Windows Node:**
-  - `node_modules` was installed by Windows pnpm (store `C:\Users\GIGABYTE\AppData\Local\pnpm\store`). Linux Node in WSL fails on it (`@babel/runtime` not found), and a WSL `pnpm install` would want to rebuild everything.
-  - From WSL: `cmd.exe /c "cd /d C:\Users\GIGABYTE\fitness-league\apps\mobile-rn && npx jest --maxWorkers=4"`. That's 71 suites in about 35 s (versus about 9 min under WSL). `npx tsc --noEmit` works the same way.
-- **Trap:** Node has a global `BroadcastChannel`. `browserChannel()` opens one only when `Platform.OS === 'web'`; an open channel keeps jest alive.
+  - `node_modules` was installed by Windows pnpm, so Linux Node in WSL fails on it (`@babel/runtime` not found).
+  - From WSL: `cmd.exe /c "cd /d C:\Users\GIGABYTE\fitness-league\apps\mobile-rn && npx jest"`, about 40 s.
+    `npx tsc --noEmit` works the same way.
+- **Test traps:**
+  - Never pass an `async` callback to `waitFor`: with the harness's fake timers React stops flushing later updates.
+    Wait on the UI (`findBy*`), then read the API.
+  - Fake timers do not move `Date.now()`: count interval ticks when time must pass.
+  - Node has a global `BroadcastChannel`; `browserChannel()` opens one only on the web.
+- **Stage files by name.** About 165 unrelated files (`brag-output-…`, prompts, reports) are staged in the index by
+  someone else; every commit of this branch names its paths.
 
 # Handoff — frontend, phone app (2026-10-21: Apple HIG work, 8 lots built on `feat/hig-phone`, pushed)
 

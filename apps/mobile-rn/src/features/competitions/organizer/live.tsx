@@ -232,7 +232,16 @@ function LiveFeed({ c }: { c: Json }) {
       <SectionHeader title={t('liveFeed')} />
       <Txt variant="small" color={colors.outline}>{t('liveFeedHint')}</Txt>
       <Card testID="live-feed" style={{ gap: space.xs }}>
-        {items.length === 0 ? <Txt color={colors.outline}>{t('liveFeedEmpty')}</Txt> : items.map((x) => <Txt key={x.key}>{x.text}</Txt>)}
+        {/* Screen readers announce the newest update. */}
+        {items.length === 0 ? (
+          <Txt color={colors.outline}>{t('liveFeedEmpty')}</Txt>
+        ) : (
+          items.map((x, i) => (
+            <Txt key={x.key} accessibilityLiveRegion={i === 0 ? 'polite' : 'none'}>
+              {x.text}
+            </Txt>
+          ))
+        )}
       </Card>
     </>
   );

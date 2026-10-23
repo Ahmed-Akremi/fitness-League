@@ -9,7 +9,7 @@ import { useApi } from '../../../core/services';
 import { space, useTheme } from '../../../core/theme';
 import { formatDate, formatDuration } from '../../../core/utils/format';
 import { SectionHeader } from '../../../core/widgets/common';
-import { ErrorText } from '../../../core/widgets/error';
+import { ErrorText, ErrorView } from '../../../core/widgets/error';
 import { Button, Card, Chip, Screen, TextField, Txt, toast } from '../../../core/widgets/kit';
 import { useCompLeaderboard } from '../api';
 import { formatClock } from '../judge/logic';
@@ -228,6 +228,7 @@ function PointsStandings({ c, categoryId, age, settings }: { c: Json; categoryId
   const unknown = age === 'ALL' ? 0 : all.filter((r) => ages.get(r.athlete.id) == null).length;
   const workouts: Json[] = c.workouts ?? [];
   const byWod = workouts.map((w) => ({ w, entries: (imported.data ?? []).filter((i) => i.target === w.id && i.categoryId === categoryId) })).filter((x) => x.entries.length > 0);
+  if (board.isError) return <ErrorView error={board.error} onRetry={() => board.refetch()} />;
   return (
     <>
       <Card style={{ gap: 0 }}>
