@@ -128,6 +128,20 @@ Today the layer keeps them per registration id (`collections.registrations`).
 - apply invite-only (`inviteOnly` / `settings.restrictToEmailList` with `settings.invitedEmails`);
 - refuse a full division with `409 CATEGORY_FULL`; the app then offers the waiting list.
 
+**Registration gates are a demo in the app, not a protection** (security review, 2026-10-23):
+- Today `register.tsx` compares the typed codes with `accessCode` / `unlockCode` and checks `invitedEmails` on the
+  device. Those values reach every viewer of the event through the local layer.
+- **Hide the secrets.** The server must never send `accessCode`, `unlockCode`, `settings.invitedEmails` (nor any
+  other organizer-only field) to non-organizers. It sends booleans instead: `requiresCode`, the category's `locked`,
+  `inviteOnly`.
+- **Check on the server.** `POST /competitions/:id/register` takes the typed codes in its body
+  `{ categoryId, couponCode?, accessCode?, unlockCode?, …extras }` and checks them against stored hashes, with a
+  rate limit. It answers `422 ACCESS_CODE_INVALID` / `UNLOCK_CODE_INVALID`, or `403 NOT_INVITED` for the invite
+  list, checked against the signed-in account's verified email.
+- **Then the app moves too:** it sends the typed codes in the body, drops its own comparisons and shows the server's
+  refusal. It cannot send them before: the API's `forbidNonWhitelisted` refuses unknown fields with
+  `422 UNKNOWN_FIELD`.
+
 `settings.highDemand` (boolean, phase 4) puts athletes in a queue before the form. Today the app simulates it
 (`queueStart`/`queueTick`). The research's server shape is `POST /queue/join {competition_id}` →
 `{ status: not_required | waiting | admitted, token, position }`, then `GET /queue/status/:token`.
