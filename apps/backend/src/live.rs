@@ -4,7 +4,7 @@
 //! or the worker, every API process finds it and tells its own sockets.
 
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{HashMap, HashSet, hash_map::Entry},
     time::Duration,
 };
 
@@ -71,14 +71,14 @@ pub async fn tail_once(
     let fresh: Vec<_> = rows.iter().filter(|n| !seen.contains(&n.id)).collect();
     let mut unread = HashMap::new();
     for n in &fresh {
-        if !unread.contains_key(&n.user_id) {
+        if let Entry::Vacant(slot) = unread.entry(n.user_id) {
             let count = sqlx::query_scalar!(
                 "SELECT COUNT(*) FROM notifications WHERE user_id = ? AND read_at IS NULL",
                 n.user_id
             )
             .fetch_one(db)
             .await?;
-            unread.insert(n.user_id, count);
+            slot.insert(count);
         }
     }
     if let Some(ns) = io.of("/ws") {
