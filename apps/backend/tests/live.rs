@@ -3,7 +3,7 @@
 //! athlete it concerns. The tests speak socket.io's text protocol over a plain WebSocket.
 mod common;
 
-use std::{collections::HashMap, net::SocketAddr, time::Duration};
+use std::{collections::HashSet, net::SocketAddr, time::Duration};
 
 use axum::http::{Method, StatusCode};
 use backend::{
@@ -141,7 +141,7 @@ async fn notifications_reach_their_athlete_live(
         )
         .await;
     assert_eq!(asked.status, StatusCode::CREATED, "{}", asked.json);
-    let mut seen = HashMap::new();
+    let mut seen = HashSet::new();
     assert_eq!(live::tail_once(&io, &app.db, &mut seen).await.unwrap(), 1);
 
     let event = frame(&mut a_socket).await;

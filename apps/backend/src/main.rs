@@ -62,10 +62,13 @@ async fn serve() -> Result<(), String> {
         .await
         .map_err(|e| format!("cannot listen on {address}: {e}"))?;
     tracing::info!(%address, "listening");
+    let (router, io) = backend::http::app_live(state.clone());
+    // The notifications every process writes reach this process's sockets.
+    tokio::spawn(backend::live::tail(io, state.db.clone()));
     // The peer address is attached to every request: rate limiting needs it.
     axum::serve(
         listener,
-        backend::http::app(state).into_make_service_with_connect_info::<std::net::SocketAddr>(),
+        router.into_make_service_with_connect_info::<std::net::SocketAddr>(),
     )
     .with_graceful_shutdown(shutdown())
     .await
