@@ -20,8 +20,9 @@ export type LocalRoute = {
 /**
  * `categoryFields`: new fields of a competition's categories (divisions), kept the same way per category id.
  * `registrationFields`: extras of a registration (answers, team, payment plan…), kept per registration id.
+ * `workoutFields`: extras of a WOD (scorecard, penalties, tie-break), kept per WOD id.
  */
-export type LocalLayer = { routes: LocalRoute[]; competitionFields: string[]; categoryFields?: string[]; registrationFields?: string[] };
+export type LocalLayer = { routes: LocalRoute[]; competitionFields: string[]; categoryFields?: string[]; registrationFields?: string[]; workoutFields?: string[] };
 
 const API_PREFIX = /^\/api\/v1/;
 
@@ -43,21 +44,25 @@ export function withLocalRoutes(inner: Fetch, store: LocalStore, layer: LocalLay
     const fields = layer.competitionFields;
     const catFields = layer.categoryFields ?? [];
     const regFields = layer.registrationFields ?? [];
-    if (!fields.length && !catFields.length && !regFields.length) return inner(url, init);
+    const wodFields = layer.workoutFields ?? [];
+    if (!fields.length && !catFields.length && !regFields.length && !wodFields.length) return inner(url, init);
     const detail = match('/competitions/:id', path);
     const categories = match('/competitions/:id/categories', path);
     const category = match('/competitions/:id/categories/:categoryId', path);
     const register = match('/competitions/:id/register', path);
     const registrations = match('/competitions/:id/registrations', path);
+    const wods = match('/competitions/:id/wods', path);
+    const wod = match('/competitions/:id/wods/:wodId', path);
     const keepCompetition = (id: string, local: Json) => store.update(id, (c) => void Object.assign(c.fields, local));
     const keepCategory = (competitionId: string) => (id: string, local: Json) =>
       store.update(competitionId, (c) => {
         c.categories[id] = { ...(c.categories[id] ?? {}), ...local };
       });
-    const keepRegistration = (competitionId: string) => (id: string, local: Json) =>
+    /** Extras kept in a list of the competition, one item per id (registrations, WODs). */
+    const keepIn = (collection: string, competitionId: string) => (id: string, local: Json) =>
       store.update(competitionId, (c) => {
-        const list = c.collections.registrations ?? [];
-        c.collections.registrations = [...list.filter((r) => r.id !== id), { ...(list.find((r) => r.id === id) ?? {}), id, ...local }];
+        const list = c.collections[collection] ?? [];
+        c.collections[collection] = [...list.filter((r) => r.id !== id), { ...(list.find((r) => r.id === id) ?? {}), id, ...local }];
       });
     const write = (local: string[], id: string | null, keep: (id: string, local: Json) => Promise<void>) => overlayWrite(inner, url, init, body, local, id, keep);
 
@@ -66,7 +71,9 @@ export function withLocalRoutes(inner: Fetch, store: LocalStore, layer: LocalLay
       if (detail && (method === 'PUT' || method === 'PATCH')) return write(fields, detail.id, keepCompetition);
       if (categories && method === 'POST') return write(catFields, null, keepCategory(categories.id));
       if (category && (method === 'PUT' || method === 'PATCH')) return write(catFields, category.categoryId, keepCategory(category.id));
-      if (register && method === 'POST') return write(regFields, null, keepRegistration(register.id));
+      if (register && method === 'POST') return write(regFields, null, keepIn('registrations', register.id));
+      if (wods && method === 'POST') return write(wodFields, null, keepIn('workoutExtras', wods.id));
+      if (wod && (method === 'PUT' || method === 'PATCH')) return write(wodFields, wod.wodId, keepIn('workoutExtras', wod.id));
     }
 
     if (method === 'GET' && registrations && regFields.length) {
@@ -83,7 +90,7 @@ export function withLocalRoutes(inner: Fetch, store: LocalStore, layer: LocalLay
       if (!res.ok) return res;
       const data = await readJson(res);
       await store.ready();
-      const add = (item: unknown) => withFields(store, fields, catFields, regFields, item);
+      const add = (item: unknown) => withFields(store, { fields, catFields, regFields, wodFields }, item);
       if (detail) return json(res.status, add(data));
       if (Array.isArray(data)) return json(res.status, data.map(add));
       if (Array.isArray(data?.data)) return json(res.status, { ...data, data: data.data.map(add) });
@@ -155,7 +162,8 @@ function withExtras(extras: Json[], fields: string[], r: unknown): unknown {
 }
 
 /** A competition from the server with its local fields, those of each of its categories, and the extras of « my registration ». */
-function withFields(store: LocalStore, fields: string[], catFields: string[], regFields: string[], item: unknown): unknown {
+function withFields(store: LocalStore, f: { fields: string[]; catFields: string[]; regFields: string[]; wodFields: string[] }, item: unknown): unknown {
+  const { fields, catFields, regFields, wodFields } = f;
   if (!item || typeof item !== 'object' || typeof (item as Json).id !== 'string') return item;
   const saved = store.competition((item as Json).id);
   const out: Json = { ...item, ...pick(saved.fields, fields) };
@@ -163,6 +171,7 @@ function withFields(store: LocalStore, fields: string[], catFields: string[], re
     out.categories = out.categories.map((k: unknown) => (k && typeof k === 'object' && typeof (k as Json).id === 'string' ? { ...k, ...pick(saved.categories[(k as Json).id] ?? {}, catFields) } : k));
   }
   if (regFields.length && out.myRegistration) out.myRegistration = withExtras(saved.collections.registrations ?? [], regFields, out.myRegistration);
+  if (wodFields.length && Array.isArray(out.workouts)) out.workouts = out.workouts.map((w: unknown) => withExtras(saved.collections.workoutExtras ?? [], wodFields, w));
   return out;
 }
 

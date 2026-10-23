@@ -13,6 +13,8 @@ import { organizerApi, useRefreshCompetition } from './api';
 import { Guide } from './guide';
 import { nextWodNumber, SCORE_TYPES, wodBody, wodDraft, wodValid, type ManageTab, type WodDraft } from './logic';
 import { OrgPageHeader } from './page';
+import { WodExtrasFields, type WodExtras } from './scorecard-editor';
+import { penaltiesOf, scorecardOf, scorecardProblems, tieBreakOf } from './logic-scorecard';
 import { useWideWeb } from './web';
 
 const scoreLabels = (t: T): Record<string, string> => ({
@@ -61,7 +63,9 @@ export function WodsTab({ c, onGo }: { c: Json; onGo?: (tab: ManageTab) => void 
     }
   }
 
-  const save = (d: WodDraft) => run(() => (d.id ? organizerApi(api).updateWod(c.id, d.id, wodBody(d)) : organizerApi(api).addWod(c.id, wodBody(d))), () => setEdit(null), t('orgSaved'));
+  // Phase 6: the scorecard, penalties and tie-break ride along; the local layer keeps them on the device for now.
+  const save = (d: WodDraft, x: WodExtras) =>
+    run(() => (d.id ? organizerApi(api).updateWod(c.id, d.id, { ...wodBody(d), ...x }) : organizerApi(api).addWod(c.id, { ...wodBody(d), ...x })), () => setEdit(null), t('orgSaved'));
   const remove = (d: WodDraft) => run(() => organizerApi(api).removeWod(c.id, d.id!), () => setEdit(null), t('orgToastDeleted'));
   function move(i: number, dir: -1 | 1) {
     const order = workouts.map((w) => w.id as string);
@@ -69,7 +73,7 @@ export function WodsTab({ c, onGo }: { c: Json; onGo?: (tab: ManageTab) => void 
     void run(() => organizerApi(api).reorderWods(c.id, order), undefined, t('orgToastOrder'));
   }
 
-  if (edit) return <WodForm draft={edit} categories={c.categories ?? []} busy={busy} error={error} labels={labels} onSave={save} onDelete={remove} onCancel={() => setEdit(null)} />;
+  if (edit) return <WodForm draft={edit} workout={workouts.find((w) => w.id === edit.id) ?? null} categories={c.categories ?? []} busy={busy} error={error} labels={labels} onSave={save} onDelete={remove} onCancel={() => setEdit(null)} />;
   const add = <Button testID="wod-new" icon="add" label={t('orgNewWod')} onPress={() => setEdit(wodDraft(null, defaults))} />;
   return (
     <>
@@ -106,16 +110,37 @@ export function WodsTab({ c, onGo }: { c: Json; onGo?: (tab: ManageTab) => void 
   );
 }
 
-function WodForm({ draft, categories, busy, error, labels, onSave, onDelete, onCancel }: { draft: WodDraft; categories: Json[]; busy: boolean; error: unknown; labels: Record<string, string>; onSave: (d: WodDraft) => void; onDelete: (d: WodDraft) => void; onCancel: () => void }) {
+function WodForm({
+  draft,
+  workout,
+  categories,
+  busy,
+  error,
+  labels,
+  onSave,
+  onDelete,
+  onCancel,
+}: {
+  draft: WodDraft;
+  workout: Json | null;
+  categories: Json[];
+  busy: boolean;
+  error: unknown;
+  labels: Record<string, string>;
+  onSave: (d: WodDraft, x: WodExtras) => void;
+  onDelete: (d: WodDraft) => void;
+  onCancel: () => void;
+}) {
   const t = useT();
   const { colors } = useTheme();
   const [d, setD] = useState(draft);
+  const [x, setX] = useState<WodExtras>(() => ({ scorecard: scorecardOf(workout ?? {}), penalties: penaltiesOf(workout ?? {}), tieBreak: tieBreakOf(workout ?? {}) }));
   const [deleting, setDeleting] = useState(false);
   const set = (k: 'name' | 'description' | 'standards' | 'table' | 'max' | 'min' | 'capMin' | 'videoUrl') => (v: string) => setD({ ...d, [k]: v });
   const setMove = (i: number, k: 'name' | 'points', v: string) => setD({ ...d, movements: d.movements.map((m, j) => (j === i ? { ...m, [k]: v } : m)) });
   const setVariant = (i: number, k: 'description' | 'standards' | 'capMin', v: string) => setD({ ...d, variants: d.variants.map((x, j) => (j === i ? { ...x, [k]: v } : x)) });
   const withoutVersion = categories.filter((k) => !d.variants.some((v) => v.categoryId === k.id));
-  const ok = wodValid(d);
+  const ok = wodValid(d) && scorecardProblems(x.scorecard).length === 0;
   return (
     <Screen>
       <Card style={{ gap: space.md }}>
@@ -185,12 +210,13 @@ function WodForm({ draft, categories, busy, error, labels, onSave, onDelete, onC
             ))}
           </View>
         ) : null}
+        <WodExtrasFields value={x} onChange={setX} />
         <SectionHeader title={t('orgRelease')} />
         <DateField testID="wod-release" mode="datetime" label={t('orgReleaseAt')} value={d.releaseAt} placeholder={t('orgReleaseNow')} onChange={(releaseAt) => setD({ ...d, releaseAt })} />
         {d.releaseAt ? <Button testID="wod-release-now" kind="text" icon="visibility" label={t('orgReleaseNowButton')} onPress={() => setD({ ...d, releaseAt: new Date() })} /> : null}
-        {!ok && d.description.trim().length > 0 ? <Txt variant="small" color={colors.error}>{t('orgWodInvalid')}</Txt> : null}
+        {!wodValid(d) && d.description.trim().length > 0 ? <Txt variant="small" color={colors.error}>{t('orgWodInvalid')}</Txt> : null}
         <ErrorText error={error} />
-        <Button testID="wod-save" label={t('save')} busy={busy} disabled={!ok} onPress={() => onSave(d)} />
+        <Button testID="wod-save" label={t('save')} busy={busy} disabled={!ok} onPress={() => onSave(d, x)} />
         {d.id ? <Button testID="wod-delete" kind="outlined" icon="delete" label={t('orgWodDelete')} busy={busy} onPress={() => setDeleting(true)} /> : null}
         <Button kind="text" label={t('cancel')} onPress={onCancel} />
       </Card>

@@ -22,6 +22,7 @@ const layer: LocalLayer = {
   competitionFields: ['eventStyle'],
   categoryFields: ['type', 'earlyPrice'],
   registrationFields: ['teamName', 'paymentPlan'],
+  workoutFields: ['scorecard'],
   routes: [
     {
       method: 'GET',
@@ -158,5 +159,15 @@ describe('local routes (new organizer features answered on the device)', () => {
       c.collections.registrations = [{ id: 'r2', teamName: 'Box Bandits' }];
     });
     await expect(api.get('/competitions/c1/registrations')).resolves.toEqual([{ id: 'r1' }, { id: 'r2', teamName: 'Box Bandits' }]);
+  });
+
+  it('keeps a WOD’s scorecard on the device and adds it to the workouts of the competition', async () => {
+    const { api, calls } = setup({
+      'POST /competitions/c1/wods': [201, { id: 'w9', name: 'WOD 1' }],
+      'GET /competitions/c1': [200, { id: 'c1', workouts: [{ id: 'w9', name: 'WOD 1' }, { id: 'w2', name: 'WOD 2' }] }],
+    });
+    await api.post('/competitions/c1/wods', { name: 'WOD 1', scorecard: { sets: [] } });
+    expect(calls[0].body).toEqual({ name: 'WOD 1' });
+    await expect(api.get('/competitions/c1')).resolves.toEqual({ id: 'c1', workouts: [{ id: 'w9', name: 'WOD 1', scorecard: { sets: [] } }, { id: 'w2', name: 'WOD 2' }] });
   });
 });

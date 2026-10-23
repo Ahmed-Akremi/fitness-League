@@ -135,6 +135,23 @@ Phase 5 lists all follow the same pattern:
 | `finalist-invitations` | `{ id: "<categoryId>:<userId>", categoryId, categoryName, userId, name, rank, status: INVITED }` | `userId` | Built from the qualifier's `GET /competitions/:q/leaderboard?categoryId` (top N per division). The server should notify the athlete and let them accept (`/final-invitations` in the research) |
 | `staff-forms` | `{ id, title, roles: string[], shifts: string[] }` | `title` | The public page `/competitions/:id/staff-apply?form=<id>` reads it (anyone, also signed out) |
 | `staff-applications` | `{ id, formId, name, email, role, shifts: string[], status: PENDING \| APPROVED \| DECLINED, checkedIn }` | `name`, `email`, `role` | Anyone may `POST` one; only organizers read, approve, decline and check in |
+| `locations` | `{ id, name, lanes }` | `name` | Phase 6: stages and floors |
+| `heat-locations` | `{ id: heatId, locationId }` | `locationId` | Phase 6: should become a `locationId` column on `competition_heats` |
+
+## WOD fields (phase 6)
+
+The app sends these in `POST /competitions/:id/wods` and `PUT /competitions/:id/wods/:wodId`, and expects them on each
+item of `workouts` in `GET /competitions/:id`. Today the layer keeps them per WOD id (`collections.workoutExtras`).
+
+| Field | Shape | Notes |
+|---|---|---|
+| `scorecard` | `{ sets: [{ name, rounds ≥ 1, increment, movements: [{ name, reps ≥ 1, unit, countEvery 1..reps }] }], tieBreakAfterSet: 1..sets \| null }` | What the judge counts (phase 8). `scorecardTotal()` and `tapSteps()` are the references |
+| `penalties` | `{ noRepSeconds, missedRepSeconds, minorPct, majorPct }` | |
+| `tieBreak` | `NONE` \| `TIME` \| `REPS` | |
+
+The advanced heat generator (phase 6) needs no new route. It plans in the app (`laneOrder`, `sortEntries`,
+`planHeats`) and calls `POST /competitions/:id/heats` and `POST /competitions/:id/heats/:heatId/lanes`. A server
+version would take `{ categoryId, workoutId?, locationId?, sort, placement, lanes, perHeat, startsAt, durationMin, transitionMin, pauseEvery?, pauseMin? }`.
 
 ## Live events
 

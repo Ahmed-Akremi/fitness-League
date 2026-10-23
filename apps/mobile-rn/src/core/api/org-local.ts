@@ -90,7 +90,12 @@ export const ORG_LOCAL_LAYER: LocalLayer = {
   categoryFields: ['type', 'teamMale', 'teamFemale', 'parentId', 'locked', 'unlockCode', 'earlyPrice', 'earlyUntil', 'teamNameChangeUntil', 'memberChangeUntil', 'memberChangePrice', 'oneMemberStays'],
   // Phase 4: extras of a registration (athlete side)
   registrationFields: ['answers', 'agreementsAccepted', 'teamName', 'teamMembers', 'giftFor', 'paymentPlan', 'guardian', 'faceRecognition'],
+  // Phase 6: a WOD's scorecard, penalties and tie-break
+  workoutFields: ['scorecard', 'penalties', 'tieBreak'],
   routes: [
+    // Phase 6: locations (stages, floors) and the location of each heat ({ id: heatId, locationId })
+    ...listRoutes('locations', 'locations', required('name')),
+    ...listRoutes('heatLocations', 'heat-locations', required('locationId')),
     // Phase 5: participants and staff
     ...listRoutes('sponsors', 'sponsors', required('name')),
     ...listRoutes('checkins', 'checkins'),
