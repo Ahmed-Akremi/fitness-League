@@ -8,7 +8,15 @@ use sqlx::MySqlConnection;
 use uuid::Uuid;
 
 use super::engine;
-use crate::{error::AppError, modules::league, rules::Rules};
+use crate::{
+    error::AppError,
+    modules::{
+        feed::{self, Activity},
+        league,
+    },
+    rules::Rules,
+    types::Visibility,
+};
 
 pub struct LpEntry {
     pub user: Uuid,
@@ -175,13 +183,13 @@ pub async fn append_xp(
     .execute(&mut *tx)
     .await?;
     // Concurrent grants of one athlete wait here; the workout's transaction already holds the row.
-    let balance = sqlx::query_scalar!(
-        "SELECT xp_total FROM user_stats WHERE user_id = ? FOR UPDATE",
+    let before = sqlx::query!(
+        "SELECT xp_total, level FROM user_stats WHERE user_id = ? FOR UPDATE",
         e.user
     )
     .fetch_one(&mut *tx)
     .await?;
-    let total = balance + e.amount;
+    let total = before.xp_total + e.amount;
     let level = engine::level_from_xp(total, rules);
     sqlx::query!(
         "UPDATE user_stats SET xp_total = ?, level = ?, xp_into_level = ?, xp_for_next_level = ? \
@@ -194,5 +202,19 @@ pub async fn append_xp(
     )
     .execute(&mut *tx)
     .await?;
+    // Every grant that raises the level reaches the feed, whatever earned it (plan 3c ruling 2).
+    if level.level > before.level {
+        let up = Activity {
+            user: e.user,
+            kind: feed::Kind::LevelUp,
+            ref_id: id,
+            visibility: Visibility::Friends.as_str(),
+            payload: json!({"from": before.level, "to": level.level}),
+            sport: None,
+            exercise: None,
+            badge: None,
+        };
+        feed::record(tx, up).await?;
+    }
     Ok(id)
 }

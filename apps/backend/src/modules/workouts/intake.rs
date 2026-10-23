@@ -285,6 +285,7 @@ pub async fn create(state: &AppState, user: Uuid, body: WorkoutBody) -> Result<C
             tracked: &resolved.tracked,
             counts_for_competition: evaluation.counts_for_competition,
             body_weight_kg: ctx.body_weight_kg,
+            visibility: &visibility,
         };
         scoring::score(&mut tx, state, &rules, scoring).await?;
     }

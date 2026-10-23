@@ -1,6 +1,7 @@
 pub mod admin_auth;
 pub mod auth;
 pub mod badges;
+pub mod feed;
 pub mod goals;
 pub mod gyms;
 pub mod health;

@@ -34,6 +34,8 @@ pub enum Kind {
     FriendRequest,
     FriendAccepted,
     BadgeAwarded,
+    ActivityReaction,
+    ActivityComment,
 }
 
 impl Kind {
@@ -42,6 +44,8 @@ impl Kind {
             Kind::FriendRequest => "FRIEND_REQUEST",
             Kind::FriendAccepted => "FRIEND_ACCEPTED",
             Kind::BadgeAwarded => "BADGE_AWARDED",
+            Kind::ActivityReaction => "ACTIVITY_REACTION",
+            Kind::ActivityComment => "ACTIVITY_COMMENT",
         }
     }
 }

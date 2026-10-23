@@ -12,9 +12,12 @@ use uuid::Uuid;
 use super::planning;
 use crate::{
     error::AppError,
-    modules::scoring::{
-        engine::{Direction, Observation},
-        ledger::{self, XpEntry},
+    modules::{
+        feed::{self, Activity},
+        scoring::{
+            engine::{Direction, Observation},
+            ledger::{self, XpEntry},
+        },
     },
     rules::Rules,
     state::AppState,
@@ -145,13 +148,33 @@ async fn credit(
         .await?;
     }
     if !missing {
-        sqlx::query!(
+        let completed = sqlx::query!(
             "UPDATE goals SET status = 'COMPLETED' WHERE id = ? AND user_id = ? AND status = 'ACTIVE'",
             goal.id,
             user
         )
         .execute(&mut *tx)
         .await?;
+        if completed.rows_affected() == 1 {
+            let row = sqlx::query!(
+                "SELECT type AS kind, visibility FROM goals WHERE id = ? AND user_id = ?",
+                goal.id,
+                user
+            )
+            .fetch_one(&mut *tx)
+            .await?;
+            let item = Activity {
+                user,
+                kind: feed::Kind::GoalCompleted,
+                ref_id: goal.id,
+                visibility: &row.visibility,
+                payload: json!({"type": row.kind}),
+                sport: None,
+                exercise: None,
+                badge: None,
+            };
+            feed::record(tx, item).await?;
+        }
     }
     Ok(())
 }

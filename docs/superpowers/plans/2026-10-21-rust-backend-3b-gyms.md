@@ -499,3 +499,52 @@ The shapes:
 - Export and anonymisation cover the new tables, and the security suite passes with the new routes behind a
   session.
 - fmt, Clippy (online and offline), the whole suite, audit and deny are green, and `.sqlx/` is committed.
+
+## Built (2026-10-23): where the code departs from this plan
+
+- **Anonymisation also deletes the account's remaining verification requests** (ruling 9 extended): a decided
+  gym stays without an owner, but the free text of the proof the account wrote goes with the account
+  (`anonymising_ends_gym_ties` holds an `APPROVED` request too).
+- The gym card lives in `directory.rs`, not `mod.rs`: only the directory and the profile read it. `mod.rs` holds
+  `gym_param`, `can_manage` and `manageable`.
+- `topAthletes` filters on `show_on_leaderboards` (with an `ACTIVE` account and an active season, as the old API),
+  not on the whole board eligibility (verified, calibrated): ruling 7 names the opt-out only.
+- The slug is found by inserting and retrying on `uq_gyms_slug`, not by reading first, so two submissions of one
+  name at the same moment cannot fail.
+- `contactEmail` is stored normalised (trimmed, lower-cased), like every email of the house. It is never shown.
+- `sportIds` duplicates are compared once parsed: one id written in two cases is `ARRAYUNIQUE`, not a primary-key
+  error.
+- Appointing a coach who already is one answers 200 and writes a second `GYM_COACH_APPOINTED` entry, as the old API.
+- The dashboard's 403 says « Only this gym's admin can do that. », the detail of every management route; the old
+  API said « … can see its dashboard. ».
+- `GET /me/ranks` reads the gym board only when I have a primary gym.
+- `gym_answers_carry_no_private_data` passed at once: it pins a property the code already had (each answer must
+  show the gym or a member, so it is not vacuous).
+- **Trap:** `#[sqlx::test]` embeds the migrations at compile time. After adding `0011_gyms.sql`, a run that did not
+  rebuild still failed with « Table … gyms doesn't exist »: touch a source file after adding a migration.
+- The owner committed tasks 2, 3 and 5 and the `.sqlx` data from the working tree under their own messages, and
+  merged the branch into `main` after task 3 (PRs #35 and #36).
+- `cargo audit` found two advisories published since plan 3a: `ctutils` (RUSTSEC-2026-0385, under `argon2` and
+  `hmac`) and `tokio` (RUSTSEC-2026-0386, unsound). `1d76c25` takes the patched versions (0.4.5 and 1.53.3).
+- Checks: fmt, Clippy online and offline, `cargo audit` and `cargo deny check` clean. The whole suite: 131 unit
+  tests and 219 integration tests green, 1 ignored, in 23 of 26 files. Claude Code stopped the last chunk for low
+  system memory, so `league`, `notifications` and `social` did not run on the final code (`league` and `social`
+  passed earlier in the build), and the integration suites were not rerun after the dependency bump.
+- **Whole-branch review (2026-10-23, a fresh session, no agent):** `857a623..HEAD` read against this plan, the
+  ledger's rulings and the old `GymsService`, `GymDashboardService` and controller. The five « Review focus » points
+  hold:
+  1. two joins at once meet the unique `live_user`; the loser's duplicate key is the 409, read back with its
+     `gymId` and `membershipStatus`;
+  2. a directory cursor is accepted only with its sort's key (`n` or `m`) and an id; a cursor of another list
+     lacks both and is the 422;
+  3. `q` goes through `validate::contains` with `ESCAPE '|'`;
+  4. `manageable` reads the gym, then `can_manage` (owner and `GYM_ADMIN` and `VERIFIED`, or staff);
+  5. leave and remove clear `primary_gym_id` in the membership's transaction (remove only when it names the
+     gym), and the gym board, `/me/ranks.gym` and `profile.gym` all read that column.
+
+  A leave racing an approval cannot deadlock: both lock the membership row, then the profile. One cosmetic fix: two
+  doc comments in `league/boards.rs` were wrapped badly. Two departures from the old API, left as they are: the
+  dashboard's `name` is the full name with no username fallback (the column is `NOT NULL`, so the old fallback never
+  applied); and like every house route, a malformed `POST /gyms` body answers 422 before an unverified account's 403
+  (the body extractor runs first, while the old guard ran before its pipes). `league`, `notifications` and `social`
+  then passed on the final code, dependency bump included (20, 3 and 10). The ledger folder was deleted.
