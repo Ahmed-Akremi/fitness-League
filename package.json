@@ -4,8 +4,8 @@
   "packageManager": "pnpm@10.34.5",
   "engines": { "node": ">=22" },
   "scripts": {
-    "dev": "docker compose -f infra/docker-compose.yml up --build",
-    "infra:up": "docker compose -f infra/docker-compose.yml up -d db redis minio mailpit",
+    "dev": "docker compose -f infra/docker-compose.yml up",
+    "infra:up": "docker compose -f infra/docker-compose.yml up -d mariadb redis minio mailpit",
     "infra:down": "docker compose -f infra/docker-compose.yml down",
     "build": "pnpm -r build",
     "lint": "pnpm -r lint",
