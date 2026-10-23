@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "DELETE FROM activity_comments WHERE user_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "926a92a63e2ebda1c9c8c177a7e8c01339d3f9ac22aa66ce2e012c253c47bc66"
+}

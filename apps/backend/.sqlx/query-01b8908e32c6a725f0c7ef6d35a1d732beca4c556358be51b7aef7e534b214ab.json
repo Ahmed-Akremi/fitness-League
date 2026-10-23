@@ -1,0 +1,62 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT CAST(COALESCE(SUM(type = 'LIKE'), 0) AS SIGNED) AS \"like!: i64\",\n                  CAST(COALESCE(SUM(type = 'FIRE'), 0) AS SIGNED) AS \"fire!: i64\",\n                  CAST(COALESCE(SUM(type = 'STRONG'), 0) AS SIGNED) AS \"strong!: i64\",\n                  MAX(IF(user_id = ?, type, NULL)) AS \"mine?: String\"\n           FROM activity_reactions WHERE activity_event_id = ?",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "like!: i64",
+        "type_info": {
+          "type": "LongLong",
+          "flags": "NOT_NULL | BINARY",
+          "collation": 63,
+          "max_size": 21
+        },
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "fire!: i64",
+        "type_info": {
+          "type": "LongLong",
+          "flags": "NOT_NULL | BINARY",
+          "collation": 63,
+          "max_size": 21
+        },
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 2,
+        "name": "strong!: i64",
+        "type_info": {
+          "type": "LongLong",
+          "flags": "NOT_NULL | BINARY",
+          "collation": 63,
+          "max_size": 21
+        },
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 3,
+        "name": "mine?: String",
+        "type_info": {
+          "type": "VarString",
+          "flags": "",
+          "collation": 224,
+          "max_size": 24
+        },
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "01b8908e32c6a725f0c7ef6d35a1d732beca4c556358be51b7aef7e534b214ab"
+}

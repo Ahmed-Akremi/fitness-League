@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "DELETE FROM announcement_likes WHERE user_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "22e01139396fc44803c0083fa3de2b39d3f8c3bc3f21faa602ebfe3b0044a725"
+}

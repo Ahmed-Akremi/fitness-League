@@ -1,0 +1,48 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT c.user_id AS \"author: Uuid\", e.user_id AS \"owner: Uuid\"\n           FROM activity_comments c JOIN activity_events e ON e.id = c.activity_event_id\n           WHERE c.id = ? AND c.activity_event_id = ? AND c.deleted_at IS NULL",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "author: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | MULTIPLE_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.activity_comments",
+            "name": "user_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "owner: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | MULTIPLE_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.activity_events",
+            "name": "user_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "7a666c7bcfb788834aa04ed816b39861c0e41f5b8b679ec5b70f5a8dfb526c0e"
+}

@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "UPDATE activity_reactions SET type = ? WHERE activity_event_id = ? AND user_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "103521abcc8d8d845bc75395426dee1d6529d4acf545cea2d5ec991f69223ccc"
+}

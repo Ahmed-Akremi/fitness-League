@@ -370,7 +370,14 @@ async fn the_feed(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
     assert_eq!(two["page"]["hasMore"], false);
 
     // What the app prints for a badge and a record.
-    let badge = item(&app, b, Kind::Badge, "FRIENDS", json!({"badge": "FIRST_STEP"})).await;
+    let badge = item(
+        &app,
+        b,
+        Kind::Badge,
+        "FRIENDS",
+        json!({"badge": "FIRST_STEP"}),
+    )
+    .await;
     let pr = json!({"exerciseId": c.squat, "metric": "E1RM", "value": 119.58, "previous": 116.67});
     let record = item(&app, b, Kind::Pr, "FRIENDS", pr).await;
     let page = feed_of(&app, &a_token, "?limit=2").await;
@@ -474,12 +481,11 @@ async fn reactions(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
         react(shared, d_token.clone(), "FIRE")
     );
     assert_eq!((one.status, two.status), (StatusCode::OK, StatusCode::OK));
-    let rows: i64 =
-        sqlx::query_scalar("SELECT COUNT(*) FROM activity_reactions WHERE user_id = ?")
-            .bind(d)
-            .fetch_one(&app.db)
-            .await
-            .unwrap();
+    let rows: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM activity_reactions WHERE user_id = ?")
+        .bind(d)
+        .fetch_one(&app.db)
+        .await
+        .unwrap();
     assert_eq!(rows, 1);
     let all = notes(&app, b, "ACTIVITY_REACTION").await;
     assert_eq!(all.iter().filter(|n| n["byUserId"] == json!(d)).count(), 1);
@@ -532,7 +538,16 @@ async fn comments(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
     let path = format!("/api/v1/activities/{shared}/comments");
     let comment = |token: String, body: Value| {
         let (app, path) = (&app, path.clone());
-        async move { call(app, Method::POST, &path, &token, Some(json!({"body": body}))).await }
+        async move {
+            call(
+                app,
+                Method::POST,
+                &path,
+                &token,
+                Some(json!({"body": body})),
+            )
+            .await
+        }
     };
     let list = |token: String| {
         let (app, path) = (&app, path.clone());

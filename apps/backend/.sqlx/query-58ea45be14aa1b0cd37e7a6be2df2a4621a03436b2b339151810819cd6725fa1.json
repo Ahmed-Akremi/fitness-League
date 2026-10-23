@@ -1,0 +1,380 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT e.id AS \"id: Uuid\", e.user_id AS \"user_id: Uuid\", e.type AS kind, e.created_at, e.payload,\n                  u.username, p.full_name, s.code AS \"sport_code?\", s.name_fr AS \"sport_fr?\",\n                  s.name_en AS \"sport_en?\", s.name_ar AS \"sport_ar?\", x.name_fr AS \"exercise_fr?\",\n                  x.name_en AS \"exercise_en?\", x.name_ar AS \"exercise_ar?\", b.name_fr AS \"badge_fr?\",\n                  b.name_en AS \"badge_en?\", b.name_ar AS \"badge_ar?\", b.icon AS \"badge_icon?\",\n                  (SELECT COUNT(*) FROM activity_reactions r WHERE r.activity_event_id = e.id AND r.type = 'LIKE') AS \"like!: i64\",\n                  (SELECT COUNT(*) FROM activity_reactions r WHERE r.activity_event_id = e.id AND r.type = 'FIRE') AS \"fire!: i64\",\n                  (SELECT COUNT(*) FROM activity_reactions r WHERE r.activity_event_id = e.id AND r.type = 'STRONG') AS \"strong!: i64\",\n                  (SELECT r.type FROM activity_reactions r WHERE r.activity_event_id = e.id AND r.user_id = ?) AS \"mine?: String\",\n                  (SELECT COUNT(*) FROM activity_comments c\n                   WHERE c.activity_event_id = e.id AND c.deleted_at IS NULL) AS \"comments!: i64\"\n           FROM activity_events e JOIN users u ON u.id = e.user_id JOIN profiles p ON p.user_id = e.user_id\n             LEFT JOIN sports s ON s.id = e.sport_id LEFT JOIN exercises x ON x.id = e.exercise_id\n             LEFT JOIN badges b ON b.id = e.badge_id\n           WHERE u.status = 'ACTIVE'\n             AND (e.user_id = ? OR (e.visibility IN ('FRIENDS', 'PUBLIC') AND e.user_id IN (\n                   SELECT IF(f.user_low_id = ?, f.user_high_id, f.user_low_id) FROM friendships f\n                   WHERE f.status = 'ACCEPTED' AND (f.user_low_id = ? OR f.user_high_id = ?))))\n             AND NOT EXISTS (SELECT 1 FROM workouts w\n                             WHERE e.ref_type = 'workout' AND w.id = e.ref_id AND w.status <> 'ACCEPTED')\n             AND NOT EXISTS (SELECT 1 FROM personal_records r\n                             WHERE e.ref_type = 'personal_record' AND r.id = e.ref_id AND r.status = 'REVOKED')\n             AND (? IS NULL OR e.id < ?)\n           ORDER BY e.id DESC\n           LIMIT ?",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | PRIMARY_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.activity_events",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "user_id: Uuid",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | MULTIPLE_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 16
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.activity_events",
+            "name": "user_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "kind",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | ENUM | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 56
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.activity_events",
+            "name": "type"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "created_at",
+        "type_info": {
+          "type": "Datetime",
+          "flags": "NOT_NULL | BINARY",
+          "collation": 63,
+          "max_size": 26
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.activity_events",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "payload",
+        "type_info": {
+          "type": "Blob",
+          "flags": "NOT_NULL | BLOB | BINARY | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 4294967295
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.activity_events",
+            "name": "payload"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "username",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | UNIQUE_KEY | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 80
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.users",
+            "name": "username"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "full_name",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 320
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.profiles",
+            "name": "full_name"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "sport_code?",
+        "type_info": {
+          "type": "VarString",
+          "flags": "UNIQUE_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 160
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.sports",
+            "name": "code"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "sport_fr?",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 320
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.sports",
+            "name": "name_fr"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "sport_en?",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 320
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.sports",
+            "name": "name_en"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "sport_ar?",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 320
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.sports",
+            "name": "name_ar"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "exercise_fr?",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 480
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.exercises",
+            "name": "name_fr"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "exercise_en?",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 480
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.exercises",
+            "name": "name_en"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "exercise_ar?",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 480
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.exercises",
+            "name": "name_ar"
+          }
+        }
+      },
+      {
+        "ordinal": 14,
+        "name": "badge_fr?",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 320
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.badges",
+            "name": "name_fr"
+          }
+        }
+      },
+      {
+        "ordinal": 15,
+        "name": "badge_en?",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 320
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.badges",
+            "name": "name_en"
+          }
+        }
+      },
+      {
+        "ordinal": 16,
+        "name": "badge_ar?",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 320
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.badges",
+            "name": "name_ar"
+          }
+        }
+      },
+      {
+        "ordinal": 17,
+        "name": "badge_icon?",
+        "type_info": {
+          "type": "VarString",
+          "flags": "",
+          "collation": 224,
+          "max_size": 160
+        },
+        "origin": {
+          "Table": {
+            "table": "fitness_league.badges",
+            "name": "icon"
+          }
+        }
+      },
+      {
+        "ordinal": 18,
+        "name": "like!: i64",
+        "type_info": {
+          "type": "LongLong",
+          "flags": "BINARY",
+          "collation": 63,
+          "max_size": 21
+        },
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 19,
+        "name": "fire!: i64",
+        "type_info": {
+          "type": "LongLong",
+          "flags": "BINARY",
+          "collation": 63,
+          "max_size": 21
+        },
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 20,
+        "name": "strong!: i64",
+        "type_info": {
+          "type": "LongLong",
+          "flags": "BINARY",
+          "collation": 63,
+          "max_size": 21
+        },
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 21,
+        "name": "mine?: String",
+        "type_info": {
+          "type": "VarString",
+          "flags": "",
+          "collation": 224,
+          "max_size": 24
+        },
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 22,
+        "name": "comments!: i64",
+        "type_info": {
+          "type": "LongLong",
+          "flags": "BINARY",
+          "collation": 63,
+          "max_size": 21
+        },
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 8
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "58ea45be14aa1b0cd37e7a6be2df2a4621a03436b2b339151810819cd6725fa1"
+}

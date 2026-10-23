@@ -18,11 +18,11 @@ use axum::{
     response::{IntoResponse, Response},
     routing::{self, MethodRouter},
 };
+use socketioxide::SocketIo;
 use tower_http::{
     catch_panic::CatchPanicLayer,
     cors::{AllowOrigin, CorsLayer},
 };
-use socketioxide::SocketIo;
 use tracing::Instrument;
 use uuid::Uuid;
 

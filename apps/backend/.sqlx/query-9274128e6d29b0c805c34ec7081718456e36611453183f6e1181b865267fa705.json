@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "INSERT INTO activity_events (id, user_id, type, ref_type, ref_id, visibility, payload, sport_id, exercise_id, badge_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 10
+    },
+    "nullable": []
+  },
+  "hash": "9274128e6d29b0c805c34ec7081718456e36611453183f6e1181b865267fa705"
+}

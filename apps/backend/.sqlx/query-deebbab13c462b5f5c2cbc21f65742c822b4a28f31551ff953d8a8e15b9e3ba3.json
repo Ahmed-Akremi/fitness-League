@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "DELETE FROM activity_reactions WHERE activity_event_id = ? AND user_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "deebbab13c462b5f5c2cbc21f65742c822b4a28f31551ff953d8a8e15b9e3ba3"
+}

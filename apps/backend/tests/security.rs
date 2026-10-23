@@ -415,6 +415,83 @@ async fn gym_answers_carry_no_private_data(opts: MySqlPoolOptions, conn: MySqlCo
 }
 
 #[sqlx::test]
+async fn feed_answers_carry_no_private_data(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    use backend::modules::feed::{self, Activity, Kind};
+    let app = seeded(opts, conn).await;
+    let reader = create_user(&app, "reader", Role::User).await;
+    let friend = create_user(&app, "samira", Role::User).await;
+    let (low, high) = if reader < friend {
+        (reader, friend)
+    } else {
+        (friend, reader)
+    };
+    sqlx::query(
+        "INSERT INTO friendships (user_low_id, user_high_id, status, requested_by) VALUES (?, ?, 'ACCEPTED', ?)",
+    )
+    .bind(low)
+    .bind(high)
+    .bind(reader)
+    .execute(&app.db)
+    .await
+    .unwrap();
+    let mut items = Vec::new();
+    for (kind, payload) in [
+        (Kind::LevelUp, json!({"from": 1, "to": 2})),
+        // A weight goal's item names its type only: the goal's values are health data.
+        (Kind::GoalCompleted, json!({"type": "WEIGHT"})),
+    ] {
+        let mut db = app.db.acquire().await.unwrap();
+        let activity = Activity {
+            user: friend,
+            kind,
+            ref_id: uuid::Uuid::now_v7(),
+            visibility: "FRIENDS",
+            payload,
+            sport: None,
+            exercise: None,
+            badge: None,
+        };
+        items.push(feed::record(&mut db, activity).await.unwrap());
+    }
+    sqlx::query(
+        "INSERT INTO activity_comments (id, activity_event_id, user_id, body) VALUES (?, ?, ?, 'Bravo')",
+    )
+    .bind(uuid::Uuid::now_v7())
+    .bind(items[0])
+    .bind(reader)
+    .execute(&app.db)
+    .await
+    .unwrap();
+
+    let session = open_session(&app, reader, Role::User, Audience::App).await;
+    let token = session["accessToken"].as_str();
+    let feed = app.call(Method::GET, "/api/v1/feed", token, None).await;
+    assert_eq!(feed.status, StatusCode::OK, "{}", feed.json);
+    let goal = feed.json["data"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|i| i["type"] == "GOAL_COMPLETED")
+        .unwrap();
+    assert_eq!(goal["details"], json!({"type": "WEIGHT"}));
+    let comments = format!("/api/v1/activities/{}/comments", items[0]);
+    let comments = app.call(Method::GET, &comments, token, None).await;
+    assert_eq!(comments.status, StatusCode::OK, "{}", comments.json);
+    for (path, reply) in [("feed", &feed), ("comments", &comments)] {
+        let text = reply.json.to_string();
+        assert!(
+            ["samira", "reader"]
+                .iter()
+                .any(|shown| text.contains(shown)),
+            "{path}: {text}"
+        );
+        for secret in ["@example.com", "1995-05-05", "email", "dateOfBirth"] {
+            assert!(!text.contains(secret), "{path} shows {secret}: {text}");
+        }
+    }
+}
+
+#[sqlx::test]
 async fn profiles_and_searches_carry_no_private_data(
     opts: MySqlPoolOptions,
     conn: MySqlConnectOptions,

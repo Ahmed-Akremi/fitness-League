@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "INSERT INTO activity_comments (id, activity_event_id, user_id, body, created_at) VALUES (?, ?, ?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 5
+    },
+    "nullable": []
+  },
+  "hash": "3e51c13fd944c1ce11c0ad6e8d3fdcffad537254b9c4eb8bfc78cc356e17b724"
+}
