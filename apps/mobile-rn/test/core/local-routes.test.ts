@@ -21,6 +21,7 @@ function fakeServer(answers: Record<string, [number, unknown]>) {
 const layer: LocalLayer = {
   competitionFields: ['eventStyle'],
   categoryFields: ['type', 'earlyPrice'],
+  registrationFields: ['teamName', 'paymentPlan'],
   routes: [
     {
       method: 'GET',
@@ -137,5 +138,25 @@ describe('local routes (new organizer features answered on the device)', () => {
       c.categories.k1 = { type: 'TEAM' };
     });
     await expect(api.get('/competitions/c1')).resolves.toEqual({ id: 'c1', categories: [{ id: 'k1', name: 'RX', type: 'TEAM' }, { id: 'k2', name: 'Scaled' }] });
+  });
+
+  it('keeps the registration extras on the device and shows them in « my registration »', async () => {
+    const { api, store, calls } = setup({
+      'POST /competitions/c1/register': [201, { id: 'r1', registrationStatus: 'PENDING' }],
+      'GET /competitions/c1': [200, { id: 'c1', myRegistration: { id: 'r1', registrationStatus: 'PENDING' } }],
+    });
+    const created = await api.post('/competitions/c1/register', { categoryId: 'k1', teamName: 'Box Bandits', paymentPlan: 'DEPOSIT' });
+    expect(calls[0].body).toEqual({ categoryId: 'k1' });
+    expect(created).toEqual({ id: 'r1', registrationStatus: 'PENDING', teamName: 'Box Bandits', paymentPlan: 'DEPOSIT' });
+    expect(store.competition('c1').collections.registrations).toEqual([{ id: 'r1', teamName: 'Box Bandits', paymentPlan: 'DEPOSIT' }]);
+    await expect(api.get('/competitions/c1')).resolves.toMatchObject({ myRegistration: { id: 'r1', teamName: 'Box Bandits', paymentPlan: 'DEPOSIT' } });
+  });
+
+  it('adds the registration extras to the organizer list', async () => {
+    const { api, store } = setup({ 'GET /competitions/c1/registrations': [200, [{ id: 'r1' }, { id: 'r2' }]] });
+    await store.update('c1', (c) => {
+      c.collections.registrations = [{ id: 'r2', teamName: 'Box Bandits' }];
+    });
+    await expect(api.get('/competitions/c1/registrations')).resolves.toEqual([{ id: 'r1' }, { id: 'r2', teamName: 'Box Bandits' }]);
   });
 });

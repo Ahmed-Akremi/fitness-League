@@ -29,6 +29,22 @@ describe('organizer local layer (what the app keeps on the device for now)', () 
   });
 });
 
+describe('waiting list (phase 4, answered on the device)', () => {
+  it('adds an athlete, lists the list and removes them', async () => {
+    const api = new ApiClient('http://test', new MemoryTokenStorage(), () => {}, withOrgLocal(new FakeBackend().fetch, true, new LocalStore(memoryPersistence())));
+    const entry = await api.post<{ id: string }>('/competitions/c1/waiting-list', { categoryId: 'k1', name: 'Sami', email: 'sami@box.tn' });
+    expect(entry.id).toMatch(/^loc_/);
+    await expect(api.get('/competitions/c1/waiting-list')).resolves.toEqual([expect.objectContaining({ categoryId: 'k1', name: 'Sami', email: 'sami@box.tn' })]);
+    await api.delete(`/competitions/c1/waiting-list/${entry.id}`);
+    await expect(api.get('/competitions/c1/waiting-list')).resolves.toEqual([]);
+  });
+
+  it('refuses an entry without a category or an email', async () => {
+    const api = new ApiClient('http://test', new MemoryTokenStorage(), () => {}, withOrgLocal(new FakeBackend().fetch, true, new LocalStore(memoryPersistence())));
+    await expect(api.post('/competitions/c1/waiting-list', { name: 'Sami' })).rejects.toMatchObject({ status: 422 });
+  });
+});
+
 describe('services (the app as built)', () => {
   const saved = process.env.EXPO_PUBLIC_DEMO;
   afterEach(() => {

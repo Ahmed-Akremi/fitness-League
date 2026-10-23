@@ -17,8 +17,11 @@ export type LocalRoute = {
   path: string;
   handle: (req: LocalRequest, store: LocalStore) => LocalAnswer | Promise<LocalAnswer>;
 };
-/** `categoryFields`: new fields of a competition's categories (divisions), kept the same way per category id. */
-export type LocalLayer = { routes: LocalRoute[]; competitionFields: string[]; categoryFields?: string[] };
+/**
+ * `categoryFields`: new fields of a competition's categories (divisions), kept the same way per category id.
+ * `registrationFields`: extras of a registration (answers, team, payment plan…), kept per registration id.
+ */
+export type LocalLayer = { routes: LocalRoute[]; competitionFields: string[]; categoryFields?: string[]; registrationFields?: string[] };
 
 const API_PREFIX = /^\/api\/v1/;
 
@@ -39,14 +42,22 @@ export function withLocalRoutes(inner: Fetch, store: LocalStore, layer: LocalLay
 
     const fields = layer.competitionFields;
     const catFields = layer.categoryFields ?? [];
-    if (!fields.length && !catFields.length) return inner(url, init);
+    const regFields = layer.registrationFields ?? [];
+    if (!fields.length && !catFields.length && !regFields.length) return inner(url, init);
     const detail = match('/competitions/:id', path);
     const categories = match('/competitions/:id/categories', path);
     const category = match('/competitions/:id/categories/:categoryId', path);
+    const register = match('/competitions/:id/register', path);
+    const registrations = match('/competitions/:id/registrations', path);
     const keepCompetition = (id: string, local: Json) => store.update(id, (c) => void Object.assign(c.fields, local));
     const keepCategory = (competitionId: string) => (id: string, local: Json) =>
       store.update(competitionId, (c) => {
         c.categories[id] = { ...(c.categories[id] ?? {}), ...local };
+      });
+    const keepRegistration = (competitionId: string) => (id: string, local: Json) =>
+      store.update(competitionId, (c) => {
+        const list = c.collections.registrations ?? [];
+        c.collections.registrations = [...list.filter((r) => r.id !== id), { ...(list.find((r) => r.id === id) ?? {}), id, ...local }];
       });
     const write = (local: string[], id: string | null, keep: (id: string, local: Json) => Promise<void>) => overlayWrite(inner, url, init, body, local, id, keep);
 
@@ -55,6 +66,16 @@ export function withLocalRoutes(inner: Fetch, store: LocalStore, layer: LocalLay
       if (detail && (method === 'PUT' || method === 'PATCH')) return write(fields, detail.id, keepCompetition);
       if (categories && method === 'POST') return write(catFields, null, keepCategory(categories.id));
       if (category && (method === 'PUT' || method === 'PATCH')) return write(catFields, category.categoryId, keepCategory(category.id));
+      if (register && method === 'POST') return write(regFields, null, keepRegistration(register.id));
+    }
+
+    if (method === 'GET' && registrations && regFields.length) {
+      const res = await inner(url, init);
+      if (!res.ok) return res;
+      const data = await readJson(res);
+      await store.ready();
+      const extras = store.competition(registrations.id).collections.registrations ?? [];
+      return json(res.status, Array.isArray(data) ? data.map((r) => withExtras(extras, regFields, r)) : data);
     }
 
     if (method === 'GET' && (detail || path === '/competitions')) {
@@ -62,7 +83,7 @@ export function withLocalRoutes(inner: Fetch, store: LocalStore, layer: LocalLay
       if (!res.ok) return res;
       const data = await readJson(res);
       await store.ready();
-      const add = (item: unknown) => withFields(store, fields, catFields, item);
+      const add = (item: unknown) => withFields(store, fields, catFields, regFields, item);
       if (detail) return json(res.status, add(data));
       if (Array.isArray(data)) return json(res.status, data.map(add));
       if (Array.isArray(data?.data)) return json(res.status, { ...data, data: data.data.map(add) });
@@ -126,14 +147,22 @@ function split(body: unknown, fields: string[]): { rest: Json; local: Json } {
 
 const pick = (saved: Json, fields: string[]) => Object.fromEntries(fields.filter((f) => f in saved).map((f) => [f, saved[f]]));
 
-/** A competition from the server with its local fields, and those of each of its categories. */
-function withFields(store: LocalStore, fields: string[], catFields: string[], item: unknown): unknown {
+/** A registration from the server with the extras kept on the device for it. */
+function withExtras(extras: Json[], fields: string[], r: unknown): unknown {
+  if (!r || typeof r !== 'object' || typeof (r as Json).id !== 'string') return r;
+  const saved = extras.find((x) => x.id === (r as Json).id);
+  return saved ? { ...r, ...pick(saved, fields) } : r;
+}
+
+/** A competition from the server with its local fields, those of each of its categories, and the extras of « my registration ». */
+function withFields(store: LocalStore, fields: string[], catFields: string[], regFields: string[], item: unknown): unknown {
   if (!item || typeof item !== 'object' || typeof (item as Json).id !== 'string') return item;
   const saved = store.competition((item as Json).id);
   const out: Json = { ...item, ...pick(saved.fields, fields) };
   if (catFields.length && Array.isArray(out.categories)) {
     out.categories = out.categories.map((k: unknown) => (k && typeof k === 'object' && typeof (k as Json).id === 'string' ? { ...k, ...pick(saved.categories[(k as Json).id] ?? {}, catFields) } : k));
   }
+  if (regFields.length && out.myRegistration) out.myRegistration = withExtras(saved.collections.registrations ?? [], regFields, out.myRegistration);
   return out;
 }
 

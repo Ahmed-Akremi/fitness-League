@@ -66,6 +66,7 @@ export function SettingsTab({ c }: { c: Json }) {
         {has('MAX_TEAMS') && hint(t('orgSetMaxInvalid'))}
         <SwitchRow testID="org-set-hide-athletes" title={t('orgSetHideAthletes')} value={d.hideAthletesTab} onChange={(v) => set({ hideAthletesTab: v })} />
         <SwitchRow testID="org-set-coach" title={t('orgSetCoach')} value={d.coachAssignment} onChange={(v) => set({ coachAssignment: v })} />
+        <SwitchRow testID="org-set-queue" title={t('orgSetQueue')} value={d.highDemand} onChange={(v) => set({ highDemand: v })} />
         <SwitchRow testID="org-set-notify" title={t('orgSetNotify')} value={d.notifyOnRegistration} onChange={(v) => set({ notifyOnRegistration: v })} />
 
         <SwitchRow testID="org-set-email-list" title={t('orgSetEmailList')} value={d.restrictToEmailList} onChange={(v) => set({ restrictToEmailList: v })} />

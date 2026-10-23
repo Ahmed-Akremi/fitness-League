@@ -135,6 +135,8 @@ export type SettingsDraft = {
   appealMax: string;
   appealDeadline: Date | null;
   neutral: string;
+  /** Phase 4: a busy event puts athletes in a (simulated) queue before the form. */
+  highDemand: boolean;
 };
 export type SettingsProblem = 'MAX_INDIVIDUALS' | 'MAX_TEAMS' | 'EMAILS' | 'APPEAL_PRICE' | 'APPEAL_MAX' | 'NEUTRAL';
 
@@ -173,6 +175,7 @@ export function settingsDraft(c: Json): SettingsDraft {
     appealMax: whole(s.appeals?.maxPerAthlete),
     appealDeadline: s.appeals?.deadline ? new Date(s.appeals.deadline) : null,
     neutral: (s.neutralCountries ?? []).join(', '),
+    highDemand: s.highDemand === true,
   };
 }
 
@@ -209,6 +212,7 @@ export function settingsBody(d: SettingsDraft): Json {
       deadline: d.appealDeadline ? d.appealDeadline.toISOString() : null,
     },
     neutralCountries: countryCodes(d.neutral).map((code) => code.toUpperCase()),
+    highDemand: d.highDemand,
   };
 }
 
