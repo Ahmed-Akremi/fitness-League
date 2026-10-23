@@ -87,9 +87,39 @@ Copying a previous event (phase 2) needs no new route: the app reads the source 
 creates the draft, then posts the categories and the WODs (dates moved by the gap between the two event starts)
 through the existing routes.
 
+## Registration extras (phase 4)
+
+The app sends these with `POST /competitions/:id/register` next to `categoryId` and `couponCode`. It expects them back on
+that answer, on `myRegistration` in `GET /competitions/:id`, and on each item of `GET /competitions/:id/registrations`.
+Today the layer keeps them per registration id (`collections.registrations`).
+
+| Field | Shape | Notes |
+|---|---|---|
+| `answers` | `{ [fieldId]: string }` | Answers to `registrationForm`; the server should check them with the rules of `answerProblems()` |
+| `agreementsAccepted` | (`LIABILITY` \| `CUSTOM` \| `MEDICAL` \| `DOCUMENT`)[] | Every required agreement must be in the list |
+| `faceRecognition` | boolean | Only when the organizer asks |
+| `teamName`, `teamMembers` | string 2–60, lower-case emails | Team divisions: `teamMembers` holds `teamMale + teamFemale − 1` distinct emails (the captain registers). The server should invite them |
+| `giftFor` | email | Registering someone else |
+| `paymentPlan` | `FULL` \| `DEPOSIT` | `DEPOSIT` only when `pricing.deposit.enabled`; the balance is due by `pricing.deposit.deadline` |
+| `guardian` | `{ name, email, phone, consent: true, photoConsent? }` | When the athlete is under `agreements.minors.age` |
+
+**What the server must do itself, since the app only shows it:**
+- apply the division's early-bird price;
+- apply the event code (`visibility: PASSWORD`) and the division code (`locked`);
+- apply invite-only (`inviteOnly` / `settings.restrictToEmailList` with `settings.invitedEmails`);
+- refuse a full division with `409 CATEGORY_FULL`; the app then offers the waiting list.
+
+`settings.highDemand` (boolean, phase 4) puts athletes in a queue before the form. Today the app simulates it
+(`queueStart`/`queueTick`). The research's server shape is `POST /queue/join {competition_id}` →
+`{ status: not_required | waiting | admitted, token, position }`, then `GET /queue/status/:token`.
+
 ## Routes
 
-None yet (phase 1 only lays the mechanism).
+| Route | Body / answer | Since | Notes |
+|---|---|---|---|
+| `GET /competitions/:id/waiting-list` | `[{ id, categoryId, name, email, createdAt }]` | phase 4 | Organizer; sorted by `createdAt` |
+| `POST /competitions/:id/waiting-list` | `{ categoryId, name, email }` → `201` entry | phase 4 | The athlete of a full division. `422` without a category or a valid email |
+| `DELETE /competitions/:id/waiting-list/:entryId` | `204` | phase 4 | Organizer (phase 5 invites the next one) |
 
 ## Live events
 
