@@ -114,6 +114,26 @@ async fn a_socket_needs_a_session(opts: MySqlPoolOptions, conn: MySqlConnectOpti
 }
 
 #[sqlx::test]
+async fn a_socket_outlives_the_request_timeout(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
+    let app = seeded(opts, conn).await;
+    let (address, io) = serve(&app).await;
+    let (a, token) = athlete(&app, "patient").await;
+    let (mut socket, answer) = connect(address, Some(json!({"token": token}))).await;
+    assert!(answer.starts_with("40/ws,"), "{answer}");
+    tokio::time::sleep(backend::http::REQUEST_TIMEOUT + Duration::from_secs(1)).await;
+
+    let mut tx = app.db.begin().await.unwrap();
+    notifications::notify(&mut tx, a, Kind::FriendAccepted, json!({}))
+        .await
+        .unwrap();
+    tx.commit().await.unwrap();
+    let mut seen = HashSet::new();
+    assert_eq!(live::tail_once(&io, &app.db, &mut seen).await.unwrap(), 1);
+    let event = frame(&mut socket).await;
+    assert!(event.starts_with("42/ws,[\"notification.new\""), "{event}");
+}
+
+#[sqlx::test]
 async fn notifications_reach_their_athlete_live(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
     let app = seeded(opts, conn).await;
     let (address, io) = serve(&app).await;

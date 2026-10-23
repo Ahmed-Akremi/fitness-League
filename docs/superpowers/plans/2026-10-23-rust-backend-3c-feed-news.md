@@ -412,3 +412,33 @@ The shapes:
   refused.
 - Export and anonymisation cover the new tables, and the security suite passes with the new routes behind a session.
 - fmt, Clippy (online and offline), the whole suite, audit and deny are green, and `.sqlx/` is committed.
+
+## Built (2026-10-23): where the code departs from this plan
+
+- **A reaction is new when `INSERT IGNORE` inserts it** (then an `UPDATE` changes the type), not by the upsert's row
+  count (ruling 5 kept, its mechanism changed). sqlx connects with `CLIENT_FOUND_ROWS`, so `ON DUPLICATE KEY UPDATE`
+  with the same type counts 1 row, like an insert: the test saw a second `LIKE` notify again. **Trap for later
+  plans:** with sqlx, an `UPDATE` that matches a row but changes nothing also counts 1 (found rows), not 0. The
+  comment in `gyms/members.rs::set_coach` says the opposite; its code reads the row first, so it is right either way.
+- **The refused-workout and revoked-record filters drop an item only when its row exists and is refused or
+  revoked**, as the old `withoutDeletedRefs`: an item whose workout row is gone still shows.
+- **`PR` items are written for every `AWARDED` record of an `XP_METRICS` metric** (the behaviour table and the old
+  filter), not « one per paid record » as task 2's test step worded it.
+- `feed::record` returns the event's id; the tests need it, the callers ignore it.
+- The tail keeps `seen` as a `HashSet` of the window's ids, replaced each tick, not a map of timestamps: the window's
+  own rows say what to forget. It reads the unread count once per athlete of the new rows, not for every row of the
+  30 s window (a badge sweep's burst would otherwise be counted again every second for 30 seconds).
+- The socket reads its auth payload with `TryData`: a CONNECT without auth, or with a malformed one, is refused like a
+  bad token.
+- A comment's `EMPTY` check runs after `viewable`; `require_verified` and the rate limit run before it, as the old
+  guards and service ordered them. The length codes come first (the body extractor, the house order).
+- The schema test checks the cascade by deleting the event, not the athlete (deleting a `users` row touches every
+  part's tables; each foreign key declares its cascade).
+- `feed_answers_carry_no_private_data` passed at once: it pins a property the code already had (each answer shows an
+  athlete, so it is not vacuous), as plan 3b's gym check.
+- The owner committed parts of tasks 3 and 5 from the working tree under their own messages, and merged the branch
+  into `main` four times during the build (PRs #40 to #43). **PR #43 removed `apps/api`** (the old API) from `main`;
+  its code stays in git history, for example `git show 1075b91:apps/api/src/modules/feed/feed.service.ts`.
+- `socketioxide` 0.18.7 brings `engineioxide`, `socketioxide-core`, `socketioxide-parser-common`, `matchit` and
+  `tokio-tungstenite`/`tungstenite` 0.30 (276 crates in all); `cargo audit` and `cargo deny check` are clean with
+  them.
