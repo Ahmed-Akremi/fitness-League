@@ -64,22 +64,37 @@ impl FromRequestParts<AppState> for PanelUser {
     }
 }
 
-/// The token proves who signed in; the row read here says what they are today. A ban, a role change
-/// or a password reset therefore applies on the very next request, without waiting for the token to
-/// expire.
+/// The bearer token of a request, checked by `verify`.
 async fn authenticate(
     parts: &Parts,
     state: &AppState,
     audience: Audience,
     allowed: fn(Role) -> bool,
 ) -> Result<AuthUser, AppError> {
-    let invalid = || AppError::unauthenticated("TOKEN_INVALID", "Invalid access token");
     let token = parts
         .headers
         .get(header::AUTHORIZATION)
         .and_then(|value| value.to_str().ok())
         .and_then(|value| value.strip_prefix("Bearer "))
         .ok_or_else(|| AppError::unauthenticated("UNAUTHENTICATED", "Authentication required"))?;
+    verify(state, token, audience, allowed).await
+}
+
+/// An app account from an access token, as `AppUser` admits it: the live socket's check.
+pub async fn app_user(state: &AppState, token: &str) -> Result<AuthUser, AppError> {
+    verify(state, token, Audience::App, |role| !role.is_judge()).await
+}
+
+/// The token proves who signed in; the row read here says what they are today. A ban, a role change
+/// or a password reset therefore applies on the very next request, without waiting for the token to
+/// expire.
+async fn verify(
+    state: &AppState,
+    token: &str,
+    audience: Audience,
+    allowed: fn(Role) -> bool,
+) -> Result<AuthUser, AppError> {
+    let invalid = || AppError::unauthenticated("TOKEN_INVALID", "Invalid access token");
     let claims = state
         .tokens
         .verify_access(token, audience)
