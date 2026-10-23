@@ -146,7 +146,10 @@ Phase 5 lists all follow the same pattern:
 | `staff-applications` | `{ id, formId, name, email, role, shifts: string[], status: PENDING \| APPROVED \| DECLINED, checkedIn }` | `name`, `email`, `role` | Anyone may `POST` one; only organizers read, approve, decline and check in |
 | `locations` | `{ id, name, lanes }` | `name` | Phase 6: stages and floors |
 | `heat-locations` | `{ id: heatId, locationId }` | `locationId` | Phase 6: should become a `locationId` column on `competition_heats` |
-| `waves` | `{ id, number, name, categoryId, startsAt, registrationIds: string[], liveStart: ISO \| null }` | `startsAt` | Phase 7: start groups of a hybrid race, cut by `planWaves()`. `liveStart` set = racing; the shared clock of a wave counts from it |
+| `waves` | `{ id, number, name, categoryId, startsAt, registrationIds: string[], athletes: [{ registrationId, name }], liveStart: ISO \| null }` | `startsAt` | Phase 7: start groups of a hybrid race, cut by `planWaves()`. `liveStart` set = racing; the shared clock of a wave counts from it. `athletes` (phase 8) lets race judges show names without the organizer's registration list; the server should expose a wave to its judges only |
+| `race-results` | `{ id: "<waveId>:<registrationId>", waveId, registrationId, splits: ms[], adjustments: number[], dnf, finished }` | `registrationId` | Phase 8: what a race judge records. `splits[i]` is the wave clock at the end of stage i (runs included); `adjustments` are scoring-rule values. `raceTotalMs()` is the reference. The server should accept them from the wave's judges only and keep an audit trail |
+| `lane-penalties` | `{ id: "<heatId>:<lane>", heatId, lane, workoutId, missedReps, minor, major }` | `heatId` | Phase 8: penalty counts of a functional-fitness lane, for the WOD's `penalties`. Should become fields of the lane score body (`PUT …/lanes/:lane/score`) |
+| `timers` | `{ id: <locationId \| competitionId>, config: { type: FOR_TIME \| AMRAP \| EMOM \| TABATA \| COUNTDOWN, capSec, intervalSec, rounds, workSec, restSec }, startTimestamp: ISO \| null, pausedAt: ISO \| null, pausedMs }` | `config` | Phase 8: the snapshot a display loads before it listens to `timer.<id>`. `timerView()` computes the time from it; the server should stamp `startTimestamp` with its own clock |
 
 ## WOD fields (phase 6)
 
@@ -158,6 +161,10 @@ item of `workouts` in `GET /competitions/:id`. Today the layer keeps them per WO
 | `scorecard` | `{ sets: [{ name, rounds ≥ 1, increment, movements: [{ name, reps ≥ 1, unit, countEvery 1..reps }] }], tieBreakAfterSet: 1..sets \| null }` | What the judge counts (phase 8). `scorecardTotal()` and `tapSteps()` are the references |
 | `penalties` | `{ noRepSeconds, missedRepSeconds, minorPct, majorPct }` | |
 | `tieBreak` | `NONE` \| `TIME` \| `REPS` | |
+
+Phase 8: `GET /competitions/:id/floor-judging/lanes` must also carry these fields on each lane's `workout`: the
+judge's screen counts from the scorecard (`judge/logic-scorecard.ts`: `scorecardCursor`, `tapNext`, `tieBreakReps`)
+and shows the penalty counters the WOD uses.
 
 The advanced heat generator (phase 6) needs no new route. It plans in the app (`laneOrder`, `sortEntries`,
 `planHeats`) and calls `POST /competitions/:id/heats` and `POST /competitions/:id/heats/:heatId/lanes`. A server
@@ -183,3 +190,12 @@ Channels and events are added by the phases that use them (8: judges and timers,
 |---|---|---|---|---|
 | `event.<competitionId>` | `wave_started`, `wave_stopped` | `{ waveId, at }` | phase 7 | Waves page (organizer) |
 | `timer.<competitionId>` | `timer_start`, `timer_stop` | `{ waveId, startTimestamp }` | phase 7 | Waves page (organizer) |
+| `heat.<heatId>` | `score_update` | `{ lane, workoutId, reps, rounds, timeS, capped, tieBreakS, noReps, seq, serverTs }` | phase 8 | Floor judge, at every change |
+| `heat.<heatId>` | `done` | `{ lane, workoutId, raw, seq, serverTs }` | phase 8 | Floor judge, when the athlete confirms |
+| `wave.<waveId>` | `split`, `clear` | `{ registrationId, stageId?, stageIndex, atMs?, seq, serverTs }` | phase 8 | Race judge (`clear`: last split undone) |
+| `wave.<waveId>` | `penalty` | `{ registrationId, value, op, unit, seq, serverTs }` | phase 8 | Race judge (scoring rule) |
+| `wave.<waveId>` | `done`, `dnf` | `{ registrationId, totalMs?, splits?, stageIndex?, seq, serverTs }` | phase 8 | Race judge |
+| `timer.<locationId \| competitionId>` | `timer_start`, `timer_pause`, `timer_stop` | the whole `timers` item + `{ seq, serverTs }` | phase 8 | Live page (organizer); `timer_start` also resumes |
+
+`seq` grows with each update (`nextSeq()`); a display keeps the update with the higher `seq`. `serverTs` is the
+sender's estimate of the server time; with the socket, the server sets both.

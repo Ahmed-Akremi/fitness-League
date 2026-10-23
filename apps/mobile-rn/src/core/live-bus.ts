@@ -24,6 +24,10 @@ type Message = { channel: string; event: string; payload: unknown };
 
 export const LIVE_CHANNEL_NAME = 'fl-live';
 
+let lastSeq = 0;
+/** Increasing order number of a live update (`seq`): a display keeps the higher one when two arrive out of order. */
+export const nextSeq = () => (lastSeq = Math.max(lastSeq + 1, Date.now()));
+
 /**
  * BroadcastChannel in web pages only. Phones and tests keep events in the page: Node (jest) has a BroadcastChannel
  * too, and an open one would keep the test process alive.

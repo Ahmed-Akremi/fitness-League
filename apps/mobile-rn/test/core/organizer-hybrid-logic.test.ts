@@ -1,4 +1,4 @@
-import { customFlow, flowOf, flowProblems, HYROX_STATIONS, hyroxFlow, moveStage, planWaves, raceStations, stagesLocked } from '../../src/features/competitions/organizer/logic-hybrid';
+import { customFlow, emptyResult, flowOf, flowProblems, HYROX_STATIONS, hyroxFlow, moveStage, planWaves, raceCursor, raceStations, raceTotalMs, recordSplit, stageTimes, stagesLocked, undoSplit } from '../../src/features/competitions/organizer/logic-hybrid';
 
 describe('race flow', () => {
   it('builds the HYROX-style race: a 1 km run before each of the 8 stations, stages locked', () => {
@@ -42,5 +42,31 @@ describe('waves', () => {
       { number: 1, startsAt: '2026-12-12T08:00:00.000Z', registrationIds: ['r1', 'r2'] },
       { number: 2, startsAt: '2026-12-12T08:10:00.000Z', registrationIds: ['r3'] },
     ]);
+  });
+});
+
+describe('race judging', () => {
+  const stage = (id: string) => ({ id, name: id, kind: 'STATION' as const, scoring: 'TIME' as const, target: 1, unit: 'M' });
+  const f = { ...customFlow(), stages: [stage('a'), stage('b'), stage('c')] };
+
+  it('records a split at the end of each stage, in order, then finishes', () => {
+    let r = emptyResult('w1', 'r1');
+    expect(raceCursor(f, r)).toBe(0);
+    r = recordSplit(f, r, 60_000);
+    r = recordSplit(f, r, 50_000);
+    expect(r.splits).toEqual([60_000, 60_000]);
+    r = recordSplit(f, undoSplit(r), 150_000);
+    r = recordSplit(f, r, 200_000);
+    expect(r.finished).toBe(true);
+    expect(raceCursor(f, r)).toBeNull();
+    expect(recordSplit(f, r, 300_000).splits).toHaveLength(3);
+    expect(stageTimes(r.splits)).toEqual([60_000, 90_000, 50_000]);
+  });
+
+  it('adds or removes the rule seconds from the finish time', () => {
+    const done = { ...emptyResult('w1', 'r1'), splits: [60_000, 150_000, 200_000], finished: true, adjustments: [5, 5] };
+    expect(raceTotalMs({ ...f, scoringRule: { op: 'ADD', value: 5, unit: 'SEC' } }, done)).toBe(210_000);
+    expect(raceTotalMs({ ...f, scoringRule: { op: 'REMOVE', value: null, unit: 'SEC' } }, done)).toBe(190_000);
+    expect(raceTotalMs(f, { ...done, finished: false })).toBeNull();
   });
 });

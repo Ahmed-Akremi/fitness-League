@@ -25,6 +25,7 @@ export const pageTitle = (t: T, tab: ManageTab): string =>
     race: t('orgTabRace'),
     planning: t('orgMenuHeats'),
     waves: t('orgTabWaves'),
+    live: t('orgTabLive'),
     timetable: t('orgMenuTimetable'),
     leaderboard: t('orgTabLeaderboard'),
     announcements: t('orgTabAnnouncements'),

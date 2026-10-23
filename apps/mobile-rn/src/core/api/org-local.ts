@@ -97,6 +97,10 @@ export const ORG_LOCAL_LAYER: LocalLayer = {
   routes: [
     // Phase 7: waves of a hybrid race ({ number, name, categoryId, startsAt, registrationIds, liveStart })
     ...listRoutes('waves', 'waves', required('startsAt')),
+    // Phase 8: judging and live control
+    ...listRoutes('raceResults', 'race-results', required('registrationId')),
+    ...listRoutes('lanePenalties', 'lane-penalties', required('heatId')),
+    ...listRoutes('timers', 'timers', required('config')),
     // Phase 6: locations (stages, floors) and the location of each heat ({ id: heatId, locationId })
     ...listRoutes('locations', 'locations', required('name')),
     ...listRoutes('heatLocations', 'heat-locations', required('locationId')),

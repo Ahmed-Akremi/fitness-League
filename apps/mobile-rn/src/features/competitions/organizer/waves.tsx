@@ -76,8 +76,11 @@ function WavesBoard({ c }: { c: Json }) {
       const entries = (regs.data ?? [])
         .filter((r) => r.categoryId === categoryId && r.registrationStatus !== 'CANCELLED' && r.registrationStatus !== 'REFUNDED')
         .map((r) => ({ registrationId: r.id, name: personName(r), userId: r.userId, registeredAt: r.registeredAt }));
+      const nameOf = new Map(entries.map((e) => [e.registrationId, e.name]));
       for (const w of planWaves({ entries, perWave: int(per), start, intervalMin: int(interval) })) {
-        await api.post(`/competitions/${c.id}/waves`, { ...w, name: t('wavesName', { division: category?.name ?? '', number: w.number }), categoryId, liveStart: null });
+        // The names travel with the wave: the race judges cannot read the organizer's registration list.
+        const athletes = w.registrationIds.map((registrationId) => ({ registrationId, name: nameOf.get(registrationId) ?? '' }));
+        await api.post(`/competitions/${c.id}/waves`, { ...w, athletes, name: t('wavesName', { division: category?.name ?? '', number: w.number }), categoryId, liveStart: null });
       }
     });
 

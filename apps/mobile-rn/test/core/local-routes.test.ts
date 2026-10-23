@@ -170,4 +170,13 @@ describe('local routes (new organizer features answered on the device)', () => {
     expect(calls[0].body).toEqual({ name: 'WOD 1' });
     await expect(api.get('/competitions/c1')).resolves.toEqual({ id: 'c1', workouts: [{ id: 'w9', name: 'WOD 1', scorecard: { sets: [] } }, { id: 'w2', name: 'WOD 2' }] });
   });
+
+  it('adds a WOD’s scorecard to the judge’s lanes', async () => {
+    const { api } = setup({
+      'POST /competitions/c1/wods': [201, { id: 'w9', name: 'WOD 1' }],
+      'GET /competitions/c1/floor-judging/lanes': [200, { competition: { id: 'c1' }, lanes: [{ lane: 1, workout: { id: 'w9', name: 'WOD 1' } }, { lane: 2, workout: null }] }],
+    });
+    await api.post('/competitions/c1/wods', { name: 'WOD 1', scorecard: { sets: [] } });
+    await expect(api.get('/competitions/c1/floor-judging/lanes')).resolves.toEqual({ competition: { id: 'c1' }, lanes: [{ lane: 1, workout: { id: 'w9', name: 'WOD 1', scorecard: { sets: [] } } }, { lane: 2, workout: null }] });
+  });
 });

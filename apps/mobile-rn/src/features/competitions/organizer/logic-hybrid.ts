@@ -78,3 +78,38 @@ export function planWaves(o: { entries: Entry[]; perWave: number; start: Date; i
   }
   return waves;
 }
+
+// ───────────── Race judging (phase 8) ─────────────
+
+/**
+ * What the judge of one athlete records: `splits[i]` is the race clock (ms since the wave started) at the end of
+ * stage i, runs included; `adjustments` are the scoring-rule values the judge applied (seconds or reps).
+ */
+export type RaceResult = { id: string; waveId: string; registrationId: string; splits: number[]; adjustments: number[]; dnf: boolean; finished: boolean };
+
+export const emptyResult = (waveId: string, registrationId: string): RaceResult => ({ id: `${waveId}:${registrationId}`, waveId, registrationId, splits: [], adjustments: [], dnf: false, finished: false });
+
+/** The stage the athlete is on; null once finished or out. */
+export const raceCursor = (f: Flow, r: RaceResult): number | null => (r.finished || r.dnf || r.splits.length >= f.stages.length ? null : r.splits.length);
+
+/** Ends the current stage; the clock never goes back (a late tap keeps the previous split). */
+export function recordSplit(f: Flow, r: RaceResult, atMs: number): RaceResult {
+  if (raceCursor(f, r) == null) return r;
+  const splits = [...r.splits, Math.max(atMs, r.splits[r.splits.length - 1] ?? 0)];
+  return { ...r, splits, finished: splits.length === f.stages.length };
+}
+
+export const undoSplit = (r: RaceResult): RaceResult => ({ ...r, splits: r.splits.slice(0, -1), finished: false });
+
+/** Time of each stage from the splits. */
+export const stageTimes = (splits: number[]) => splits.map((s, i) => s - (splits[i - 1] ?? 0));
+
+/** Finish time with the rule seconds added (ADD) or taken off (REMOVE); null until finished. */
+export function raceTotalMs(f: Flow, r: RaceResult): number | null {
+  if (!r.finished || !r.splits.length) return null;
+  const finish = r.splits[r.splits.length - 1];
+  const rule = f.scoringRule;
+  if (!rule || rule.unit !== 'SEC') return finish;
+  const sec = r.adjustments.reduce((a, b) => a + b, 0);
+  return Math.max(0, finish + (rule.op === 'ADD' ? 1 : -1) * sec * 1000);
+}

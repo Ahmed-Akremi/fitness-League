@@ -20,7 +20,7 @@ export type LocalRoute = {
 /**
  * `categoryFields`: new fields of a competition's categories (divisions), kept the same way per category id.
  * `registrationFields`: extras of a registration (answers, team, payment plan…), kept per registration id.
- * `workoutFields`: extras of a WOD (scorecard, penalties, tie-break), kept per WOD id.
+ * `workoutFields`: extras of a WOD (scorecard, penalties, tie-break), kept per WOD id and added to `workouts` and to the judge's lanes.
  */
 export type LocalLayer = { routes: LocalRoute[]; competitionFields: string[]; categoryFields?: string[]; registrationFields?: string[]; workoutFields?: string[] };
 
@@ -53,6 +53,7 @@ export function withLocalRoutes(inner: Fetch, store: LocalStore, layer: LocalLay
     const registrations = match('/competitions/:id/registrations', path);
     const wods = match('/competitions/:id/wods', path);
     const wod = match('/competitions/:id/wods/:wodId', path);
+    const judgeLanes = match('/competitions/:id/floor-judging/lanes', path);
     const keepCompetition = (id: string, local: Json) => store.update(id, (c) => void Object.assign(c.fields, local));
     const keepCategory = (competitionId: string) => (id: string, local: Json) =>
       store.update(competitionId, (c) => {
@@ -83,6 +84,17 @@ export function withLocalRoutes(inner: Fetch, store: LocalStore, layer: LocalLay
       await store.ready();
       const extras = store.competition(registrations.id).collections.registrations ?? [];
       return json(res.status, Array.isArray(data) ? data.map((r) => withExtras(extras, regFields, r)) : data);
+    }
+
+    // The judge's lanes carry each WOD: its scorecard and penalties drive the scoring screen (phase 8).
+    if (method === 'GET' && judgeLanes && wodFields.length) {
+      const res = await inner(url, init);
+      if (!res.ok) return res;
+      const data = await readJson(res);
+      await store.ready();
+      const extras = store.competition(judgeLanes.id).collections.workoutExtras ?? [];
+      if (!Array.isArray(data?.lanes)) return json(res.status, data);
+      return json(res.status, { ...data, lanes: data.lanes.map((l: Json) => (l && l.workout ? { ...l, workout: withExtras(extras, wodFields, l.workout) } : l)) });
     }
 
     if (method === 'GET' && (detail || path === '/competitions')) {
