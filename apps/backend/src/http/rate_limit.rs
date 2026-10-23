@@ -61,6 +61,7 @@ pub const WORKOUTS_USER: Rule = rule("workouts", 30, 3600, false);
 pub const WORKOUTS_SYNC_USER: Rule = rule("workouts-sync", 10, 3600, false);
 pub const FRIEND_REQUESTS_USER: Rule = rule("friend-requests", 30, 86_400, false);
 pub const SEARCH_USER: Rule = rule("search", 60, 60, false);
+pub const COMMENTS_USER: Rule = rule("comments", 30, 3600, false);
 
 /// Sliding-window counter: the previous fixed window counts in proportion to how much of it still
 /// overlaps the last `window` seconds. KEYS: current window, previous window. ARGV: limit, window
