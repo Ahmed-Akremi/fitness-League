@@ -82,9 +82,16 @@ sport and governorate), submissions (`POST /gyms`, pending until an admin verifi
 and the gym page (`GET /gyms/{id}`); joining and leaving (`POST /gyms/{id}/membership`, `DELETE
 /gyms/me/membership`, one gym per athlete), the member list, and the gym admin's requests, decisions, coaches and
 dashboard; the gym leaderboard (`GET /leaderboards/gyms/{id}`, with `/me`), which `GET /me/ranks` now reads; the gym
-in `GET /me`, public profiles, leaderboard rows and onboarding; and the gym badge. Plans 3c to 3f (feed and news,
-gym WODs and wars, battles and duels, challenges and leagues) come next, then parts 4 to 6 (competitions, admin,
-cut-over).
+in `GET /me`, public profiles, leaderboard rows and onboarding; and the gym badge. Plan 3c adds the feed: workouts,
+records, level-ups, badges and completed goals write their items in the transaction of their cause; `GET /feed`
+lists mine and my friends' shared ones, with reactions (`PUT` and `DELETE /activities/{id}/reactions`) and comments
+(`GET` and `POST /activities/{id}/comments`, `DELETE …/comments/{commentId}`), each notifying the item's owner. It
+adds the home news (`GET /announcements`, `PUT` and `DELETE /announcements/{id}/like`), and the live socket: a
+socket.io endpoint (namespace `/ws`, WebSocket only, the access token in `auth.token`) that sends `notification.new`
+within about a second of any notification's commit, the worker's included. Plans 3d to 3f (gym WODs and wars,
+battles and duels, challenges and leagues) come next, then parts 4 to 6 (competitions, admin, cut-over). The old
+NestJS API (`apps/api`) left `main` with PR #43; its code, the port's reference, is in git history (for example
+`git show 1075b91:apps/api/src/modules/feed/feed.service.ts`).
 
 One-time setup (Rust 1.99 through `rustup`, Docker for MariaDB, Redis and Mailpit):
 
