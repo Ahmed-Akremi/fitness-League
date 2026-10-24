@@ -442,3 +442,28 @@ The shapes:
 - `socketioxide` 0.18.7 brings `engineioxide`, `socketioxide-core`, `socketioxide-parser-common`, `matchit` and
   `tokio-tungstenite`/`tungstenite` 0.30 (276 crates in all); `cargo audit` and `cargo deny check` are clean with
   them.
+- **The whole suite on the final code (2026-10-24):** the 13 suites the build session could not run passed:
+  `privacy` 19, `security` 9, `workouts` 23, `goals` 18, `badges` 8, `league` 20, `leaderboards` 11,
+  `notifications` 3, `social` 10, `gyms` 8, `feed` 7, `announcements` 1, `live` 3, including
+  `a_socket_outlives_the_request_timeout`, which had never run. The socket layer stays inside the timeout.
+- **Whole-branch review (2026-10-24, a fresh session, no agent):** `b6a87cd..HEAD` read against this plan, the
+  ledger's rulings, the old `FeedService`, `SocialAccess.canView`, `AnnouncementsService`, `RealtimeGateway` and the
+  scoring service's event writes. Points 2 to 5 of « Review focus » hold:
+  2. `viewable` is the old `canView` in one query (mine; else not `PRIVATE`, no block either way, `PUBLIC` or an
+     accepted friendship), and the feed's friend set is the accepted friendships, which a block deletes;
+  3. the refused and revoked filters are `NOT EXISTS` in the feed's `WHERE`, before the `LIMIT`, so a page stays
+     full (the test refuses the newest item and pages by 3);
+  4. the socket's middleware is `auth::app_user` (the HTTP check: token, status, session version, no judge), and
+     only the tail emits, reading committed rows;
+  5. a like is `INSERT IGNORE`, an unlike a `DELETE`, each after the live check.
+
+  **Point 1 held for two taps but not for three. Fixed.** Taps beyond the first wait on the new row's key. Each
+  `INSERT IGNORE` that finds the duplicate takes a shared lock on it, then needs an exclusive one for the type's
+  `UPDATE`. Two such waiters deadlock, and one answers 500 (seen 3 runs out of 3 with three `PUT`s at once). `react`
+  now locks the item's row first, so reactions to one item take turns. The athlete's `users` row was not used: a
+  notification's foreign-key check takes a shared lock on its recipient's row, so A and B reacting to each other's
+  items would deadlock. The test sends three taps (two `FIRE`, one `LIKE`).
+
+  Left as in the old API: a socket stays connected after a logout or a ban until it reconnects (both check at
+  connect only); a comment's rate limit is counted before its 404 and 422; the feed's `comments` count includes
+  the comments of accounts the reader blocked, which the comment list leaves out.

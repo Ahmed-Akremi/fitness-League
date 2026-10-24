@@ -58,6 +58,14 @@ pub async fn react(
 ) -> Result<Json<Value>, AppError> {
     let activity = activity_param(&id)?;
     let mut tx = state.db.begin().await?;
+    // Reactions to one item take turns: taps waiting on the same new row would each hold its shared
+    // lock, then deadlock on the type's update.
+    sqlx::query!(
+        "SELECT id FROM activity_events WHERE id = ? FOR UPDATE",
+        activity
+    )
+    .fetch_optional(&mut *tx)
+    .await?;
     let owner = viewable(&mut tx, user.id, activity).await?;
     // The key decides what is new: a double tap inserts once and notifies once (plan 3c ruling 5).
     // An upsert's row count cannot tell: sqlx asks for found rows, so « the same again » counts 1.

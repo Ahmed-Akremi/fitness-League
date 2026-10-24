@@ -475,12 +475,15 @@ async fn reactions(opts: MySqlPoolOptions, conn: MySqlConnectOptions) {
         );
     }
 
-    // A double tap: one row, one notification.
-    let (one, two) = tokio::join!(
+    // A burst of taps: one row, one notification, and no request lost to a deadlock.
+    let (one, two, three) = tokio::join!(
         react(shared, d_token.clone(), "FIRE"),
-        react(shared, d_token.clone(), "FIRE")
+        react(shared, d_token.clone(), "FIRE"),
+        react(shared, d_token.clone(), "LIKE")
     );
-    assert_eq!((one.status, two.status), (StatusCode::OK, StatusCode::OK));
+    for reply in [&one, &two, &three] {
+        assert_eq!(reply.status, StatusCode::OK, "{}", reply.json);
+    }
     let rows: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM activity_reactions WHERE user_id = ?")
         .bind(d)
         .fetch_one(&app.db)
