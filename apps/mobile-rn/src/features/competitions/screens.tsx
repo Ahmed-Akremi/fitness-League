@@ -15,6 +15,7 @@ import { ErrorText, ErrorView } from '../../core/widgets/error';
 import { Button, Card, Chip, Icon, ListGroup, ListRow, Screen, Segmented, TextField, Txt, toast, type IconName } from '../../core/widgets/kit';
 import { compKeys, competitionsApi, formatMoney, useCompetition, useCompetitions, useCompLeaderboard, useHeats, useMySubmissions, youtubeId, type CompFilter } from './api';
 import { useMe } from '../me/api';
+import { FinalsInvitationCard } from './finals';
 import { FloorJudgeCard } from './judge/screens';
 import { appealRuleOf, appealState, athleteName, myRow, searchBoard } from './logic-board';
 import { defaultDay, hasMine, heatsOfDay, heatState, lanesWithEmpty, matchingLanes } from './logic-heats-day';
@@ -340,6 +341,7 @@ export function CompetitionScreen({ id }: { id: string }) {
           {tab === 'info' && (
             <View style={{ padding: space.lg, gap: space.xl }}>
               <FloorJudgeCard c={c} />
+              <FinalsInvitationCard c={c} />
 
               {c.myRegistration && (
                 <View testID="comp-role" style={{ borderRadius: radius.card, overflow: 'hidden', borderWidth: 1, borderColor: colors.primary }}>
@@ -349,7 +351,12 @@ export function CompetitionScreen({ id }: { id: string }) {
                   <View style={{ padding: 12, gap: 10, backgroundColor: colors.surface }}>
                     <Txt color={colors.outline}>{t('compMyActions')}</Txt>
                     <ActionRow done={registered} title={t('compRegistration')} subtitle={registered ? t('compAllSet') : t('compPaymentPending')} />
-                    {c.myRegistration.teamName ? <Txt testID="my-team">{t('compMyTeam', { name: c.myRegistration.teamName })}</Txt> : null}
+                    {c.myRegistration.teamName ? (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
+                        <Txt testID="my-team" style={{ flex: 1 }}>{t('compMyTeam', { name: c.myRegistration.teamName })}</Txt>
+                        <Button testID="comp-my-team" kind="text" icon="groups" label={t('teamManage')} onPress={() => router.push(`/competitions/${c.id}/team`)} />
+                      </View>
+                    ) : null}
                     {c.myRegistration.paymentPlan === 'DEPOSIT' ? <Txt color={colors.outline}>{t('compDepositPlan')}</Txt> : null}
                     {registered && <ActionRow done={c.workouts.length > 0 && c.workouts.every((w: Json) => subs.has(w.id))} title={t('compSubmitScore')} subtitle={t('compScoresSent', { done: subs.size, total: c.workouts.length })} onPress={() => setTab('wods')} />}
                   </View>

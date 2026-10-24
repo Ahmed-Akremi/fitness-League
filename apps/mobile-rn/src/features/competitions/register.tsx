@@ -29,7 +29,10 @@ import {
   type PaymentPlan,
   type QueueState,
 } from './logic-registration';
+import { InviteOnlyScreen } from './finals';
 import { ageRange } from './logic-event-page';
+import { invitationOpens, myInvitation } from './logic-team';
+import { useLocalList } from './organizer/roster';
 import { agreementsOf, answerProblems, formOf, SIZES, type FormField } from './organizer/logic-forms';
 import { priceBreakdown, pricingOf } from './organizer/logic-pricing';
 
@@ -51,6 +54,7 @@ export function RegisterScreen({ id }: { id: string }) {
   const qc = useQueryClient();
   const comp = useCompetition(id);
   const me = useMe();
+  const finalists = useLocalList(id, 'finalist-invitations');
   const [queue, setQueue] = useState<QueueState | null>(null);
   const [eventCode, setEventCode] = useState('');
   const [eventOpen, setEventOpen] = useState(false);
@@ -108,7 +112,8 @@ export function RegisterScreen({ id }: { id: string }) {
     );
   }
   if ((c.inviteOnly || c.settings?.restrictToEmailList) && me.isLoading) return <Loading />;
-  if (inviteRefused(c, me.data?.email)) return <EmptyState icon="lock" message={t('regInviteOnly')} />;
+  // A finalist invited by the organizer (Roster) gets in too, whatever the email list says.
+  if (inviteRefused(c, me.data?.email) && !invitationOpens(myInvitation(finalists.data ?? [], me.data?.id))) return <InviteOnlyScreen />;
   if (needsEventCode(c) && !eventOpen) {
     const unlock = () => {
       const ok = codeMatches(eventCode, c.accessCode);

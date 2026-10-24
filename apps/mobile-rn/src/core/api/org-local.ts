@@ -123,6 +123,22 @@ export const ORG_LOCAL_LAYER: LocalLayer = {
     ...listRoutes('finalists', 'finalist-invitations', required('userId')),
     ...listRoutes('staffForms', 'staff-forms', required('title')),
     ...listRoutes('staffApplications', 'staff-applications', (b) => required('name')(b) ?? required('email')(b) ?? required('role')(b)),
+    // Athlete side (Circle21 « Team »): the team name and members of a registration, changed within the division's deadlines
+    {
+      method: 'PUT',
+      path: '/competitions/:id/registrations/:regId/team',
+      handle: async ({ params, body }, store) => {
+        const teamName = String(body?.teamName ?? '').trim();
+        const teamMembers: string[] = Array.isArray(body?.teamMembers) ? body.teamMembers.map((m: unknown) => String(m).trim().toLowerCase()).filter(Boolean) : [];
+        if (!teamName) return { status: 422, body: { code: 'VALIDATION_FAILED', status: 422, errors: [{ field: 'teamName', code: 'REQUIRED' }] } };
+        await store.update(params.id, (c) => {
+          const list = c.collections.registrations ?? [];
+          const had = list.find((r) => r.id === params.regId) ?? { id: params.regId };
+          c.collections.registrations = [...list.filter((r) => r.id !== params.regId), { ...had, teamName, teamMembers }];
+        });
+        return { status: 200, body: { id: params.regId, teamName, teamMembers } };
+      },
+    },
     // Phase 4: waiting list of a full division
     { method: 'GET', path: '/competitions/:id/waiting-list', handle: ({ params }, store) => ({ status: 200, body: store.competition(params.id).collections.waitingList ?? [] }) },
     {

@@ -160,6 +160,7 @@ function AthleteCard({ c }: { c: Json }) {
         </View>
       ) : null}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
+        {r.teamName ? <Button testID={`my-event-team-${c.id}`} kind="tonal" icon="groups" label={t('teamManage')} onPress={() => router.push(`/competitions/${c.id}/team`)} /> : null}
         {!online && state === 'CONFIRMED' ? <Button testID={`my-event-heats-${c.id}`} kind="tonal" icon="schedule" label={t('myHeatsTitle')} onPress={() => router.push(`/competitions/${c.id}/my-heats`)} /> : null}
         <Button kind="text" icon="arrow-forward" label={t('myEventsOpen')} onPress={() => router.push(`/competitions/${c.id}`)} />
       </View>
