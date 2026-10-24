@@ -167,6 +167,7 @@ function HomeBody({ me }: { me: Me }) {
             ['sports-mma', t('battles'), '/battles'],
             ['dynamic-feed', t('feed'), '/feed'],
             ['military-tech', t('competitions'), '/competitions'],
+            ['event-available', t('myEventsTitle'), '/competitions/mine'],
           ] as [IconName, string, string][]
         ).map(([icon, label, route]) => (
           <Pressable key={route} accessibilityRole="button" onPress={() => router.push(route as never)} style={{ minWidth: 76, alignItems: 'center', gap: space.xs, paddingVertical: space.md, paddingHorizontal: space.md, borderRadius: 16, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}>
