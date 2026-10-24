@@ -15,6 +15,8 @@ import { ErrorText, ErrorView } from '../../core/widgets/error';
 import { Button, Card, Chip, Icon, ListGroup, ListRow, Screen, Segmented, TextField, Txt, toast, type IconName } from '../../core/widgets/kit';
 import { compKeys, competitionsApi, formatMoney, useCompetition, useCompetitions, useCompLeaderboard, useHeats, useMySubmissions, youtubeId, type CompFilter } from './api';
 import { FloorJudgeCard } from './judge/screens';
+import { defaultDay, hasMine, heatsOfDay, heatState, lanesWithEmpty, matchingLanes } from './logic-heats-day';
+import { heatDays } from './organizer/logic-b';
 import { ageRange, cheapestPrice, earlyBirdPercent, registrationLine, whoCanJoin, workoutFormat } from './logic-event-page';
 import { activeFilters, countriesOf, daysToRegister, EMPTY_DISCOVER, filterEvents, flagOf, toggle, typeOf, type Discover, type EventFormat, type EventType, type When } from './logic-discover';
 import { CompetitionAnnouncements } from './organizer/announcements';
@@ -696,18 +698,92 @@ function HeatSchedule({ id, part }: { id: string; part: 'mine' | 'all' }) {
           <Txt>{[heat.workout?.name, when(heat)].filter(Boolean).join(' · ')}</Txt>
         </Card>
       ))}
-      {part === 'all' ? <SectionHeader title={t('compHeats')} /> : null}
-      {part === 'all' ? <ListGroup>
-        {heats.data.map((h) => (
-          <ListRow
-            key={h.id}
-            icon="schedule"
-            title={h.name}
-            subtitle={[h.workout?.name, h.category?.name, t('compAthletes', { count: h.lanes.length })].filter(Boolean).join(' · ')}
-            trailing={<Txt>{when(h)}</Txt>}
-          />
-        ))}
-      </ListGroup> : null}
+      {part === 'all' ? <HeatsOfDay heats={heats.data} /> : null}
+    </>
+  );
+}
+
+/**
+ * Circle21's « Heats of the day »: one day at a time, « Show only my heats », a search for a heat or an athlete, and
+ * each heat opening on its lanes (« Empty lane » included). Searching opens the heats that match.
+ */
+function HeatsOfDay({ heats }: { heats: Json[] }) {
+  const t = useT();
+  const locale = useLocale();
+  const { colors } = useTheme();
+  const days = heatDays(heats);
+  const [day, setDay] = useState<string | null>(() => defaultDay(days, Date.now()));
+  const [mineOnly, setMineOnly] = useState(false);
+  const [q, setQ] = useState('');
+  const [open, setOpen] = useState<string[]>([]);
+  const now = Date.now();
+  const shown = heatsOfDay(heats, { day: days.length > 1 ? day : null, mineOnly, q });
+  const anyMine = heats.some(hasMine);
+  const time = (iso: string) => formatDate(iso, locale, { hour: '2-digit', minute: '2-digit' });
+  return (
+    <>
+      <SectionHeader title={t('compHeats')} />
+      <TextField testID="heats-search" icon="search" placeholder={t('heatsSearch')} value={q} onChangeText={setQ} autoCapitalize="none" />
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space.sm }}>
+        {anyMine ? <Chip testID="heats-mine" icon="person" label={t('heatsMineOnly')} selected={mineOnly} onPress={() => setMineOnly(!mineOnly)} /> : null}
+        {days.length > 1
+          ? days.map((d) => <Chip key={d} testID={`heats-day-${d}`} label={formatDate(`${d}T12:00:00`, locale, { weekday: 'short', day: 'numeric', month: 'short' })} selected={day === d} onPress={() => setDay(d)} />)
+          : null}
+      </ScrollView>
+      {shown.length === 0 ? (
+        <EmptyState icon="search-off" message={q.trim() ? t('heatsNotFound', { name: q.trim() }) : t('heatsNoneThatDay')} />
+      ) : (
+        shown.map((h) => {
+          const state = heatState(h, now);
+          const expanded = open.includes(h.id) || !!q.trim() || mineOnly;
+          const hits = matchingLanes(h, q);
+          const mine = hasMine(h);
+          return (
+            <View key={h.id} testID={`heat-${h.id}`} style={{ borderRadius: 14, borderWidth: mine ? 2 : 1, borderColor: mine ? colors.primary : colors.border, backgroundColor: colors.surface, overflow: 'hidden' }}>
+              <Pressable
+                testID={`heat-toggle-${h.id}`}
+                accessibilityRole="button"
+                accessibilityState={{ expanded }}
+                onPress={() => setOpen(open.includes(h.id) ? open.filter((x) => x !== h.id) : [...open, h.id])}
+                style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.md, opacity: pressed ? 0.85 : 1 })}
+              >
+                <View style={{ width: 72, alignItems: 'center' }}>
+                  <Txt numberOfLines={1} adjustsFontSizeToFit style={[displayText(18), { lineHeight: 22 }]} color={state === 'DONE' ? colors.outline : colors.text}>{h.startsAt ? time(h.startsAt) : '—'}</Txt>
+                </View>
+                <View style={{ flex: 1, gap: 2 }}>
+                  <Txt style={{ fontWeight: '800' }} color={state === 'DONE' ? colors.outline : colors.text}>{h.name}</Txt>
+                  <Txt variant="small" color={colors.outline} numberOfLines={1}>{[h.workout?.name, h.category?.name, t('heatsLanesUsed', { used: (h.lanes ?? []).length, count: h.laneCount ?? (h.lanes ?? []).length })].filter(Boolean).join(' · ')}</Txt>
+                </View>
+                {state === 'LIVE' ? (
+                  <View style={{ paddingVertical: 2, paddingHorizontal: 6, borderRadius: 2, backgroundColor: colors.error }}>
+                    <Txt variant="small" style={{ fontWeight: '900', fontSize: 11, letterSpacing: 0.8 }} color={colors.background}>{t('heatsLive')}</Txt>
+                  </View>
+                ) : state === 'DONE' ? (
+                  <Txt variant="small" color={colors.outline}>{t('heatsDone')}</Txt>
+                ) : null}
+                <Icon name={expanded ? 'expand-less' : 'expand-more'} color={colors.outline} />
+              </Pressable>
+              {expanded ? (
+                <View style={{ borderTopWidth: 1, borderTopColor: colors.border }}>
+                  {lanesWithEmpty(h).map(({ lane, entry }) => {
+                    const hit = hits.includes(lane) || !!entry?.mine;
+                    return (
+                      <View key={lane} testID={`heat-${h.id}-lane-${lane}`} style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, paddingVertical: space.sm, paddingHorizontal: space.md, backgroundColor: hit ? `${colors.primary}1A` : 'transparent' }}>
+                        <View style={{ width: 28, height: 28, borderRadius: 8, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surfaceHigh }}>
+                          <Txt style={{ fontWeight: '800', fontVariant: ['tabular-nums'] }}>{String(lane)}</Txt>
+                        </View>
+                        <Txt style={{ flex: 1, fontWeight: entry?.mine ? '800' : '500' }} color={entry ? colors.text : colors.outline}>
+                          {entry ? `${entry.athlete?.fullName || entry.athlete?.username || entry.teamName || '—'}${entry.mine ? ` · ${t('heatsYou')}` : ''}` : t('heatsEmptyLane')}
+                        </Txt>
+                      </View>
+                    );
+                  })}
+                </View>
+              ) : null}
+            </View>
+          );
+        })
+      )}
     </>
   );
 }
@@ -798,6 +874,7 @@ export { RegisterScreen } from './register';
 /** Score + YouTube link for one WOD: only the fields its score type needs (§23). The link is required to submit. */
 export function SubmitScreen({ id, wodId }: { id: string; wodId: string }) {
   const t = useT();
+  const locale = useLocale();
   const { colors } = useTheme();
   const api = useApi();
   const qc = useQueryClient();
@@ -844,7 +921,7 @@ export function SubmitScreen({ id, wodId }: { id: string; wodId: string }) {
     try {
       await competitionsApi(api).submit(id, wodId, { clientId, raw, notes: notes.trim() || undefined, videoUrl: video.trim() || undefined, submit });
       await qc.invalidateQueries({ queryKey: compKeys.mine(id) });
-      toast(submit ? t('compSubmitted') : t('compSaveDraft'));
+      toast(submit ? t('subSentToast', { wod: w.name }) : t('compSaveDraft'));
       if (router.canGoBack()) router.back();
     } catch (e) {
       setError(e);
@@ -853,57 +930,130 @@ export function SubmitScreen({ id, wodId }: { id: string; wodId: string }) {
     }
   }
 
+  const fmt = workoutFormat(type);
+  const closed = !!w.submissionDeadline && Date.parse(w.submissionDeadline) < Date.now();
+  const deadline = w.submissionDeadline ? formatDate(w.submissionDeadline, locale, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : null;
   return (
-    <Screen>
-      <Txt style={displayText(28)}>{w.name}</Txt>
-      <Txt>{w.description}</Txt>
-      <Txt color={colors.primary} style={{ fontWeight: '700' }}>{t('compMaxPoints', { points: w.maximumPoints })}</Txt>
-      {type === 'MOVEMENT_REPS' ? (
-        <>
-          {movements.map((m, i) => (
-            <TextField key={i} testID={`sub-move-${i}`} label={`${m.name} · ${t('compPointsPerRep', { points: m.pointsPerRep })}`} placeholder={t('compReps')} keyboardType="number-pad" value={moveReps[i] ?? ''} onChangeText={(v) => setMoveReps({ ...moveReps, [i]: v })} />
-          ))}
-          <Card testID="sub-computed" style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <View style={{ flex: 1 }}>
-              <Txt variant="title">{t('compComputedScore')}</Txt>
-              <Txt variant="small" color={colors.outline}>{t('compComputedHint')}</Txt>
-            </View>
-            <Txt style={displayText(28)} color={colors.primary}>{computed == null ? '—' : t('compPoints', { points: Math.min(computed, w.maximumPoints) })}</Txt>
-          </Card>
-        </>
-      ) : type === 'TIME' ? (
-        <>
-          {!capped && <TimeField testID="sub-time" label={t('compScore')} onChange={setTimeS} />}
-          <Chip testID="sub-capped" icon="timer-off" label={t('compTimeCap')} selected={capped} onPress={() => setCapped(!capped)} />
-          {capped && (
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <Screen>
+        <View style={{ gap: 4 }}>
+          <Txt style={displayText(28)}>{w.name}</Txt>
+          <Txt variant="small" style={{ fontWeight: '700' }} color={colors.outline}>{[t(`evFormat${fmt}`), w.timeCapS ? t('evTimeCap', { min: Math.round(w.timeCapS / 60) }) : null, t('compMaxPoints', { points: w.maximumPoints })].filter(Boolean).join(' · ')}</Txt>
+        </View>
+        <ReadMoreText text={w.description} />
+        {deadline ? (
+          <View testID="sub-deadline" style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, padding: space.md, borderRadius: 14, backgroundColor: colors.surfaceHigh }}>
+            <Icon name={closed ? 'event-busy' : 'event'} size={18} color={closed ? colors.error : colors.primary} />
+            <Txt variant="small" style={{ flex: 1 }} color={closed ? colors.error : colors.text}>{closed ? t('subDeadlinePassed', { date: deadline }) : t('subDeadline', { date: deadline })}</Txt>
+          </View>
+        ) : null}
+
+        <SubSection n={1} title={t('subYourScore')}>
+          {type === 'MOVEMENT_REPS' ? (
             <>
-              <TextField testID="sub-reps" label={t('compReps')} keyboardType="number-pad" value={reps} onChangeText={setReps} />
-              <TextField label={t('compTotalReps')} keyboardType="number-pad" value={value} onChangeText={setValue} />
+              {movements.map((m, i) => (
+                <TextField key={i} testID={`sub-move-${i}`} label={`${m.name} · ${t('compPointsPerRep', { points: m.pointsPerRep })}`} placeholder={t('compReps')} keyboardType="number-pad" value={moveReps[i] ?? ''} onChangeText={(v) => setMoveReps({ ...moveReps, [i]: v })} />
+              ))}
+              <Card testID="sub-computed" style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <View style={{ flex: 1 }}>
+                  <Txt variant="title">{t('compComputedScore')}</Txt>
+                  <Txt variant="small" color={colors.outline}>{t('compComputedHint')}</Txt>
+                </View>
+                <Txt style={displayText(28)} color={colors.primary}>{computed == null ? '—' : t('compPoints', { points: Math.min(computed, w.maximumPoints) })}</Txt>
+              </Card>
             </>
+          ) : type === 'TIME' ? (
+            <>
+              <View style={{ gap: space.sm }}>
+                <Choice testID="sub-finished" label={t('subFinishedInCap')} selected={!capped} onPress={() => setCapped(false)} />
+                <Choice testID="sub-capped" label={t('subNotFinishedInCap')} selected={capped} onPress={() => setCapped(true)} />
+              </View>
+              {!capped && <TimeField testID="sub-time" label={t('compScore')} onChange={setTimeS} />}
+              {capped && (
+                <>
+                  <TextField testID="sub-reps" label={t('compReps')} keyboardType="number-pad" value={reps} onChangeText={setReps} />
+                  <TextField label={t('compTotalReps')} keyboardType="number-pad" value={value} onChangeText={setValue} />
+                </>
+              )}
+            </>
+          ) : type === 'ROUNDS_REPS' ? (
+            <>
+              <TextField testID="sub-rounds" label={t('compRounds')} keyboardType="number-pad" value={rounds} onChangeText={setRounds} />
+              <TextField label={t('compRepsPerRound')} keyboardType="number-pad" value={value} onChangeText={setValue} />
+              <TextField testID="sub-reps" label={`+ ${t('compReps')}`} keyboardType="number-pad" value={reps} onChangeText={setReps} />
+            </>
+          ) : type === 'REPS' ? (
+            <TextField testID="sub-reps" label={t('compReps')} keyboardType="number-pad" value={reps} onChangeText={setReps} />
+          ) : (
+            <TextField testID="sub-value" label={t('compValue')} keyboardType="decimal-pad" value={value} onChangeText={setValue} />
           )}
-        </>
-      ) : type === 'ROUNDS_REPS' ? (
-        <>
-          <TextField testID="sub-rounds" label={t('compRounds')} keyboardType="number-pad" value={rounds} onChangeText={setRounds} />
-          <TextField label={t('compRepsPerRound')} keyboardType="number-pad" value={value} onChangeText={setValue} />
-          <TextField testID="sub-reps" label={`+ ${t('compReps')}`} keyboardType="number-pad" value={reps} onChangeText={setReps} />
-        </>
-      ) : type === 'REPS' ? (
-        <TextField testID="sub-reps" label={t('compReps')} keyboardType="number-pad" value={reps} onChangeText={setReps} />
-      ) : (
-        <TextField testID="sub-value" label={`${t('compValue')} (${type})`} keyboardType="decimal-pad" value={value} onChangeText={setValue} />
-      )}
-      <TextField testID="sub-video" label={t('compVideoUrl')} placeholder="https://youtu.be/…" value={video} onChangeText={setVideo} autoCapitalize="none" keyboardType="url" error={videoOk ? null : t('compVideoInvalid')} />
-      {thumb && (
-        <Pressable onPress={() => Linking.openURL(video.trim())}>
-          <Image accessibilityLabel={t('judgeWatchVideo')} source={{ uri: `https://i.ytimg.com/vi/${thumb}/hqdefault.jpg` }} style={{ width: '100%', aspectRatio: 16 / 9, borderRadius: 12 }} />
-        </Pressable>
-      )}
-      <TextField label={t('notes')} value={notes} onChangeText={setNotes} multiline maxLength={2000} />
-      <ErrorText error={error} />
-      {!thumb && <Txt variant="small" color={colors.outline}>{t('compVideoRequired')}</Txt>}
-      <Button testID="sub-send" label={t('compSubmitScore')} busy={busy} disabled={!filled || !thumb} onPress={() => send(true)} />
-      <Button kind="text" label={t('compSaveDraft')} disabled={busy || !filled || !videoOk} onPress={() => send(false)} />
-    </Screen>
+        </SubSection>
+
+        <SubSection n={2} title={t('subYourVideo')}>
+          <Txt variant="small" color={colors.outline}>{t('subVideoHint')}</Txt>
+          <TextField testID="sub-video" label={t('compVideoUrl')} placeholder="https://youtu.be/…" value={video} onChangeText={setVideo} autoCapitalize="none" keyboardType="url" error={videoOk ? null : t('compVideoInvalid')} />
+          {thumb && (
+            <Pressable accessibilityRole="link" accessibilityLabel={t('judgeWatchVideo')} onPress={() => Linking.openURL(video.trim())} style={{ borderRadius: 12, overflow: 'hidden' }}>
+              <View style={{ width: '100%', aspectRatio: 16 / 9, backgroundColor: colors.surfaceHigh }}>
+                <Image source={{ uri: `https://i.ytimg.com/vi/${thumb}/hqdefault.jpg` }} accessibilityIgnoresInvertColors style={{ position: 'absolute', top: 0, bottom: 0, start: 0, end: 0, width: '100%', height: '100%' }} />
+                <View style={{ position: 'absolute', top: 0, bottom: 0, start: 0, end: 0, alignItems: 'center', justifyContent: 'center' }}>
+                  <View style={{ width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', backgroundColor: `${colors.background}B3` }}>
+                    <Icon name="play-arrow" size={32} color={colors.text} />
+                  </View>
+                </View>
+              </View>
+            </Pressable>
+          )}
+          {!thumb && <Txt variant="small" color={colors.outline}>{t('compVideoRequired')}</Txt>}
+        </SubSection>
+
+        <TextField label={t('notes')} value={notes} onChangeText={setNotes} multiline maxLength={2000} />
+        <ErrorText error={error} />
+      </Screen>
+      <View style={{ gap: space.xs, paddingHorizontal: space.lg, paddingTop: space.md, paddingBottom: space.lg, borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.background }}>
+        <Button testID="sub-send" icon="send" label={t('subSendForReview')} busy={busy} disabled={!filled || !thumb} onPress={() => send(true)} />
+        <Button kind="text" label={t('compSaveDraft')} disabled={busy || !filled || !videoOk} onPress={() => send(false)} />
+      </View>
+    </View>
+  );
+}
+
+/** A numbered part of the score form (« 1 · Your score », « 2 · Your video »). */
+function SubSection({ n, title, children }: { n: number; title: string; children: ReactNode }) {
+  const { colors } = useTheme();
+  return (
+    <View style={{ gap: space.sm }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
+        <View style={{ width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primary }}>
+          <Txt style={{ fontWeight: '800', fontSize: 13 }} color={colors.onPrimary}>{String(n)}</Txt>
+        </View>
+        <Txt variant="title">{title}</Txt>
+      </View>
+      {children}
+    </View>
+  );
+}
+
+/** One of two exclusive answers, as a full-width radio row. */
+function Choice({ label, selected, onPress, testID }: { label: string; selected: boolean; onPress: () => void; testID?: string }) {
+  const { colors } = useTheme();
+  return (
+    <Pressable testID={testID} accessibilityRole="radio" accessibilityState={{ checked: selected }} onPress={onPress} style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: space.sm, minHeight: 48, paddingHorizontal: space.md, borderRadius: 14, borderWidth: selected ? 2 : 1, borderColor: selected ? colors.primary : colors.border, backgroundColor: colors.surface, opacity: pressed ? 0.85 : 1 })}>
+      <Icon name={selected ? 'radio-button-checked' : 'radio-button-unchecked'} color={selected ? colors.primary : colors.outline} />
+      <Txt style={{ flex: 1, fontWeight: selected ? '700' : '500' }}>{label}</Txt>
+    </Pressable>
+  );
+}
+
+/** The workout's text folded to five lines. */
+function ReadMoreText({ text }: { text: string }) {
+  const t = useT();
+  const [open, setOpen] = useState(false);
+  const long = (text ?? '').length > 220 || (text ?? '').split('\n').length > 5;
+  return (
+    <View style={{ gap: 2 }}>
+      <Txt numberOfLines={open || !long ? undefined : 5}>{text}</Txt>
+      {long ? <Button kind="text" label={open ? t('evReadLess') : t('evReadMore')} onPress={() => setOpen(!open)} style={{ alignSelf: 'flex-start' }} /> : null}
+    </View>
   );
 }
