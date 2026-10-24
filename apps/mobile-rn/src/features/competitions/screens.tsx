@@ -14,7 +14,9 @@ import { EmptyState, Loading, SectionHeader, SkeletonList, StatCard, StatusPill,
 import { ErrorText, ErrorView } from '../../core/widgets/error';
 import { Button, Card, Chip, Icon, ListGroup, ListRow, Screen, Segmented, TextField, Txt, toast, type IconName } from '../../core/widgets/kit';
 import { compKeys, competitionsApi, formatMoney, useCompetition, useCompetitions, useCompLeaderboard, useHeats, useMySubmissions, youtubeId, type CompFilter } from './api';
+import { useMe } from '../me/api';
 import { FloorJudgeCard } from './judge/screens';
+import { appealRuleOf, appealState, athleteName, myRow, searchBoard } from './logic-board';
 import { defaultDay, hasMine, heatsOfDay, heatState, lanesWithEmpty, matchingLanes } from './logic-heats-day';
 import { heatDays } from './organizer/logic-b';
 import { ageRange, cheapestPrice, earlyBirdPercent, registrationLine, whoCanJoin, workoutFormat } from './logic-event-page';
@@ -495,6 +497,9 @@ export function CompetitionScreen({ id }: { id: string }) {
                       {registered && (!s || ['DRAFT', 'SUBMITTED', 'NEEDS_CORRECTION'].includes(s.status)) && (
                         <Button testID={`submit-${w.number}`} kind="tonal" icon="edit-note" label={t('compSubmitScore')} onPress={() => router.push(`/competitions/${id}/wods/${w.id}/submit`)} />
                       )}
+                      {registered && appealState(appealRuleOf(c), s, now) === 'OPEN' ? (
+                        <Button testID={`appeal-${w.number}`} kind="text" icon="gavel" label={t('appealOpen')} onPress={() => router.push(`/competitions/${id}/wods/${w.id}/appeal`)} />
+                      ) : null}
                     </Card>
                   );
                 })
@@ -793,34 +798,49 @@ function HeatsOfDay({ heats }: { heats: Json[] }) {
 export function CompLeaderboard({ id, categories, workouts }: { id: string; categories: Json[]; workouts: Json[] }) {
   const t = useT();
   const { colors } = useTheme();
+  const me = useMe();
   const active = categories.filter((c) => c.active);
   const [categoryId, setCategoryId] = useState<string | undefined>(active[0]?.id);
   const [workoutId, setWorkoutId] = useState<string | undefined>(undefined);
+  const [q, setQ] = useState('');
   const board = useCompLeaderboard(id, categoryId, workoutId);
   const data = board.data;
+  const division = active.find((c) => c.id === categoryId)?.name ?? '';
+  const rows: Json[] = data ? searchBoard(data.rows ?? [], q) : [];
+  const mine = data ? myRow(data.rows ?? [], me.data?.id) : null;
   return (
-    <View style={{ gap: 8 }}>
+    <View style={{ gap: 10 }}>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
         {active.map((c) => (
           <Chip key={c.id} testID={`board-cat-${c.id}`} label={c.name} selected={c.id === categoryId} onPress={() => setCategoryId(c.id)} />
         ))}
       </ScrollView>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-        <Chip label={t('compTotal')} selected={!workoutId} onPress={() => setWorkoutId(undefined)} />
+        <Chip testID="board-overall" label={t('boardOverall')} selected={!workoutId} onPress={() => setWorkoutId(undefined)} />
         {workouts.map((w) => (
-          <Chip key={w.id} label={w.name} selected={w.id === workoutId} onPress={() => setWorkoutId(w.id)} />
+          <Chip key={w.id} testID={`board-wod-${w.id}`} label={w.name} selected={w.id === workoutId} onPress={() => setWorkoutId(w.id)} />
         ))}
       </ScrollView>
+      <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+        <View style={{ flex: 1 }}>
+          <TextField testID="board-search" icon="search" placeholder={t('boardSearch')} value={q} onChangeText={setQ} autoCapitalize="none" />
+        </View>
+        {mine ? <Button testID="board-find-me" kind="tonal" icon="person-pin" label={t('boardFindMe')} onPress={() => setQ(athleteName(mine))} /> : null}
+      </View>
       {board.isError ? (
         <ErrorView error={board.error} onRetry={() => board.refetch()} />
       ) : !data ? (
         <Loading />
       ) : (
         <>
-          <Card style={{ backgroundColor: data.provisional ? colors.surfaceHigh : colors.primary + '22' }}>
-            <Txt style={{ fontWeight: '700' }}>{data.provisional ? t('compProvisional') : t('compFinal')}</Txt>
-          </Card>
-          {data.podium && (
+          <View testID="board-status" style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, padding: space.md, borderRadius: 14, backgroundColor: data.provisional ? colors.surfaceHigh : `${colors.primary}22` }}>
+            <Icon name={data.provisional ? 'hourglass-top' : 'verified'} size={20} color={data.provisional ? colors.warning : colors.primary} />
+            <View style={{ flex: 1 }}>
+              <Txt style={{ fontWeight: '800' }}>{data.provisional ? t('boardUnofficial') : t('boardOfficial')}</Txt>
+              {data.provisional ? <Txt variant="small" color={colors.outline}>{t('compProvisional')}</Txt> : null}
+            </View>
+          </View>
+          {data.podium && !q.trim() && (
             <View style={{ flexDirection: 'row', gap: 8 }}>
               {(['gold', 'silver', 'bronze'] as const).map((place, i) => {
                 const ids: string[] = data.podium[place];
@@ -835,28 +855,44 @@ export function CompLeaderboard({ id, categories, workouts }: { id: string; cate
               })}
             </View>
           )}
-          <ScrollView horizontal>
-            <View>
-              <View style={{ flexDirection: 'row', paddingVertical: 6 }}>
-                <Txt variant="label" style={{ width: 44 }}>#</Txt>
-                <View style={{ width: 140 }} />
-                <Txt variant="label" style={{ width: 72, textAlign: 'right' }}>{t('compTotal')}</Txt>
-                {!workoutId && data.workouts.map((w: Json) => <Txt key={w.id} variant="label" style={{ width: 64, textAlign: 'right' }}>{`W${w.number}`}</Txt>)}
-              </View>
-              {data.rows.map((r: Json) => (
-                <View key={r.athlete.id} testID={`board-row-${r.athlete.id}`} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 8, borderTopWidth: 1, borderTopColor: colors.surfaceHigh }}>
-                  <Txt style={[displayText(20), { width: 44, color: r.rank <= 3 ? colors.primary : colors.text }]}>{`#${r.rank}`}</Txt>
-                  <View style={{ width: 140 }}>
-                    <Txt numberOfLines={1} style={{ fontWeight: '600' }}>{r.athlete.fullName ?? r.athlete.username}</Txt>
-                    {r.pending > 0 && <Txt variant="small" color={colors.outline}>{t('compPending')}</Txt>}
-                  </View>
-                  {/* Total first: it decides the rank and must be visible without scrolling. */}
-                  <Txt style={[displayText(20), { width: 72, textAlign: 'right', color: colors.primary }]}>{String((workoutId ? r.wodPoints[workoutId] : r.totalPoints) ?? '—')}</Txt>
-                  {!workoutId && data.workouts.map((w: Json) => <Txt key={w.id} style={{ width: 64, textAlign: 'right' }}>{r.wodPoints[w.id] != null ? String(r.wodPoints[w.id]) : '—'}</Txt>)}
+          {(data.rows ?? []).length === 0 ? (
+            <EmptyState icon="leaderboard" message={t('boardNoScores')} />
+          ) : rows.length === 0 ? (
+            <EmptyState icon="search-off" message={t('boardNotFound', { name: q.trim(), division })} />
+          ) : (
+            <ScrollView horizontal>
+              <View>
+                <View style={{ flexDirection: 'row', paddingVertical: 6 }}>
+                  <Txt variant="label" style={{ width: 44 }}>#</Txt>
+                  <View style={{ width: 150 }} />
+                  <Txt variant="label" style={{ width: 72, textAlign: 'right' }}>{workoutId ? t('boardPoints') : t('compTotal')}</Txt>
+                  {!workoutId && data.workouts.map((w: Json) => <Txt key={w.id} variant="label" style={{ width: 64, textAlign: 'right' }}>{`W${w.number}`}</Txt>)}
                 </View>
-              ))}
-            </View>
-          </ScrollView>
+                {rows.map((r: Json) => {
+                  const isMe = !!me.data?.id && r.athlete.id === me.data.id;
+                  return (
+                    <View key={r.athlete.id} testID={`board-row-${r.athlete.id}`} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 8, paddingHorizontal: isMe ? 6 : 0, borderRadius: isMe ? 10 : 0, borderTopWidth: isMe ? 0 : 1, borderTopColor: colors.surfaceHigh, backgroundColor: isMe ? `${colors.primary}1F` : 'transparent' }}>
+                      <Txt style={[displayText(20), { width: 44, color: r.rank <= 3 ? colors.primary : colors.text }]}>{`#${r.rank}`}</Txt>
+                      <View style={{ width: 150, gap: 2 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          <Txt numberOfLines={1} style={{ fontWeight: isMe ? '800' : '600', flexShrink: 1 }}>{athleteName(r)}</Txt>
+                          {isMe ? (
+                            <View style={{ paddingHorizontal: 6, borderRadius: 999, backgroundColor: colors.primary }}>
+                              <Txt variant="small" style={{ fontWeight: '800', fontSize: 11 }} color={colors.onPrimary}>{t('boardYou')}</Txt>
+                            </View>
+                          ) : null}
+                        </View>
+                        {r.pending > 0 && <Txt variant="small" color={colors.outline}>{t('compPending')}</Txt>}
+                      </View>
+                      {/* Total first: it decides the rank and must be visible without scrolling. */}
+                      <Txt style={[displayText(20), { width: 72, textAlign: 'right', color: colors.primary }]}>{String((workoutId ? r.wodPoints[workoutId] : r.totalPoints) ?? '—')}</Txt>
+                      {!workoutId && data.workouts.map((w: Json) => <Txt key={w.id} style={{ width: 64, textAlign: 'right', fontVariant: ['tabular-nums'] }}>{r.wodPoints[w.id] != null ? String(r.wodPoints[w.id]) : '—'}</Txt>)}
+                    </View>
+                  );
+                })}
+              </View>
+            </ScrollView>
+          )}
         </>
       )}
     </View>
