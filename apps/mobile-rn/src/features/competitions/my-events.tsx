@@ -13,6 +13,7 @@ import { ErrorView } from '../../core/widgets/error';
 import { Button, Icon, Segmented, Txt, type IconName } from '../../core/widgets/kit';
 import { compKeys, competitionsApi, useCompetitions, useMySubmissions } from './api';
 import { isPast, registrationState, requiredActions, rolesOf, sortMine, staffRoleOf, type Due, type MyRole, type RequiredAction } from './logic-my-events';
+import { hasPass } from './logic-pass';
 import { DEFAULT_COVER } from './screens';
 
 /**
@@ -160,6 +161,7 @@ function AthleteCard({ c }: { c: Json }) {
         </View>
       ) : null}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
+        {hasPass(c) && !isPast(c, Date.now()) ? <Button testID={`my-event-pass-${c.id}`} kind="tonal" icon="qr-code-2" label={t('passOpen')} onPress={() => router.push(`/competitions/${c.id}/pass`)} /> : null}
         {r.teamName ? <Button testID={`my-event-team-${c.id}`} kind="tonal" icon="groups" label={t('teamManage')} onPress={() => router.push(`/competitions/${c.id}/team`)} /> : null}
         {!online && state === 'CONFIRMED' ? <Button testID={`my-event-heats-${c.id}`} kind="tonal" icon="schedule" label={t('myHeatsTitle')} onPress={() => router.push(`/competitions/${c.id}/my-heats`)} /> : null}
         <Button kind="text" icon="arrow-forward" label={t('myEventsOpen')} onPress={() => router.push(`/competitions/${c.id}`)} />

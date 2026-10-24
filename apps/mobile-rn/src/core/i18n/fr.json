@@ -1816,5 +1816,13 @@
   "inviteWhyExpired": "ou ton invitation a expiré.",
   "inviteNext": "Que faire",
   "inviteNextEmail": "Vérifie que tu es connecté avec l’e-mail qui a reçu l’invitation.",
-  "inviteNextContact": "Contacte l’organisateur si le délai de ton invitation doit être prolongé."
+  "inviteNextContact": "Contacte l’organisateur si le délai de ton invitation doit être prolongé.",
+  "passTitle": "Mon pass",
+  "passOpen": "Mon pass (QR code)",
+  "passPresence": "Montre ce QR code à l’organisateur pour confirmer ta présence.",
+  "passWarmup": "Montre-le aussi à l’entrée de la zone d’échauffement.",
+  "passNone": "Pas de pass pour cet événement : inscris-toi sur place ou réserve un billet.",
+  "passTickets": "Mes billets",
+  "passPaid": "Payé · à montrer à l’entrée",
+  "passPayAtDoor": "Réservé · à payer à l’entrée"
 }

@@ -16,6 +16,7 @@ import { Button, Card, Chip, Icon, ListGroup, ListRow, Screen, Segmented, TextFi
 import { compKeys, competitionsApi, formatMoney, useCompetition, useCompetitions, useCompLeaderboard, useHeats, useMySubmissions, youtubeId, type CompFilter } from './api';
 import { useMe } from '../me/api';
 import { FinalsInvitationCard } from './finals';
+import { hasPass } from './logic-pass';
 import { FloorJudgeCard } from './judge/screens';
 import { appealRuleOf, appealState, athleteName, myRow, searchBoard } from './logic-board';
 import { defaultDay, hasMine, heatsOfDay, heatState, lanesWithEmpty, matchingLanes } from './logic-heats-day';
@@ -351,6 +352,7 @@ export function CompetitionScreen({ id }: { id: string }) {
                   <View style={{ padding: 12, gap: 10, backgroundColor: colors.surface }}>
                     <Txt color={colors.outline}>{t('compMyActions')}</Txt>
                     <ActionRow done={registered} title={t('compRegistration')} subtitle={registered ? t('compAllSet') : t('compPaymentPending')} />
+                    {hasPass(c) ? <Button testID="comp-pass" kind="tonal" icon="qr-code-2" label={t('passOpen')} onPress={() => router.push(`/competitions/${c.id}/pass`)} /> : null}
                     {c.myRegistration.teamName ? (
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
                         <Txt testID="my-team" style={{ flex: 1 }}>{t('compMyTeam', { name: c.myRegistration.teamName })}</Txt>

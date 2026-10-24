@@ -1816,5 +1816,13 @@
   "inviteWhyExpired": "or your invitation has expired.",
   "inviteNext": "What to do next",
   "inviteNextEmail": "Make sure you’re signed in with the email where you received the invitation.",
-  "inviteNextContact": "Contact the organiser if your invitation deadline needs to be extended."
+  "inviteNextContact": "Contact the organiser if your invitation deadline needs to be extended.",
+  "passTitle": "My pass",
+  "passOpen": "My pass (QR code)",
+  "passPresence": "Please show this QR code to the event host to confirm your presence.",
+  "passWarmup": "Show it again at the warm-up area to be let in.",
+  "passNone": "No pass for this event: register on site or reserve a ticket.",
+  "passTickets": "My tickets",
+  "passPaid": "Paid · show it at the door",
+  "passPayAtDoor": "Reserved · pay at the door"
 }
