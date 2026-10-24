@@ -29,6 +29,10 @@ import {
   type PaymentPlan,
   type QueueState,
 } from './logic-registration';
+import { InviteOnlyScreen } from './finals';
+import { ageRange } from './logic-event-page';
+import { invitationOpens, myInvitation } from './logic-team';
+import { useLocalList } from './organizer/roster';
 import { agreementsOf, answerProblems, formOf, SIZES, type FormField } from './organizer/logic-forms';
 import { priceBreakdown, pricingOf } from './organizer/logic-pricing';
 
@@ -50,6 +54,7 @@ export function RegisterScreen({ id }: { id: string }) {
   const qc = useQueryClient();
   const comp = useCompetition(id);
   const me = useMe();
+  const finalists = useLocalList(id, 'finalist-invitations');
   const [queue, setQueue] = useState<QueueState | null>(null);
   const [eventCode, setEventCode] = useState('');
   const [eventOpen, setEventOpen] = useState(false);
@@ -76,6 +81,7 @@ export function RegisterScreen({ id }: { id: string }) {
   const [done, setDone] = useState<Json | null>(null);
   const [full, setFull] = useState(false);
   const [waitlisted, setWaitlisted] = useState(false);
+  const [step, setStep] = useState(0);
 
   const highDemand = comp.data?.settings?.highDemand === true;
   useEffect(() => {
@@ -90,6 +96,8 @@ export function RegisterScreen({ id }: { id: string }) {
   if (comp.isError) return <ErrorView error={comp.error} />;
   if (!comp.data) return <Loading />;
   const c = comp.data;
+  const tiers = Object.values(colors.tier);
+  const genders: Record<string, string> = { MALE: t('orgGenderMale'), FEMALE: t('orgGenderFemale'), MIXED: t('orgGenderMixed') };
   const money = (p: number) => (p === 0 ? t('compFree') : formatMoney(p, c.currency, locale));
 
   if (highDemand && queue?.phase !== 'ADMITTED') {
@@ -104,7 +112,8 @@ export function RegisterScreen({ id }: { id: string }) {
     );
   }
   if ((c.inviteOnly || c.settings?.restrictToEmailList) && me.isLoading) return <Loading />;
-  if (inviteRefused(c, me.data?.email)) return <EmptyState icon="lock" message={t('regInviteOnly')} />;
+  // A finalist invited by the organizer (Roster) gets in too, whatever the email list says.
+  if (inviteRefused(c, me.data?.email) && !invitationOpens(myInvitation(finalists.data ?? [], me.data?.id))) return <InviteOnlyScreen />;
   if (needsEventCode(c) && !eventOpen) {
     const unlock = () => {
       const ok = codeMatches(eventCode, c.accessCode);
@@ -137,14 +146,17 @@ export function RegisterScreen({ id }: { id: string }) {
   const total = breakdown ? breakdown.athletePays : price;
   const depositOffered = breakdown != null && pricingOf(c).deposit.enabled && breakdown.athletePays > 0;
   const giftOk = !gift || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(giftEmail.trim());
-  const valid =
-    !!category &&
-    !locked &&
-    (!team || teamProblems(category, teamName, memberList).length === 0) &&
-    giftOk &&
-    answerProblems(fields, answers).length === 0 &&
-    required.every((r) => accepted.includes(r)) &&
-    (!minor || minorProblems(guardian).length === 0);
+  const hasAgreements = required.length > 0 || agreements.faceRecognition.required || agreements.minors.enabled;
+  // Circle21's order: the division (and team), the organizer's questions, the waiver, then the price and payment.
+  const steps = registrationSteps(fields.length > 0, hasAgreements);
+  const current: RegStep = steps[Math.min(step, steps.length - 1)];
+  const stepOk: Record<RegStep, boolean> = {
+    DIVISION: !!category && !locked && (!team || teamProblems(category, teamName, memberList).length === 0) && giftOk,
+    DETAILS: answerProblems(fields, answers).length === 0,
+    AGREEMENTS: required.every((r) => accepted.includes(r)) && (!minor || minorProblems(guardian).length === 0),
+    PAYMENT: true,
+  };
+  const valid = steps.every((x) => stepOk[x]);
 
   async function applyCoupon() {
     setCouponError(null);
@@ -198,13 +210,26 @@ export function RegisterScreen({ id }: { id: string }) {
 
   if (waitlisted) return <EmptyState icon="hourglass-top" message={t('regWaitlistDone')} />;
   if (done) {
+    const confirmed = done.registrationStatus === 'CONFIRMED';
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16, padding: 32, backgroundColor: colors.background }}>
-        <Icon name={done.registrationStatus === 'CONFIRMED' ? 'check-circle' : 'hourglass-top'} size={64} color={colors.primary} />
-        <Txt variant="title" style={{ textAlign: 'center' }}>{done.registrationStatus === 'CONFIRMED' ? t('compRegistered') : t('compPaymentPending')}</Txt>
+      <Screen>
+        <View testID="reg-done" style={{ alignItems: 'center', gap: space.md, paddingTop: space.xl }}>
+          <View style={{ width: 88, height: 88, borderRadius: 44, alignItems: 'center', justifyContent: 'center', backgroundColor: `${confirmed ? colors.success : colors.warning}33`, borderWidth: 2, borderColor: confirmed ? colors.success : colors.warning }}>
+            <Icon name={confirmed ? 'check' : 'hourglass-top'} size={48} color={confirmed ? colors.success : colors.warning} />
+          </View>
+          <Txt style={[displayText(30), { textAlign: 'center', textTransform: 'uppercase' }]}>{confirmed ? t('compRegistered') : t('compPaymentPending')}</Txt>
+          <Txt color={colors.outline} style={{ textAlign: 'center' }}>{confirmed ? t('regDoneHint') : t('regDonePendingHint')}</Txt>
+        </View>
+        <Card style={{ gap: space.sm }}>
+          <SummaryLine label={t('regDoneEvent')} value={c.title} />
+          {category ? <SummaryLine label={t('regStepDIVISION')} value={category.name} /> : null}
+          {team && teamName.trim() ? <SummaryLine label={t('regTeam')} value={teamName.trim()} /> : null}
+          {gift && giftEmail.trim() ? <SummaryLine label={t('regGiftFor')} value={giftEmail.trim()} /> : null}
+          <SummaryLine label={t('compTotal')} value={money(total)} strong />
+        </Card>
         {breakdown && depositOffered && plan === 'DEPOSIT' && <Txt style={{ textAlign: 'center' }}>{t('regDepositDone', { deposit: money(breakdown.depositNow), balance: money(breakdown.balance) })}</Txt>}
-        <Button label={t('compMyCompetition')} onPress={() => router.replace(`/competitions/${id}`)} />
-      </View>
+        <Button testID="reg-done-event" icon="arrow-forward" label={t('regDoneContinue')} onPress={() => router.replace(`/competitions/${id}`)} />
+      </Screen>
     );
   }
 
@@ -235,30 +260,48 @@ export function RegisterScreen({ id }: { id: string }) {
   };
   const toggleAgreement = (a: AgreementId, on: boolean) => setAccepted(on ? [...accepted.filter((x) => x !== a), a] : accepted.filter((x) => x !== a));
 
+  const last = step >= steps.length - 1;
   return (
-    <Screen>
-      <SectionHeader title={t('compChooseCategory')} />
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <StepBar steps={steps} current={Math.min(step, steps.length - 1)} onGo={(i) => setStep(i)} />
+      <Screen>
+        <Txt style={displayText(26)}>{t(`regStepTitle${current}`)}</Txt>
+        {current === 'DIVISION' && (
+          <>
       {c.categories
         .filter((x: Json) => x.active)
-        .map((x: Json) => (
-          <Pressable
-            key={x.id}
-            testID={`cat-${x.id}`}
-            accessibilityRole="radio"
-            accessibilityState={{ checked: x.id === categoryId }}
-            onPress={() => {
-              setCategoryId(x.id);
-              setQuote(null);
-              setDivCodeWrong(false);
-            }}
-            style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10 }}
-          >
-            <Icon name={x.id === categoryId ? 'radio-button-checked' : 'radio-button-unchecked'} color={x.id === categoryId ? colors.primary : colors.outline} />
-            <Txt style={{ flex: 1 }}>{x.name}</Txt>
-            {x.locked ? <Icon name="lock" size={16} color={colors.outline} /> : null}
-            <Txt style={{ fontWeight: '700' }}>{money(x.price)}</Txt>
-          </Pressable>
-        ))}
+        .map((x: Json, i: number) => {
+          const picked = x.id === categoryId;
+          const earlyX = typeof x.earlyPrice === 'number' && x.earlyUntil && now < Date.parse(x.earlyUntil);
+          return (
+            <Pressable
+              key={x.id}
+              testID={`cat-${x.id}`}
+              accessibilityRole="radio"
+              accessibilityState={{ checked: picked }}
+              onPress={() => {
+                setCategoryId(x.id);
+                setQuote(null);
+                setDivCodeWrong(false);
+              }}
+              style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.md, borderRadius: 14, borderWidth: picked ? 2 : 1, borderColor: picked ? colors.primary : colors.border, backgroundColor: colors.surface, opacity: pressed ? 0.85 : 1 })}
+            >
+              <View style={{ width: 6, alignSelf: 'stretch', borderRadius: 3, backgroundColor: tiers[i % tiers.length] }} />
+              <View style={{ flex: 1, gap: 2 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Txt style={{ fontWeight: '800', flexShrink: 1 }}>{x.name}</Txt>
+                  {x.locked ? <Icon name="lock" size={16} color={colors.outline} /> : null}
+                </View>
+                <Txt variant="small" color={colors.outline}>{[genders[x.gender] ?? x.gender, ageRange(x), x.type === 'TEAM' ? t('evTeam') : t('evIndividuals')].filter(Boolean).join(' · ')}</Txt>
+              </View>
+              <View style={{ alignItems: 'flex-end' }}>
+                <Txt style={{ fontWeight: '800', fontVariant: ['tabular-nums'] }}>{money(earlyX ? x.earlyPrice : x.price)}</Txt>
+                {earlyX ? <Txt variant="small" color={colors.primary}>{t('regEarlyBird')}</Txt> : null}
+              </View>
+              <Icon name={picked ? 'radio-button-checked' : 'radio-button-unchecked'} color={picked ? colors.primary : colors.outline} />
+            </Pressable>
+          );
+        })}
 
       {category && locked && (
         <>
@@ -278,8 +321,8 @@ export function RegisterScreen({ id }: { id: string }) {
         </>
       )}
 
-      {category && !locked && (
-        <>
+            {category && !locked && (
+              <>
           {team && (
             <>
               <SectionHeader title={t('regTeam')} />
@@ -302,14 +345,18 @@ export function RegisterScreen({ id }: { id: string }) {
           {!team && <SwitchRow testID="reg-gift" title={t('regGift')} value={gift} onChange={setGift} />}
           {!team && gift && <TextField testID="reg-gift-email" label={t('regGiftEmail')} value={giftEmail} onChangeText={setGiftEmail} keyboardType="email-address" autoCapitalize="none" />}
 
-          {fields.length > 0 && (
-            <>
-              <SectionHeader title={t('regQuestions')} />
+              </>
+            )}
+          </>
+        )}
+        {current === 'DETAILS' && (
+          <>
+            <Txt color={colors.outline}>{t('regDetailsHint')}</Txt>
               {fields.map(answerField)}
-            </>
-          )}
-
-          {(required.length > 0 || agreements.faceRecognition.required || agreements.minors.enabled) && <SectionHeader title={t('regAgreements')} />}
+          </>
+        )}
+        {current === 'AGREEMENTS' && (
+          <>
           {required.map((a) => (
             <View key={a} style={{ gap: space.xs }}>
               {agreementText[a].text ? <Txt variant="small" color={colors.outline}>{agreementText[a].text}</Txt> : null}
@@ -332,13 +379,18 @@ export function RegisterScreen({ id }: { id: string }) {
             </>
           )}
 
+          </>
+        )}
+        {current === 'PAYMENT' && category && (
+          <>
           <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 8 }}>
-            <TextField testID="coupon" style={{ flex: 1 }} label={t('compCoupon')} value={code} onChangeText={setCode} autoCapitalize="characters" error={couponError} />
+            <TextField testID="coupon" style={{ flex: 1 }} label={t('regPromoQuestion')} value={code} onChangeText={setCode} autoCapitalize="characters" error={couponError} />
             <Button testID="coupon-apply" kind="tonal" label={t('compApplyCoupon')} disabled={code.trim().length < 3} onPress={applyCoupon} />
           </View>
-          <Card style={{ gap: 4 }}>
+          <Card style={{ gap: 6 }}>
+            <Txt variant="label" color={colors.outline}>{t('regSummary')}</Txt>
             <View style={{ flexDirection: 'row' }}>
-              <Txt style={{ flex: 1 }}>{t('compPrice')}</Txt>
+              <Txt style={{ flex: 1 }}>{`${t('regEntryFees')} · ${category.name}`}</Txt>
               <Txt>{money(quote?.originalPrice ?? early ?? category.price)}</Txt>
             </View>
             {quote && (
@@ -373,17 +425,76 @@ export function RegisterScreen({ id }: { id: string }) {
               </View>
             </>
           )}
-        </>
-      )}
+            <Txt variant="small" color={colors.outline}>{t('regTerms')}</Txt>
+          </>
+        )}
+        {full && (
+          <>
+            <Txt color={colors.error}>{t('regFull')}</Txt>
+            <Button testID="reg-waitlist" kind="outlined" label={t('regWaitlistJoin')} busy={busy} onPress={joinWaitlist} />
+          </>
+        )}
+        {typeof error === 'string' ? <Txt color={colors.error}>{error}</Txt> : <ErrorText error={error} />}
+      </Screen>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, paddingHorizontal: space.lg, paddingTop: space.md, paddingBottom: space.lg, borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.background }}>
+        {step > 0 ? <Button testID="reg-back" kind="text" icon="arrow-back" label={t('regBack')} onPress={() => setStep(step - 1)} /> : null}
+        {category && current !== 'PAYMENT' ? (
+          <View style={{ flex: 1 }}>
+            <Txt variant="small" color={colors.outline}>{t('compTotal')}</Txt>
+            <Txt style={{ fontWeight: '800', fontVariant: ['tabular-nums'] }} color={colors.primary}>{money(total)}</Txt>
+          </View>
+        ) : (
+          <View style={{ flex: current === 'PAYMENT' ? 0 : 1 }} />
+        )}
+        <View style={{ flex: current === 'PAYMENT' ? 1 : 0, minWidth: 160 }}>
+          {last ? (
+            <Button testID="register-confirm" icon="how-to-reg" label={total > 0 ? t('regSubmit', { amount: money(depositOffered && breakdown && plan === 'DEPOSIT' ? breakdown.depositNow : total) }) : t('compConfirmRegistration')} busy={busy} disabled={!valid || full} onPress={confirm} />
+          ) : (
+            <Button testID="reg-next" icon="arrow-forward" label={t('regContinue')} disabled={!stepOk[current]} onPress={() => setStep(step + 1)} />
+          )}
+        </View>
+      </View>
+    </View>
+  );
+}
 
-      {full && (
-        <>
-          <Txt color={colors.error}>{t('regFull')}</Txt>
-          <Button testID="reg-waitlist" kind="outlined" label={t('regWaitlistJoin')} busy={busy} onPress={joinWaitlist} />
-        </>
-      )}
-      {typeof error === 'string' ? <Txt color={colors.error}>{error}</Txt> : <ErrorText error={error} />}
-      <Button testID="register-confirm" label={t('compConfirmRegistration')} busy={busy} disabled={!valid || full} onPress={confirm} style={{ marginTop: 8 }} />
-    </Screen>
+export type RegStep = 'DIVISION' | 'DETAILS' | 'AGREEMENTS' | 'PAYMENT';
+
+/** The steps an event needs: questions and agreements only when the organizer set some. */
+export const registrationSteps = (questions: boolean, agreements: boolean): RegStep[] => ['DIVISION', ...(questions ? (['DETAILS'] as const) : []), ...(agreements ? (['AGREEMENTS'] as const) : []), 'PAYMENT'];
+
+/** Numbered steps with their names; a step already done can be opened again. */
+function StepBar({ steps, current, onGo }: { steps: RegStep[]; current: number; onGo: (i: number) => void }) {
+  const t = useT();
+  const { colors } = useTheme();
+  return (
+    <View accessibilityRole="progressbar" accessibilityLabel={t('regStepOf', { step: current + 1, total: steps.length })} style={{ flexDirection: 'row', paddingHorizontal: space.lg, paddingVertical: space.md, gap: space.xs, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+      {steps.map((x, i) => {
+        const done = i < current;
+        const now = i === current;
+        return (
+          <Pressable key={x} testID={`reg-step-${x}`} accessibilityRole="button" accessibilityState={{ disabled: !done, selected: now }} disabled={!done} onPress={() => onGo(i)} style={{ flex: 1, alignItems: 'center', gap: 6 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', alignSelf: 'stretch' }}>
+              <View style={{ flex: 1, height: 2, backgroundColor: i === 0 ? 'transparent' : i <= current ? colors.primary : colors.surfaceHigh }} />
+              <View style={{ width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: done || now ? colors.primary : colors.surfaceHigh }}>
+                {done ? <Icon name="check" size={16} color={colors.onPrimary} /> : <Txt style={{ fontWeight: '800', fontSize: 13 }} color={now ? colors.onPrimary : colors.outline}>{String(i + 1)}</Txt>}
+              </View>
+              <View style={{ flex: 1, height: 2, backgroundColor: i === steps.length - 1 ? 'transparent' : i < current ? colors.primary : colors.surfaceHigh }} />
+            </View>
+            <Txt variant="small" numberOfLines={1} style={{ fontSize: 12, fontWeight: now ? '800' : '600' }} color={now ? colors.text : colors.outline}>{t(`regStep${x}`)}</Txt>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+function SummaryLine({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
+  const { colors } = useTheme();
+  return (
+    <View style={{ flexDirection: 'row', gap: space.md }}>
+      <Txt style={{ flex: 1 }} color={colors.outline}>{label}</Txt>
+      <Txt style={{ fontWeight: strong ? '800' : '600', flexShrink: 1, textAlign: 'right' }} color={strong ? colors.primary : colors.text}>{value}</Txt>
+    </View>
   );
 }

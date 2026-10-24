@@ -25,12 +25,14 @@ describe('competition registration', () => {
       .on('POST', '/competitions/c1/register', [201, { id: 'r1', registrationStatus: 'CONFIRMED', paymentStatus: 'FREE' }]);
     const screen = await renderScreen(() => <RegisterScreen id="c1" />, backend);
     await fireEvent.press(await screen.findByTestId('cat-rxm'));
+    await fireEvent.press(screen.getByTestId('reg-next'));
     await fireEvent.changeText(screen.getByTestId('coupon'), 'free2026');
     await fireEvent.press(screen.getByTestId('coupon-apply'));
     await waitFor(() => expect(backend.calls('POST', '/competitions/c1/coupon/validate')[0]?.body).toEqual({ categoryId: 'rxm', code: 'FREE2026' }));
     expect((await screen.findByTestId('final-price')).props.children).toBe('Free');
     await fireEvent.press(screen.getByTestId('register-confirm'));
     expect(await screen.findByText("You're registered!")).toBeTruthy();
+    expect(screen.getByTestId('reg-done-event')).toBeTruthy();
     expect(backend.calls('POST', '/competitions/c1/register')[0].body).toEqual({ categoryId: 'rxm', couponCode: 'FREE2026' });
   });
 });
@@ -98,7 +100,10 @@ describe('heats', () => {
         ],
       ]);
     const screen = await renderScreen(() => <CompetitionScreen id="c1" />, backend);
+    // Event Info shows the athlete's own heat; the running order is under Schedule.
     expect(await screen.findByTestId('my-heat')).toBeTruthy();
+    expect(screen.queryByText('RX Male · Heat 1')).toBeNull();
+    await fireEvent.press(screen.getByTestId('comp-tab-schedule'));
     expect(screen.getAllByText('RX Male · Heat 2 · Lane 3')).toHaveLength(1);
     expect(screen.getByText('RX Male · Heat 1')).toBeTruthy();
   });

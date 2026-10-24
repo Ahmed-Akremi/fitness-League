@@ -44,10 +44,10 @@ describe('athlete registration (phase 4)', () => {
     const c = { ...base, categories: [{ ...base.categories[0], locked: true, unlockCode: '654321' }] };
     const screen = await renderScreen(() => <RegisterScreen id="c1" />, backendFor(c));
     await fireEvent.press(await screen.findByTestId('cat-k1'));
-    expect(disabled(screen.getByTestId('register-confirm'))).toBe(true);
+    expect(disabled(screen.getByTestId('reg-next'))).toBe(true);
     await fireEvent.changeText(screen.getByTestId('reg-div-code'), '654321');
     await fireEvent.press(screen.getByTestId('reg-div-unlock'));
-    await waitFor(() => expect(disabled(screen.getByTestId('register-confirm'))).toBe(false));
+    await waitFor(() => expect(disabled(screen.getByTestId('reg-next'))).toBe(false));
   });
 
   it('registers a team: name and teammate emails stay on the device, the server gets the category', async () => {
@@ -61,9 +61,10 @@ describe('athlete registration (phase 4)', () => {
       });
     const screen = await renderScreen(() => <RegisterScreen id="c1" />, backend);
     await fireEvent.press(await screen.findByTestId('cat-k1'));
-    expect(disabled(screen.getByTestId('register-confirm'))).toBe(true);
+    expect(disabled(screen.getByTestId('reg-next'))).toBe(true);
     await fireEvent.changeText(screen.getByTestId('reg-team-name'), 'Box Bandits');
     await fireEvent.changeText(screen.getByTestId('reg-member-0'), 'Mate@x.tn');
+    await fireEvent.press(screen.getByTestId('reg-next'));
     await fireEvent.press(screen.getByTestId('register-confirm'));
 
     await waitFor(() => expect(backend.calls('POST', '/competitions/c1/register')).toHaveLength(1));
@@ -79,12 +80,24 @@ describe('athlete registration (phase 4)', () => {
     };
     const screen = await renderScreen(() => <RegisterScreen id="c1" />, backendFor(c));
     await fireEvent.press(await screen.findByTestId('cat-k1'));
-    expect(screen.getByText('I take part at my own risk.')).toBeTruthy();
-    expect(disabled(screen.getByTestId('register-confirm'))).toBe(true);
+    // Division → Info → Waiver → Payment.
+    expect(screen.getByTestId('reg-step-DETAILS')).toBeTruthy();
+    expect(screen.getByTestId('reg-step-AGREEMENTS')).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('reg-next'));
+    expect(disabled(screen.getByTestId('reg-next'))).toBe(true);
     await fireEvent.press(screen.getByTestId('reg-answer-tshirt-M'));
-    expect(disabled(screen.getByTestId('register-confirm'))).toBe(true);
+    await fireEvent.press(screen.getByTestId('reg-next'));
+    expect(screen.getByText('I take part at my own risk.')).toBeTruthy();
+    expect(disabled(screen.getByTestId('reg-next'))).toBe(true);
     await fireEvent.press(screen.getByTestId('reg-agree-LIABILITY'));
+    expect(disabled(screen.getByTestId('reg-next'))).toBe(false);
+    await fireEvent.press(screen.getByTestId('reg-next'));
     expect(disabled(screen.getByTestId('register-confirm'))).toBe(false);
+    // Back keeps what was typed; a step already done opens again from the bar.
+    await fireEvent.press(screen.getByTestId('reg-back'));
+    expect(screen.getByTestId('reg-agree-LIABILITY')).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('reg-step-DIVISION'));
+    expect(screen.getByTestId('cat-k1')).toBeTruthy();
   });
 
   it('lets the athlete pay a deposit now and the balance later', async () => {
@@ -92,6 +105,7 @@ describe('athlete registration (phase 4)', () => {
     const backend = backendFor(c).on('POST', '/competitions/c1/register', [201, { id: 'r1', registrationStatus: 'PENDING', paymentStatus: 'PENDING' }]);
     const screen = await renderScreen(() => <RegisterScreen id="c1" />, backend);
     await fireEvent.press(await screen.findByTestId('cat-k1'));
+    await fireEvent.press(screen.getByTestId('reg-next'));
     await fireEvent.press(screen.getByTestId('reg-plan-DEPOSIT'));
     await fireEvent.press(screen.getByTestId('register-confirm'));
     expect(await screen.findByText(`Deposit to pay now: ${tnd(12000)}. Balance: ${tnd(28000)}.`)).toBeTruthy();
@@ -101,6 +115,7 @@ describe('athlete registration (phase 4)', () => {
     const backend = backendFor(base).on('POST', '/competitions/c1/register', [409, { code: 'CATEGORY_FULL', status: 409 }]);
     const screen = await renderScreen(() => <RegisterScreen id="c1" />, backend);
     await fireEvent.press(await screen.findByTestId('cat-k1'));
+    await fireEvent.press(screen.getByTestId('reg-next'));
     await fireEvent.press(screen.getByTestId('register-confirm'));
     await fireEvent.press(await screen.findByTestId('reg-waitlist'));
     expect(await screen.findByText('You’re on the waiting list. The organizer will contact you if a place opens.')).toBeTruthy();
